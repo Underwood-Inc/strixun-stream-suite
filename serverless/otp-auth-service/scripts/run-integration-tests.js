@@ -78,21 +78,56 @@ function createDevVarsFiles() {
 /**
  * Wait for a service to be ready by polling its health endpoint
  */
-async function waitForService(name, url, maxAttempts = 30, delay = 1000) {
+async function waitForService(name, url, maxAttempts = 5, delay = 1000) {
   console.log(`[Integration Tests] Waiting for ${name} to be ready at ${url}...`);
   
   for (let i = 0; i < maxAttempts; i++) {
     try {
       const response = await fetch(url);
-      // Any response (even 404/401) means the service is running
-      console.log(`[Integration Tests] ✓ ${name} is ready!`);
-      return true;
+      // Verify response is actually from a running service
+      // For /health endpoint, 401 is expected (requires JWT) - verify it's a proper 401
+      if (response.status === 401 && url.includes('/health')) {
+        const responseText = await response.text();
+        if (responseText.includes('JWT token') || responseText.includes('Unauthorized')) {
+          // Proper 401 means service is running and responding correctly
+          console.log(`[Integration Tests] ✓ ${name} is ready! (status: 401 - service requires JWT)`);
+          return true;
+        }
+      } else if (response.status === 200) {
+        // 200 means service is fully healthy
+        console.log(`[Integration Tests] ✓ ${name} is ready! (status: 200)`);
+        return true;
+      } else if (response.status === 404) {
+        // 404 might mean endpoint doesn't exist, but service is running
+        console.log(`[Integration Tests] ⚠ ${name} returned 404 - service is running but endpoint may not exist`);
+        return true;
+      } else {
+        // Other status - service is responding but may have issues
+        console.log(`[Integration Tests] ⚠ ${name} is responding but returned status ${response.status}`);
+        return true;
+      }
     } catch (error) {
+      // Fetch failed - service is NOT running
+      // Do NOT treat this as "service is running" - it's a connection failure
+      const errorMessage = error?.message || String(error);
+      if (error?.name === 'AbortError' || error?.code === 'ECONNREFUSED' || errorMessage.includes('fetch failed')) {
+        // Connection refused or timeout - service not ready yet
+        // Wait and retry
+        if (i < maxAttempts - 1) {
+          console.log(`[Integration Tests] Still waiting for ${name}... (attempt ${i + 1}/${maxAttempts})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      }
+      // Other unexpected errors - log but don't treat as "running"
+      const errorMsg = error?.message || String(error);
+      console.log(`[Integration Tests] ${name} connection error: ${errorMsg}`);
       if (i < maxAttempts - 1) {
         await new Promise(resolve => setTimeout(resolve, delay));
-      } else {
-        throw new Error(`Failed to connect to ${name} at ${url} after ${maxAttempts} attempts: ${error.message}`);
+        continue;
       }
+      // If we get here, we've exhausted retries
+      throw new Error(`Failed to connect to ${name} at ${url} after ${maxAttempts} attempts: ${errorMsg}`);
     }
   }
   return false;

@@ -64,15 +64,18 @@ POST /admin/customers
 
 #### 1.2 Request Authentication
 
-All OTP auth requests must include customer API key:
+All OTP auth requests must include customer API key for tenant identification:
 
-```typescript
-// Request header
-Authorization: Bearer otp_live_sk_abc123...
-
-// Or API key header
+```http
 X-OTP-API-Key: otp_live_sk_abc123...
 ```
+
+**IMPORTANT:** API keys are for tenant identification and configuration, NOT for user authorization.
+- API keys MUST use the `X-OTP-API-Key` header
+- The `Authorization` header is reserved for JWT tokens ONLY
+- API keys do NOT replace JWT tokens - they serve different purposes:
+  - API Key: Identifies which customer tenant (for subscription tiers, rate limiting, entity separation)
+  - JWT Token: Authenticates the user (for security, encryption, session management)
 
 #### 1.3 KV Namespace Isolation
 

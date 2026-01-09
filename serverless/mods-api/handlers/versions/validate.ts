@@ -27,7 +27,7 @@ export async function handleValidateVersion(
     env: Env,
     modId: string,
     versionId: string,
-    auth: { userId: string; customerId: string | null } | null
+    auth: { customerId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
         // Get mod metadata
@@ -84,7 +84,7 @@ export async function handleValidateVersion(
         }
 
         // Check visibility
-        if (mod.visibility === 'private' && mod.authorId !== auth?.userId) {
+        if (mod.visibility === 'private' && mod.authorId !== auth?.customerId) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

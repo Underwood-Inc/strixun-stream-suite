@@ -30,7 +30,7 @@ export interface OTPVerifyResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
-  userId: string;
+  customerId: string;
   email: string;
   customerId: string;
 }
@@ -161,7 +161,7 @@ export const handleOTPVerify = createEnhancedHandler<OTPVerifyResponse>(
       expires_in: 25200,
       userId: 'user-123',
       email: email,
-      customerId: context.user?.customerId || 'customer-123',
+      customerId: context.customer?.customerId || 'customer-123',
     };
   },
   {
@@ -177,7 +177,7 @@ export const handleOTPVerify = createEnhancedHandler<OTPVerifyResponse>(
 export const handleGetCustomer = createEnhancedHandler<CustomerResponse>(
   async (request, context) => {
     // Your get customer logic here
-    const customerId = context.user?.customerId || '';
+    const customerId = context.customer?.customerId || '';
 
     // Simulate customer fetch
     return {

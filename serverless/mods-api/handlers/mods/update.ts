@@ -14,6 +14,7 @@ import { MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.
 import { createModSnapshot } from '../../utils/snapshot.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
 import { calculateStrixunHash } from '../../utils/hash.js';
+import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
 // handleThumbnailUpload is defined locally in this file
 import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
 
@@ -24,7 +25,7 @@ export async function handleUpdateMod(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string }
 ): Promise<Response> {
     try {
         // Check email whitelist
@@ -100,8 +101,11 @@ export async function handleUpdateMod(
             });
         }
 
+        // ✨ LAZY MIGRATION: Automatically migrate variants if needed
+        mod = await migrateModVariantsIfNeeded(mod, env);
+
         // Check authorization
-        if (mod.authorId !== auth.userId) {
+        if (mod.authorId !== auth.customerId) {
             const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to update this mod');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -117,8 +121,7 @@ export async function handleUpdateMod(
 
         // CRITICAL: Validate customerId is present - required for data scoping and display name lookups
         if (!auth.customerId) {
-            console.error('[Update] CRITICAL: customerId is null for authenticated user:', {
-                userId: auth.userId,
+            console.error('[Update] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
                 email: auth.email,
                 note: 'Rejecting mod update - customerId is required for data scoping and display name lookups'
             });
@@ -427,7 +430,7 @@ export async function handleUpdateMod(
                             customMetadata: addR2SourceMetadata({
                                 modId,
                                 variantId: variant.variantId,
-                                uploadedBy: auth.userId,
+                                uploadedBy: auth.customerId,
                                 uploadedAt: now,
                                 encrypted: 'true',
                                 encryptionFormat: encryptionFormat, // 'binary-v4' or 'binary-v5' - CRITICAL for download handler
@@ -511,20 +514,18 @@ export async function handleUpdateMod(
             console.log('[Update] Setting missing customerId on mod:', {
                 modId: mod.modId,
                 oldCustomerId: mod.customerId,
-                newCustomerId: auth.customerId,
-                userId: auth.userId
+                newCustomerId: auth.customerId, customerId: auth.customerId
             });
             mod.customerId = auth.customerId;
         } else if (!mod.customerId && !auth.customerId) {
             console.warn('[Update] WARNING: Mod and auth both missing customerId:', {
-                modId: mod.modId,
-                userId: auth.userId,
+                modId: mod.modId, customerId: auth.customerId,
                 note: 'This may cause data scoping issues'
             });
         }
 
         // CRITICAL: Fetch and update author display name from customer data
-        // Customer is the primary data source for all customizable user info
+        // Customer is the primary data source for all customizable customer info
         // Look up customer by mod.customerId to get displayName
         const storedDisplayName = mod.authorDisplayName; // Preserve as fallback only
         let fetchedDisplayName: string | null = null;
@@ -620,7 +621,7 @@ export async function handleUpdateMod(
         const displayName = mod.authorDisplayName || null;
         
         // Create snapshot of the mod after update
-        const snapshot = await createModSnapshot(mod, auth.userId, displayName, env);
+        const snapshot = await createModSnapshot(mod, auth.customerId, displayName, env);
         
         // Store snapshot (customer scope)
         const snapshotKey = getCustomerKey(auth.customerId, `snapshot_${snapshot.snapshotId}`);

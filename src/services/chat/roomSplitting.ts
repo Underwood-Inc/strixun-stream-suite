@@ -17,14 +17,14 @@ export interface RoomSplittingConfig {
   signalingBaseUrl: string;
   
   /**
-   * Current user ID
+   * Current customer ID
    */
-  userId: string;
+  customerId: string;
   
   /**
-   * Current user display name
+   * Current customer display name
    */
-  userName: string;
+  customerName: string;
 }
 
 export interface CreatePartyRoomOptions {

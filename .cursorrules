@@ -154,7 +154,7 @@
   ```
 - **Solution**: Use CSS variables on the element that needs to transition
   ```scss
-  // ✅ CORRECT - transition is on the element that changes
+  // ✓ CORRECT - transition is on the element that changes
   .content {
     transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     margin-right: var(--filter-aside-width, 0px);
@@ -210,7 +210,7 @@
 
 ### Example - Correct TypeScript Usage:
 ```typescript
-// ✅ CORRECT - Properly typed handler
+// ✓ CORRECT - Properly typed handler
 interface Env {
   OTP_AUTH_KV: KVNamespace;
   RESEND_API_KEY?: string;
@@ -251,12 +251,12 @@ export async function handleRequest(request: any, env: any): Promise<any> {
 ## Text and Symbol Rules - CRITICAL
 
 ### NEVER Use Emojis or Unicode Symbols
-- **ABSOLUTE PROHIBITION**: Never use emojis (✅, ⚠️, ❌, 🔒, etc.) or Unicode symbols in code, scripts, or console output
+- **ABSOLUTE PROHIBITION**: Never use emojis (✓, ⚠, ❌, 🔒, etc.) or Unicode symbols in code, scripts, or console output
 - **Why**: Emojis cause character encoding issues in terminals, PowerShell, older systems, and many development environments
 - **Solution**: Always use ASCII-compatible text symbols or plain text
 - **Exception**: None. This rule applies to all code, scripts, documentation, and console output
 
-### ✅ CORRECT - ASCII-Compatible Symbols (ALWAYS USE):
+### ✓ CORRECT - ASCII-Compatible Symbols (ALWAYS USE):
 ```powershell
 # PowerShell scripts
 Write-Host "✓ Operation completed" -ForegroundColor Green
@@ -283,14 +283,14 @@ console.error('✗ Invalid input');
 ### ❌ WRONG - Emojis/Unicode (DO NOT USE):
 ```powershell
 # WRONG - Emojis cause encoding issues
-Write-Host "✅ All services configured successfully!"
-Write-Host "⚠️ Some services failed"
+Write-Host "✓ All services configured successfully!"
+Write-Host "⚠ Some services failed"
 ```
 
 ```typescript
 // WRONG - Emojis may not display correctly
-console.log('✅ All services configured successfully!');
-console.warn('⚠️ Some services failed');
+console.log('✓ All services configured successfully!');
+console.warn('⚠ Some services failed');
 ```
 
 ### ASCII Symbol Alternatives

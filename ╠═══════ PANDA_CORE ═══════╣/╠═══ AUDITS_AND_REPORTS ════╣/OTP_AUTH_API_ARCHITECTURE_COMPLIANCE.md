@@ -111,8 +111,8 @@ To Decrypt Email (if approved request exists):
 |---------|--------------|---------------------|-----------|
 | `GET /admin/customers/me` | ✓ Yes | ✓ Yes | ✓ Yes (via router) |
 | `PUT /admin/customers/me` | ⚠ Needs update | ✓ Yes | ✓ Yes (via router) |
-| `GET /auth/me` | ✓ Yes (userId) | ✓ Yes | ✗ No (public endpoint) |
-| `POST /auth/refresh` | ✓ Yes (userId) | ✓ Yes | ✗ No (public endpoint) |
+| `GET /auth/me` | ✓ Yes (customerId) | ✓ Yes | ✗ No (public endpoint) |
+| `POST /auth/refresh` | ✓ Yes (customerId) | ✓ Yes | ✗ No (public endpoint) |
 
 ---
 
@@ -122,8 +122,8 @@ To Decrypt Email (if approved request exists):
 
 **Pattern to follow:**
 ```javascript
-// Extract userId from JWT for root config
-let userId = null;
+// Extract customerId from JWT for root config
+let customerId = null;
 const authHeader = request.headers.get('Authorization');
 if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
@@ -132,14 +132,14 @@ if (authHeader && authHeader.startsWith('Bearer ')) {
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret);
         if (payload) {
-            userId = payload.userId || payload.sub || null;
+            customerId = payload.customerId || payload.sub || null;
         }
     } catch (jwtError) {
-        // Continue without userId
+        // Continue without customerId
     }
 }
 
-const requestId = userId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+const requestId = customerId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 return new Response(JSON.stringify({
     id: requestId,              // ✓ Always include
@@ -184,8 +184,8 @@ return new Response(JSON.stringify({
 
 For each handler, ensure:
 
-- [ ] Handler extracts `userId` from JWT (if available)
-- [ ] Handler generates `requestId` if `userId` not available
+- [ ] Handler extracts `customerId` from JWT (if available)
+- [ ] Handler generates `requestId` if `customerId` not available
 - [ ] Handler includes `id: requestId` in response
 - [ ] Handler includes `customerId: customerId` in response
 - [ ] Router encrypts response (if JWT auth)

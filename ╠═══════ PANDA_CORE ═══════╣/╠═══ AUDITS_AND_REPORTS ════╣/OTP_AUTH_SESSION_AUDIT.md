@@ -11,12 +11,12 @@
 ### ✓ What's Working
 
 1. **Session Storage**
-   - Sessions stored in KV with customer isolation: `cust_{customerId}_session_{userId}` or `session_{userId}`
-   - Sessions include: `userId`, `email`, `token` (hashed), `expiresAt`, `createdAt`
+   - Sessions stored in KV with customer isolation: `cust_{customerId}_session_{customerId}` or `session_{customerId}`
+   - Sessions include: `customerId`, `email`, `token` (hashed), `expiresAt`, `createdAt`
    - 7-hour expiration (25200 seconds TTL)
 
 2. **JWT Token Management**
-   - JWT tokens include: `userId`, `email`, `customerId`, `csrf`, `exp`, `iat`, `jti`
+   - JWT tokens include: `customerId`, `email`, `customerId`, `csrf`, `exp`, `iat`, `jti`
    - Token blacklist for logout/revocation
    - Token refresh mechanism
 
@@ -60,7 +60,7 @@
    - **Implementation**: `handlers/auth/jwt-creation.ts` updated to store IP in session data
 
 2. ✓ **IP-to-Session Index** - **COMPLETE**
-   - ✓ Create mapping: `ip_session_{ipHash}`  `{ userId, customerId, sessionKey, expiresAt }`
+   - ✓ Create mapping: `ip_session_{ipHash}`  `{ customerId, customerId, sessionKey, expiresAt }`
    - ✓ Support multiple sessions per IP (different users on same IP)
    - ✓ Clean up expired mappings automatically
    - **Implementation**: `services/ip-session-index.ts` with full CRUD operations
@@ -105,7 +105,7 @@
 1. ✓ **Update Session Storage Structure**
    ```typescript
    interface SessionData {
-       userId: string;
+       customerId: string;
        email: string;
        token: string; // hashed
        expiresAt: string;
@@ -135,15 +135,15 @@
 ### ✓ Phase 2: IP-to-Session Index - **COMPLETE**
 
 1. ✓ **Create IP Mapping Service** (`services/ip-session-index.ts`)
-   - ✓ `storeIPSessionMapping(ip, userId, customerId, sessionKey, expiresAt, email, env)`
+   - ✓ `storeIPSessionMapping(ip, customerId, customerId, sessionKey, expiresAt, email, env)`
    - ✓ `getSessionsByIP(ip, env)` - Returns array of active sessions
-   - ✓ `deleteIPSessionMapping(ip, userId, env)`
+   - ✓ `deleteIPSessionMapping(ip, customerId, env)`
    - ✓ `cleanupExpiredIPMappings(env)` - Placeholder for future batch cleanup
    **File**: `serverless/otp-auth-service/services/ip-session-index.ts` - **NEW FILE**
 
 2. ✓ **Storage Structure**
    - ✓ Key: `ip_session_{hashIP(ip)}`
-   - ✓ Value: JSON array of `{ userId, customerId, sessionKey, expiresAt, email, createdAt }`
+   - ✓ Value: JSON array of `{ customerId, customerId, sessionKey, expiresAt, email, createdAt }`
    - ✓ TTL: Match session expiration (7 hours)
    **Implementation**: Uses SHA-256 hash of IP for privacy
 
@@ -160,7 +160,7 @@
    {
      "sessions": [
        {
-         "userId": "user_xxx",
+         "customerId": "user_xxx",
          "email": "user@example.com",
          "customerId": "cust_xxx",
          "expiresAt": "2025-12-26T12:00:00Z",
@@ -214,11 +214,11 @@
 ## ★ Storage Impact
 
 ### Current Storage
-- Session: `cust_{customerId}_session_{userId}`  Session data (~200 bytes)
+- Session: `cust_{customerId}_session_{customerId}`  Session data (~200 bytes)
 - Per session: 1 KV entry
 
 ### Additional Storage (After Implementation)
-- Session: `cust_{customerId}_session_{userId}`  Session data + IP (~250 bytes)
+- Session: `cust_{customerId}_session_{customerId}`  Session data + IP (~250 bytes)
 - IP Index: `ip_session_{hashIP}`  Array of sessions (~100 bytes per session)
 - Per session: 2 KV entries (session + IP index entry)
 

@@ -8,6 +8,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId, getCustomerR2Key } from '../../utils/customer.js';
+import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
 import type { ModMetadata, ModVariant, ModVersion } from '../../types/mod.js';
 
 /**
@@ -20,7 +21,7 @@ export async function handleDownloadVariant(
     env: Env,
     modId: string,
     variantId: string,
-    auth: { userId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string; customerId: string | null; email?: string } | null
 ): Promise<Response> {
     console.log('[VariantDownload] handleDownloadVariant called:', { modId, variantId, hasAuth: !!auth, customerId: auth?.customerId });
     try {
@@ -78,6 +79,9 @@ export async function handleDownloadVariant(
                 },
             });
         }
+
+        // ✨ LAZY MIGRATION: Automatically migrate variants if needed
+        mod = await migrateModVariantsIfNeeded(mod, env);
 
         // Find the variant
         const variant = mod.variants?.find(v => v.variantId === variantId);
@@ -246,9 +250,23 @@ export async function handleDownloadVariant(
             console.log('[VariantDownload] File is not encrypted, returning as-is');
         }
 
-        // Determine content type and filename
-        const originalContentType = customMetadata.originalContentType || 'application/zip';
-        const originalFileName = customMetadata.originalFileName || variant.fileName || `variant-${variantId}.zip`;
+        // Determine content type and filename - NO FALLBACKS
+        const originalContentType = customMetadata.originalContentType;
+        const originalFileName = customMetadata.originalFileName || variant.fileName;
+        
+        if (!originalFileName || !originalContentType) {
+            const rfcError = createError(request, 500, 'Internal Server Error', 'File metadata not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 500,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
 
         // Increment download count for mod
         mod.downloadCount = (mod.downloadCount || 0) + 1;

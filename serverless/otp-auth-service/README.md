@@ -25,11 +25,11 @@ pnpm dev:all
 
 This starts all services concurrently:
 - **Worker API**: http://localhost:8787 (proxies landing page and dashboard to Vite)
-- **Landing Page & Dashboard**: http://localhost:5175 (Svelte app via Vite)
+- **Landing Page & Dashboard**: http://localhost:5174 (Svelte app via Vite)
 
 **Access points:**
-- Landing page: http://localhost:8787/ (proxied through worker) or http://localhost:5175/ (direct Vite)
-- Dashboard: http://localhost:8787/dashboard (proxied through worker) or http://localhost:5175/dashboard (direct Vite)
+- Landing page: http://localhost:8787/ (proxied through worker) or http://localhost:5174/ (direct Vite)
+- Dashboard: http://localhost:8787/dashboard (proxied through worker) or http://localhost:5174/dashboard (direct Vite)
 - API endpoints: http://localhost:8787/auth/*
 
 **Note:** The dashboard is now part of the main app and runs on the same Vite server as the landing page.
@@ -83,9 +83,10 @@ otp-auth-service/
 
 ## Scripts
 
-- `pnpm dev` - Start worker dev server
-- `pnpm dev:dashboard` - Start dashboard dev server
-- `pnpm dev:all` - Start both worker and dashboard together
+- `pnpm dev` - Start both worker (backend) and app (frontend dashboard) together
+- `pnpm dev:worker` - Start only the worker dev server (backend on port 8787)
+- `pnpm dev:app` - Start only the dashboard dev server (frontend on port 5174)
+- `pnpm dev:all` - Start worker, dashboard, and customer-api together
 - `pnpm deploy` - Deploy worker to Cloudflare
 - `pnpm tail` - Tail worker logs
 

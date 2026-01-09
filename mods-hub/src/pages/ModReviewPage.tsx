@@ -159,7 +159,7 @@ export function ModReviewPage() {
     const { data, isLoading, error } = useModReview(slug || '');
     const addComment = useAddReviewComment();
     const updateStatus = useUpdateModStatus();
-    const { isSuperAdmin, user } = useAuthStore();
+    const { isSuperAdmin, customer } = useAuthStore();
 
     const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -173,13 +173,13 @@ export function ModReviewPage() {
         if (!isLoading && data) {
             const { mod } = data;
             const isAdmin = isSuperAdmin || false;
-            const isUploader = user?.userId === mod.authorId;
+            const isUploader = customer?.customerId === mod.authorId;
             
             if (!isAdmin && !isUploader) {
                 navigate('/', { replace: true });
             }
         }
-    }, [isLoading, data, isSuperAdmin, user, navigate]);
+    }, [isLoading, data, isSuperAdmin, customer, navigate]);
 
     if (isLoading) return <Loading>Loading review...</Loading>;
     if (error) {
@@ -197,7 +197,7 @@ export function ModReviewPage() {
 
     const { mod } = data;
     const isAdmin = isSuperAdmin || false;
-    const isUploader = user?.userId === mod.authorId;
+    const isUploader = customer?.customerId === mod.authorId;
 
     // Final check - redirect if still no permission (shouldn't happen due to useEffect, but safety check)
     if (!isAdmin && !isUploader) {
@@ -206,7 +206,7 @@ export function ModReviewPage() {
     }
 
     // CRITICAL: For non-admin users (uploaders), customerId is required for review operations
-    if (!isAdmin && !user?.customerId) {
+    if (!isAdmin && !customer?.customerId) {
         return (
             <Error>
                 <div style={{ textAlign: 'center', padding: '2rem' }}>
@@ -273,7 +273,7 @@ export function ModReviewPage() {
                             <Comment key={comment.commentId} isAdmin={comment.isAdmin}>
                                 <CommentHeader>
                                     <CommentAuthor>
-                                        {comment.isAdmin ? '👑 Admin' : (comment.authorDisplayName || 'Unknown User')}
+                                        {comment.isAdmin ? '★ Admin' : (comment.authorDisplayName || 'Unknown User')}
                                     </CommentAuthor>
                                     <CommentDate>
                                         {new Date(comment.createdAt).toLocaleString()}

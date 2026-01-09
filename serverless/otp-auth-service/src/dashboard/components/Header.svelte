@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { User } from '../lib/types';
+  import type { Customer } from '$dashboard/lib/types';
   import { createEventDispatcher } from 'svelte';
-  import TruncatedText from '../../../../src/lib/components/TruncatedText.svelte';
+  import TruncatedText from '@shared-components/svelte/TruncatedText.svelte';
 
-  export let user: User | null = null;
+  export let customer: Customer | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -15,11 +15,11 @@
 <header class="app-header">
   <div class="app-header__content">
     <a href="/" class="app-header__logo"> ★ OTP Auth API</a>
-    {#if user}
+    {#if customer}
       <div class="app-header__user">
         <TruncatedText position="bottom">
           <span class="app-header__email" style="display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            {user.email || 'User'}
+            {customer.displayName || 'Customer'}
           </span>
         </TruncatedText>
         <button class="app-header__logout" onclick={handleLogout}>Logout</button>
@@ -88,9 +88,56 @@
   }
 
   @media (max-width: 768px) {
+    .app-header {
+      padding: var(--spacing-sm) var(--spacing-md);
+    }
+
     .app-header__content {
-      flex-direction: column;
-      gap: var(--spacing-md);
+      flex-direction: row;
+      gap: var(--spacing-sm);
+    }
+
+    .app-header__logo {
+      font-size: 1.1rem;
+    }
+
+    .app-header__user {
+      gap: var(--spacing-sm);
+    }
+
+    .app-header__email {
+      max-width: 150px;
+      font-size: 0.875rem;
+    }
+
+    .app-header__logout {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      font-size: 0.75rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .app-header {
+      padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .app-header__content {
+      gap: var(--spacing-xs);
+    }
+
+    .app-header__logo {
+      font-size: 1rem;
+    }
+
+    .app-header__email {
+      max-width: 120px;
+      font-size: 0.75rem;
+    }
+
+    .app-header__logout {
+      padding: 4px var(--spacing-xs);
+      font-size: 0.65rem;
+      letter-spacing: 0px;
     }
   }
 </style>

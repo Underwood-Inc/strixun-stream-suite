@@ -7,7 +7,7 @@ import styled, { css } from 'styled-components';
 import { Header } from './Header';
 import { NotificationContainer } from './NotificationContainer';
 import { useAuthStore } from '../../stores/auth';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, media } from '../../theme';
 import { getSeasonalAnimationCSS } from '../../utils/seasonalAnimations';
 
 const LayoutContainer = styled.div`
@@ -30,6 +30,14 @@ const MainContent = styled.main`
   margin: 0 auto;
   position: relative;
   z-index: 1; /* Ensure content is above seasonal animation */
+  
+  ${media.mobile} {
+    padding: ${spacing.md};
+  }
+  
+  ${media.tablet} {
+    padding: ${spacing.lg};
+  }
 `;
 
 interface LayoutProps {

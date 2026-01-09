@@ -19,8 +19,7 @@ export interface JWTPayload {
     jti?: string; // JWT ID
     email?: string;
     email_verified?: boolean;
-    userId?: string;
-    customerId?: string | null;
+    customerId: string; // MANDATORY - the ONLY identifier
     csrf?: string;
     isSuperAdmin?: boolean;
     [key: string]: any;

@@ -86,19 +86,20 @@ body {
   scrollbar-color: var(--border) transparent;
 }
 
-/* ============ Text Selection - Match Main App Style ============ */
+/* ============ Text Selection - Strixun Brand Orange ============ */
+/* Uses pure black (#000000) for maximum contrast and legibility */
 ::selection {
   background: var(--accent);
-  color: var(--bg-dark);
+  color: #000000;
 }
 
 ::-moz-selection {
   background: var(--accent);
-  color: var(--bg-dark);
+  color: #000000;
 }
 
 ::-webkit-selection {
-  background: rgba(237, 174, 73, 0.3);
-  color: var(--accent-light);
+  background: var(--accent);
+  color: #000000;
 }
 

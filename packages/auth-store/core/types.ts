@@ -1,13 +1,15 @@
 /**
  * Core types for auth store
  * Framework-agnostic types that work across all implementations
+ * 
+ * CRITICAL: We ONLY have Customer entities - NO "customer" entity exists
+ * The authenticated entity is a Customer with a customerId
  */
 
-export interface User {
-    userId: string;
+export interface AuthenticatedCustomer {
+    customerId: string; // PRIMARY IDENTITY - REQUIRED
     email: string;
     displayName?: string | null;
-    customerId?: string | null; // Customer ID for data scoping (REQUIRED for mod operations)
     token: string;
     expiresAt: string;
     isSuperAdmin?: boolean;
@@ -22,7 +24,7 @@ export interface User {
 }
 
 export interface AuthState {
-    user: User | null;
+    customer: AuthenticatedCustomer | null;
     isAuthenticated: boolean;
     isSuperAdmin: boolean;
 }
@@ -74,9 +76,9 @@ export interface AuthStoreConfig {
 
 export interface AuthStoreMethods {
     /**
-     * Set user authentication state
+     * Set customer authentication state
      */
-    setUser: (user: User | null) => void;
+    setCustomer: (customer: AuthenticatedCustomer | null) => void;
     
     /**
      * Clear authentication state (logout)
@@ -90,10 +92,10 @@ export interface AuthStoreMethods {
     restoreSession: () => Promise<boolean>;
     
     /**
-     * Fetch fresh user info from /auth/me endpoint
-     * Updates user state with latest displayName, customerId, and isSuperAdmin
+     * Fetch fresh customer info from backend
+     * Updates customer state with latest displayName and isSuperAdmin
      */
-    fetchUserInfo: () => Promise<void>;
+    fetchCustomerInfo: () => Promise<void>;
 }
 
 export interface AuthStore extends AuthState, AuthStoreMethods {}

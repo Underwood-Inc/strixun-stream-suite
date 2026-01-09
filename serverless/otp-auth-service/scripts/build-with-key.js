@@ -1,5 +1,5 @@
 /**
- * ⚠️ DEPRECATED - This script is OBSOLETE and no longer used
+ * ⚠ DEPRECATED - This script is OBSOLETE and no longer used
  * 
  * Service key encryption has been completely removed. This script is kept for
  * reference only but is NOT used by the build system. The dashboard build

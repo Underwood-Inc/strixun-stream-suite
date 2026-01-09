@@ -19,5 +19,34 @@
     margin-top: var(--spacing-sm);
     font-size: 0.875rem;
   }
+
+  @media (max-width: 768px) {
+    .footer {
+      padding: var(--spacing-lg);
+    }
+
+    .footer p {
+      font-size: 0.875rem;
+    }
+
+    .footer-subtitle {
+      font-size: 0.75rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .footer {
+      padding: var(--spacing-md);
+      margin-top: var(--spacing-2xl);
+    }
+
+    .footer p {
+      font-size: 0.8rem;
+    }
+
+    .footer-subtitle {
+      font-size: 0.7rem;
+    }
+  }
 </style>
 

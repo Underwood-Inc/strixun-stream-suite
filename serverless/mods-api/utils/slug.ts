@@ -14,7 +14,7 @@ import type { ModMetadata } from '../types/mod.js';
 export async function findModBySlug(
     slug: string,
     env: Env,
-    auth: { userId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string; customerId: string | null; email?: string } | null
 ): Promise<ModMetadata | null> {
     // Check if user is super admin
     const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
@@ -32,14 +32,14 @@ export async function findModBySlug(
             const globalModKey = `mod_${normalizedModId}`;
             const mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             if (mod && mod.slug === slug) {
-                console.log('[findModBySlug] Found mod in global scope:', { slug, modId: mod.modId, status: mod.status, visibility: mod.visibility, authorId: mod.authorId, authUserId: auth?.userId });
+                console.log('[findModBySlug] Found mod in global scope:', { slug, modId: mod.modId, status: mod.status, visibility: mod.visibility, authorId: mod.authorId, authUserId: auth?.customerId });
                 // CRITICAL: Filter legacy mods that don't meet visibility/status requirements
                 // Legacy mods without status field are treated as published
                 if (!isAdmin) {
                     const modStatus = mod.status || 'published';
                     // For non-super users: ONLY public, published/approved mods are allowed
                     // BUT: Authors can always see their own mods regardless of status
-                    const isAuthor = mod.authorId === auth?.userId;
+                    const isAuthor = mod.authorId === auth?.customerId;
                     const isAllowedStatus = modStatus === 'published' || modStatus === 'approved';
                     if ((mod.visibility !== 'public' || !isAllowedStatus) && !isAuthor) {
                         console.log('[findModBySlug] Mod found but filtered out (not public/approved and not author):', { slug, status: modStatus, visibility: mod.visibility, isAuthor });
@@ -68,9 +68,9 @@ export async function findModBySlug(
                 const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
                 const mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
                 if (mod && mod.slug === slug) {
-                    console.log('[findModBySlug] Found mod in auth customer scope:', { slug, modId: mod.modId, status: mod.status, visibility: mod.visibility, authorId: mod.authorId, authUserId: auth.userId });
+                    console.log('[findModBySlug] Found mod in auth customer scope:', { slug, modId: mod.modId, status: mod.status, visibility: mod.visibility, authorId: mod.authorId, authUserId: auth.customerId });
                     // For customer-scoped mods, allow if user is author or super admin
-                    if (!isAdmin && mod.authorId !== auth.userId) {
+                    if (!isAdmin && mod.authorId !== auth.customerId) {
                         console.log('[findModBySlug] Mod found but user is not author/admin, skipping');
                         continue; // Skip - not the author and not admin
                     }

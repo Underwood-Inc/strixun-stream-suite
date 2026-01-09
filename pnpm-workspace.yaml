@@ -19,8 +19,10 @@ packages:
   - 'packages/idle-game-overlay'
   - 'packages/auth-store'
   - 'packages/asciimoji'
+  - 'packages/schemas'
   - 'dice-board-game'
   - 'control-panel'
   - 'mods-hub'
   - 'shared-components'
+  - 'shared-config'
 

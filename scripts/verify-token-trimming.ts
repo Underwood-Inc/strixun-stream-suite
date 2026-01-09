@@ -124,11 +124,11 @@ console.log(`   Total token extraction points: ${criticalExtractions.length}`);
 const withoutTrim = criticalExtractions.filter(ext => !ext.hasTrim);
 const withTrim = criticalExtractions.filter(ext => ext.hasTrim);
 
-console.log(`\n✅ Token extractions WITH .trim(): ${withTrim.length}`);
-console.log(`❌ Token extractions WITHOUT .trim(): ${withoutTrim.length}`);
+console.log(`\n✓ Token extractions WITH .trim(): ${withTrim.length}`);
+console.log(`✗ Token extractions WITHOUT .trim(): ${withoutTrim.length}`);
 
 if (withoutTrim.length > 0) {
-  console.log(`\n⚠️  Files needing fixes:`);
+  console.log(`\n⚠  Files needing fixes:`);
   const filesNeedingFix = new Set(withoutTrim.map(ext => ext.file));
   for (const file of filesNeedingFix) {
     console.log(`\n   📄 ${file}`);
@@ -138,10 +138,10 @@ if (withoutTrim.length > 0) {
   }
   process.exit(1);
 } else {
-  console.log(`\n✅ SUCCESS: All token extraction points have .trim() applied!`);
+  console.log(`\n✓ SUCCESS: All token extraction points have .trim() applied!`);
   console.log(`\n📋 Files verified:`);
   for (const [file, exts] of byFile.entries()) {
-    console.log(`   ✅ ${file} (${exts.length} extraction${exts.length > 1 ? 's' : ''})`);
+    console.log(`   ✓ ${file} (${exts.length} extraction${exts.length > 1 ? 's' : ''})`);
   }
   process.exit(0);
 }

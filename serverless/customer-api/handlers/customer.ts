@@ -59,7 +59,9 @@ export async function handleUpdateCustomerById(
         const body = await request.json() as Partial<CustomerData>;
         
         // Update allowed fields
+        if (body.displayName !== undefined) customer.displayName = body.displayName;
         if (body.companyName !== undefined) customer.companyName = body.companyName;
+        // NOTE: Email is NOT updateable - it's the authentication identifier and must remain immutable
         if (body.tier !== undefined) customer.tier = body.tier;
         if (body.status !== undefined) customer.status = body.status;
         if (body.subscriptions !== undefined) customer.subscriptions = body.subscriptions;
@@ -121,6 +123,13 @@ export async function handleGetCustomer(
     try {
         // Determine which customer to get - ONLY use customerId (no email fallback)
         const targetCustomerId = customerId || auth.customerId;
+        
+        // Debug logging
+        console.log(`[Customer API] GET /customer/me - Auth: {
+  userId: '${auth.userId}',
+  customerId: '${auth.customerId}',
+  hasJWT: ${!!auth.jwtToken}
+}, targetCustomerId: '${targetCustomerId}'`);
 
         if (!targetCustomerId) {
             const rfcError = createError(request, 404, 'Not Found', 'Customer not found. Customer ID is required.');
@@ -173,15 +182,23 @@ export async function handleGetCustomer(
                 } as { OTP_AUTH_KV: KVNamespace; [key: string]: any };
                 
                 const customerDisplayName = await generateUniqueDisplayName({
-                    customerId: customer.customerId,
                     maxAttempts: 10,
+                    pattern: 'random'
                 }, nameGeneratorEnv);
                 
-                // Reserve the display name
-                await reserveDisplayName(customerDisplayName, customer.customerId, customer.customerId, nameGeneratorEnv);
-                
-                // Update the customer record with the generated displayName
-                customer.displayName = customerDisplayName;
+                // Handle empty string (generation failed after 50 retries)
+                if (!customerDisplayName || customerDisplayName.trim() === '') {
+                    console.error(`[Customer API] Failed to generate unique displayName after 50 retries for customer ${customer.customerId}`);
+                    // Don't throw - return customer without displayName rather than failing the request
+                    // It will be fixed on next authentication via ensureCustomerAccount
+                    console.warn(`[Customer API] Customer ${customer.customerId} will have null displayName - will be fixed on next authentication`);
+                } else {
+                    // Reserve the display name (global scope)
+                    await reserveDisplayName(customerDisplayName, customer.customerId, null, nameGeneratorEnv);
+                    
+                    // Update the customer record with the generated displayName
+                    customer.displayName = customerDisplayName;
+                }
                 customer.updatedAt = new Date().toISOString();
                 await storeCustomer(customer.customerId, customer, env);
                 
@@ -279,11 +296,17 @@ export async function handleCreateCustomer(
             } as { OTP_AUTH_KV: KVNamespace; [key: string]: any };
             
             finalDisplayName = await generateUniqueDisplayName({
-                customerId: customerId,
                 maxAttempts: 10,
+                pattern: 'random'
             }, nameGeneratorEnv);
             
-            await reserveDisplayName(finalDisplayName, customerId, customerId, nameGeneratorEnv);
+            // Handle empty string (generation failed after 50 retries)
+            if (!finalDisplayName || finalDisplayName.trim() === '') {
+                console.error(`[Customer API] Failed to generate unique displayName after 50 retries for new customer`);
+                throw new Error('Unable to generate unique display name. Please try again or contact support.');
+            }
+            
+            await reserveDisplayName(finalDisplayName, customerId, null, nameGeneratorEnv); // Global scope
         }
 
         // Create customer data - use provided fields or defaults

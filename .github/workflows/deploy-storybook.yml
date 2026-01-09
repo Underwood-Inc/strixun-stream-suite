@@ -135,7 +135,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
         

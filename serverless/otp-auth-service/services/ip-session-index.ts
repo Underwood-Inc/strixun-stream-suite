@@ -14,11 +14,10 @@ interface Env {
 }
 
 interface IPSessionMapping {
-    userId: string;
-    customerId: string | null;
+    customerId: string; // MANDATORY - the ONLY identifier (globally unique)
     sessionKey: string;
     expiresAt: string;
-    email: string;
+    email: string; // OTP email - stored for internal use only
     createdAt: string;
 }
 
@@ -45,24 +44,24 @@ function getIPSessionKey(ipHash: string): string {
  * Store IP-to-session mapping
  * 
  * @param ip - IP address
- * @param userId - User ID
- * @param customerId - Customer ID (optional)
+ * @param customerId - Customer ID (MANDATORY)
+ * @param customerIdForScope - Customer ID for scoping (optional)
  * @param sessionKey - Session storage key
  * @param expiresAt - Session expiration time
- * @param email - User email
+ * @param email - Customer email
  * @param env - Worker environment
  */
 export async function storeIPSessionMapping(
     ip: string,
-    userId: string,
-    customerId: string | null,
+    customerId: string,
+    customerIdForScope: string | null,
     sessionKey: string,
     expiresAt: string,
     email: string,
     env: Env
 ): Promise<void> {
     if (!ip || ip === 'unknown') {
-        console.warn(`[IP Session Index] Skipping IP mapping for unknown IP - userId: ${userId}, email: ${email}`);
+        console.warn(`[IP Session Index] Skipping IP mapping for unknown IP - customerId: ${customerId}, email: ${email}`);
         return; // Don't store unknown IPs
     }
     
@@ -73,14 +72,13 @@ export async function storeIPSessionMapping(
     const existing = await env.OTP_AUTH_KV.get(indexKey, { type: 'json' }) as IPSessionMapping[] | null;
     const sessions = existing || [];
     
-    // Remove existing session for this user (if any) to avoid duplicates
-    // This ensures that if a user logs in from the same IP multiple times,
+    // Remove existing session for this customer (if any) to avoid duplicates
+    // This ensures that if a customer logs in from the same IP multiple times,
     // we only keep the most recent session
-    const filtered = sessions.filter(s => s.userId !== userId);
+    const filtered = sessions.filter(s => s.customerId !== customerId);
     
     // Add new session
     const mapping: IPSessionMapping = {
-        userId,
         customerId,
         sessionKey,
         expiresAt,
@@ -98,7 +96,7 @@ export async function storeIPSessionMapping(
     // Store with TTL matching session expiration
     await env.OTP_AUTH_KV.put(indexKey, JSON.stringify(filtered), { expirationTtl: ttl });
     
-    console.log(`[IP Session Index] Stored IP mapping for IP: ${ip}, userId: ${userId}, email: ${email}, sessionKey: ${sessionKey}`);
+    console.log(`[IP Session Index] Stored IP mapping for IP: ${ip}, customerId: ${customerId}, email: ${email}, sessionKey: ${sessionKey}`);
 }
 
 /**
@@ -146,17 +144,23 @@ export async function getSessionsByIP(
 }
 
 /**
- * Delete IP-to-session mapping for a specific user
+ * Delete IP-to-session mapping for a specific customer
+ * CRITICAL: We ONLY use customerId - NO userId
  * 
  * @param ip - IP address
- * @param userId - User ID
+ * @param customerId - Customer ID (MANDATORY)
  * @param env - Worker environment
  */
 export async function deleteIPSessionMapping(
     ip: string,
-    userId: string,
+    customerId: string, // MANDATORY - the ONLY identifier
     env: Env
 ): Promise<void> {
+    // FAIL-FAST: customerId is MANDATORY
+    if (!customerId) {
+        throw new Error('Customer ID is MANDATORY for deleting IP session mapping');
+    }
+    
     if (!ip || ip === 'unknown') {
         return;
     }
@@ -170,8 +174,8 @@ export async function deleteIPSessionMapping(
         return;
     }
     
-    // Remove session for this user
-    const filtered = sessions.filter(s => s.userId !== userId);
+    // Remove session for this customer
+    const filtered = sessions.filter(s => s.customerId !== customerId);
     
     if (filtered.length === 0) {
         // No more sessions for this IP, delete the index

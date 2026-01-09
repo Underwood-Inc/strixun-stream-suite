@@ -87,10 +87,20 @@ export const GlobalStyle = createGlobalStyle`
     outline-offset: 2px;
   }
 
-  /* Selection */
+  /* Text Selection - Strixun brand orange with pure black text for legibility */
   ::selection {
     background: ${colors.accent};
-    color: ${colors.bgDark};
+    color: #000000;
+  }
+
+  ::-moz-selection {
+    background: ${colors.accent};
+    color: #000000;
+  }
+
+  ::-webkit-selection {
+    background: ${colors.accent};
+    color: #000000;
   }
 `;
 

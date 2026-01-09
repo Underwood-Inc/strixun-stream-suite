@@ -18,7 +18,7 @@ export function generateSnapshotId(): string {
  * Create a snapshot of mod metadata with SHA verification
  * 
  * @param mod - Mod metadata to snapshot
- * @param createdBy - User ID who created the snapshot
+ * @param createdBy - customer ID who created the snapshot
  * @param createdByDisplayName - Display name of user (never use email)
  * @param env - Environment with FILE_INTEGRITY_KEYPHRASE
  * @returns ModSnapshot with SHA-verified hash

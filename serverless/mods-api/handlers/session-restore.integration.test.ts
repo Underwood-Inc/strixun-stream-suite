@@ -1,25 +1,31 @@
 /**
  * Integration Tests for Session Restore
  * 
- * Tests session restore functionality similar to main app:
- * - Token validation with backend
- * - Session restoration from IP
+ * Tests session restore functionality:
+ * - Token validation logic
+ * - Session restoration flow
  * - Token expiration handling
- * - Cross-application session sharing
+ * - Date/time calculations
+ * 
+ * NOTE: These tests run locally without workers - they test session utilities directly.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
 import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
 
-describe('Session Restore Integration', () => {
-    const mockEnv = {
-        JWT_SECRET: 'test-jwt-secret-for-integration-tests',
-        AUTH_API_URL: 'https://auth.idling.app',
-    } as any;
+const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
 
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
+// Get secrets from environment (set by shared setup)
+const JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-for-integration-tests';
+
+const env = {
+    JWT_SECRET,
+    AUTH_API_URL: OTP_AUTH_SERVICE_URL,
+} as any;
+
+describe('Session Restore Integration', () => {
+    // NOTE: These tests don't need live workers - they test JWT utilities locally
 
     describe('Token Validation', () => {
         it('should validate token with backend before restoring session', async () => {
@@ -34,7 +40,7 @@ describe('Session Restore Integration', () => {
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            }, env.JWT_SECRET);
 
             // Token should be valid (not expired, properly signed)
             expect(token).toBeDefined();
@@ -132,6 +138,14 @@ describe('Session Restore Integration', () => {
                 expect(true).toBe(true);
             }
         });
+    });
+
+    afterAll(async () => {
+      // Cleanup: Clear local KV storage to ensure test isolation
+      await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9'); // OTP_AUTH_KV namespace
+      await clearLocalKVNamespace('0d3dafe0994046c6a47146c6bd082ad3'); // MODS_KV namespace
+      await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789'); // CUSTOMER_KV namespace
+      console.log('[Session Restore Integration Tests] ✓ KV cleanup completed');
     });
 });
 

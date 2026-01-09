@@ -154,8 +154,7 @@ describe('Encryption/Decryption Flow Integration', () => {
                 mod: {
                     modId: 'mod_123',
                     metadata: {
-                        author: {
-                            userId: 'user_123',
+                        author: { customerId: 'user_123',
                             displayName: 'Test Author',
                         },
                         tags: ['tag1', 'tag2', 'tag3'],

@@ -3,7 +3,7 @@
  * Framework-agnostic API calls that work across all implementations
  */
 
-import type { User, AuthStoreConfig } from './types.js';
+import type { AuthenticatedCustomer, AuthStoreConfig } from './types.js';
 
 /**
  * Get OTP Auth API URL from config or environment
@@ -56,7 +56,7 @@ export function getAuthApiUrl(config?: AuthStoreConfig): string {
  * Restore session from backend based on IP address
  * This enables cross-application session sharing for the same device
  */
-export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promise<User | null> {
+export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promise<AuthenticatedCustomer | null> {
     try {
         const apiUrl = getAuthApiUrl(config);
         if (!apiUrl) {
@@ -75,11 +75,10 @@ export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promi
             restored: boolean; 
             access_token?: string; 
             token?: string; 
-            userId?: string; 
+            customerId: string; 
             sub?: string; 
             email?: string; 
             displayName?: string | null; 
-            customerId?: string | null; 
             expiresAt?: string;
             isSuperAdmin?: boolean;
         }>('/auth/restore-session', {});
@@ -96,8 +95,8 @@ export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promi
 
         const data = response.data;
         if (data.restored && data.access_token) {
-            // Session restored! Return user data
-            const userId = data.userId || data.sub;
+            // Session restored! Return customer data
+            const userId = data.customerId || data.sub;
             const email = data.email;
             const token = data.access_token || data.token;
             const expiresAt = data.expiresAt;
@@ -107,18 +106,17 @@ export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promi
                 return null;
             }
 
-            const user: User = {
-                userId,
+            const customer: AuthenticatedCustomer = {
+                customerId: data.customerId || userId || '',
                 email,
                 displayName: data.displayName || null,
-                customerId: data.customerId || null,
                 token,
                 expiresAt,
                 isSuperAdmin: data.isSuperAdmin || false,
             };
             
-            console.log('[Auth] ✓ Session restored from backend for user:', user.email);
-            return user;
+            console.log('[Auth] ✓ Session restored from backend for customer:', customer.email);
+            return customer;
         }
 
         if (data.restored === false) {
@@ -222,8 +220,8 @@ export async function validateTokenWithBackend(
 }
 
 /**
- * Fetch user info from /auth/me to get admin status, displayName, and customerId
- * CRITICAL: Disable caching for this endpoint - we always need fresh user data
+ * Fetch customer info from /auth/me to get admin status, displayName, and customerId
+ * CRITICAL: Disable caching for this endpoint - we always need fresh customer data
  * Also handles undefined cached values gracefully
  * 
  * NOTE: /auth/me returns encrypted responses that need to be decrypted with the JWT token
@@ -231,13 +229,13 @@ export async function validateTokenWithBackend(
  * If token mismatch occurs (token was refreshed/changed), this function will return null
  * and the caller should restore the session to get a fresh token.
  */
-export async function fetchUserInfo(
+export async function fetchCustomerInfo(
     token: string,
     config?: AuthStoreConfig
-): Promise<{ isSuperAdmin: boolean; displayName?: string | null; customerId?: string | null } | null> {
+): Promise<{ isSuperAdmin: boolean; displayName?: string | null; customerId: string } | null> {
     // CRITICAL: Validate token exists before making request
     if (!token || typeof token !== 'string' || token.trim().length === 0) {
-        console.error('[Auth] fetchUserInfo called with invalid token:', { 
+        console.error('[Auth] fetchCustomerInfo called with invalid token:', { 
             hasToken: !!token, 
             tokenType: typeof token, 
             tokenLength: token?.length 
@@ -286,7 +284,7 @@ export async function fetchUserInfo(
         const response = await authClient.get<{ 
             isSuperAdmin?: boolean; 
             displayName?: string | null; 
-            customerId?: string | null; 
+            customerId: string; 
             [key: string]: any;
         }>('/auth/me', undefined, {
             metadata: {
@@ -334,7 +332,7 @@ export async function fetchUserInfo(
             return {
                 isSuperAdmin: response.data.isSuperAdmin || false,
                 displayName: response.data.displayName || null,
-                customerId: response.data.customerId || null,
+                customerId: response.data.customerId || '',
             };
         }
         
@@ -359,7 +357,7 @@ export async function fetchUserInfo(
             (mismatchError as any).originalError = error;
             throw mismatchError;
         } else {
-            console.error('[Auth] Failed to fetch user info:', errorMessage);
+            console.error('[Auth] Failed to fetch customer info:', errorMessage);
             if (error instanceof Error && error.stack) {
                 console.debug('[Auth] fetchUserInfo error stack:', error.stack);
             }

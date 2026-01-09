@@ -61,8 +61,8 @@ export function createEnhancedHandler<T extends Record<string, any> = Record<str
 
       // Check authentication if required
       if (options.requireAuth) {
-        const user = await extractUserFromRequest(request, env);
-        if (!user) {
+        const customer = await extractCustomerFromRequest(request, env);
+        if (!customer) {
           return createRFC7807Response(
             context.request,
             {
@@ -72,7 +72,7 @@ export function createEnhancedHandler<T extends Record<string, any> = Record<str
             new Headers()
           );
         }
-        context.user = user;
+        context.customer = customer;
       }
 
       // Execute handler
@@ -116,7 +116,7 @@ export function createEnhancedHandler<T extends Record<string, any> = Record<str
       let responseData = filteredData;
       let responseHeaders = headers;
       
-      if (context.user) {
+      if (context.customer) {
         // Extract JWT token from request
         // CRITICAL: Trim token to ensure it matches the token used for encryption
         const authHeader = request.headers.get('Authorization');
@@ -171,9 +171,9 @@ function requestToAPIRequest(request: Request): APIRequest {
 }
 
 /**
- * Extract user from request (JWT token)
+ * Extract customer from request (JWT token)
  */
-async function extractUserFromRequest(
+async function extractCustomerFromRequest(
   request: Request,
   _env: any
 ): Promise<{ id: string; customerId: string; email: string } | null> {
@@ -195,7 +195,7 @@ async function extractUserFromRequest(
     const payload = JSON.parse(atob(parts[1]));
     
     return {
-      id: payload.sub || payload.userId || '',
+      id: payload.sub || payload.customerId || '',
       customerId: payload.customerId || payload.aud || '',
       email: payload.email || '',
     };

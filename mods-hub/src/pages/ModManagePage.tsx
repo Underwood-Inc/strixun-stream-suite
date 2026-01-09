@@ -4,10 +4,13 @@
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
-import { useModDetail, useUpdateMod, useDeleteMod, useUploadVersion, useUpdateModStatus } from '../hooks/useMods';
+import { useModDetail, useUpdateMod, useDeleteMod, useUploadVersion, useUpdateModStatus, useDeleteVariant } from '../hooks/useMods';
+import { formatDateTime } from '@strixun/shared-config/date-utils';
 import { useUploadPermission } from '../hooks/useUploadPermission';
 import { ModManageForm } from '../components/mod/ModManageForm';
 import { VersionUploadForm } from '../components/mod/VersionUploadForm';
+import { ModVersionManagement } from '../components/mod/ModVersionManagement';
+import { VariantManagement } from '../components/mod/VariantManagement';
 import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
@@ -56,11 +59,12 @@ const Loading = styled.div`
 export function ModManagePage() {
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
-    const { user, isAuthenticated } = useAuthStore();
+    const { customer, isAuthenticated } = useAuthStore();
     const { hasPermission, isLoading: permissionLoading } = useUploadPermission();
     const { data, isLoading } = useModDetail(slug || '');
     const updateMod = useUpdateMod();
     const deleteMod = useDeleteMod();
+    const deleteVariant = useDeleteVariant();
     const uploadVersion = useUploadVersion();
     const updateStatus = useUpdateModStatus();
 
@@ -94,7 +98,7 @@ export function ModManagePage() {
             </Unauthorized>
         );
     }
-    if (data.mod.authorId !== user?.userId) {
+    if (data.mod.authorId !== customer?.customerId) {
         return (
             <Unauthorized>
                 <UnauthorizedTitle>Permission Denied</UnauthorizedTitle>
@@ -104,7 +108,7 @@ export function ModManagePage() {
     }
 
     // CRITICAL: Check for customerId - required for mod operations
-    if (!user?.customerId) {
+    if (!customer?.customerId) {
         return (
             <Unauthorized>
                 <UnauthorizedTitle>Customer Account Required</UnauthorizedTitle>
@@ -118,9 +122,32 @@ export function ModManagePage() {
         );
     }
 
-    const handleUpdate = async (updates: any, thumbnail?: File, variantFiles?: Record<string, File>) => {
+    const handleUpdate = async (updates: any, thumbnail?: File, variantFiles?: Record<string, File>, deletedVariantIds?: string[]) => {
         try {
-            await updateMod.mutateAsync({ slug: slug!, updates, thumbnail, variantFiles });
+            // First, delete any removed variants
+            if (deletedVariantIds && deletedVariantIds.length > 0 && data) {
+                console.log('[ModManagePage] Deleting variants:', deletedVariantIds);
+                for (const variantId of deletedVariantIds) {
+                    try {
+                        await deleteVariant.mutateAsync({ modId: data.mod.modId, variantId });
+                        console.log('[ModManagePage] Deleted variant:', variantId);
+                    } catch (error) {
+                        console.error('[ModManagePage] Failed to delete variant:', variantId, error);
+                        // Continue with other deletions even if one fails
+                    }
+                }
+            }
+            
+            // Then update the mod
+            const result = await updateMod.mutateAsync({ slug: slug!, updates, thumbnail, variantFiles });
+            
+            // Check if slug changed in the update
+            const newSlug = result?.mod?.slug || result?.slug;
+            if (newSlug && newSlug !== slug) {
+                // Slug changed - navigate to new slug
+                console.log('[ModManagePage] Navigating to new slug:', { oldSlug: slug, newSlug });
+                navigate(`/mods/${newSlug}/manage`, { replace: true });
+            }
         } catch {
             // Error handled by mutation
         }
@@ -168,8 +195,9 @@ export function ModManagePage() {
         <PageContainer>
             <Title>Manage Mod: {data.mod.title}</Title>
             <div style={{ color: colors.textSecondary, fontSize: '0.875rem', marginBottom: spacing.md }}>
-                Last updated: {new Date(data.mod.updatedAt).toLocaleString()}
+                Last updated: {formatDateTime(data.mod.updatedAt)}
             </div>
+            
             <ModManageForm
                 mod={data.mod}
                 onUpdate={handleUpdate}
@@ -177,11 +205,26 @@ export function ModManagePage() {
                 onStatusChange={handleStatusChange}
                 isLoading={updateMod.isPending || deleteMod.isPending || updateStatus.isPending}
             />
+            
             <VersionUploadForm
-                modId={data.mod.modId} // Still use modId for version upload
+                modId={data.mod.modId}
                 onSubmit={handleVersionUpload}
                 isLoading={uploadVersion.isPending}
             />
+            
+            <ModVersionManagement
+                modSlug={slug!}
+                modId={data.mod.modId}
+                versions={data.versions}
+            />
+            
+            {data.mod.variants && data.mod.variants.length > 0 && (
+                <VariantManagement
+                    modSlug={slug!}
+                    modId={data.mod.modId}
+                    variants={data.mod.variants}
+                />
+            )}
         </PageContainer>
     );
 }

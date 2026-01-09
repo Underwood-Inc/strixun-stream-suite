@@ -124,7 +124,7 @@ export class TwitchAttachmentService {
     const twitchUserInfo = await this.validateTwitchToken(accessToken);
     
     // Then attach to our system
-    const response = await authenticatedFetch(`${apiUrl}/user/twitch/attach`, {
+    const response = await authenticatedFetch(`${apiUrl}/customer/twitch/attach`, {
       method: 'POST',
       body: JSON.stringify({
         accessToken,
@@ -144,7 +144,7 @@ export class TwitchAttachmentService {
   }
 
   /**
-   * Get attached Twitch account for current user
+   * Get attached Twitch account for current customer
    * 
    * @returns Twitch account data or null if not attached
    */
@@ -154,7 +154,7 @@ export class TwitchAttachmentService {
       throw new Error('API URL not configured');
     }
 
-    const response = await authenticatedFetch(`${apiUrl}/user/twitch`, {
+    const response = await authenticatedFetch(`${apiUrl}/customer/twitch`, {
       method: 'GET',
     });
 
@@ -172,7 +172,7 @@ export class TwitchAttachmentService {
   }
 
   /**
-   * Detach Twitch account from user
+   * Detach Twitch account from customer
    */
   async detachAccount(): Promise<void> {
     const apiUrl = this.config.apiUrl || getApiUrl();
@@ -180,7 +180,7 @@ export class TwitchAttachmentService {
       throw new Error('API URL not configured');
     }
 
-    const response = await authenticatedFetch(`${apiUrl}/user/twitch/detach`, {
+    const response = await authenticatedFetch(`${apiUrl}/customer/twitch/detach`, {
       method: 'DELETE',
     });
 

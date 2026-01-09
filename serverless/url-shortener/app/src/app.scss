@@ -23,6 +23,7 @@ body {
     min-height: 100vh;
     min-width: 320px; // Reasonable minimum width for mobile devices
     overflow-x: auto; // Allow horizontal scroll if content exceeds minimum width
+    @include text-selection; // Strixun brand orange text selection
 }
 
 #app {

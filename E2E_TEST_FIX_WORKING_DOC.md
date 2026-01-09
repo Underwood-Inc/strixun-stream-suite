@@ -20,13 +20,13 @@
 ### Recent Changes Made
 
 1. **Playwright Configuration:**
-   - ✅ Updated to use Chromium only (removed Firefox, WebKit, Mobile)
-   - ✅ Faster test execution for development
+   - ✓ Updated to use Chromium only (removed Firefox, WebKit, Mobile)
+   - ✓ Faster test execution for development
 
 2. **API Framework - Binary Decryption Support:**
-   - ✅ Added binary decryption to `packages/api-framework/src/utils/response-handler.ts`
-   - ✅ Client now automatically decrypts binary responses when `X-Encrypted: true` header is present
-   - ✅ Required for encrypted downloads (mod files, thumbnails, badges, OG images)
+   - ✓ Added binary decryption to `packages/api-framework/src/utils/response-handler.ts`
+   - ✓ Client now automatically decrypts binary responses when `X-Encrypted: true` header is present
+   - ✓ Required for encrypted downloads (mod files, thumbnails, badges, OG images)
 
 3. **Public Browsing Endpoints (Optional JWT - Encrypted if JWT provided):**
    - `GET /mods` - Mod list (uses `requireJWT: false`)
@@ -117,17 +117,17 @@
 - **Fix:** Updated tests to allow public access to badges
 
 ### Issue 5: Download test setup not encrypting files
-- **Status:** ✅ FIXED
+- **Status:** ✓ FIXED
 - **Problem:** `createTestMod` in download.e2e.spec.ts not encrypting files before upload
 - **Fix:** Already fixed - file encryption with JWT is implemented (lines 161-163)
 
 ### Issue 6: Middleware contentType undefined when requireJWT: false
-- **Status:** ✅ FIXED
+- **Status:** ✓ FIXED
 - **Problem:** `contentType` variable not defined in scope when requireJWT is false
 - **Fix:** Already fixed - contentType is properly defined before use (line 333 in middleware.ts)
 
 ### Issue 7: Download tests expecting public access without JWT
-- **Status:** ✅ FIXED
+- **Status:** ✓ FIXED
 - **Problem:** Multiple tests expected downloads to work without JWT token
 - **Fix:** Updated all download tests to require JWT authentication:
   - `should download public mod by modId without authentication` → `should require JWT token for downloads even when using modId`
@@ -137,7 +137,7 @@
   - `should handle decryption errors gracefully` → Now requires JWT and verifies decryption
 
 ### Issue 8: Binary responses not being decrypted by API client
-- **Status:** ✅ FIXED
+- **Status:** ✓ FIXED
 - **Problem:** API framework response handler only decrypted JSON responses, not binary
 - **Fix:** Added binary decryption support to `packages/api-framework/src/utils/response-handler.ts`
 - **Impact:** Downloads, thumbnails, badges, and OG images now properly decrypt when `X-Encrypted: true` header is present
@@ -180,13 +180,13 @@ expect(authResponse.ok).toBe(true);
 
 ## Next Steps
 
-1. ✅ Updated Playwright config to Chromium only
-2. ✅ Added binary decryption support to API framework
-3. ✅ Fixed download tests to require JWT authentication
-4. ✅ Aligned documentation with current security requirements
-5. ✅ Removed all encryption code from upload handler
-6. ✅ Fixed test JWT tokens to include customerId
-7. ✅ Fixed login e2e tests to handle fancy screen and use correct selectors
+1. ✓ Updated Playwright config to Chromium only
+2. ✓ Added binary decryption support to API framework
+3. ✓ Fixed download tests to require JWT authentication
+4. ✓ Aligned documentation with current security requirements
+5. ✓ Removed all encryption code from upload handler
+6. ✓ Fixed test JWT tokens to include customerId
+7. ✓ Fixed login e2e tests to handle fancy screen and use correct selectors
 8. **TODO:** Run e2e tests (Chromium only) to verify all fixes
 9. **TODO:** Identify any remaining failing tests
 10. **TODO:** Fix any remaining issues
@@ -217,14 +217,14 @@ pnpm test:e2e --project=chromium
 
 ## Important Notes
 
-- ✅ **Encryption uses JWT only**
-- ✅ **All file uploads use JWT encryption only**
-- ✅ **Public browsing endpoints use `requireJWT: false`** - responses are encrypted if JWT is provided, but JWT is not required
-- ✅ **Binary responses (downloads, images, badges) are encrypted with JWT** and automatically decrypted by API client
-- ✅ **API framework now handles binary decryption** - no manual decryption needed in client code
-- ✅ **Downloads ALWAYS require JWT authentication**
-- ✅ **OTP auth endpoints use `requireJWT: false`** - chicken-and-egg problem (can't require JWT to get JWT)
-- ✅ **Playwright config updated to Chromium only** - faster test execution
+- ✓ **Encryption uses JWT only**
+- ✓ **All file uploads use JWT encryption only**
+- ✓ **Public browsing endpoints use `requireJWT: false`** - responses are encrypted if JWT is provided, but JWT is not required
+- ✓ **Binary responses (downloads, images, badges) are encrypted with JWT** and automatically decrypted by API client
+- ✓ **API framework now handles binary decryption** - no manual decryption needed in client code
+- ✓ **Downloads ALWAYS require JWT authentication**
+- ✓ **OTP auth endpoints use `requireJWT: false`** - chicken-and-egg problem (can't require JWT to get JWT)
+- ✓ **Playwright config updated to Chromium only** - faster test execution
 
 ## Security Architecture
 
@@ -235,14 +235,14 @@ pnpm test:e2e --project=chromium
 │ Layer 4: Authorization (Author checks, Admin checks)    │
 │ Layer 3: Authentication (JWT verification)                │
 │ Layer 2: CORS (Origin restrictions)                     │
-│ Layer 1: JWT ENCRYPTION/DECRYPTION (MANDATORY BASE) ⚠️ │
+│ Layer 1: JWT ENCRYPTION/DECRYPTION (MANDATORY BASE) ⚠ │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Key Principles:**
-1. ✅ ALL endpoints encrypt responses with JWT when JWT is provided
-2. ✅ Public browsing endpoints allow access without JWT (`requireJWT: false`)
-3. ✅ Protected endpoints (downloads, uploads, admin) require JWT (`requireJWT: true` default)
-4. ✅ Binary files (images, downloads, scripts) use JWT binary encryption
-5. ✅ JWT is the only encryption method
-6. ✅ Client automatically decrypts all encrypted responses (JSON and binary)
+1. ✓ ALL endpoints encrypt responses with JWT when JWT is provided
+2. ✓ Public browsing endpoints allow access without JWT (`requireJWT: false`)
+3. ✓ Protected endpoints (downloads, uploads, admin) require JWT (`requireJWT: true` default)
+4. ✓ Binary files (images, downloads, scripts) use JWT binary encryption
+5. ✓ JWT is the only encryption method
+6. ✓ Client automatically decrypts all encrypted responses (JSON and binary)

@@ -3,7 +3,7 @@
  * Admin-only page for managing R2 storage, detecting duplicates, and cleaning up orphaned files
  * 
  * Enhanced with:
- * - Human-readable mod/version/customer/user information
+ * - Human-readable mod/version/customer information
  * - Bulk selection and operations on all tabs
  * - Filtering and sorting capabilities
  * - Clickable links to mod detail pages
@@ -20,6 +20,7 @@ import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import { getButtonStyles } from '../utils/buttonStyles';
 import { getBadgeStyles, getCardStyles, type BadgeType } from '../utils/sharedStyles';
 import { API_BASE_URL } from '../services/api';
+import { formatDate, formatTime } from '@strixun/shared-config/date-utils';
 
 const PageContainer = styled.div`
   max-width: 1800px;
@@ -689,7 +690,7 @@ export function R2ManagementPage() {
             : null;
 
         return (
-            <FileItem key={file.key}>
+            <FileItem>
                 {showCheckbox && (
                     <Checkbox
                         type="checkbox"
@@ -725,7 +726,7 @@ export function R2ManagementPage() {
                     {associated?.mod ? (
                         <>
                             <FileTitle>
-                                {isThumbnail ? '🖼️ Thumbnail for: ' : isModFile ? '📦 Mod File for: ' : ''}
+                                {isThumbnail ? '◇ Thumbnail for: ' : isModFile ? '▣ Mod File for: ' : ''}
                                 <ModNameLink to={`/${associated.mod.slug}`} onClick={(e) => e.stopPropagation()}>
                                     {associated.mod.title}
                                 </ModNameLink>
@@ -753,7 +754,7 @@ export function R2ManagementPage() {
                                 {associated.uploadedBy && (
                                     <FileDetailItem>
                                         <FileDetailLabel>Uploaded By:</FileDetailLabel>
-                                        <span>{associated.uploadedBy.displayName || associated.uploadedBy.userId}</span>
+                                        <span>{associated.uploadedBy.displayName || associated.uploadedBy.customerId}</span>
                                     </FileDetailItem>
                                 )}
                                 <FileDetailItem>
@@ -771,7 +772,7 @@ export function R2ManagementPage() {
                     ) : (
                         <>
                             <FileTitle>
-                                {isThumbnail ? '🖼️ Thumbnail' : isModFile ? '📦 Mod File' : '❓ Unknown File'}
+                                {isThumbnail ? '◇ Thumbnail' : isModFile ? '▣ Mod File' : '? Unknown File'}
                                 {customerId && ` (Customer: ${customerId})`}
                             </FileTitle>
                             <FileDetails>
@@ -790,7 +791,7 @@ export function R2ManagementPage() {
                     )}
                     <FileMeta>
                         <span><strong>Size:</strong> {formatBytes(file.size)}</span>
-                        <span><strong>Uploaded:</strong> {file.uploaded.toLocaleDateString()} {file.uploaded.toLocaleTimeString()}</span>
+                        <span><strong>Uploaded:</strong> {formatDate(file.uploaded.toISOString())} {formatTime(file.uploaded.toISOString())}</span>
                         {file.contentType && <span><strong>Type:</strong> {file.contentType}</span>}
                     </FileMeta>
                     <FileKey>{file.key}</FileKey>
@@ -878,7 +879,11 @@ export function R2ManagementPage() {
                     </div>
                 </SelectionBar>
                 <FileList>
-                    {files.map((file) => renderFileItem(file, true, false))}
+                    {files.map((file) => (
+                        <div key={file.key}>
+                            {renderFileItem(file, true, false)}
+                        </div>
+                    ))}
                 </FileList>
             </>
         );
@@ -1048,7 +1053,11 @@ export function R2ManagementPage() {
                     </div>
                 </SelectionBar>
                 <FileList>
-                    {files.map((file) => renderFileItem(file, true, false))}
+                    {files.map((file) => (
+                        <div key={file.key}>
+                            {renderFileItem(file, true, false)}
+                        </div>
+                    ))}
                 </FileList>
             </>
         );

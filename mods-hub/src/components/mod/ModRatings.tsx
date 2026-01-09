@@ -10,6 +10,7 @@ import type { ModRating } from '../../types/mod';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import { getButtonStyles } from '../../utils/buttonStyles';
+import { formatDate } from '@strixun/shared-config/date-utils';
 
 const Container = styled.div`
   background: ${colors.bgSecondary};
@@ -235,7 +236,7 @@ function calculateRatingBreakdown(ratings: ModRating[]): number[] {
 }
 
 export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatingSubmit }: ModRatingsProps) {
-    const { isAuthenticated, user } = useAuthStore();
+    const { isAuthenticated, customer } = useAuthStore();
     const [selectedRating, setSelectedRating] = useState(0);
     const [hoveredRating, setHoveredRating] = useState(0);
     const [comment, setComment] = useState('');
@@ -250,12 +251,12 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
     const breakdown = calculateRatingBreakdown(ratings);
     const totalRatings = ratings.length;
     
-    // Check if user has already rated
-    const userRating = isAuthenticated && user 
-        ? ratings.find(r => r.userId === user.userId)
+    // Check if customer has already rated
+    const userRating = isAuthenticated && customer 
+        ? ratings.find(r => r.customerId === customer.customerId)
         : null;
     
-    // Initialize form with user's existing rating when entering edit mode
+    // Initialize form with customer's existing rating when entering edit mode
     const handleEditClick = () => {
         if (userRating) {
             setSelectedRating(userRating.rating);
@@ -275,7 +276,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
         if (!selectedRating || !onRatingSubmit) return;
         
         // CRITICAL: Check for customerId - required for rating submission
-        if (!user?.customerId) {
+        if (!customer?.customerId) {
             alert('Your account is missing a customer association. This is required for rating submissions. Please contact support or try logging out and back in.');
             return;
         }
@@ -420,7 +421,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                     )}
                     {userRating.updatedAt && userRating.updatedAt !== userRating.createdAt && (
                         <div style={{ fontSize: '0.75rem', color: colors.textMuted, marginTop: spacing.xs }}>
-                            Updated: {new Date(userRating.updatedAt).toLocaleDateString()}
+                            Updated: {formatDate(userRating.updatedAt)}
                         </div>
                     )}
                 </div>
@@ -433,7 +434,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                         <Review key={rating.ratingId}>
                             <ReviewHeader>
                                 <ReviewAuthor>{rating.userDisplayName || 'Unknown User'}</ReviewAuthor>
-                                <ReviewDate>{new Date(rating.createdAt).toLocaleDateString()}</ReviewDate>
+                                <ReviewDate>{formatDate(rating.createdAt)}</ReviewDate>
                             </ReviewHeader>
                             <ReviewRating>{renderStars(rating.rating)}</ReviewRating>
                             {rating.comment && (

@@ -29,8 +29,8 @@ export function buildResponse<T extends Record<string, any>>(
 ): BuiltResponse<APIResponse<T>> {
   // Start with root config fields (always included)
   const rootConfig: Partial<RootResponseConfig> = {
-    id: data.id || context.user?.id || generateId(),
-    customerId: data.customerId || context.user?.customerId || '',
+    id: data.id || context.customer?.id || generateId(),
+    customerId: data.customerId || context.customer?.customerId || '',
   };
 
   // Ensure root fields are present

@@ -7,6 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
+import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
 import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
 
 /**
@@ -18,10 +19,10 @@ export async function handleGetModDetail(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; customerId: string | null } | null
+    auth: { customerId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
-        // Check if user is super admin (needed for filtering)
+        // Check if customer is super admin (needed for filtering)
         const { isSuperAdminEmail } = await import('../../utils/admin.js');
         const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
         
@@ -78,11 +79,11 @@ export async function handleGetModDetail(
         if (mod && !isAdmin) {
             const modVisibility = mod.visibility || 'public';
             const modStatus = mod.status || 'published';
-            // For non-super users: ONLY public, published/approved mods are allowed
+            // For non-super customers: ONLY public, published/approved mods are allowed
             const isAllowedStatus = modStatus === 'published' || modStatus === 'approved';
             if (modVisibility !== 'public' || !isAllowedStatus) {
-                // Only allow if user is the author
-                if (mod.authorId !== auth?.userId) {
+                // Only allow if customer is the author
+                if (mod.authorId !== auth?.customerId) {
                     mod = null; // Filter out - don't show to non-authors
                 }
             }
@@ -107,11 +108,14 @@ export async function handleGetModDetail(
             });
         }
         
+        // ✨ LAZY MIGRATION: Automatically migrate variants if needed
+        mod = await migrateModVariantsIfNeeded(mod, env);
+        
         // Use mod.modId directly - no normalization needed
         const storedModId = mod.modId;
 
         // isAdmin already checked above
-        const isAuthor = mod.authorId === auth?.userId;
+        const isAuthor = mod.authorId === auth?.customerId;
         
         // CRITICAL: Enforce strict visibility and status filtering
         // Only super admins can bypass these checks
@@ -124,7 +128,7 @@ export async function handleGetModDetail(
             const modVisibility = mod.visibility || 'public';
             if (modVisibility !== 'public') {
                 // Only show private/unlisted mods to their author
-                if (mod.authorId !== auth?.userId) {
+                if (mod.authorId !== auth?.customerId) {
                     const rfcError = createError(
                         request,
                         404,
@@ -171,7 +175,7 @@ export async function handleGetModDetail(
             }
         } else {
             // Super admins: check visibility but allow all statuses
-            if (mod.visibility === 'private' && mod.authorId !== auth?.userId) {
+            if (mod.visibility === 'private' && mod.authorId !== auth?.customerId) {
                 const rfcError = createError(
                     request,
                     404,
@@ -207,7 +211,7 @@ export async function handleGetModDetail(
             const customerVersionsData = await env.MODS_KV.get(customerVersionsKey, { type: 'json' }) as string[] | null;
             versionIds = customerVersionsData || [];
         } else if (auth?.customerId) {
-            // Last resort: try auth user's customer scope (for backward compatibility)
+            // Last resort: try auth customer's scope (for backward compatibility)
             const customerVersionsKey = getCustomerKey(auth.customerId, `${storedModId}_versions`);
             const customerVersionsData = await env.MODS_KV.get(customerVersionsKey, { type: 'json' }) as string[] | null;
             versionIds = customerVersionsData || [];
@@ -228,7 +232,7 @@ export async function handleGetModDetail(
             }
             
             if (!version && auth?.customerId && auth.customerId !== mod.customerId) {
-                // Last resort: try auth user's customer scope (for backward compatibility)
+                // Last resort: try auth customer's scope (for backward compatibility)
                 const customerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
                 version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
             }
@@ -254,14 +258,14 @@ export async function handleGetModDetail(
 
         // CRITICAL: Ensure mod has customerId (for data scoping)
         // Set customerId from auth context if missing (for legacy mods)
-        // Only use auth.customerId if the current user is the mod author
+        // Only use auth.customerId if the current customer is the mod author
         let modKeyToSave: string | null = null;
-        if (!mod.customerId && auth?.customerId && mod.authorId === auth.userId) {
+        if (!mod.customerId && auth?.customerId && mod.authorId === auth.customerId) {
             console.log('[GetModDetail] Setting missing customerId on legacy mod:', {
                 modId: mod.modId,
                 customerId: auth.customerId,
                 authorId: mod.authorId,
-                currentUserId: auth.userId
+                currentCustomerId: auth.customerId
             });
             mod.customerId = auth.customerId;
             
@@ -277,7 +281,7 @@ export async function handleGetModDetail(
         }
 
         // CRITICAL: Fetch author display name from customer data
-        // Customer is the primary data source for all customizable user info
+        // Customer is the primary data source for all customizable customer info
         // Look up customer by mod.customerId to get displayName
         const storedDisplayName = mod.authorDisplayName; // Preserve as fallback only
         let fetchedDisplayName: string | null = null;

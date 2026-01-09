@@ -4,8 +4,15 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
-import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
-import type { UpdateUserRequest } from '../types/user';
+import type { 
+    ModStatus, 
+    ModUpdateRequest, 
+    ModUploadRequest, 
+    VersionUploadRequest,
+    VariantVersion,
+    VariantVersionUploadRequest
+} from '../types/mod';
+import type { UpdateCustomerRequest } from '../types/customer';
 import { encryptFileForUpload, downloadFileFromArrayBuffer } from '../utils/fileEncryption';
 
 /**
@@ -40,8 +47,8 @@ const createClient = () => {
                 try {
                     const { useAuthStore } = await import('../stores/auth');
                     const store = useAuthStore.getState();
-                    if (store.user?.token) {
-                        const rawToken = store.user.token;
+                    if (store.customer?.token) {
+                        const rawToken = store.customer.token;
                         const token = rawToken.trim();
                         const wasTrimmed = rawToken !== token;
                         
@@ -67,13 +74,13 @@ const createClient = () => {
                     const authStorage = localStorage.getItem('auth-storage');
                     if (authStorage) {
                         const parsed = JSON.parse(authStorage);
-                        // Zustand persist with partialize stores as { user: { token: '...' } }
+                        // Zustand persist with partialize stores as { customer: { token: '...' } }
                         let token: string | null = null;
-                        if (parsed?.user?.token) {
-                            token = parsed.user.token;
-                        } else if (parsed?.state?.user?.token) {
+                        if (parsed?.customer?.token) {
+                            token = parsed.customer.token;
+                        } else if (parsed?.state?.customer?.token) {
                             // Some Zustand versions might wrap in state
-                            token = parsed.state.user.token;
+                            token = parsed.state.customer.token;
                         }
                         
                         if (token) {
@@ -189,8 +196,8 @@ export async function getAuthToken(): Promise<string | null> {
     try {
         const { useAuthStore } = await import('../stores/auth');
         const store = useAuthStore.getState();
-        if (store.user?.token) {
-            const token = store.user.token.trim();
+        if (store.customer?.token) {
+            const token = store.customer.token.trim();
             if (token && token.length > 0) {
                 return token;
             }
@@ -205,10 +212,10 @@ export async function getAuthToken(): Promise<string | null> {
         if (authStorage) {
             const parsed = JSON.parse(authStorage);
             let token: string | null = null;
-            if (parsed?.user?.token) {
-                token = parsed.user.token;
-            } else if (parsed?.state?.user?.token) {
-                token = parsed.state.user.token;
+            if (parsed?.customer?.token) {
+                token = parsed.customer.token;
+            } else if (parsed?.state?.customer?.token) {
+                token = parsed.state.customer.token;
             }
             
             if (token) {
@@ -471,14 +478,14 @@ export async function submitModRating(
 }
 
 /**
- * List users (admin only)
+ * List customers (admin only)
  */
-export async function listUsers(filters: {
+export async function listCustomers(filters: {
     page?: number;
     pageSize?: number;
     search?: string;
 }): Promise<{
-    users: any[];
+    customers: any[];
     total: number;
     page: number;
     pageSize: number;
@@ -490,34 +497,34 @@ export async function listUsers(filters: {
     
     const queryString = params.toString() ? `?${params.toString()}` : '';
     const response = await api.get<{
-        users: any[];
+        customers: any[];
         total: number;
         page: number;
         pageSize: number;
-    }>(`/admin/users${queryString}`);
+    }>(`/admin/customers${queryString}`);
     return response.data;
 }
 
 /**
- * Get user details (admin only)
+ * Get customer details (admin only)
  */
-export async function getUserDetails(userId: string): Promise<any> {
-    const response = await api.get<any>(`/admin/users/${userId}`);
+export async function getCustomerDetails(customerId: string): Promise<any> {
+    const response = await api.get<any>(`/admin/customers/${customerId}`);
     return response.data;
 }
 
 /**
- * Update user (admin only)
+ * Update customer (admin only)
  */
-export async function updateUser(userId: string, updates: UpdateUserRequest): Promise<any> {
-    const response = await api.put<any>(`/admin/users/${userId}`, updates);
+export async function updateCustomer(customerId: string, updates: UpdateCustomerRequest): Promise<any> {
+    const response = await api.put<any>(`/admin/customers/${customerId}`, updates);
     return response.data;
 }
 
 /**
- * Get user's mods (admin only)
+ * Get customer's mods (admin only)
  */
-export async function getUserMods(userId: string, params: {
+export async function getCustomerMods(customerId: string, params: {
     page?: number;
     pageSize?: number;
 }): Promise<{
@@ -536,12 +543,12 @@ export async function getUserMods(userId: string, params: {
         total: number;
         page: number;
         pageSize: number;
-    }>(`/admin/users/${userId}/mods${queryString}`);
+    }>(`/admin/customers/${customerId}/mods${queryString}`);
     return response.data;
 }
 
 /**
- * Check upload permission (authenticated users)
+ * Check upload permission (authenticated customers)
  */
 export async function checkUploadPermission(): Promise<{ hasPermission: boolean }> {
     const response = await api.get<{ hasPermission: boolean }>('/mods/permissions/me');
@@ -587,7 +594,7 @@ export async function downloadVersion(modSlug: string, versionId: string, fileNa
 }
 
 /**
- * Download mod variant
+ * Download mod variant (latest version)
  * Uses API framework for authentication and proper error handling
  * The response handler automatically converts binary responses to ArrayBuffer
  * Files are decrypted server-side before being sent to the client
@@ -602,6 +609,121 @@ export async function downloadVariant(modSlug: string, variantId: string, fileNa
 
     // Use shared utility to handle download (files are already decrypted server-side)
     downloadFileFromArrayBuffer(response.data as ArrayBuffer, fileName);
+}
+
+/**
+ * Upload variant version (requires authentication and ownership/admin)
+ */
+export async function uploadVariantVersion(
+    modId: string,
+    variantId: string,
+    file: File,
+    metadata: VariantVersionUploadRequest
+): Promise<any> {
+    // Encrypt file using shared utility (handles compression automatically)
+    const encryptedFileObj = await encryptFileForUpload(file);
+
+    const formData = new FormData();
+    formData.append('file', encryptedFileObj);
+    formData.append('metadata', JSON.stringify(metadata));
+    
+    // API framework automatically handles FormData - don't set Content-Type header
+    const response = await api.post<any>(`/mods/${modId}/variants/${variantId}/versions`, formData);
+    return response.data;
+}
+
+/**
+ * List all versions of a variant
+ */
+export async function listVariantVersions(
+    modSlug: string,
+    variantId: string
+): Promise<{ versions: VariantVersion[] }> {
+    const response = await api.get<{ versions: VariantVersion[] }>(
+        `/mods/${modSlug}/variants/${variantId}/versions`
+    );
+    return response.data;
+}
+
+/**
+ * Download specific variant version
+ * Uses API framework for authentication and proper error handling
+ * The response handler automatically converts binary responses to ArrayBuffer
+ * Files are decrypted server-side before being sent to the client
+ */
+export async function downloadVariantVersion(
+    modSlug: string,
+    variantId: string,
+    variantVersionId: string,
+    fileName: string
+): Promise<void> {
+    // Use API framework's get method - response handler converts binary to ArrayBuffer
+    const response = await api.get<ArrayBuffer>(
+        `/mods/${modSlug}/variants/${variantId}/versions/${variantVersionId}/download`
+    );
+
+    if (response.status < 200 || response.status >= 300) {
+        throw new Error(`Failed to download variant version: ${response.statusText || 'Unknown error'}`);
+    }
+
+    // Use shared utility to handle download (files are already decrypted server-side)
+    downloadFileFromArrayBuffer(response.data as ArrayBuffer, fileName);
+}
+
+/**
+ * Delete mod version (requires authentication and ownership/admin)
+ */
+export async function deleteModVersion(modId: string, versionId: string): Promise<void> {
+    await api.delete(`/mods/${modId}/versions/${versionId}`);
+}
+
+/**
+ * Delete variant version (requires authentication and ownership/admin)
+ */
+export async function deleteVariantVersion(
+    modId: string,
+    variantId: string,
+    variantVersionId: string
+): Promise<void> {
+    await api.delete(`/mods/${modId}/variants/${variantId}/versions/${variantVersionId}`);
+}
+
+/**
+ * Delete entire variant and all its versions
+ */
+export async function deleteVariant(
+    modId: string,
+    variantId: string
+): Promise<void> {
+    await api.delete(`/mods/${modId}/variants/${variantId}`);
+}
+
+/**
+ * Update mod version metadata (requires authentication and ownership/admin)
+ */
+export async function updateModVersion(
+    modId: string,
+    versionId: string,
+    updates: Partial<VersionUploadRequest>
+): Promise<any> {
+    const response = await api.put<any>(`/mods/${modId}/versions/${versionId}`, updates);
+    return response.data;
+}
+
+/**
+ * Update variant version metadata (requires authentication and ownership/admin)
+ */
+export async function updateVariantVersion(
+    modId: string,
+    variantId: string,
+    variantVersionId: string,
+    updates: Partial<VariantVersionUploadRequest>
+): Promise<any> {
+    const response = await api.put<any>(
+        `/mods/${modId}/variants/${variantId}/versions/${variantVersionId}`,
+        updates
+    );
+    return response.data;
 }
 
 /**
@@ -639,15 +761,15 @@ export interface R2FileAssociatedVersion {
     dependencies?: Array<{ modId: string; version?: string; required: boolean }>;
 }
 
-export interface R2FileAssociatedUser {
-    userId: string;
+export interface R2FileAssociatedCustomer {
+    customerId: string;
     displayName?: string | null;
 }
 
 export interface R2FileAssociatedData {
     mod?: R2FileAssociatedMod;
     version?: R2FileAssociatedVersion;
-    uploadedBy?: R2FileAssociatedUser;
+    uploadedBy?: R2FileAssociatedCustomer;
     isThumbnail?: boolean;
     isModFile?: boolean;
 }

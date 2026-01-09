@@ -43,15 +43,16 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '$lib': path.resolve(__dirname, './src/dashboard/lib'),
-      '$components': path.resolve(__dirname, './src/dashboard/components'),
+      '$lib': path.resolve(__dirname, './src/lib'),
+      '$components': path.resolve(__dirname, './src/components'),
+      '$dashboard': path.resolve(__dirname, './src/dashboard'),
       '@shared-styles': path.resolve(__dirname, '../../shared-styles'),
       '@shared-components': path.resolve(__dirname, '../../shared-components'),
       '@shared-config': path.resolve(__dirname, '../../shared-config')
     }
   },
   build: {
-    outDir: path.resolve(__dirname, '../../dist/otp-auth-service'),
+    outDir: path.resolve(__dirname, 'dist'),
     emptyOutDir: true,
     base: '/',
     rollupOptions: {
@@ -81,7 +82,7 @@ export default defineConfig({
     exclude: ['swagger-ui-dist'] // Exclude from pre-bundling, will be loaded dynamically
   },
   server: {
-    port: 5175,
+    port: 5174,
     open: false,
     proxy: {
       '/auth': {
@@ -90,6 +91,10 @@ export default defineConfig({
       },
       '/admin': {
         target: 'http://localhost:8787',
+        changeOrigin: true
+      },
+      '/customer': {
+        target: 'http://localhost:8790',
         changeOrigin: true
       },
       '/openapi.json': {

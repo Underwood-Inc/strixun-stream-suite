@@ -1,6 +1,14 @@
 <script lang="ts">
   import CodeBlock from '../lib/CodeBlock.svelte';
-  import { vanillaJsExample, reactExample, svelteExample } from '../lib/code-examples';
+  import ObfuscatedText from '@shared-components/svelte/ObfuscatedText.svelte';
+  import { 
+    vanillaJsExample, 
+    reactExample, 
+    svelteExample,
+    vanillaJsApiKeyExample,
+    reactApiKeyExample,
+    svelteApiKeyExample
+  } from '../lib/code-examples';
 
   let activeTab = 'vanilla';
 
@@ -12,8 +20,12 @@
 <section class="code-examples" id="code-examples">
   <h2>Get Started in Minutes</h2>
   <p class="subtitle">
-    Choose your framework and start integrating. All examples use the same simple API.
+    Choose your framework. All examples use the same simple API with your API key.
   </p>
+  
+  <div class="info-box">
+    <strong>◆ API Key Required:</strong> All integrations require an API key. <strong>Free tier available!</strong> Get your API key from the <a href="/dashboard">dashboard</a> after signing up. Includes free tier with <ObfuscatedText text="1,000" length={5} /> OTP requests/month.
+  </div>
   
   <div class="code-tabs">
     <button class="code-tab" class:active={activeTab === 'vanilla'} on:click={() => switchTab('vanilla')}>Vanilla JS/TS</button>
@@ -22,11 +34,11 @@
   </div>
 
   {#if activeTab === 'vanilla'}
-    <CodeBlock code={vanillaJsExample} language="javascript" />
+    <CodeBlock code={vanillaJsApiKeyExample} language="javascript" />
   {:else if activeTab === 'react'}
-    <CodeBlock code={reactExample} language="jsx" />
+    <CodeBlock code={reactApiKeyExample} language="jsx" />
   {:else if activeTab === 'svelte'}
-    <CodeBlock code={svelteExample} language="svelte" />
+    <CodeBlock code={svelteApiKeyExample} language="svelte" />
   {/if}
 </section>
 
@@ -83,6 +95,21 @@
     border-bottom-color: var(--accent);
   }
 
+  .info-box {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    border-radius: 4px;
+    color: #856404;
+  }
+
+  .info-box a {
+    color: inherit;
+    text-decoration: underline;
+    font-weight: 600;
+  }
+
   @media (max-width: 768px) {
     .code-examples {
       padding: var(--spacing-2xl) var(--spacing-md);
@@ -90,6 +117,48 @@
 
     .code-tabs {
       overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .code-tab {
+      flex-shrink: 0;
+    }
+
+    .info-box {
+      font-size: 0.875rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .code-examples {
+      padding: var(--spacing-xl) var(--spacing-sm);
+    }
+
+    .code-examples h2 {
+      font-size: 1.75rem;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .code-tabs {
+      gap: var(--spacing-xs);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .code-tab {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      font-size: 0.75rem;
+      letter-spacing: 0px;
+    }
+
+    .info-box {
+      padding: var(--spacing-sm);
+      font-size: 0.8rem;
+      margin-bottom: var(--spacing-md);
     }
   }
 </style>

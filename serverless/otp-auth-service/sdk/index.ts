@@ -19,14 +19,14 @@ export interface OTPResponse {
 export interface AuthResponse {
   success: boolean;
   token: string;
-  userId: string;
+  customerId: string;
   email: string;
   expiresAt: string;
 }
 
-export interface UserResponse {
+export interface CustomerResponse {
   success: boolean;
-  userId: string;
+  customerId: string;
   email: string;
   createdAt: string;
   lastLogin: string;
@@ -49,14 +49,14 @@ export class OTPAuth {
 
   /**
    * Request OTP code
+   * API key is used for tenant identification, NOT customer authorization
    */
   async requestOTP(email: string): Promise<OTPResponse> {
     const response = await fetch(`${this.baseUrl}/auth/request-otp`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-        'X-OTP-API-Key': this.apiKey
+        'X-OTP-API-Key': this.apiKey  // API keys go in X-OTP-API-Key header, NOT Authorization
       },
       body: JSON.stringify({ email })
     });
@@ -71,14 +71,14 @@ export class OTPAuth {
 
   /**
    * Verify OTP code and get JWT token
+   * API key is used for tenant identification, NOT customer authorization
    */
   async verifyOTP(email: string, otp: string): Promise<AuthResponse> {
     const response = await fetch(`${this.baseUrl}/auth/verify-otp`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-        'X-OTP-API-Key': this.apiKey
+        'X-OTP-API-Key': this.apiKey  // API keys go in X-OTP-API-Key header, NOT Authorization
       },
       body: JSON.stringify({ email, otp })
     });
@@ -92,13 +92,14 @@ export class OTPAuth {
   }
 
   /**
-   * Get current user information
+   * Get current customer information
+   * Requires JWT token from verifyOTP (NOT API key)
    */
-  async getMe(token: string): Promise<UserResponse> {
+  async getMe(token: string): Promise<CustomerResponse> {
     const response = await fetch(`${this.baseUrl}/auth/me`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`  // JWT token goes in Authorization header
       }
     });
 
@@ -112,12 +113,13 @@ export class OTPAuth {
 
   /**
    * Logout and revoke token
+   * Requires JWT token (NOT API key)
    */
   async logout(token: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/auth/logout`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`  // JWT token goes in Authorization header
       }
     });
 

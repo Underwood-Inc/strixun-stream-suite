@@ -370,7 +370,7 @@ Automatically encrypts a response if JWT token is present.
 **Example:**
 ```typescript
 async function handleGetUser(request: Request, env: Env, auth: AuthResult) {
-  const user = await getUser(auth.userId, env);
+  const customer = await getUser(auth.userId, env);
   const response = new Response(JSON.stringify(user));
   return await wrapWithEncryption(response, auth); // Auto-encrypts if token present
 }
@@ -593,12 +593,12 @@ import { encryptWithJWT, decryptWithJWT } from '@strixun/api-framework';
 // When saving user profile
 async function saveUserProfile(userId: string, profile: UserProfile, token: string) {
   const encrypted = await encryptWithJWT(profile, token);
-  await storage.save(`user:${userId}:profile`, encrypted);
+  await storage.save(`customer:${userId}:profile`, encrypted);
 }
 
 // When loading user profile
 async function loadUserProfile(userId: string, token: string): Promise<UserProfile> {
-  const encrypted = await storage.get(`user:${userId}:profile`);
+  const encrypted = await storage.get(`customer:${userId}:profile`);
   return await decryptWithJWT(encrypted, token) as UserProfile;
 }
 ```

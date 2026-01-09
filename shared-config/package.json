@@ -1,0 +1,14 @@
+{
+  "name": "@strixun/shared-config",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./date-utils": "./date-utils.ts",
+    "./display-name-constants": "./display-name-constants.ts",
+    "./otp-config": "./otp-config.ts",
+    "./otp-encryption": "./otp-encryption.ts"
+  }
+}

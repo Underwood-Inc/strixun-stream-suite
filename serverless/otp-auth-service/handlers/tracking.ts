@@ -2,7 +2,7 @@
  * Email Tracking Handler
  * 
  * Handles email open tracking with privacy-compliant analytics
- * Tracks: IP, user agent, country (from Cloudflare headers), timestamp
+ * Tracks: IP, customer agent, country (from Cloudflare headers), timestamp
  * Does NOT track: email addresses, personal information
  */
 

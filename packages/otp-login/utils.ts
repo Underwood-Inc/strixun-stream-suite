@@ -72,7 +72,7 @@ export function parseErrorResponse(responseText: string | null, status: number, 
 }
 
 /**
- * Handle network errors and convert to user-friendly messages
+ * Handle network errors and convert to customer-friendly messages
  */
 export function handleNetworkError(err: unknown): string {
   let errorMsg = 'An unexpected error occurred. Please try again.';

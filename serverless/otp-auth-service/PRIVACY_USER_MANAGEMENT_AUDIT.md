@@ -4,7 +4,7 @@
 
 ## ★ Executive Summary
 
-This document provides a comprehensive audit of the privacy and user management system requirements, identifying what exists, what's missing, and what needs to be built to support:
+This document provides a comprehensive audit of the privacy and customer management system requirements, identifying what exists, what's missing, and what needs to be built to support:
 
 1. **Email Privacy by Default** - Emails hidden unless user makes them public
 2. **Display Name Management** - Random names, regeneration, monthly changes, history tracking

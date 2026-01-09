@@ -1,17 +1,18 @@
 /**
  * Customer Account Creation Utilities
  * 
- * Handles automatic customer account creation for OTP-verified users
+ * Handles automatic customer account creation for OTP-verified customers
  */
 
 import { generateCustomerId } from '../../services/customer.js';
-import { createApiKeyForCustomer } from '../../services/api-key.js';
+// CRITICAL: API keys are ONLY created manually through the auth dashboard
+// Removed import - we do NOT automatically create API keys
 import { 
     getCustomerByEmailService, 
-    createCustomerService, 
+    createCustomer, 
     getCustomerService,
-    updateCustomerService 
-} from '../../utils/customer-api-service-client.js';
+    updateCustomer 
+} from '@strixun/api-framework';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -20,15 +21,15 @@ interface Env {
 }
 
 /**
- * Ensure customer account exists for a verified user
+ * Ensure customer account exists for a verified customer
  * Creates account if it doesn't exist, returns existing customerId if it does
  * 
- * BUSINESS RULE: Customer account MUST ALWAYS be created for users on login.
+ * BUSINESS RULE: Customer account MUST ALWAYS be created for customers on login.
  * This function will retry on failures and throw an error if it cannot create
  * the account after retries, rather than returning null.
  * 
  * This function implements smart account recovery:
- * - If user account was deleted (expired TTL), customer account is recovered by email
+ * - If customer session was deleted (expired TTL), customer account is recovered by email
  * - Customer accounts persist indefinitely to allow recovery
  * - When recovered, customer account status is reactivated if it was inactive
  * 
@@ -126,23 +127,28 @@ async function upsertCustomerAccount(
             needsUpdate = true;
         }
         
-        // Ensure email matches (in case of email change)
+        // CRITICAL: Email is IMMUTABLE - it's the authentication identifier
+        // If email doesn't match, log a warning but DO NOT change it
         if (existingCustomer.email !== emailLower) {
-            updates.email = emailLower;
-            needsUpdate = true;
+            console.warn(`[Customer Creation] Email mismatch for customer ${resolvedCustomerId}: stored="${existingCustomer.email}", login="${emailLower}". Email is immutable - keeping stored value.`);
         }
         
-        // Ensure required fields exist - displayName is REQUIRED, not optional
+        // FAIL-FAST: displayName is MANDATORY - customer cannot exist without it
         // Check for undefined, null, empty string, or whitespace-only
         if (!existingCustomer.displayName || existingCustomer.displayName.trim() === '') {
-            console.log(`[Customer Creation] Missing displayName for customer ${resolvedCustomerId}, generating one...`);
+            // FAIL-FAST: Generate globally unique displayName - MANDATORY
             const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
             const customerDisplayName = await generateUniqueDisplayName({
-                customerId: resolvedCustomerId,
-                maxAttempts: 10,
-                includeNumber: true
+                maxAttempts: 50, // More attempts to ensure uniqueness
+                pattern: 'random'
             }, env);
-            await reserveDisplayName(customerDisplayName, resolvedCustomerId, resolvedCustomerId, env);
+            
+            // FAIL-FAST: displayName generation must succeed
+            if (!customerDisplayName || customerDisplayName.trim() === '') {
+                throw new Error(`Failed to generate globally unique displayName for customer ${resolvedCustomerId} after 50 retries. Customer cannot exist without a display name.`);
+            }
+            
+            await reserveDisplayName(customerDisplayName, resolvedCustomerId, null, env); // Global scope - ensures uniqueness
             updates.displayName = customerDisplayName;
             needsUpdate = true;
             console.log(`[Customer Creation] Generated displayName "${customerDisplayName}" for customer ${resolvedCustomerId}`);
@@ -198,7 +204,7 @@ async function upsertCustomerAccount(
             updates.updatedAt = new Date().toISOString();
             console.log(`[Customer Creation] Updating customer account: ${resolvedCustomerId}`);
             await retryWithBackoff(async () => {
-                await updateCustomerService(resolvedCustomerId, { ...existingCustomer, ...updates }, env);
+                await updateCustomer(resolvedCustomerId, { ...existingCustomer, ...updates }, env);
             });
         }
         
@@ -209,16 +215,21 @@ async function upsertCustomerAccount(
     console.log(`[Customer Creation] Creating new customer account for: ${emailLower}`);
     const resolvedCustomerId = generateCustomerId();
     
-    // Generate random display name for customer account
+    // FAIL-FAST: Generate globally unique display name for customer account - MANDATORY
+    // Customer cannot exist without a display name
     const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
     const customerDisplayName = await generateUniqueDisplayName({
-        customerId: resolvedCustomerId,
-        maxAttempts: 10,
-        includeNumber: true
+        maxAttempts: 50, // More attempts to ensure global uniqueness
+        pattern: 'random'
     }, env);
     
-    // Reserve the display name for the customer account
-    await reserveDisplayName(customerDisplayName, resolvedCustomerId, resolvedCustomerId, env);
+    // FAIL-FAST: displayName generation must succeed - customer cannot exist without it
+    if (!customerDisplayName || customerDisplayName.trim() === '') {
+        throw new Error('Failed to generate globally unique displayName after 50 retries. Customer cannot exist without a display name.');
+    }
+    
+    // Reserve the display name for the customer account (global scope)
+    await reserveDisplayName(customerDisplayName, resolvedCustomerId, null, env);
     
     // Initialize default subscription (free tier)
     const defaultSubscription: import('../../services/customer.js').Subscription = {
@@ -279,7 +290,7 @@ async function upsertCustomerAccount(
     
     // Create customer via customer-api with retry
     await retryWithBackoff(async () => {
-        await createCustomerService(customerData, env);
+        await createCustomer(customerData, env);
     });
     console.log(`[Customer Creation] Customer account created via customer-api: ${resolvedCustomerId} for ${emailLower}`);
     
@@ -296,14 +307,9 @@ async function upsertCustomerAccount(
         throw new Error(`Customer account verification failed after retries. Expected ${resolvedCustomerId}, got ${verifyCustomer?.customerId || 'null'}`);
     }
     
-    // Generate initial API key for the customer (non-blocking)
-    try {
-        await createApiKeyForCustomer(resolvedCustomerId, 'Initial API Key', env);
-        console.log(`[Customer Creation] API key created for customer: ${resolvedCustomerId}`);
-    } catch (apiKeyError) {
-        console.error(`[Customer Creation] WARNING: Failed to create API key for customer ${resolvedCustomerId}:`, apiKeyError);
-        // Don't throw - API key creation is not critical for login
-    }
+    // CRITICAL: API keys are ONLY created manually through the auth dashboard
+    // We do NOT automatically create API keys during customer creation
+    // API keys are optional for multi-tenant identification (subscription tiers, rate limiting)
     
     return resolvedCustomerId;
 }
@@ -323,6 +329,10 @@ export async function ensureCustomerAccount(
             throw new Error(`Failed to create or retrieve customer account for ${emailLower}`);
         }
         
+        // CRITICAL: Clean up any customer data from OTP_AUTH_KV
+        // This runs on every login to gradually migrate all users
+        await cleanupOTPAuthKV(resolvedCustomerId, emailLower, env);
+        
         return resolvedCustomerId;
     } catch (error) {
         console.error(`[Customer Creation] CRITICAL ERROR: Customer account creation/lookup failed after retries for ${emailLower}:`, error);
@@ -340,3 +350,58 @@ export async function ensureCustomerAccount(
     }
 }
 
+/**
+ * Clean up customer data from OTP_AUTH_KV
+ * Removes customer data that should only exist in CUSTOMER_KV
+ * Runs on every login to gradually migrate all users
+ */
+export async function cleanupOTPAuthKV(
+    customerId: string,
+    email: string,
+    env: Env
+): Promise<void> {
+    try {
+        // Guard: Skip if OTP_AUTH_KV not available (e.g., in unit tests)
+        if (!env.OTP_AUTH_KV || typeof env.OTP_AUTH_KV.get !== 'function') {
+            return;
+        }
+        
+        const { hashEmail } = await import('../../utils/crypto.js');
+        const emailHash = await hashEmail(email);
+        const { getCustomerKey } = await import('../../services/customer.js');
+        
+        // Get customer session from OTP_AUTH_KV
+        const sessionKey = getCustomerKey(customerId, `user_${emailHash}`);
+        const session = await env.OTP_AUTH_KV.get(sessionKey, { type: 'json' }) as any;
+        
+        if (session) {
+            // Keep only authentication-related fields
+            const cleanSession = {
+                customerId: session.customerId,
+                email: session.email,
+                createdAt: session.createdAt,
+                lastLogin: session.lastLogin,
+                // Remove: displayName (customer data)
+                // Remove: preferences (customer data)
+                // Remove: any other customer data
+            };
+            
+            // Update session with cleaned data
+            await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(cleanSession), { expirationTtl: 31536000 });
+            console.log(`[Cleanup] Removed customer data from OTP_AUTH_KV session for customer ${customerId}`);
+        }
+        
+        // Remove preferences from OTP_AUTH_KV (now in CUSTOMER_KV)
+        const prefsKey = getCustomerKey(customerId, `customer_preferences_${customerId}`);
+        const oldPrefs = await env.OTP_AUTH_KV.get(prefsKey);
+        if (oldPrefs) {
+            await env.OTP_AUTH_KV.delete(prefsKey);
+            console.log(`[Cleanup] Removed preferences from OTP_AUTH_KV for customer ${customerId}`);
+        }
+        
+        console.log(`[Cleanup] Successfully cleaned OTP_AUTH_KV for customer ${customerId}`);
+    } catch (error) {
+        // Don't fail login if cleanup fails - just log the error
+        console.error(`[Cleanup] Error cleaning OTP_AUTH_KV for customer ${customerId}:`, error);
+    }
+}

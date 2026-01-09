@@ -92,7 +92,7 @@ export async function handleLandingPage(request: Request, env: Env): Promise<Res
         try {
             const viteUrl = new URL(request.url);
             viteUrl.hostname = 'localhost';
-            viteUrl.port = '5175';
+            viteUrl.port = '5174';
             viteUrl.protocol = 'http:';
             
             // Create a new request with the updated URL
@@ -301,7 +301,7 @@ export async function handleDashboard(request: Request, env: Env): Promise<Respo
         // Proxy to main Vite dev server - dashboard is part of the main app now
         try {
             const url = new URL(request.url);
-            const viteUrl = `http://localhost:5175${url.pathname}`;
+            const viteUrl = `http://localhost:5174${url.pathname}`;
             const viteRequest = new Request(viteUrl, {
                 method: request.method,
                 headers: request.headers,

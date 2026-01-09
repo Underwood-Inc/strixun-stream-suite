@@ -68,10 +68,10 @@ jobs:
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "[WARNING] No test script found in URL Shortener - skipping tests"
+          echo "⚠ No test script found in URL Shortener - skipping tests"
           echo "::warning::URL Shortener has no test script - tests skipped"
           echo "::notice::Action Required: Add test script to URL Shortener package.json"
-          echo "## [WARNING] URL Shortener Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## ⚠ URL Shortener Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped (tests will be required when added)" >> $GITHUB_STEP_SUMMARY
 
   deploy:
@@ -108,14 +108,14 @@ jobs:
         working-directory: serverless/url-shortener
         run: |
           if [ ! -d "../../dist/url-shortener-app" ]; then
-            echo "[ERROR] Build output directory not found at ../../dist/url-shortener-app"
+            echo "✗ Build output directory not found at ../../dist/url-shortener-app"
             exit 1
           fi
           if [ ! -f "dist/app-assets.ts" ]; then
-            echo "[ERROR] app-assets.ts not found - build may have failed"
+            echo "✗ app-assets.ts not found - build may have failed"
             exit 1
           fi
-          echo "[SUCCESS] Build output verified"
+          echo "✓ Build output verified"
       
       - name: Deploy to Cloudflare Workers
         id: deploy
@@ -128,7 +128,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "[ERROR] Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
       
@@ -148,7 +148,7 @@ jobs:
       
       - name: Deployment Summary
         run: |
-          echo "## [SUCCESS] URL Shortener Deployed!" >> $GITHUB_STEP_SUMMARY
+          echo "## ✓ URL Shortener Deployed!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "The URL Shortener has been deployed to Cloudflare Workers." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

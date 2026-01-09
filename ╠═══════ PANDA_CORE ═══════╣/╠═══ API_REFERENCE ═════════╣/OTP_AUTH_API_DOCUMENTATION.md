@@ -1,6 +1,8 @@
 # OTP Auth Service - Complete API Documentation
 
-> **Complete API reference for the OTP Authentication Service** ★ ## Base URL
+> **Complete API reference for the OTP Authentication Service**
+
+## Base URL
 
 ```
 https://your-worker.workers.dev
@@ -8,17 +10,30 @@ https://your-worker.workers.dev
 
 ## Authentication
 
-All endpoints (except public endpoints) require API key authentication via one of:
+The OTP Auth Service uses a two-layer authentication system:
 
-- **Header**: `Authorization: Bearer {api_key}`
+### Layer 1: Tenant Identification (API Keys)
+For tenant identification and configuration (multi-tenancy):
 - **Header**: `X-OTP-API-Key: {api_key}`
+- **Purpose**: Identifies which tenant/organization
+- **Format**: `otp_live_sk_...` or `otp_test_sk_...`
+- **Used for**: `/auth/request-otp`, `/auth/verify-otp` (optional)
+
+### Layer 2: Customer Authentication (JWT Tokens)
+For customer authentication and authorization:
+- **Header**: `Authorization: Bearer {jwt_token}`
+- **Purpose**: Authenticates specific customer
+- **Format**: JWT token from `/auth/verify-otp`
+- **Used for**: `/auth/me`, `/auth/logout`, `/auth/quota`, etc.
+
+**CRITICAL**: API keys do NOT go in `Authorization` header. JWT tokens do NOT go in `X-OTP-API-Key` header.
 
 ---
 
 ## Public Endpoints
 
 ### POST `/signup`
-Public customer signup.
+Public customer signup (tenant registration).
 
 **Request:**
 ```json
@@ -39,7 +54,7 @@ Public customer signup.
 ```
 
 ### POST `/signup/verify`
-Verify signup email.
+Verify signup email and create tenant account.
 
 **Request:**
 ```json
@@ -106,16 +121,15 @@ Liveness probe.
 ## Authentication Endpoints
 
 ### POST `/auth/request-otp`
-Request an OTP code to be sent to an email address.
+Request an OTP code to be sent to a customer's email address.
 
 **Headers:**
-- `Authorization: Bearer {api_key}` (optional for backward compatibility)
-- `X-OTP-API-Key: {api_key}` (optional)
+- `X-OTP-API-Key: {api_key}` (optional - for multi-tenant identification)
 
 **Request:**
 ```json
 {
-  "email": "user@example.com"
+  "email": "alice@example.com"
 }
 ```
 
@@ -135,17 +149,16 @@ Request an OTP code to be sent to an email address.
 - `500` - Email sending failed
 
 ### POST `/auth/verify-otp`
-Verify an OTP code and get a JWT token.
+Verify an OTP code and get a JWT token for the customer.
 
 **Headers:**
-- `Authorization: Bearer {api_key}` (optional)
-- `X-OTP-API-Key: {api_key}` (optional)
+- `X-OTP-API-Key: {api_key}` (optional - for multi-tenant identification)
 
 **Request:**
 ```json
 {
-  "email": "user@example.com",
-  "otp": "123456"
+  "email": "alice@example.com",
+  "otp": "123456789"
 }
 ```
 
@@ -154,8 +167,9 @@ Verify an OTP code and get a JWT token.
 {
   "success": true,
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "userId": "user_abc123",
-  "email": "user@example.com",
+  "customerId": "cust_abc123",
+  "email": "alice@example.com",
+  "displayName": "CoolPanda42",
   "expiresAt": "2025-01-01T07:00:00.000Z"
 }
 ```
@@ -166,27 +180,28 @@ Verify an OTP code and get a JWT token.
 - `404` - OTP not found
 
 ### GET `/auth/me`
-Get current user information (requires JWT token).
+Get current customer information (requires JWT token).
 
 **Headers:**
-- `Authorization: Bearer {jwt_token}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT from verify-otp)
 
 **Response:**
 ```json
 {
   "success": true,
-  "userId": "user_abc123",
-  "email": "user@example.com",
+  "customerId": "cust_abc123",
+  "email": "alice@example.com",
+  "displayName": "CoolPanda42",
   "createdAt": "2025-01-01T00:00:00.000Z",
   "lastLogin": "2025-01-01T00:00:00.000Z"
 }
 ```
 
 ### POST `/auth/logout`
-Logout and revoke the current token.
+Logout and revoke the current JWT token.
 
 **Headers:**
-- `Authorization: Bearer {jwt_token}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT from verify-otp)
 
 **Response:**
 ```json
@@ -215,15 +230,43 @@ Refresh an expiring JWT token.
 }
 ```
 
----
-
-## Customer Management Endpoints
-
-### GET `/admin/customers/me`
-Get current customer information.
+### GET `/auth/quota`
+Get current quota usage for the authenticated customer.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT from verify-otp)
+- `X-OTP-API-Key: {api_key}` (optional - for cross-validation)
+
+**Response:**
+```json
+{
+  "success": true,
+  "quota": {
+    "plan": "pro",
+    "otpRequests": {
+      "used": 1250,
+      "limit": 10000,
+      "remaining": 8750
+    },
+    "period": {
+      "start": "2025-01-01T00:00:00.000Z",
+      "end": "2025-02-01T00:00:00.000Z"
+    }
+  }
+}
+```
+
+---
+
+## Tenant Management Endpoints
+
+**Note**: These endpoints use JWT authentication for tenant administrators, NOT API keys.
+
+### GET `/admin/customers/me`
+Get current tenant information.
+
+**Headers:**
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Response:**
 ```json
@@ -248,10 +291,10 @@ Get current customer information.
 ```
 
 ### PUT `/admin/customers/me`
-Update customer information.
+Update tenant information.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Request:**
 ```json
@@ -281,10 +324,10 @@ Update customer information.
 ## Configuration Endpoints
 
 ### GET `/admin/config`
-Get customer configuration.
+Get tenant configuration.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Response:**
 ```json
@@ -306,12 +349,12 @@ Get customer configuration.
     "rateLimits": {
       "otpRequestsPerHour": 50,
       "otpRequestsPerDay": 5000,
-      "maxUsers": 10000
+      "maxCustomers": 10000
     },
     "webhookConfig": {
       "url": "https://company.com/webhooks",
       "secret": "webhook_secret",
-      "events": ["otp.verified", "user.created"]
+      "events": ["otp.verified", "customer.created"]
     },
     "allowedOrigins": ["https://app.company.com"]
   },
@@ -326,10 +369,10 @@ Get customer configuration.
 ```
 
 ### PUT `/admin/config`
-Update customer configuration.
+Update tenant configuration.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Request:**
 ```json
@@ -357,7 +400,7 @@ Update customer configuration.
 Update email configuration.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Request:**
 ```json
@@ -383,10 +426,10 @@ Update email configuration.
 ## API Key Management Endpoints
 
 ### GET `/admin/customers/{customerId}/api-keys`
-List all API keys for a customer.
+List all API keys for a tenant.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Response:**
 ```json
@@ -408,7 +451,7 @@ List all API keys for a customer.
 Create a new API key.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Request:**
 ```json
@@ -432,7 +475,7 @@ Create a new API key.
 Rotate an API key.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Response:**
 ```json
@@ -449,7 +492,7 @@ Rotate an API key.
 Revoke an API key.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Response:**
 ```json
@@ -467,7 +510,7 @@ Revoke an API key.
 Request domain verification.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Request:**
 ```json
@@ -496,7 +539,7 @@ Request domain verification.
 Get domain verification status.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Response:**
 ```json
@@ -514,7 +557,7 @@ Get domain verification status.
 Verify domain DNS record.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Response:**
 ```json
@@ -532,10 +575,10 @@ Verify domain DNS record.
 ## Analytics Endpoints
 
 ### GET `/admin/analytics`
-Get usage analytics.
+Get usage analytics for tenant.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Query Parameters:**
 - `startDate` (optional) - Start date (YYYY-MM-DD), default: 30 days ago
@@ -555,8 +598,8 @@ Get usage analytics.
     "otpVerifications": 11800,
     "successRate": 94.4,
     "emailsSent": 12500,
-    "uniqueUsers": 0,
-    "newUsers": 0
+    "uniqueCustomers": 850,
+    "newCustomers": 120
   },
   "dailyBreakdown": [
     {
@@ -575,7 +618,7 @@ Get usage analytics.
 Get real-time metrics.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Response:**
 ```json
@@ -584,7 +627,7 @@ Get real-time metrics.
   "currentHour": {
     "otpRequests": 125,
     "otpVerifications": 118,
-    "activeUsers": 0
+    "activeCustomers": 45
   },
   "last24Hours": {
     "otpRequests": 2500,
@@ -607,7 +650,7 @@ Get real-time metrics.
 Get error analytics.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Query Parameters:**
 - `startDate` (optional)
@@ -652,10 +695,10 @@ Get error analytics.
 ## Onboarding Endpoints
 
 ### GET `/admin/onboarding`
-Get onboarding progress.
+Get onboarding progress for tenant.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Response:**
 ```json
@@ -682,7 +725,7 @@ Get onboarding progress.
 Update onboarding progress.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Request:**
 ```json
@@ -698,7 +741,7 @@ Update onboarding progress.
 Test OTP request (for onboarding).
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Request:**
 ```json
@@ -709,13 +752,13 @@ Test OTP request (for onboarding).
 
 ---
 
-## Customer Status Endpoints
+## Tenant Status Endpoints
 
 ### PUT `/admin/customers/{customerId}/status`
-Update customer status.
+Update tenant status.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for super admin)
 
 **Request:**
 ```json
@@ -737,34 +780,35 @@ Update customer status.
 ```
 
 ### POST `/admin/customers/{customerId}/suspend`
-Suspend customer.
+Suspend tenant.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for super admin)
 
 ### POST `/admin/customers/{customerId}/activate`
-Activate customer.
+Activate tenant.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for super admin)
 
 ---
 
 ## GDPR Endpoints
 
-### GET `/admin/users/{userId}/export`
-Export user data (GDPR).
+### GET `/admin/customers/{customerId}/export`
+Export customer data (GDPR compliance).
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for customer)
 
 **Response:**
 ```json
 {
   "success": true,
   "data": {
-    "userId": "user_abc123",
-    "email": "user@example.com",
+    "customerId": "cust_abc123",
+    "email": "alice@example.com",
+    "displayName": "CoolPanda42",
     "createdAt": "2025-01-01T00:00:00.000Z",
     "lastLogin": "2025-01-01T12:00:00.000Z"
   },
@@ -772,17 +816,17 @@ Export user data (GDPR).
 }
 ```
 
-### DELETE `/admin/users/{userId}`
-Delete user data (GDPR).
+### DELETE `/admin/customers/{customerId}`
+Delete customer data (GDPR compliance - right to be forgotten).
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for customer)
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "User data deleted successfully"
+  "message": "Customer data deleted successfully"
 }
 ```
 
@@ -791,10 +835,10 @@ Delete user data (GDPR).
 ## Audit Logs Endpoint
 
 ### GET `/admin/audit-logs`
-Get security audit logs.
+Get security audit logs for tenant.
 
 **Headers:**
-- `Authorization: Bearer {api_key}`
+- `Authorization: Bearer {jwt_token}` (REQUIRED - JWT for tenant admin)
 
 **Query Parameters:**
 - `startDate` (optional)
@@ -841,8 +885,8 @@ Get security audit logs.
 
 ## Rate Limits
 
-- **Per Email**: 3 OTP requests per hour (configurable per customer)
-- **Per Customer**: Based on plan (see quota endpoints)
+- **Per Email**: 3 OTP requests per hour (configurable per tenant)
+- **Per Tenant**: Based on plan (see quota endpoints)
 - **API Endpoints**: No specific limit (subject to Cloudflare Workers limits)
 
 ---
@@ -852,7 +896,7 @@ Get security audit logs.
 All webhook events include:
 - `event` - Event type
 - `timestamp` - ISO 8601 timestamp
-- `customerId` - Customer ID
+- `customerId` - Customer ID (tenant)
 - `data` - Event-specific data
 
 ### Event Types
@@ -860,10 +904,10 @@ All webhook events include:
 - `otp.requested` - OTP code requested
 - `otp.verified` - OTP successfully verified
 - `otp.failed` - OTP verification failed
-- `user.created` - New user account created
-- `user.logged_in` - User logged in
-- `user.logged_out` - User logged out
-- `quota.exceeded` - Customer quota exceeded
+- `customer.created` - New customer account created (person logging in)
+- `customer.logged_in` - Customer logged in
+- `customer.logged_out` - Customer logged out
+- `quota.exceeded` - Tenant quota exceeded
 - `rate_limit.exceeded` - Rate limit hit
 - `error_rate_high` - Error rate exceeds threshold
 
@@ -886,20 +930,38 @@ const isValid = crypto.timingSafeEqual(signature, expectedSignature);
 import { OTPAuth } from '@otpauth/sdk';
 
 const client = new OTPAuth({
-  apiKey: 'otp_live_sk_...',
+  apiKey: 'otp_live_sk_...',  // API key for tenant identification
   baseUrl: 'https://your-worker.workers.dev'
 });
 
-// Request OTP
-await client.requestOTP('user@example.com');
+// Request OTP (uses API key for tenant identification)
+await client.requestOTP('alice@example.com');
 
-// Verify OTP
-const auth = await client.verifyOTP('user@example.com', '123456');
+// Verify OTP (uses API key, returns JWT token)
+const auth = await client.verifyOTP('alice@example.com', '123456789');
 
-// Use token
-const user = await client.getMe(auth.token);
+// Use JWT token for authenticated requests
+const customer = await client.getMe(auth.token);  // Returns customer data
 ```
 
 ---
 
-**Complete API documentation for OTP Auth Service** ★ [FEATURE]
+## Data Model
+
+**CRITICAL**: This system uses CUSTOMER entities, not "USER" entities.
+
+- **TENANT**: Organization/company that uses the OTP Auth Service (has API key)
+- **CUSTOMER**: Individual person who logs in with OTP (has JWT token)
+
+**Entities:**
+- **TENANT** (identified by API key)
+  - Has: customerId (tenant ID), plan, configuration, API keys
+  - Example: "Acme Corp" tenant
+
+- **CUSTOMER** (authenticated by JWT)
+  - Has: customerId, email, displayName, session
+  - Example: "Alice" customer logging into Acme Corp's app
+
+---
+
+**Complete API documentation for OTP Auth Service**

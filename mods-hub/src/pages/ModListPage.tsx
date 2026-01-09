@@ -14,7 +14,7 @@ import { ModFilters } from '../components/mod/ModFilters';
 import { ViewToggle, type ViewType } from '../components/mod/ViewToggle';
 import { shouldRedirectToLogin } from '../utils/error-messages';
 import styled from 'styled-components';
-import { colors, spacing } from '../theme';
+import { colors, spacing, media } from '../theme';
 
 const PageContainer = styled.div`
   display: flex;
@@ -23,6 +23,12 @@ const PageContainer = styled.div`
   width: 100%;
   height: calc(100vh - 200px);
   min-height: 600px;
+  
+  ${media.mobile} {
+    gap: ${spacing.md};
+    height: auto;
+    min-height: 400px;
+  }
 `;
 
 const Header = styled.div`
@@ -30,12 +36,17 @@ const Header = styled.div`
   flex-direction: column;
   gap: ${spacing.md};
   flex-shrink: 0;
+  
+  ${media.mobile} {
+    gap: ${spacing.sm};
+  }
 `;
 
 const Title = styled.h1`
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 4vw, 2rem);
   font-weight: 700;
   color: ${colors.text};
+  margin: 0;
 `;
 
 const FiltersContainer = styled.div`
@@ -44,12 +55,23 @@ const FiltersContainer = styled.div`
   align-items: center;
   flex-wrap: wrap;
   justify-content: space-between;
+  
+  ${media.mobile} {
+    flex-direction: column;
+    align-items: stretch;
+    gap: ${spacing.sm};
+  }
 `;
 
 const HeaderActions = styled.div`
   display: flex;
   gap: ${spacing.md};
   align-items: center;
+  
+  ${media.mobile} {
+    width: 100%;
+    justify-content: center;
+  }
 `;
 
 const ListContainer = styled.div`
@@ -61,13 +83,26 @@ const ListContainer = styled.div`
   overflow: hidden;
 `;
 
+const SimpleListContainer = styled.div`
+  flex: 1;
+  min-height: 0;
+  background: ${colors.bg};
+  border: 1px solid ${colors.border};
+  border-radius: 8px;
+  overflow-y: auto;
+  
+  ${media.mobile} {
+    max-height: calc(100vh - 350px);
+  }
+`;
+
 const GridContainer = styled.div`
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding: ${spacing.md};
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 500px), 1fr));
   grid-auto-flow: row dense;
   gap: ${spacing.lg};
   align-items: start;
@@ -75,6 +110,17 @@ const GridContainer = styled.div`
   background: ${colors.bg};
   border: 1px solid ${colors.border};
   border-radius: 8px;
+  
+  ${media.mobile} {
+    grid-template-columns: 1fr;
+    gap: ${spacing.md};
+    padding: ${spacing.sm};
+  }
+  
+  ${media.tablet} {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+    gap: ${spacing.md};
+  }
 `;
 
 const Loading = styled.div`
@@ -122,8 +168,15 @@ const EndOfListIndicator = styled.div`
   color: ${colors.textMuted};
   font-size: 0.875rem;
   background: ${colors.bgSecondary};
-  border-top: 1px solid ${colors.border};
+  border: 1px solid ${colors.border};
+  border-radius: 8px;
   font-style: italic;
+  margin-top: ${spacing.md};
+  
+  ${media.mobile} {
+    padding: ${spacing.lg} ${spacing.md};
+    font-size: 0.8125rem;
+  }
 `;
 
 function getErrorMessage(error: unknown): { title: string; message: string; details?: string } {
@@ -208,6 +261,8 @@ export function ModListPage() {
     const [category, setCategory] = useState<string>('');
     const [search, setSearch] = useState('');
     const [listHeight, setListHeight] = useState(600);
+    const [itemHeight, setItemHeight] = useState(110);
+    const [isMobileView, setIsMobileView] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     
     // Load view preference from localStorage, default to 'list'
@@ -230,19 +285,28 @@ export function ModListPage() {
         visibility: 'public',
     });
 
-    // Calculate list height based on available space
+    // Calculate dimensions and determine rendering strategy
     useEffect(() => {
-        const updateHeight = () => {
+        const updateDimensions = () => {
+            const isMobile = window.innerWidth <= 768;
+            setIsMobileView(isMobile);
+            
             if (containerRef.current) {
                 const rect = containerRef.current.getBoundingClientRect();
                 const availableHeight = window.innerHeight - rect.top - 100;
                 setListHeight(Math.max(400, availableHeight));
             }
+            
+            // Set item height for virtualized list (desktop/tablet only)
+            if (!isMobile) {
+                const isTablet = window.innerWidth > 768 && window.innerWidth <= 1024;
+                setItemHeight(isTablet ? 140 : 110);
+            }
         };
 
-        updateHeight();
-        window.addEventListener('resize', updateHeight);
-        return () => window.removeEventListener('resize', updateHeight);
+        updateDimensions();
+        window.addEventListener('resize', updateDimensions);
+        return () => window.removeEventListener('resize', updateDimensions);
     }, []);
 
     const errorInfo = error ? getErrorMessage(error) : null;
@@ -287,37 +351,42 @@ export function ModListPage() {
                     {data.mods.length === 0 ? (
                         <EmptyState>No mods found</EmptyState>
                     ) : view === 'list' ? (
-                        <ListContainer>
-                            <List
-                                height={listHeight}
-                                itemCount={data.mods.length + 1}
-                                itemSize={110}
-                                width="100%"
-                            >
-                                {({ index, style }) => {
-                                    if (index === data.mods.length) {
-                                        return (
-                                            <div style={{ ...style, paddingTop: spacing.xl, paddingBottom: spacing.xl }}>
-                                                <EndOfListIndicator>
-                                                    End of mods list — no more mods to display
-                                                </EndOfListIndicator>
-                                            </div>
-                                        );
-                                    }
-                                    return (
-                                        <div style={style}>
-                                            <ModListItem mod={data.mods[index]} />
-                                        </div>
-                                    );
-                                }}
-                            </List>
-                        </ListContainer>
+                        <>
+                            {isMobileView ? (
+                                <SimpleListContainer>
+                                    {data.mods.map((mod) => (
+                                        <ModListItem key={mod.id} mod={mod} />
+                                    ))}
+                                </SimpleListContainer>
+                            ) : (
+                                <ListContainer>
+                                    <List
+                                        height={listHeight}
+                                        itemCount={data.mods.length}
+                                        itemSize={itemHeight}
+                                        width="100%"
+                                    >
+                                        {({ index, style }) => {
+                                            const mod = data.mods[index];
+                                            return (
+                                                <div key={mod.id} style={style}>
+                                                    <ModListItem mod={mod} />
+                                                </div>
+                                            );
+                                        }}
+                                    </List>
+                                </ListContainer>
+                            )}
+                            <EndOfListIndicator>
+                                End of mods list — no more mods to display
+                            </EndOfListIndicator>
+                        </>
                     ) : (
                         <GridContainer>
                             {data.mods.map((mod) => (
                                 <ModCard key={mod.id} mod={mod} />
                             ))}
-                            <div style={{ 
+                            <div key="end-of-list" style={{ 
                                 gridColumn: '1 / -1', 
                                 padding: `${spacing.xl} ${spacing.lg}`,
                                 textAlign: 'center',

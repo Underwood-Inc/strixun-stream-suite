@@ -27,7 +27,11 @@ if (!jwtToken) {
   process.exit(1);
 }
 
-const healthUrl = `http://localhost:${port}/health`;
+// Try both localhost and 127.0.0.1 (Windows networking quirk)
+const healthUrls = [
+  `http://localhost:${port}/health`,
+  `http://127.0.0.1:${port}/health`
+];
 const workerPath = join(__dirname, '..', workerDir);
 
 // Calculate unique inspector port to avoid conflicts (9229 + offset based on worker port)
@@ -49,48 +53,88 @@ let healthCheckAttempts = 0;
 const maxAttempts = 90; // 90 attempts * 2 seconds = 3 minutes max
 const checkInterval = 2000; // Check every 2 seconds
 
-// Wait for health check to pass before allowing Playwright to proceed
-// This blocks until health check succeeds or max attempts reached
+// Wait for wrangler to be ready, then do a simple health check
+// This blocks until wrangler is ready and health check succeeds
 const waitForHealth = async () => {
-  // Wait a bit for wrangler to start
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  // Wait for wrangler to start (it will print "Ready on http://127.0.0.1:PORT")
+  // Give it plenty of time on Windows
+  console.log(`[Worker Start] Waiting for ${workerDir} to start...`);
+  await new Promise(resolve => setTimeout(resolve, 8000)); // Wait 8 seconds for wrangler to start
   
+  console.log(`[Worker Start] Verifying ${workerDir} health...`);
+  
+  // Now do health checks (with retries)
   while (!healthCheckPassed && healthCheckAttempts < maxAttempts) {
     healthCheckAttempts++;
     
-    try {
-      const response = await fetch(healthUrl, {
-        headers: {
-          'Authorization': `Bearer ${jwtToken}`,
-        },
-      });
-
-      if (response.ok) {
-        console.log(`[Worker Start] ✓ ${workerDir} is healthy (checked with JWT)`);
-        healthCheckPassed = true;
-        return; // Health check passed, proceed
-      } else {
-        if (healthCheckAttempts % 10 === 0) {
-          console.log(`[Worker Start] Waiting for ${workerDir}... (attempt ${healthCheckAttempts}/${maxAttempts}, status: ${response.status})`);
+    // Try each health URL (localhost and 127.0.0.1)
+    for (const healthUrl of healthUrls) {
+      try {
+        // Try without JWT first (health endpoint might be public)
+        let response = null;
+        try {
+          response = await fetch(healthUrl, {
+            signal: AbortSignal.timeout(3000),
+          });
+        } catch (noJwtError) {
+          // If that fails, try with JWT
+          try {
+            response = await fetch(healthUrl, {
+              headers: {
+                'Authorization': `Bearer ${jwtToken}`,
+              },
+              signal: AbortSignal.timeout(3000),
+            });
+          } catch (jwtError) {
+            // Both failed for this URL, try next URL
+            continue;
+          }
         }
-      }
-    } catch (error) {
-      if (healthCheckAttempts % 10 === 0) {
-        console.log(`[Worker Start] Waiting for ${workerDir}... (attempt ${healthCheckAttempts}/${maxAttempts}, error: ${error.message})`);
+
+        // Verify response is actually healthy
+        if (response) {
+          if (response.ok) {
+            // 200 means service is fully healthy
+            console.log(`[Worker Start] ✓ ${workerDir} is healthy (status: ${response.status})`);
+            healthCheckPassed = true;
+            return;
+          } else if (response.status === 401) {
+            // Health endpoint requires JWT, so 401 is expected - verify it's a proper 401 response
+            const responseText = await response.text();
+            if (responseText.includes('JWT token') || responseText.includes('Unauthorized')) {
+              // Proper 401 means service is running and responding correctly
+              console.log(`[Worker Start] ✓ ${workerDir} is healthy (status: ${response.status} - service requires JWT)`);
+              healthCheckPassed = true;
+              return;
+            }
+          } else if (response.status === 404) {
+            // 404 might mean endpoint doesn't exist, but service is running
+            console.log(`[Worker Start] ⚠ ${workerDir} returned 404 - service is running but endpoint may not exist`);
+            healthCheckPassed = true;
+            return;
+          }
+        }
+      } catch (error) {
+        // Connection errors - service is NOT running, wait and retry
+        // Do NOT treat this as "service is running"
+        continue;
       }
     }
     
-    // Wait before next attempt
-    if (!healthCheckPassed) {
+    // If we get here, all URLs failed - wait and retry
+    console.log(`[Worker Start] Health check failed, retrying... (attempt ${healthCheckAttempts}/${maxAttempts})`);
+    
+    if (healthCheckAttempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, checkInterval));
+    } else {
+      // Exhausted retries - worker failed to start
+      throw new Error(`[Worker Start] ✗ ${workerDir} failed to start after ${maxAttempts} attempts. Check worker logs for errors.`);
     }
   }
   
-  // If we get here, health check failed
+  // If we get here, health check passed
   if (!healthCheckPassed) {
-    console.error(`[Worker Start] ✗ ${workerDir} health check failed after ${maxAttempts} attempts`);
-    wrangler.kill();
-    process.exit(1);
+    throw new Error(`[Worker Start] ✗ ${workerDir} health check failed after ${maxAttempts} attempts`);
   }
 };
 

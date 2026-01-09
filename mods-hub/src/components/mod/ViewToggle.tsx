@@ -4,7 +4,7 @@
  */
 
 import styled from 'styled-components';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, media } from '../../theme';
 
 const ToggleContainer = styled.div`
   display: flex;
@@ -14,6 +14,12 @@ const ToggleContainer = styled.div`
   background: ${colors.bgSecondary};
   border: 1px solid ${colors.border};
   border-radius: 6px;
+  
+  ${media.mobile} {
+    width: 100%;
+    justify-content: stretch;
+    gap: ${spacing.xs};
+  }
 `;
 
 const ToggleButton = styled.button<{ $active: boolean }>`
@@ -30,6 +36,8 @@ const ToggleButton = styled.button<{ $active: boolean }>`
   font-weight: ${props => props.$active ? 600 : 400};
   cursor: pointer;
   transition: all 0.2s ease;
+  min-width: 44px;
+  min-height: 44px;
   
   &:hover {
     background: ${props => props.$active ? colors.accentHover : colors.bgTertiary};
@@ -39,11 +47,20 @@ const ToggleButton = styled.button<{ $active: boolean }>`
   &:active {
     transform: scale(0.98);
   }
+  
+  ${media.mobile} {
+    flex: 1;
+    padding: ${spacing.sm};
+  }
 `;
 
 const Icon = styled.span`
   font-size: 1rem;
   line-height: 1;
+  
+  ${media.mobile} {
+    font-size: 1.125rem;
+  }
 `;
 
 export type ViewType = 'list' | 'card';

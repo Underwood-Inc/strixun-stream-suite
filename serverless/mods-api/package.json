@@ -10,12 +10,14 @@
     "deploy": "wrangler deploy",
     "deploy:prod": "wrangler deploy --env production",
     "tail": "wrangler tail",
-    "tail:prod": "wrangler tail --env production",
+    "tail:prod": "wrangler tail --env production", 
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests",
     "setup:test-secrets": "node scripts/setup-test-secrets.js",
-    "dev:with-secrets": "pnpm setup:test-secrets && pnpm dev"
+    "dev:with-secrets": "pnpm setup:test-secrets && pnpm dev",
+    "migration:dry-run": "wrangler dev --local --test-scheduled --var MIGRATION_DRY_RUN:true scripts/run-migration.ts",
+    "migration:run": "wrangler dev --local --test-scheduled scripts/run-migration.ts"
   },
   "dependencies": {
     "@strixun/api-framework": "workspace:*",
@@ -30,4 +32,3 @@
     "vitest": "^4.0.16"
   }
 }
-

@@ -113,7 +113,6 @@ describe('File Verification Handler', () => {
             });
 
             const auth = {
-                userId: 'user-123',
                 customerId: 'cust-123',
             };
 

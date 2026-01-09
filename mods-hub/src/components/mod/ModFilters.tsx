@@ -4,13 +4,20 @@
  */
 
 import styled from 'styled-components';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, media } from '../../theme';
 
 const Container = styled.div`
   display: flex;
   gap: ${spacing.md};
   align-items: center;
   flex-wrap: wrap;
+  
+  ${media.mobile} {
+    flex-direction: column;
+    align-items: stretch;
+    gap: ${spacing.sm};
+    width: 100%;
+  }
 `;
 
 const Input = styled.input`
@@ -21,6 +28,7 @@ const Input = styled.input`
   color: ${colors.text};
   font-size: 0.875rem;
   min-width: 200px;
+  flex: 1;
   
   &:focus {
     border-color: ${colors.accent};
@@ -29,6 +37,11 @@ const Input = styled.input`
   
   &::placeholder {
     color: ${colors.textMuted};
+  }
+  
+  ${media.mobile} {
+    min-width: 0;
+    width: 100%;
   }
 `;
 
@@ -40,10 +53,15 @@ const Select = styled.select`
   color: ${colors.text};
   font-size: 0.875rem;
   cursor: pointer;
+  flex-shrink: 0;
   
   &:focus {
     border-color: ${colors.accent};
     outline: none;
+  }
+  
+  ${media.mobile} {
+    width: 100%;
   }
 `;
 

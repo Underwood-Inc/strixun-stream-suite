@@ -238,7 +238,7 @@ curl -I https://s.idling.app/mycode
 {
   url: string;                    // Original URL
   shortCode: string;              // Short code (3-20 chars)
-  userId: string;                 // User ID from JWT
+  customerId: string;                 // User ID from JWT
   email: string;                   // User email
   createdAt: string;              // ISO timestamp
   clickCount: number;             // Number of clicks
@@ -276,7 +276,7 @@ curl -I https://s.idling.app/mycode
 ### KV Structure
 
 - `url_{shortCode}` - URL data (with expiration TTL)
-- `user_urls_{userId}` - List of short codes for a user
+- `user_urls_{customerId}` - List of short codes for a user
 - `analytics_{shortCode}_{timestamp}` - Individual click analytics entries
 
 ### Analytics

@@ -120,7 +120,7 @@ NETWORK_INTEGRITY_KEYPHRASE=${TEST_VALUES.NETWORK_INTEGRITY_KEYPHRASE}
 VITE_MODS_ENCRYPTION_KEY=${TEST_VALUES.MODS_ENCRYPTION_KEY}
 `);
 
-  console.log('\n✅ Cloud IDE setup complete!');
+  console.log('\n✓ Cloud IDE setup complete!');
   console.log('\n📝 Created files:');
   console.log('   - serverless/otp-auth-service/.dev.vars');
   console.log('   - serverless/mods-api/.dev.vars');

@@ -54,7 +54,7 @@ jobs:
         run: |
           if git diff --quiet README.md; then
             echo "changed=false" >> $GITHUB_OUTPUT
-            echo "ℹ️  No changes detected in README.md"
+            echo "ℹ  No changes detected in README.md"
           else
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "📝 Changes detected in README.md"
@@ -72,13 +72,13 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## ✅ Version Badge Update" >> $GITHUB_STEP_SUMMARY
+          echo "## ✓ Version Badge Update" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** \`${{ steps.get_version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.check_changes.outputs.changed }}" == "true" ]; then
-            echo "✅ **Status:** Badge updated and committed" >> $GITHUB_STEP_SUMMARY
+            echo "✓ **Status:** Badge updated and committed" >> $GITHUB_STEP_SUMMARY
           else
-            echo "ℹ️  **Status:** No changes needed (badge already up to date)" >> $GITHUB_STEP_SUMMARY
+            echo "ℹ  **Status:** No changes needed (badge already up to date)" >> $GITHUB_STEP_SUMMARY
           fi
 

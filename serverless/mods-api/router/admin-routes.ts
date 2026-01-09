@@ -149,37 +149,6 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             return await wrapWithEncryption(response, auth, request, env);
         }
 
-        // Route: GET /admin/users - List all users
-        if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'users' && request.method === 'GET') {
-            const { handleListUsers } = await import('../handlers/admin/users.js');
-            const response = await handleListUsers(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
-        }
-
-        // Route: GET /admin/users/:userId - Get user details
-        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'users' && request.method === 'GET') {
-            const userId = pathSegments[2];
-            const { handleGetUserDetails } = await import('../handlers/admin/users.js');
-            const response = await handleGetUserDetails(request, env, userId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
-        }
-
-        // Route: PUT /admin/users/:userId - Update user
-        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'users' && request.method === 'PUT') {
-            const userId = pathSegments[2];
-            const { handleUpdateUser } = await import('../handlers/admin/users.js');
-            const response = await handleUpdateUser(request, env, userId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
-        }
-
-        // Route: GET /admin/users/:userId/mods - Get user's mods
-        if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'users' && pathSegments[3] === 'mods' && request.method === 'GET') {
-            const userId = pathSegments[2];
-            const { handleGetUserMods } = await import('../handlers/admin/users.js');
-            const response = await handleGetUserMods(request, env, userId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
-        }
-
         // Route: GET /admin/settings - Get admin settings
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'settings' && request.method === 'GET') {
             const { handleGetSettings } = await import('../handlers/admin/settings.js');
@@ -192,6 +161,48 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             const { handleUpdateSettings } = await import('../handlers/admin/settings.js');
             const response = await handleUpdateSettings(request, env, auth);
             return await wrapWithEncryption(response, auth, request, env);
+        }
+
+        // Route: POST /admin/migrate/dry-run - Run migration analysis (no changes)
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'migrate' && pathSegments[2] === 'dry-run' && request.method === 'POST') {
+            const { dryRunVariantMigration } = await import('../scripts/migrate-variants-to-versions.js');
+            const stats = await dryRunVariantMigration(env);
+            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const headers: Record<string, string> = {};
+            corsHeaders.forEach((value, key) => {
+                headers[key] = value;
+            });
+            return {
+                response: new Response(JSON.stringify(stats, null, 2), {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...headers
+                    }
+                }),
+                customerId: null
+            };
+        }
+
+        // Route: POST /admin/migrate/run - Execute actual migration
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'migrate' && pathSegments[2] === 'run' && request.method === 'POST') {
+            const { migrateAllVariantsToVersions } = await import('../scripts/migrate-variants-to-versions.js');
+            const stats = await migrateAllVariantsToVersions(env);
+            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const headers: Record<string, string> = {};
+            corsHeaders.forEach((value, key) => {
+                headers[key] = value;
+            });
+            return {
+                response: new Response(JSON.stringify(stats, null, 2), {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...headers
+                    }
+                }),
+                customerId: null
+            };
         }
 
         // 404 for unknown admin routes

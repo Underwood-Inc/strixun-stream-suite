@@ -16,11 +16,11 @@ const projectRoot = join(__dirname, '..');
 // ASCII to Emoji restoration mapping (inverted from replace-emojis.js)
 // Note: These are the ASCII replacements that will be restored to emojis
 const asciiToEmoji = {
-  '✓': '✅',
-  '✗': '❌',
-  '⚠': '⚠️',
+  '✓': '✓',
+  '✗': '✗',
+  '⚠': '⚠',
   '[SECURITY]': '🔒',
-  'ℹ': 'ℹ️',
+  'ℹ': 'ℹ',
   '[NOTE]': '📝',
   '[DEPLOY]': '🚀',
   '[CONFIG]': '🔧',

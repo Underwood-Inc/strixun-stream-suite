@@ -7,7 +7,7 @@ import { ModManagePage } from './pages/ModManagePage';
 import { ModReviewPage } from './pages/ModReviewPage';
 import { AdminPanel } from './pages/AdminPanel';
 import { R2ManagementPage } from './pages/R2ManagementPage';
-import { UserManagementPage } from './pages/UserManagementPage';
+import { CustomerManagementPage } from './pages/UserManagementPage';
 import { UserDashboardPage } from './pages/UserDashboardPage';
 import { UserProfilePage } from './pages/UserProfilePage';
 import { PublicUserProfilePage } from './pages/PublicUserProfilePage';
@@ -100,10 +100,10 @@ export function App() {
                         } 
                     />
                     <Route 
-                        path="/admin/users" 
+                        path="/admin/customers" 
                         element={
                             <AdminRoute>
-                                <UserManagementPage />
+                                <CustomerManagementPage />
                             </AdminRoute>
                         } 
                     />
@@ -123,8 +123,8 @@ export function App() {
                             </AdminRoute>
                         } 
                     />
-                    {/* Support both /users/:username and /:username for user profiles (for subdomain and non-subdomain) */}
-                    <Route path="/users/:username" element={<PublicUserProfilePage />} />
+                    {/* Support both /customers/:username and /:username for customer profiles (for subdomain and non-subdomain) */}
+                    <Route path="/customers/:username" element={<PublicUserProfilePage />} />
                     {/* Support both /mods/:slug (for non-subdomain deployments) and /:slug (for mods. subdomain) */}
                     <Route 
                         path="/mods/:slug/review" 

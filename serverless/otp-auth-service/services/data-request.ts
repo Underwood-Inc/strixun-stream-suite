@@ -2,12 +2,12 @@
  * Data Request Service
  * 
  * Manages sensitive data requests where super admins can request access to
- * double-encrypted user data (like email/userId), and users can approve/reject.
+ * double-encrypted customer data (like email/customerId), and customers can approve/reject.
  * 
  * Architecture:
- * - Super admin creates request for user's sensitive data
+ * - Super admin creates request for customer's sensitive data
  * - Request includes reason and data type
- * - User (data owner) can approve/reject request
+ * - Customer (data owner) can approve/reject request
  * - When approved, request key is encrypted with requester's JWT
  * - Requester can use request key + owner's JWT to decrypt double-encrypted data
  */
@@ -21,9 +21,9 @@ export interface DataRequest {
     requestId: string;
     requesterId: string;        // Super admin customerId
     requesterEmail: string;     // Super admin email
-    targetUserId: string;        // User whose data is requested (email)
-    targetCustomerId: string | null; // User's customerId
-    dataType: 'email' | 'userId' | 'custom';
+    targetUserId: string;        // Customer whose data is requested (email) - legacy field name
+    targetCustomerId: string | null; // Customer's customerId
+    dataType: 'email' | 'customerId' | 'custom';
     reason: string;
     status: 'pending' | 'approved' | 'rejected' | 'expired';
     requestKey?: string;         // Plain request key (only stored when approved, encrypted with requester's JWT)
@@ -38,9 +38,9 @@ export interface DataRequest {
 export interface CreateDataRequestParams {
     requesterId: string;
     requesterEmail: string;
-    targetUserId: string;
+    targetUserId: string;        // Legacy field name - represents customer email
     targetCustomerId: string | null;
-    dataType: 'email' | 'userId' | 'custom';
+    dataType: 'email' | 'customerId' | 'custom';
     reason: string;
     expiresIn?: number;          // TTL in seconds (default: 30 days = 2592000)
 }
@@ -59,7 +59,7 @@ interface Env {
 
 const DEFAULT_EXPIRES_IN = 30 * 24 * 60 * 60; // 30 days in seconds
 const REQUEST_KEY_PREFIX = 'data_request_';
-const USER_REQUESTS_INDEX_PREFIX = 'user_requests_'; // Index: user_requests_{targetUserId}
+const CUSTOMER_REQUESTS_INDEX_PREFIX = 'customer_requests_'; // Index: customer_requests_{targetCustomerId}
 const REQUESTER_REQUESTS_INDEX_PREFIX = 'requester_requests_'; // Index: requester_requests_{requesterId}
 
 /**
@@ -70,11 +70,11 @@ function getRequestKey(requestId: string, customerId: string | null): string {
 }
 
 /**
- * Get KV key for user's requests index
+ * Get KV key for customer's requests index
  */
-function getUserRequestsIndexKey(targetUserId: string, customerId: string | null): string {
-    // Use userId directly (it's already an email, which is unique)
-    return getCustomerKey(customerId, `${USER_REQUESTS_INDEX_PREFIX}${targetUserId}`);
+function getCustomerRequestsIndexKey(targetUserId: string, customerId: string | null): string {
+    // Use targetUserId directly (it's actually an email, which is unique) - legacy field name
+    return getCustomerKey(customerId, `${CUSTOMER_REQUESTS_INDEX_PREFIX}${targetUserId}`);
 }
 
 /**
@@ -126,11 +126,11 @@ export async function createDataRequest(
         expirationTtl: expiresIn,
     });
 
-    // Add to user's requests index
-    const userIndexKey = getUserRequestsIndexKey(params.targetUserId, params.targetCustomerId);
-    const userIndex = await env.OTP_AUTH_KV.get(userIndexKey, { type: 'json' }) as string[] | null;
-    const updatedUserIndex = userIndex ? [...userIndex, requestId] : [requestId];
-    await env.OTP_AUTH_KV.put(userIndexKey, JSON.stringify(updatedUserIndex), {
+    // Add to customer's requests index
+    const customerIndexKey = getCustomerRequestsIndexKey(params.targetUserId, params.targetCustomerId);
+    const customerIndex = await env.OTP_AUTH_KV.get(customerIndexKey, { type: 'json' }) as string[] | null;
+    const updatedCustomerIndex = customerIndex ? [...customerIndex, requestId] : [requestId];
+    await env.OTP_AUTH_KV.put(customerIndexKey, JSON.stringify(updatedCustomerIndex), {
         expirationTtl: expiresIn,
     });
 
@@ -172,15 +172,15 @@ export async function getDataRequest(
 }
 
 /**
- * Get all requests for a user (target)
+ * Get all requests for a customer (target)
  */
-export async function getUserDataRequests(
+export async function getCustomerDataRequests(
     targetUserId: string,
     targetCustomerId: string | null,
     env: Env
 ): Promise<DataRequest[]> {
-    const userIndexKey = getUserRequestsIndexKey(targetUserId, targetCustomerId);
-    const requestIds = await env.OTP_AUTH_KV.get(userIndexKey, { type: 'json' }) as string[] | null;
+    const customerIndexKey = getCustomerRequestsIndexKey(targetUserId, targetCustomerId);
+    const requestIds = await env.OTP_AUTH_KV.get(customerIndexKey, { type: 'json' }) as string[] | null;
     
     if (!requestIds || requestIds.length === 0) {
         return [];
@@ -260,7 +260,7 @@ export async function approveDataRequest(
         throw new Error('Data request has expired');
     }
 
-    // Verify owner is the target user
+    // Verify owner is the target customer
     if (request.targetUserId !== params.ownerUserId) {
         throw new Error('Only the data owner can approve this request');
     }
@@ -308,7 +308,7 @@ export async function rejectDataRequest(
         throw new Error(`Cannot reject request with status: ${request.status}`);
     }
 
-    // Verify owner is the target user
+    // Verify owner is the target customer
     if (request.targetUserId !== ownerUserId) {
         throw new Error('Only the data owner can reject this request');
     }

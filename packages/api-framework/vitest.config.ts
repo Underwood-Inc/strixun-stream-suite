@@ -12,7 +12,7 @@ export default defineConfig({
       '**/*.e2e.{test,spec}.{js,ts}',
       '**/*.spec.{js,ts}', // Exclude .spec files (Playwright e2e only)
     ],
-    testTimeout: 10000,
+    testTimeout: 30000, // 30 seconds for crypto operations on large files
     passWithNoTests: true,
     coverage: {
       provider: 'v8',

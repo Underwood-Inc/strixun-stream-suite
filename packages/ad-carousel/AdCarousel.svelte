@@ -45,6 +45,7 @@
   // DISABLED: Portal removed to simplify
   // let portalContainer: HTMLDivElement | null = null;
   let isDimmed = defaultDimmed;
+  let isCollapsed = false; // New: collapsed state for non-intrusive banner mode
   // DISABLED: Removed isMounted tracking
   // let isMounted = false;
   let isDragging = false;
@@ -58,6 +59,7 @@
 
   interface SavedState {
     dimmed: boolean;
+    collapsed?: boolean; // New: persist collapsed state
     x?: number;
     y?: number;
   }
@@ -70,6 +72,9 @@
       if (state.dimmed !== undefined) {
         isDimmed = state.dimmed;
       }
+      if (state.collapsed !== undefined) {
+        isCollapsed = state.collapsed;
+      }
       if (state.x !== undefined && state.y !== undefined) {
         currentX = state.x;
         currentY = state.y;
@@ -80,10 +85,16 @@
   function saveState(): void {
     const state: SavedState = {
       dimmed: isDimmed,
+      collapsed: isCollapsed,
       x: currentX,
       y: currentY
     };
     storage.set(storageKey, state);
+  }
+
+  function toggleCollapsed(): void {
+    isCollapsed = !isCollapsed;
+    saveState();
   }
 
   function toggleDimmed(): void {
@@ -145,9 +156,10 @@
     currentX = clientX - dragStartX;
     currentY = clientY - dragStartY;
     
-    // Constrain to viewport (simplified - no offsetHeight call to prevent blocking)
+    // Constrain to viewport - use actual height based on collapsed state
+    const actualHeight = isCollapsed ? 40 : maxHeight;
     const maxX = window.innerWidth - width;
-    const maxY = window.innerHeight - maxHeight;
+    const maxY = window.innerHeight - actualHeight;
     
     currentX = Math.max(0, Math.min(currentX, maxX));
     currentY = Math.max(0, Math.min(currentY, maxY));
@@ -276,7 +288,8 @@
 <div
   bind:this={carouselContainer}
   class="ad-carousel ad-carousel--{position} {className}"
-  class:ad-carousel--dimmed={isDimmed}
+  class:ad-carousel--dimmed={isDimmed && !isCollapsed}
+  class:ad-carousel--collapsed={isCollapsed}
   class:ad-carousel--dragging={isDragging}
   style={getPositionStyles()}
 >
@@ -291,28 +304,51 @@
         <circle cx="15" cy="19" r="1"/>
       </svg>
     </div>
-    <button
-      class="ad-carousel__dim-button"
-      on:click|stopPropagation={toggleDimmed}
-      aria-label={isDimmed ? 'Show ad carousel' : 'Dim ad carousel'}
-      type="button"
-    >
-      {isDimmed ? 'Show' : 'Dim'}
-    </button>
+    <div class="ad-carousel__buttons">
+      <button
+        class="ad-carousel__collapse-button"
+        on:click|stopPropagation={toggleCollapsed}
+        aria-label={isCollapsed ? 'Expand ad carousel' : 'Collapse ad carousel'}
+        title={isCollapsed ? 'Expand' : 'Collapse'}
+        type="button"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          {#if isCollapsed}
+            <!-- Expand icon (chevron down) -->
+            <polyline points="6 9 12 15 18 9"/>
+          {:else}
+            <!-- Collapse icon (chevron up) -->
+            <polyline points="18 15 12 9 6 15"/>
+          {/if}
+        </svg>
+      </button>
+      {#if !isCollapsed}
+        <button
+          class="ad-carousel__dim-button"
+          on:click|stopPropagation={toggleDimmed}
+          aria-label={isDimmed ? 'Show ad carousel' : 'Dim ad carousel'}
+          type="button"
+        >
+          {isDimmed ? 'Show' : 'Dim'}
+        </button>
+      {/if}
+    </div>
   </div>
   
-  <div class="ad-carousel__content">
-    <Carousel
-      {autoRotate}
-      {interval}
-      {showIndicators}
-      {showControls}
-      effect="slide"
-      loop={false}
-    >
-      <slot />
-    </Carousel>
-  </div>
+  {#if !isCollapsed}
+    <div class="ad-carousel__content">
+      <Carousel
+        {autoRotate}
+        {interval}
+        {showIndicators}
+        {showControls}
+        effect="slide"
+        loop={false}
+      >
+        <slot />
+      </Carousel>
+    </div>
+  {/if}
 </div>
 
 <style lang="scss">
@@ -326,10 +362,19 @@
     display: flex;
     flex-direction: column;
     overflow: visible;
-    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform, opacity;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity, max-height;
     z-index: 99999;
     user-select: none;
+  }
+
+  .ad-carousel--collapsed {
+    max-height: 40px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    
+    .ad-carousel__header {
+      border-bottom: none;
+    }
   }
 
   .ad-carousel--dimmed {
@@ -372,6 +417,49 @@
 
     .ad-carousel--dragging & {
       cursor: grabbing;
+    }
+  }
+
+  .ad-carousel__buttons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ad-carousel__collapse-button {
+    padding: 4px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    &:hover {
+      background: var(--border);
+      color: var(--text);
+      border-color: var(--border-light);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
   }
 

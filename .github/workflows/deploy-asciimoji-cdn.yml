@@ -146,20 +146,20 @@ jobs:
       - name: Verify Build Output
         working-directory: packages/asciimoji
         run: |
-          echo "[INFO] Verifying build output..."
+          echo "ℹ Verifying build output..."
           
           if [ ! -f "dist/js/index.js" ]; then
-            echo "❌ ERROR: dist/js/index.js not found"
+            echo "✗ ERROR: dist/js/index.js not found"
             exit 1
           fi
           
           if [ ! -f "dist/js/index.min.js" ]; then
-            echo "❌ ERROR: dist/js/index.min.js not found"
+            echo "✗ ERROR: dist/js/index.min.js not found"
             exit 1
           fi
           
           if [ ! -f "dist/js/index.esm.js" ]; then
-            echo "❌ ERROR: dist/js/index.esm.js not found"
+            echo "✗ ERROR: dist/js/index.esm.js not found"
             exit 1
           fi
           
@@ -167,17 +167,17 @@ jobs:
           DEV_SIZE=$(stat -f%z dist/js/index.js 2>/dev/null || stat -c%s dist/js/index.js 2>/dev/null)
           MIN_SIZE=$(stat -f%z dist/js/index.min.js 2>/dev/null || stat -c%s dist/js/index.min.js 2>/dev/null)
           
-          echo "✅ Build output verified:"
+          echo "✓ Build output verified:"
           echo "   - Development bundle: $(numfmt --to=iec-i --suffix=B $DEV_SIZE 2>/dev/null || echo "${DEV_SIZE} bytes")"
           echo "   - Production bundle: $(numfmt --to=iec-i --suffix=B $MIN_SIZE 2>/dev/null || echo "${MIN_SIZE} bytes")"
           
           # Verify bundle contains expected exports
           if ! grep -q "AsciimojiTransformer" dist/js/index.min.js; then
-            echo "⚠️  WARNING: AsciimojiTransformer not found in minified bundle"
+            echo "⚠  WARNING: AsciimojiTransformer not found in minified bundle"
           fi
           
           if ! grep -q "transformAsciimojiText" dist/js/index.min.js; then
-            echo "⚠️  WARNING: transformAsciimojiText not found in minified bundle"
+            echo "⚠  WARNING: transformAsciimojiText not found in minified bundle"
           fi
       
       - name: Create CDN Directory Structure

@@ -7,11 +7,11 @@
 import { writable, derived, get } from 'svelte/store';
 import type { Writable, Readable } from 'svelte/store';
 import type { ChatMessage, RoomMetadata, ChatConnectionState } from '../types/chat';
-import { user } from './auth';
+import { customer } from './auth';
 
-export interface UserPresence {
-  userId: string;
-  userName: string;
+export interface CustomerPresence {
+  customerId: string;
+  customerName: string;
   status: 'online' | 'offline' | 'away';
   lastSeen?: string;
 }
@@ -22,7 +22,7 @@ export interface ChatState {
   connectionState: ChatConnectionState;
   participants: string[];
   isTyping: Set<string>;
-  presence: Map<string, UserPresence>; // userId -> presence data
+  presence: Map<string, CustomerPresence>; // customerId -> presence data
 }
 
 // Main chat store
@@ -95,30 +95,30 @@ export function setConnectionState(state: ChatConnectionState): void {
   }));
 }
 
-export function addParticipant(userId: string): void {
+export function addParticipant(customerId: string): void {
   chatState.update((state) => {
-    if (state.participants.includes(userId)) {
+    if (state.participants.includes(customerId)) {
       return state;
     }
 
     return {
       ...state,
-      participants: [...state.participants, userId],
+      participants: [...state.participants, customerId],
     };
   });
 }
 
-export function removeParticipant(userId: string): void {
+export function removeParticipant(customerId: string): void {
   chatState.update((state) => ({
     ...state,
-    participants: state.participants.filter((id) => id !== userId),
+    participants: state.participants.filter((id) => id !== customerId),
   }));
 }
 
-export function setTyping(userId: string, userName: string): void {
+export function setTyping(customerId: string, customerName: string): void {
   chatState.update((state) => {
     const isTyping = new Set(state.isTyping);
-    isTyping.add(userId);
+    isTyping.add(customerId);
 
     return {
       ...state,
@@ -127,10 +127,10 @@ export function setTyping(userId: string, userName: string): void {
   });
 }
 
-export function removeTyping(userId: string): void {
+export function removeTyping(customerId: string): void {
   chatState.update((state) => {
     const isTyping = new Set(state.isTyping);
-    isTyping.delete(userId);
+    isTyping.delete(customerId);
 
     return {
       ...state,
@@ -146,12 +146,12 @@ export function clearMessages(): void {
   }));
 }
 
-export function setPresence(userId: string, userName: string, status: 'online' | 'offline' | 'away'): void {
+export function setPresence(customerId: string, customerName: string, status: 'online' | 'offline' | 'away'): void {
   chatState.update((state) => {
     const presence = new Map(state.presence);
-    presence.set(userId, {
-      userId,
-      userName,
+    presence.set(customerId, {
+      customerId,
+      customerName,
       status,
       lastSeen: status === 'offline' ? new Date().toISOString() : undefined,
     });
@@ -163,12 +163,12 @@ export function setPresence(userId: string, userName: string, status: 'online' |
   });
 }
 
-export function getPresence(userId: string): UserPresence | undefined {
+export function getPresence(customerId: string): CustomerPresence | undefined {
   const state = get(chatState);
-  return state.presence.get(userId);
+  return state.presence.get(customerId);
 }
 
-export function getAllPresence(): UserPresence[] {
+export function getAllPresence(): CustomerPresence[] {
   const state = get(chatState);
   return Array.from(state.presence.values());
 }
@@ -188,16 +188,16 @@ export function resetChat(): void {
   });
 }
 
-// Get current user ID from auth store
-export function getCurrentUserId(): string | null {
-  const currentUser = get(user);
-  return currentUser?.userId || null;
+// Get current customer ID from auth store
+export function getCurrentCustomerId(): string | null {
+  const currentCustomer = get(customer);
+  return currentCustomer?.customerId || null;
 }
 
-// Get current user name from auth store
-export function getCurrentUserName(): string | null {
-  const currentUser = get(user);
-  // Prefer displayName, fallback to email for backward compatibility
-  return currentUser?.displayName || currentUser?.email || null;
+// Get current customer name from auth store
+export function getCurrentCustomerName(): string | null {
+  const currentCustomer = get(customer);
+  // NEVER return email - only displayName
+  return currentCustomer?.displayName || null;
 }
 

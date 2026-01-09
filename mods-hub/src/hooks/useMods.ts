@@ -9,7 +9,13 @@ import { useUIStore } from '../stores/ui';
 import { useAuthStore } from '../stores/auth';
 import { getUserFriendlyErrorMessage, shouldRedirectToLogin } from '../utils/error-messages';
 import { useNavigate } from 'react-router-dom';
-import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
+import type { 
+    ModStatus, 
+    ModUpdateRequest, 
+    ModUploadRequest, 
+    VersionUploadRequest,
+    VariantVersionUploadRequest
+} from '../types/mod';
 
 /**
  * Query keys
@@ -22,6 +28,7 @@ export const modKeys = {
     details: () => [...modKeys.all, 'detail'] as const,
     detail: (id: string) => [...modKeys.details(), id] as const,
     review: (slug: string) => [...modKeys.details(), slug, 'review'] as const,
+    variantVersions: (modSlug: string, variantId: string) => [...modKeys.all, 'variant-versions', modSlug, variantId] as const,
 };
 
 /**
@@ -58,10 +65,10 @@ export function useModsList(filters: {
                 }
                 
                 // CRITICAL: Frontend safety filter - only return approved mods for public browsing
-                // BUT: If filtering by authorId (user viewing their own mods), show ALL statuses
+                // BUT: If filtering by authorId (customer viewing their own mods), show ALL statuses
                 // This is a defense-in-depth measure in case backend filtering fails
                 // The browse page should NEVER show denied/pending/archived mods
-                // But users should see their own pending mods in their dashboard
+                // But customers should see their own pending mods in their dashboard
                 const shouldFilterByStatus = !filters.authorId; // Only filter if NOT viewing own mods
                 const filteredMods = shouldFilterByStatus 
                     ? result.mods.filter(mod => mod.status === 'approved')
@@ -155,8 +162,21 @@ export function useUpdateMod() {
             thumbnail?: File;
             variantFiles?: Record<string, File>;
         }) => api.updateMod(slug, updates, thumbnail, variantFiles),
-        onSuccess: (_data, variables) => {
-            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.slug) });
+        onSuccess: (data, variables) => {
+            // Check if slug changed in the update
+            const newSlug = data?.mod?.slug || data?.slug;
+            const oldSlug = variables.slug;
+            
+            if (newSlug && newSlug !== oldSlug) {
+                // Slug changed - invalidate both old and new slug queries
+                queryClient.invalidateQueries({ queryKey: modKeys.detail(oldSlug) });
+                queryClient.invalidateQueries({ queryKey: modKeys.detail(newSlug) });
+                console.log('[useUpdateMod] Slug changed:', { oldSlug, newSlug });
+            } else {
+                // Slug didn't change - invalidate current slug query
+                queryClient.invalidateQueries({ queryKey: modKeys.detail(oldSlug) });
+            }
+            
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });
             addNotification({
                 message: 'Mod updated successfully!',
@@ -353,25 +373,25 @@ export function useModRatings(modId: string) {
 }
 
 /**
- * List drafts query (authenticated users only)
- * Filters mods by authorId (current user) and status='draft'
+ * List drafts query (authenticated customers only)
+ * Filters mods by authorId (current customer) and status='draft'
  */
 export function useDrafts(params?: {
     page?: number;
     pageSize?: number;
 }) {
-    const { user } = useAuthStore();
+    const { customer } = useAuthStore();
     
     return useQuery({
-        queryKey: [...modKeys.all, 'drafts', user?.userId || '', params || {}],
+        queryKey: [...modKeys.all, 'drafts', customer?.customerId || '', params || {}],
         queryFn: async () => {
-            if (!user?.userId) {
+            if (!customer?.customerId) {
                 return { mods: [], total: 0, page: 1, pageSize: 20 };
             }
             // Use listMods with authorId filter - this returns all statuses for the author
             const result = await api.listMods({
                 ...params,
-                authorId: user.userId,
+                authorId: customer.customerId,
             });
             // Filter to only show drafts
             return {
@@ -380,7 +400,7 @@ export function useDrafts(params?: {
                 total: result.mods.filter(mod => mod.status === 'draft').length,
             };
         },
-        enabled: !!user?.userId,
+        enabled: !!customer?.customerId,
         staleTime: 0,
         gcTime: 0,
         refetchOnMount: 'always',
@@ -446,6 +466,192 @@ export function useUpdateAdminSettings() {
         onError: (error: Error) => {
             addNotification({
                 message: error.message || 'Failed to update settings',
+                type: 'error',
+            });
+        },
+    });
+}
+
+/**
+ * List variant versions query
+ */
+export function useVariantVersions(modSlug: string, variantId: string) {
+    return useQuery({
+        queryKey: modKeys.variantVersions(modSlug, variantId),
+        queryFn: () => api.listVariantVersions(modSlug, variantId),
+        enabled: !!modSlug && !!variantId,
+    });
+}
+
+/**
+ * Upload variant version mutation
+ */
+export function useUploadVariantVersion() {
+    const queryClient = useQueryClient();
+    const addNotification = useUIStore((state) => state.addNotification);
+    
+    return useMutation({
+        mutationFn: ({ modId, variantId, file, metadata }: {
+            modId: string;
+            variantId: string;
+            file: File;
+            metadata: VariantVersionUploadRequest;
+        }) => api.uploadVariantVersion(modId, variantId, file, metadata),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: modKeys.variantVersions(variables.modId, variables.variantId) });
+            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
+            addNotification({
+                message: 'Variant version uploaded successfully!',
+                type: 'success',
+            });
+        },
+        onError: (error: Error) => {
+            addNotification({
+                message: error.message || 'Failed to upload variant version',
+                type: 'error',
+            });
+        },
+    });
+}
+
+/**
+ * Delete mod version mutation
+ */
+export function useDeleteModVersion() {
+    const queryClient = useQueryClient();
+    const addNotification = useUIStore((state) => state.addNotification);
+    
+    return useMutation({
+        mutationFn: ({ modId, versionId }: { modId: string; versionId: string }) => 
+            api.deleteModVersion(modId, versionId),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
+            addNotification({
+                message: 'Version deleted successfully!',
+                type: 'success',
+            });
+        },
+        onError: (error: Error) => {
+            addNotification({
+                message: error.message || 'Failed to delete version',
+                type: 'error',
+            });
+        },
+    });
+}
+
+/**
+ * Delete variant version mutation
+ */
+export function useDeleteVariantVersion() {
+    const queryClient = useQueryClient();
+    const addNotification = useUIStore((state) => state.addNotification);
+    
+    return useMutation({
+        mutationFn: ({ modId, variantId, variantVersionId }: { 
+            modId: string; 
+            variantId: string; 
+            variantVersionId: string;
+        }) => api.deleteVariantVersion(modId, variantId, variantVersionId),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: modKeys.variantVersions(variables.modId, variables.variantId) });
+            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
+            addNotification({
+                message: 'Variant version deleted successfully!',
+                type: 'success',
+            });
+        },
+        onError: (error: Error) => {
+            addNotification({
+                message: error.message || 'Failed to delete variant version',
+                type: 'error',
+            });
+        },
+    });
+}
+
+/**
+ * Delete entire variant mutation
+ */
+export function useDeleteVariant() {
+    const queryClient = useQueryClient();
+    const addNotification = useUIStore((state) => state.addNotification);
+    
+    return useMutation({
+        mutationFn: ({ modId, variantId }: { 
+            modId: string; 
+            variantId: string;
+        }) => api.deleteVariant(modId, variantId),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
+            addNotification({
+                message: 'Variant deleted successfully!',
+                type: 'success',
+            });
+        },
+        onError: (error: Error) => {
+            addNotification({
+                message: error.message || 'Failed to delete variant',
+                type: 'error',
+            });
+        },
+    });
+}
+
+/**
+ * Update mod version metadata mutation
+ */
+export function useUpdateModVersion() {
+    const queryClient = useQueryClient();
+    const addNotification = useUIStore((state) => state.addNotification);
+    
+    return useMutation({
+        mutationFn: ({ modId, versionId, updates }: { 
+            modId: string; 
+            versionId: string; 
+            updates: Partial<VersionUploadRequest>;
+        }) => api.updateModVersion(modId, versionId, updates),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
+            addNotification({
+                message: 'Version updated successfully!',
+                type: 'success',
+            });
+        },
+        onError: (error: Error) => {
+            addNotification({
+                message: error.message || 'Failed to update version',
+                type: 'error',
+            });
+        },
+    });
+}
+
+/**
+ * Update variant version metadata mutation
+ */
+export function useUpdateVariantVersion() {
+    const queryClient = useQueryClient();
+    const addNotification = useUIStore((state) => state.addNotification);
+    
+    return useMutation({
+        mutationFn: ({ modId, variantId, variantVersionId, updates }: { 
+            modId: string; 
+            variantId: string;
+            variantVersionId: string;
+            updates: Partial<VariantVersionUploadRequest>;
+        }) => api.updateVariantVersion(modId, variantId, variantVersionId, updates),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: modKeys.variantVersions(variables.modId, variables.variantId) });
+            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
+            addNotification({
+                message: 'Variant version updated successfully!',
+                type: 'success',
+            });
+        },
+        onError: (error: Error) => {
+            addNotification({
+                message: error.message || 'Failed to update variant version',
                 type: 'error',
             });
         },

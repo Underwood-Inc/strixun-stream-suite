@@ -180,10 +180,10 @@ export class RoomManager {
           removeTyping(userId);
         }
       },
-      onPresence: (userId: string, _userName: string, status: 'online' | 'offline' | 'away') => {
-        // Update user presence
+      onPresence: (customerId: string, _customerName: string, status: 'online' | 'offline' | 'away') => {
+        // Update customer presence
         if (status === 'online') {
-          addParticipant(userId);
+          addParticipant(customerId);
         } else if (status === 'offline') {
           removeParticipant(userId);
         }

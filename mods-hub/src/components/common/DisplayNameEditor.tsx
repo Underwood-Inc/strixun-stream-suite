@@ -14,7 +14,7 @@
  * <DisplayNameEditor
  *   currentDisplayName="Order Fierce"
  *   onUpdate={(newName) => console.log('Updated to:', newName)}
- *   apiEndpoint="/user/display-name"
+ *   apiEndpoint="/customer/display-name"
  *   authToken={token}
  * />
  * ```
@@ -191,7 +191,7 @@ interface DisplayNameEditorProps {
   currentDisplayName: string | null | undefined;
   /** Callback when display name is successfully updated */
   onUpdate: (newDisplayName: string) => void | Promise<void>;
-  /** API endpoint for updating display name (e.g., '/user/display-name') */
+  /** API endpoint for updating display name (e.g., '/customer/display-name') */
   apiEndpoint: string;
   /** Authentication token for API requests */
   authToken: string | null;

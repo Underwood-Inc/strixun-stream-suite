@@ -73,10 +73,10 @@ jobs:
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "[WARNING] No test script found in Mods API - skipping tests"
+          echo "⚠ No test script found in Mods API - skipping tests"
           echo "::warning::Mods API has no test script - tests skipped"
           echo "::notice::Action Required: Add test script to Mods API package.json"
-          echo "## [WARNING] Mods API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## ⚠ Mods API Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped (tests will be required when added)" >> $GITHUB_STEP_SUMMARY
 
   deploy:
@@ -116,7 +116,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
       
@@ -134,7 +134,7 @@ jobs:
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
           else
-            echo "⚠️  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
+            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
             echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
           fi
           if [ -n "${{ secrets.MODS_PUBLIC_URL }}" ]; then
@@ -151,7 +151,7 @@ jobs:
           if [ -n "${{ secrets.FILE_INTEGRITY_KEYPHRASE }}" ]; then
             echo "${{ secrets.FILE_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put FILE_INTEGRITY_KEYPHRASE || true
           else
-            echo "⚠️  WARNING: FILE_INTEGRITY_KEYPHRASE secret is not set!"
+            echo "⚠  WARNING: FILE_INTEGRITY_KEYPHRASE secret is not set!"
             echo "File integrity verification will use fallback keyphrase (development only)"
             echo "Please add FILE_INTEGRITY_KEYPHRASE to GitHub Secrets for production security"
           fi

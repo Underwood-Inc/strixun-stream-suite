@@ -38,8 +38,8 @@ This guide explains how to protect your GitHub wiki so that it can only be updat
    - Scroll to the **Wikis** section
    - Configure as follows:
      ```
-     ✅ Wikis: Enabled
-     ✅ Restrict editing to collaborators only: Enabled
+     ✓ Wikis: Enabled
+     ✓ Restrict editing to collaborators only: Enabled
      ```
 
 3. **Configure Workflow Permissions**
@@ -47,14 +47,14 @@ This guide explains how to protect your GitHub wiki so that it can only be updat
    - Scroll to **Workflow permissions**
    - Select:
      ```
-     ✅ Read and write permissions
+     ✓ Read and write permissions
      ```
    - This allows `GITHUB_TOKEN` to push to wiki even with restrictions
 
 4. **Verify Protection**
    - Try editing a wiki page manually
    - You should see: "You don't have permission to edit this wiki"
-   - ✅ This means protection is working!
+   - ✓ This means protection is working!
 
 #### How It Works:
 
@@ -64,9 +64,9 @@ This guide explains how to protect your GitHub wiki so that it can only be updat
 
 #### Important Notes:
 
-- ⚠️ **Repository admins** can still edit manually (by design)
-- ⚠️ **Collaborators** cannot edit (this is what we want)
-- ✅ **Workflows** can always update (this is what we need)
+- ⚠ **Repository admins** can still edit manually (by design)
+- ⚠ **Collaborators** cannot edit (this is what we want)
+- ✓ **Workflows** can always update (this is what we need)
 
 ---
 
@@ -88,15 +88,15 @@ This guide explains how to protect your GitHub wiki so that it can only be updat
 
 #### Result:
 
-- ✅ Wiki is completely read-only via UI
-- ✅ Workflows can still update (via git push)
-- ✅ Even repository admins can't edit via UI
+- ✓ Wiki is completely read-only via UI
+- ✓ Workflows can still update (via git push)
+- ✓ Even repository admins can't edit via UI
 
 #### Trade-offs:
 
-- ❌ Admins can't make quick fixes via UI
-- ✅ Maximum protection against accidental edits
-- ✅ Forces all changes through code review
+- ✗ Admins can't make quick fixes via UI
+- ✓ Maximum protection against accidental edits
+- ✓ Forces all changes through code review
 
 ---
 
@@ -132,9 +132,9 @@ This guide explains how to protect your GitHub wiki so that it can only be updat
 
 #### Complexity:
 
-- ⚠️ More complex setup
-- ⚠️ Requires managing two repositories
-- ⚠️ Usually unnecessary for most use cases
+- ⚠ More complex setup
+- ⚠ Requires managing two repositories
+- ⚠ Usually unnecessary for most use cases
 
 **Recommendation:** Use Method 1 or 2 instead - they're simpler and sufficient.
 
@@ -147,8 +147,8 @@ This guide explains how to protect your GitHub wiki so that it can only be updat
 1. Go to your wiki: `https://github.com/YOUR_USERNAME/YOUR_REPO/wiki`
 2. Click "Edit" on any page
 3. **Expected result:**
-   - ❌ "You don't have permission to edit this wiki"
-   - ✅ Protection is working!
+   - ✗ "You don't have permission to edit this wiki"
+   - ✓ Protection is working!
 
 ### Test 2: Workflow Update
 
@@ -157,18 +157,18 @@ This guide explains how to protect your GitHub wiki so that it can only be updat
 3. Check Actions tab - workflow should run
 4. Check wiki - should be updated automatically
 5. **Expected result:**
-   - ✅ Wiki updates successfully
-   - ✅ Workflow has write access
+   - ✓ Wiki updates successfully
+   - ✓ Workflow has write access
 
 ### Test 3: Admin Edit (If Using Method 1)
 
 1. As repository admin, try to edit wiki
 2. **Expected result (Method 1):**
-   - ✅ Admin can still edit (by design)
-   - ⚠️ But changes will be overwritten on next sync
+   - ✓ Admin can still edit (by design)
+   - ⚠ But changes will be overwritten on next sync
 
 3. **Expected result (Method 2):**
-   - ❌ Even admin can't edit (maximum protection)
+   - ✗ Even admin can't edit (maximum protection)
 
 ---
 
@@ -178,37 +178,37 @@ This guide explains how to protect your GitHub wiki so that it can only be updat
 
 **Repository Settings → Features:**
 ```
-✅ Wikis: Enabled
-✅ Restrict editing to collaborators only: Enabled
+✓ Wikis: Enabled
+✓ Restrict editing to collaborators only: Enabled
 ```
 
 **Repository Settings → Actions → General:**
 ```
-✅ Read and write permissions
+✓ Read and write permissions
 ```
 
 **Result:**
-- ✅ Collaborators can't edit (protected)
-- ✅ Workflows can update (automated)
-- ✅ Admins can edit (for emergencies, but discouraged)
+- ✓ Collaborators can't edit (protected)
+- ✓ Workflows can update (automated)
+- ✓ Admins can edit (for emergencies, but discouraged)
 
 ### For Maximum Protection
 
 **Repository Settings → Features:**
 ```
-✅ Wikis: Enabled
-❌ Allow wiki editing: Disabled
+✓ Wikis: Enabled
+✗ Allow wiki editing: Disabled
 ```
 
 **Repository Settings → Actions → General:**
 ```
-✅ Read and write permissions
+✓ Read and write permissions
 ```
 
 **Result:**
-- ✅ No one can edit via UI (maximum protection)
-- ✅ Workflows can update (automated)
-- ✅ All changes must go through code review
+- ✓ No one can edit via UI (maximum protection)
+- ✓ Workflows can update (automated)
+- ✓ All changes must go through code review
 
 ---
 
@@ -258,16 +258,16 @@ This guide explains how to protect your GitHub wiki so that it can only be updat
 
 ### What's Protected?
 
-- ✅ **Manual edits** via UI are blocked (or restricted)
-- ✅ **Documentation changes** go through code review
-- ✅ **Version control** for all changes
-- ✅ **Audit trail** in main repository
+- ✓ **Manual edits** via UI are blocked (or restricted)
+- ✓ **Documentation changes** go through code review
+- ✓ **Version control** for all changes
+- ✓ **Audit trail** in main repository
 
 ### What's Not Protected?
 
-- ⚠️ **Repository admins** can still edit (Method 1)
-- ⚠️ **Workflow token** has write access (by design)
-- ⚠️ **Wiki git repository** is still accessible via git
+- ⚠ **Repository admins** can still edit (Method 1)
+- ⚠ **Workflow token** has write access (by design)
+- ⚠ **Wiki git repository** is still accessible via git
 
 ### Best Practices
 
@@ -334,7 +334,7 @@ permissions:
 Add a notice to your wiki Home page:
 
 ```markdown
-> ⚠️ **This wiki is automatically synced from the codebase.**
+> ⚠ **This wiki is automatically synced from the codebase.**
 > 
 > **Do not edit this wiki manually** - your changes will be overwritten.
 > 

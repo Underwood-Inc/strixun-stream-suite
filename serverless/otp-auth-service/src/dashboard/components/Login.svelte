@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { apiClient } from '$lib/api-client';
+  import { apiClient } from '$dashboard/lib/api-client';
   import type { LoginSuccessData } from '@strixun/otp-login';
   import OtpLogin from '@strixun/otp-login/svelte/OtpLogin.svelte';
 
@@ -37,8 +37,8 @@
         // Customer exists, proceed with login
         window.dispatchEvent(new CustomEvent('auth:login', {
           detail: { 
-            user: {
-              userId: data.userId,
+            customer: {
+              userId: data.customerId,
               email: data.email,
               token: data.token,
             }
@@ -79,8 +79,8 @@
     // Default: proceed with login even if customer lookup failed
     window.dispatchEvent(new CustomEvent('auth:login', {
       detail: { 
-        user: {
-          userId: data.userId,
+        customer: {
+          customerId: data.customerId,
           email: data.email,
           token: data.token,
         }

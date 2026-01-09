@@ -20,7 +20,7 @@ export type ModStatus =
 export interface ModMetadata {
     modId: string;
     slug: string; // URL-friendly slug derived from title
-    authorId: string; // userId from OTP auth service (used for display name lookups)
+    authorId: string; // customerId from OTP auth service (used for display name lookups) - CRITICAL: This is customerId, not userId!
     authorDisplayName?: string | null; // Display name fetched dynamically from auth API (always fresh, fallback only)
     title: string;
     description: string;
@@ -41,8 +41,8 @@ export interface ModMetadata {
     variants?: ModVariant[]; // Variants for the mod
     gameId?: string; // Associated game ID (sub-category)
     // CRITICAL: authorEmail is NOT stored - email is ONLY for OTP authentication
-    // CRITICAL: authorDisplayName is fetched dynamically from /auth/user/:userId on every API call
-    // This ensures display names stay current when users change them
+    // CRITICAL: authorDisplayName is fetched dynamically from the Customer API on every API call
+    // This ensures display names stay current when customers change them
     // The stored value is a fallback only if the fetch fails
     // CRITICAL: customerId is required for proper data scoping and is set automatically if missing
 }
@@ -146,7 +146,7 @@ export interface ModListResponse {
  */
 export interface ModStatusHistory {
     status: ModStatus;
-    changedBy: string; // User ID who changed the status
+    changedBy: string; // customer ID who changed the status
     changedByDisplayName?: string | null; // Display name (never use email)
     changedAt: string;
     reason?: string; // Optional reason for status change
@@ -158,7 +158,7 @@ export interface ModStatusHistory {
  */
 export interface ModReviewComment {
     commentId: string;
-    authorId: string; // User ID from OTP auth service
+    authorId: string; // Customer ID from OTP auth service
     authorDisplayName?: string | null; // Display name (never use email)
     content: string;
     createdAt: string;
@@ -167,23 +167,52 @@ export interface ModReviewComment {
 }
 
 /**
- * Mod variant
+ * Mod variant (metadata only - files are in VariantVersion)
+ * ARCHITECTURAL IMPROVEMENT: Variants now support full version control
  */
 export interface ModVariant {
     variantId: string;
+    modId: string; // Parent mod ID
     name: string;
     description?: string;
-    fileUrl?: string; // For existing variants
-    r2Key?: string; // R2 storage key for the variant file (for reliable lookup)
-    fileName?: string;
-    fileSize?: number;
-    version?: string;
-    changelog?: string;
+    createdAt: string;
+    updatedAt: string;
+    currentVersionId: string; // Points to latest VariantVersion
+    versionCount: number; // Total number of versions
+    totalDownloads: number; // Cumulative downloads across all versions
+    // REMOVED: fileUrl, r2Key, fileName, fileSize, version, changelog, gameVersions, dependencies, downloads
+    // These fields now live in VariantVersion for proper version control
+}
+
+/**
+ * Variant version metadata (for version control of variant files)
+ * ARCHITECTURAL IMPROVEMENT: Each variant can now have multiple versions
+ */
+export interface VariantVersion {
+    variantVersionId: string;
+    variantId: string; // Parent variant ID
+    modId: string; // Parent mod ID
+    version: string; // Semantic version: "1.0.0"
+    changelog: string;
+    fileSize: number;
+    fileName: string;
+    r2Key: string; // R2 storage key
+    downloadUrl: string;
+    sha256: string; // SHA-256 hash of file (Strixun verified)
+    createdAt: string;
+    downloads: number;
     gameVersions?: string[];
     dependencies?: ModDependency[];
-    createdAt?: string;
-    updatedAt?: string;
-    downloads?: number; // Individual download count for this variant
+}
+
+/**
+ * Variant version upload request
+ */
+export interface VariantVersionUploadRequest {
+    version: string;
+    changelog: string;
+    gameVersions?: string[];
+    dependencies?: ModDependency[];
 }
 
 /**
@@ -194,3 +223,44 @@ export interface ModDetailResponse {
     versions: ModVersion[];
 }
 
+/**
+ * Centralized Index Types
+ * ARCHITECTURAL IMPROVEMENT: Centralized indexes for O(1) lookups
+ */
+
+/**
+ * Slug index entry - maps slug to mod location
+ */
+export interface SlugIndexEntry {
+    modId: string;
+    customerId: string | null;
+    slug: string;
+    createdAt: string;
+}
+
+/**
+ * Public mods index entry - tracks which mods are publicly visible
+ */
+export interface PublicModsIndexEntry {
+    modId: string;
+    customerId: string | null;
+    status: ModStatus;
+    featured: boolean;
+    category: ModCategory;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/**
+ * Global slug index - single source of truth for all slugs
+ * Key: slug_index
+ * Value: Record<slug, SlugIndexEntry>
+ */
+export type SlugIndex = Record<string, SlugIndexEntry>;
+
+/**
+ * Global public mods index - single source of truth for public mods
+ * Key: public_mods_index
+ * Value: Record<modId, PublicModsIndexEntry>
+ */
+export type PublicModsIndex = Record<string, PublicModsIndexEntry>;

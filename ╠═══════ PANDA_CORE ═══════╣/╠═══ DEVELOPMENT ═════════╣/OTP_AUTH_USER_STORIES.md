@@ -96,8 +96,8 @@ This document contains all user stories organized by epic/phase for implementing
 **Acceptance Criteria:**
 - [ ] Create `getCustomerKey(customerId, key)` helper function
 - [ ] Prefix all OTP keys: `cust_{customerId}_otp_{emailHash}_{timestamp}`
-- [ ] Prefix all user keys: `cust_{customerId}_user_{emailHash}`
-- [ ] Prefix all session keys: `cust_{customerId}_session_{userId}`
+- [ ] Prefix all customer keys: `cust_{customerId}_customer_{emailHash}`
+- [ ] Prefix all session keys: `cust_{customerId}_session_{customerId}`
 - [ ] Prefix all rate limit keys: `cust_{customerId}_ratelimit_{emailHash}`
 - [ ] Prefix all blacklist keys: `cust_{customerId}_blacklist_{tokenHash}`
 - [ ] Update all KV operations to use customer-prefixed keys
@@ -612,9 +612,9 @@ This document contains all user stories organized by epic/phase for implementing
   - `otp.requested` - OTP code requested
   - `otp.verified` - OTP successfully verified
   - `otp.failed` - OTP verification failed
-  - `user.created` - New user account created
-  - `user.logged_in` - User logged in
-  - `user.logged_out` - User logged out
+  - `customer.created` - New customer account created
+  - `customer.logged_in` - Customer logged in
+  - `customer.logged_out` - Customer logged out
   - `quota.exceeded` - Customer quota exceeded
   - `rate_limit.exceeded` - Rate limit hit
 - [ ] Create `sendWebhook(customerId, event, data, env)` function
@@ -1258,10 +1258,10 @@ This document contains all user stories organized by epic/phase for implementing
 **So that** I can use the service in EU
 
 **Acceptance Criteria:**
-- [ ] Create `POST /admin/users/{userId}/export` endpoint (export user data)
-- [ ] Create `DELETE /admin/users/{userId}` endpoint (delete user data)
+- [ ] Create `POST /admin/customers/{customerId}/export` endpoint (export customer data)
+- [ ] Create `DELETE /admin/customers/{customerId}` endpoint (delete customer data)
 - [ ] Support data export in JSON format
-- [ ] Anonymize or delete all user data on deletion
+- [ ] Anonymize or delete all customer data on deletion
 - [ ] Create `GET /admin/privacy-policy` endpoint
 - [ ] Create `GET /admin/terms-of-service` endpoint
 - [ ] Add consent tracking for data processing

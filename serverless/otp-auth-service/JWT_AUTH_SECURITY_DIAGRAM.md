@@ -95,10 +95,10 @@ Server: Processes request
 ```
 
 **Security Properties:**
-- ✅ HTTPS/TLS encrypts all traffic
-- ✅ API key optional (backward compatible)
-- ✅ IP allowlist check (if API key provided)
-- ✅ Rate limiting per email/IP/customer
+- ✓ HTTPS/TLS encrypts all traffic
+- ✓ API key optional (backward compatible)
+- ✓ IP allowlist check (if API key provided)
+- ✓ Rate limiting per email/IP/customer
 
 ---
 
@@ -120,11 +120,11 @@ Response: { access_token: "JWT_HERE", ... } (UNENCRYPTED - chicken-and-egg)
 ```
 
 **Security Properties:**
-- ✅ OTP encrypted in transit
-- ✅ OTP verified with constant-time comparison
-- ✅ JWT generated with user/customer data
-- ⚠️ JWT response unencrypted (necessary - user needs JWT to decrypt)
-- ✅ API key optional (backward compatible)
+- ✓ OTP encrypted in transit
+- ✓ OTP verified with constant-time comparison
+- ✓ JWT generated with user/customer data
+- ⚠ JWT response unencrypted (necessary - user needs JWT to decrypt)
+- ✓ API key optional (backward compatible)
 
 ---
 
@@ -150,11 +150,11 @@ Client: Decrypt with JWT → Use Data
 ```
 
 **Security Properties:**
-- ✅ All responses encrypted with user's JWT
-- ✅ JWT signature verification (prevents tampering)
-- ✅ User-specific encryption keys
-- ✅ No service key fallback (prevents key exposure)
-- ✅ Automatic token expiration handling
+- ✓ All responses encrypted with user's JWT
+- ✓ JWT signature verification (prevents tampering)
+- ✓ User-specific encryption keys
+- ✓ No service key fallback (prevents key exposure)
+- ✓ Automatic token expiration handling
 
 ---
 
@@ -226,7 +226,7 @@ graph LR
 
 ## 🚨 Security Audit Findings
 
-### ✅ Strengths
+### ✓ Strengths
 
 1. **Encryption at Every Layer**
    - OTP requests encrypted by HTTPS/TLS
@@ -248,7 +248,7 @@ graph LR
    - JWT-derived keys (user-specific, per-session)
    - No shared service keys
 
-### ⚠️ Current Implementation
+### ⚠ Current Implementation
 
 1. **API Key is Currently Optional**
    - Backward compatibility allows requests without API key
@@ -268,8 +268,8 @@ graph LR
 ### 🔒 Security Recommendations
 
 **For Third-Party Integration (External Users of OTP Service):**
-- ✅ **HTTPS/TLS** - Encrypts all OTP requests in transit
-- ✅ **API Key SHOULD BE REQUIRED** - For production third-party integrations
+- ✓ **HTTPS/TLS** - Encrypts all OTP requests in transit
+- ✓ **API Key SHOULD BE REQUIRED** - For production third-party integrations
 - **Current Status**: API key is optional (backward compatible)
 - **Recommendation**: Enforce API key requirement for third-party integrations
 - **Benefits of API Key**:
@@ -328,10 +328,10 @@ Third-Party Integration Requirements:
    - Still benefits from rate limiting and quota management
 
 3. **Security Hardening:**
-   - ✅ Already implemented: JWT-only encryption
-   - ✅ Already implemented: No service key fallback
-   - ✅ Already implemented: User-friendly error messages
-   - ✅ Already implemented: Automatic token expiration
+   - ✓ Already implemented: JWT-only encryption
+   - ✓ Already implemented: No service key fallback
+   - ✓ Already implemented: User-friendly error messages
+   - ✓ Already implemented: Automatic token expiration
 
 ---
 

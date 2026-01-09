@@ -1,18 +1,13 @@
 /**
  * TypeScript Types for OTP Auth API
+ * 
+ * CRITICAL: We ONLY have Customer entities - NO "customer" entity exists
  */
-
-export interface User {
-  sub: string;
-  email: string;
-  email_verified: boolean;
-  iss?: string;
-  aud?: string;
-}
 
 export interface Customer {
   customerId: string;
   email: string;
+  displayName?: string | null;
   name?: string;
   status: 'active' | 'suspended' | 'pending';
   plan: string;
@@ -29,12 +24,13 @@ export interface CustomerConfig {
 export interface RateLimits {
   otpRequestsPerDay?: number;
   otpRequestsPerMonth?: number;
-  maxUsers?: number;
+  maxCustomers?: number;
 }
 
 export interface ApiKey {
   keyId: string;
   name: string;
+  apiKey?: any; // Double-encrypted data (not displayed in UI - for security)
   createdAt: string;
   lastUsed: string | null;
   status: 'active' | 'revoked';
@@ -82,7 +78,7 @@ export interface Analytics {
 }
 
 export interface RealtimeAnalytics {
-  activeUsers?: number;
+  activeCustomers?: number;
   requestsPerMinute?: number;
 }
 

@@ -71,10 +71,10 @@ jobs:
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "[WARNING] No test script found in Customer API - skipping tests"
+          echo "⚠ No test script found in Customer API - skipping tests"
           echo "::warning::Customer API has no test script - tests skipped"
           echo "::notice::Action Required: Add test script to Customer API package.json"
-          echo "## [WARNING] Customer API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## ⚠ Customer API Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped (tests will be required when added)" >> $GITHUB_STEP_SUMMARY
 
   deploy:
@@ -130,7 +130,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
       
@@ -168,7 +168,7 @@ jobs:
             echo "Found KV namespace ID: $KV_ID"
           else
             echo "kv_id=" >> $GITHUB_OUTPUT
-            echo "⚠️ Warning: KV namespace ID not found in wrangler.toml or still set to PLACEHOLDER_ID"
+            echo "⚠ Warning: KV namespace ID not found in wrangler.toml or still set to PLACEHOLDER_ID"
             echo "Please update wrangler.toml with the actual namespace ID from: wrangler kv namespace list"
           fi
         continue-on-error: true
@@ -190,8 +190,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           KV_ID="${{ steps.get-kv-id.outputs.kv_id }}"
           if [ -n "$KV_ID" ]; then
-            echo "**KV Namespace ID:** \`$KV_ID\` ✅" >> $GITHUB_STEP_SUMMARY
+            echo "**KV Namespace ID:** \`$KV_ID\` ✓" >> $GITHUB_STEP_SUMMARY
           else
-            echo "**⚠️ Action Required:** Update \`wrangler.toml\` with the KV namespace ID from \`wrangler kv namespace list\`" >> $GITHUB_STEP_SUMMARY
+            echo "**⚠ Action Required:** Update \`wrangler.toml\` with the KV namespace ID from \`wrangler kv namespace list\`" >> $GITHUB_STEP_SUMMARY
           fi
 

@@ -3,6 +3,7 @@
   import Header from '../components/Header.svelte';
   import Hero from '../components/Hero.svelte';
   import Features from '../components/Features.svelte';
+  import Pricing from '../components/Pricing.svelte';
   import Security from '../components/Security.svelte';
   import CodeExamples from '../components/CodeExamples.svelte';
   import Limitations from '../components/Limitations.svelte';
@@ -38,6 +39,8 @@
   <Hero />
 
   <Features />
+
+  <Pricing />
 
   <Security />
 

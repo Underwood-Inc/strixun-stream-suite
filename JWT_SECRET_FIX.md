@@ -4,17 +4,17 @@
 
 Your authentication was failing because **different services were using different JWT_SECRET values**:
 
-- ❌ **otp-auth-service**: Was using `test-jwt-secret-for-integration-tests`
-- ✅ **mods-api**: Was using `test-jwt-secret-for-local-development-12345678901234567890123456789012` (correct)
-- ❌ **customer-api**: Was using `test-jwt-secret-for-integration-tests`
+- ✗ **otp-auth-service**: Was using `test-jwt-secret-for-integration-tests`
+- ✓ **mods-api**: Was using `test-jwt-secret-for-local-development-12345678901234567890123456789012` (correct)
+- ✗ **customer-api**: Was using `test-jwt-secret-for-integration-tests`
 
 When tokens are created with one secret but verified with another, JWT signature verification fails, causing all authenticated requests to return `401 Unauthorized`.
 
 ## What Was Fixed
 
-✅ Updated `serverless/otp-auth-service/.dev.vars` to use the correct JWT_SECRET  
-✅ Updated `serverless/customer-api/.dev.vars` to use the correct JWT_SECRET  
-✅ All services now use: `test-jwt-secret-for-local-development-12345678901234567890123456789012`
+✓ Updated `serverless/otp-auth-service/.dev.vars` to use the correct JWT_SECRET  
+✓ Updated `serverless/customer-api/.dev.vars` to use the correct JWT_SECRET  
+✓ All services now use: `test-jwt-secret-for-local-development-12345678901234567890123456789012`
 
 ## Next Steps
 
@@ -55,7 +55,7 @@ You can verify the fix worked by running:
 node serverless/scripts/verify-jwt-secrets.js
 ```
 
-All services should now show ✅ MATCHES.
+All services should now show ✓ MATCHES.
 
 ## Why This Happened
 

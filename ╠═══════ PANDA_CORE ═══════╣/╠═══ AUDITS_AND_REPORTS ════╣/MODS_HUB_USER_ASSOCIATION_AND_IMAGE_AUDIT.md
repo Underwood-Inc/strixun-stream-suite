@@ -51,7 +51,7 @@ This audit identifies and addresses four critical issues in the Mods Hub:
    - Comment at line 565: "If displayName is null, UI will show 'Unknown User'"
 
 2. **During Display (`serverless/mods-api/handlers/mods/detail.ts:245-252`):**
-   - Code attempts to fetch displayName from `/auth/user/:userId` endpoint
+   - Code attempts to fetch displayName from `/auth/user/:customerId` endpoint
    - **Problem:** This endpoint also returns 522 (timeout) - see logs line 799-808
    - Falls back to stored `authorDisplayName` value (which is `null` from upload)
    - Result: "Unknown User" is displayed
@@ -63,14 +63,14 @@ This audit identifies and addresses four critical issues in the Mods Hub:
 
 **Evidence from Logs:**
 ```
-[DisplayName] Response status: { userId: 'user_15ab01d57e08', status: 522, ok: false }
-[DisplayName] Unexpected response status: { userId: 'user_15ab01d57e08', status: 522, url: 'https://auth.idling.app/auth/user/user_15ab01d57e08' }
+[DisplayName] Response status: { customerId: 'user_15ab01d57e08', status: 522, ok: false }
+[DisplayName] Unexpected response status: { customerId: 'user_15ab01d57e08', status: 522, url: 'https://auth.idling.app/auth/user/user_15ab01d57e08' }
 ```
 
 **Fix Strategy:**
 1. Add timeout handling and retry logic for display name fetches
 2. Use stored displayName as primary source, only refresh if available
-3. Add fallback to fetch from `/auth/me` during upload if `/auth/user/:userId` fails
+3. Add fallback to fetch from `/auth/me` during upload if `/auth/user/:customerId` fails
 4. Improve error handling to not fail silently
 
 ---

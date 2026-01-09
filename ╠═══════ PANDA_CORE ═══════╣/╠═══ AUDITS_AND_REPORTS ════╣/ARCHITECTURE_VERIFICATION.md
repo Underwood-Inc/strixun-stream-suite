@@ -73,7 +73,7 @@ Let me verify each point of your understanding against the actual implementation
 
 **How It Works:**
 1. Check user preferences for `emailVisibility`
-2. If `private` (default): Double-encrypt `userId` (email) with:
+2. If `private` (default): Double-encrypt `customerId` (email) with:
    - Stage 1: Owner's JWT (only owner can decrypt Stage 1)
    - Stage 2: Request key (requires approved request to decrypt)
 3. If `public`: Single-encrypt (router-level only, any authenticated user can decrypt)

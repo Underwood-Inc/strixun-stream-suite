@@ -18,10 +18,10 @@ export async function handleUpdateModStatus(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
-        // Route-level protection ensures user is super admin
+        // Route-level protection ensures customer is super admin
         // Get mod metadata
         // CRITICAL: Admin can approve mods from ANY customer, so we must search all scopes
         // Do NOT use auth.customerId - use mod.customerId (where the mod was uploaded)
@@ -221,8 +221,7 @@ export async function handleUpdateModStatus(
                 const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
                 changedByDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
             } else {
-                console.warn('[Triage] Missing customerId, cannot fetch displayName for status history:', {
-                    userId: auth.userId
+                console.warn('[Triage] Missing customerId, cannot fetch displayName for status history:', { customerId: auth.customerId
                 });
             }
         } catch (error) {
@@ -234,7 +233,7 @@ export async function handleUpdateModStatus(
         }
         const statusEntry: ModStatusHistory = {
             status: newStatus,
-            changedBy: auth.userId, // userId from OTP auth service
+            changedBy: auth.customerId, // userId from OTP auth service
             changedByDisplayName, // Display name (never use email)
             changedAt: new Date().toISOString(),
             reason: reason,
@@ -359,7 +358,7 @@ export async function handleAddReviewComment(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
         // Get mod metadata
@@ -419,7 +418,7 @@ export async function handleAddReviewComment(
 
         // Check access: only admin or uploader can comment
         const isAdmin = auth.email && await isSuperAdminEmail(auth.email, env);
-        const isUploader = mod.authorId === auth.userId;
+        const isUploader = mod.authorId === auth.customerId;
 
         if (!isAdmin && !isUploader) {
             const rfcError = createError(request, 403, 'Forbidden', 'Only admins and the mod author can add comments');
@@ -437,8 +436,7 @@ export async function handleAddReviewComment(
 
         // CRITICAL: For non-admin users (uploaders), customerId is required for display name lookup
         if (!isAdmin && !auth.customerId) {
-            console.error('[Triage] CRITICAL: customerId is null for non-admin user:', {
-                userId: auth.userId,
+            console.error('[Triage] CRITICAL: customerId is null for non-admin customer:', { customerId: auth.customerId,
                 email: auth.email,
                 isUploader,
                 note: 'Rejecting comment - customerId is required for display name lookups'
@@ -485,8 +483,7 @@ export async function handleAddReviewComment(
                 const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
                 authorDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
             } else {
-                console.warn('[Triage] Missing customerId, cannot fetch displayName for comment:', {
-                    userId: auth.userId
+                console.warn('[Triage] Missing customerId, cannot fetch displayName for comment:', { customerId: auth.customerId
                 });
             }
         } catch (error) {
@@ -495,7 +492,7 @@ export async function handleAddReviewComment(
         
         const comment: ModReviewComment = {
             commentId: `comment_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
-            authorId: auth.userId, // userId from OTP auth service
+            authorId: auth.customerId, // userId from OTP auth service
             authorDisplayName, // Display name (never use email)
             content: commentData.content.trim(),
             createdAt: new Date().toISOString(),

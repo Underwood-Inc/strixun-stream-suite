@@ -1,13 +1,16 @@
 /**
- * User Dashboard Page
- * Shows user's mods with management options
+ * Customer Dashboard Page
+ * Shows customer's mods with management options
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FixedSizeList as List } from 'react-window';
 import { useModsList, useDeleteMod } from '../hooks/useMods';
 import { useAuthStore } from '../stores/auth';
 import { ModCard } from '../components/mod/ModCard';
+import { ModListItem } from '../components/mod/ModListItem';
+import { ViewToggle, type ViewType } from '../components/mod/ViewToggle';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
@@ -18,11 +21,28 @@ const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${spacing.xl};
+  width: 100%;
+  height: calc(100vh - 200px);
+  min-height: 600px;
 `;
 
 const Header = styled.div`
   display: flex;
+  flex-direction: column;
+  gap: ${spacing.md};
+  flex-shrink: 0;
+`;
+
+const HeaderRow = styled.div`
+  display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: ${spacing.md};
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  gap: ${spacing.md};
   align-items: center;
 `;
 
@@ -42,13 +62,29 @@ const Button = styled.button`
   }
 `;
 
+const ListContainer = styled.div`
+  flex: 1;
+  min-height: 0;
+  background: ${colors.bg};
+  border: 1px solid ${colors.border};
+  border-radius: 8px;
+  overflow: hidden;
+`;
+
 const ModsGrid = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: ${spacing.md};
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
+  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
   grid-auto-flow: row dense;
   gap: ${spacing.lg};
   align-items: start;
   justify-items: stretch;
+  background: ${colors.bg};
+  border: 1px solid ${colors.border};
+  border-radius: 8px;
 `;
 
 const Loading = styled.div`
@@ -81,19 +117,62 @@ const EmptyStateMessage = styled.p`
   margin-bottom: ${spacing.lg};
 `;
 
+const EndOfListIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: ${spacing.xl} ${spacing.lg};
+  color: ${colors.textMuted};
+  font-size: 0.875rem;
+  background: ${colors.bgSecondary};
+  border-top: 1px solid ${colors.border};
+  font-style: italic;
+`;
+
+const VIEW_STORAGE_KEY = 'mods-dashboard-view';
+
 export function UserDashboardPage() {
     const navigate = useNavigate();
-    const { user, isAuthenticated } = useAuthStore();
+    const { customer, isAuthenticated } = useAuthStore();
     const [modToDelete, setModToDelete] = useState<ModMetadata | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [listHeight, setListHeight] = useState(600);
+    const containerRef = useRef<HTMLDivElement>(null);
+    
+    // Load view preference from localStorage, default to 'card'
+    const [view, setView] = useState<ViewType>(() => {
+        const stored = localStorage.getItem(VIEW_STORAGE_KEY);
+        return (stored === 'list' || stored === 'card') ? stored : 'card';
+    });
+    
+    // Persist view preference to localStorage
+    const handleViewChange = (newView: ViewType) => {
+        setView(newView);
+        localStorage.setItem(VIEW_STORAGE_KEY, newView);
+    };
     
     const { data, isLoading, error } = useModsList({
         page: 1,
         pageSize: 100,
-        authorId: user?.userId,
+        authorId: customer?.customerId,
     });
 
     const deleteMod = useDeleteMod();
+
+    // Calculate list height based on available space
+    useEffect(() => {
+        const updateHeight = () => {
+            if (containerRef.current) {
+                const rect = containerRef.current.getBoundingClientRect();
+                const availableHeight = window.innerHeight - rect.top - 100;
+                setListHeight(Math.max(400, availableHeight));
+            }
+        };
+
+        updateHeight();
+        window.addEventListener('resize', updateHeight);
+        return () => window.removeEventListener('resize', updateHeight);
+    }, []);
 
     const handleDeleteClick = (mod: ModMetadata) => {
         setModToDelete(mod);
@@ -111,7 +190,7 @@ export function UserDashboardPage() {
             setIsModalOpen(false);
         } catch {
             // Error is handled by the mutation
-            // Don't close modal on error so user can retry
+            // Don't close modal on error so customer can retry
         }
     };
 
@@ -122,7 +201,7 @@ export function UserDashboardPage() {
         }
     };
 
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated || !customer) {
         return (
             <PageContainer>
                 <Error>Please log in to view your dashboard.</Error>
@@ -136,12 +215,17 @@ export function UserDashboardPage() {
     const mods = data?.mods || [];
 
     return (
-        <PageContainer>
+        <PageContainer ref={containerRef}>
             <Header>
-                <Title>My Mods</Title>
-                <Button onClick={() => navigate('/upload')}>
-                    Upload New Mod
-                </Button>
+                <HeaderRow>
+                    <Title>My Mods</Title>
+                    <HeaderActions>
+                        <ViewToggle view={view} onViewChange={handleViewChange} />
+                        <Button onClick={() => navigate('/upload')}>
+                            Upload New Mod
+                        </Button>
+                    </HeaderActions>
+                </HeaderRow>
             </Header>
 
             {mods.length === 0 ? (
@@ -154,6 +238,32 @@ export function UserDashboardPage() {
                         Upload Your First Mod
                     </Button>
                 </EmptyState>
+            ) : view === 'list' ? (
+                <ListContainer>
+                    <List
+                        height={listHeight}
+                        itemCount={mods.length + 1}
+                        itemSize={110}
+                        width="100%"
+                    >
+                        {({ index, style }) => {
+                            if (index === mods.length) {
+                                return (
+                                    <div style={{ ...style, paddingTop: spacing.xl, paddingBottom: spacing.xl }}>
+                                        <EndOfListIndicator>
+                                            End of mods list — no more mods to display
+                                        </EndOfListIndicator>
+                                    </div>
+                                );
+                            }
+                            return (
+                                <div style={style}>
+                                    <ModListItem mod={mods[index]} />
+                                </div>
+                            );
+                        }}
+                    </List>
+                </ListContainer>
             ) : (
                 <ModsGrid>
                     {mods.map((mod) => (
@@ -164,6 +274,22 @@ export function UserDashboardPage() {
                             showDelete={true}
                         />
                     ))}
+                    <div key="end-of-list" style={{ 
+                        gridColumn: '1 / -1', 
+                        padding: `${spacing.xl} ${spacing.lg}`,
+                        textAlign: 'center',
+                        color: colors.textMuted,
+                        fontSize: '0.875rem',
+                        fontStyle: 'italic',
+                        background: colors.bgSecondary,
+                        borderTop: `1px solid ${colors.border}`,
+                        borderRadius: '8px',
+                        marginTop: spacing.md,
+                        position: 'relative',
+                        zIndex: 10
+                    }}>
+                        End of mods list — no more mods to display
+                    </div>
                 </ModsGrid>
             )}
 

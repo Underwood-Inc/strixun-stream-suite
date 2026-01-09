@@ -1,6 +1,16 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
 
+/**
+ * Vitest Configuration for Cloudflare Workers
+ * 
+ * NOTE: @cloudflare/vitest-pool-workers doesn't support Vitest 4.0.16 yet
+ * (requires Vitest 2.0.x - 3.2.x). Until it's updated, we use Miniflare directly
+ * for all integration tests that need workers.
+ * 
+ * Single-worker tests can use @cloudflare/vitest-pool-workers once Vitest is downgraded
+ * or the package is updated. For now, all integration tests use Miniflare.
+ */
 export default defineConfig({
   resolve: {
     alias: [
@@ -21,12 +31,15 @@ export default defineConfig({
         replacement: resolve(__dirname, '../../packages/api-framework/index.ts'),
       },
     ],
+    // Allow .js imports to resolve to .ts files (ES module TypeScript pattern)
+    extensions: ['.ts', '.js', '.tsx', '.jsx', '.mjs', '.cjs', '.json'],
   },
   test: {
     globals: true,
-    environment: 'node',
+    environment: 'node', // Use node environment - Miniflare tests run in Node.js
     include: [
       '**/*.test.{js,ts}',
+      '**/*.integration.test.{js,ts}', // Explicitly include integration tests
       '../shared/**/*.test.{js,ts}', // Include shared encryption tests
     ],
     exclude: [
@@ -37,12 +50,9 @@ export default defineConfig({
       '**/*.spec.{js,ts}', // Exclude .spec files (Playwright e2e only)
     ],
     testTimeout: 10000, // 10 second timeout per test
-    pool: 'forks', // Use forks to avoid memory issues
-    isolate: true, // Isolate each test file
     passWithNoTests: true, // Don't fail if no tests are found
-    // Auto-start workers for integration tests (setup file checks if needed)
-    // The setup file exports both setup() and teardown() functions
-    globalSetup: './vitest.setup.integration.ts',
+    // NOTE: Integration tests using Miniflare don't need globalSetup
+    // They create workers directly in beforeAll hooks
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],
@@ -61,4 +71,3 @@ export default defineConfig({
     },
   },
 });
-

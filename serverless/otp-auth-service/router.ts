@@ -11,7 +11,7 @@ import { handlePublicRoutes } from './router/public-routes.js';
 import { handleDevRoutes } from './router/dev-routes.js';
 import { handleDashboardRoutes } from './router/dashboard-routes.js';
 import { handleAuthRoutes } from './router/auth-routes.js';
-import { handleUserRoutes } from './router/user-routes.js';
+import { handleCustomerRoutes } from './router/customer-routes.js';
 import { handleGameRoutes } from './router/game-routes.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 import type { ExecutionContext } from '@strixun/types';
@@ -22,7 +22,7 @@ import type { ExecutionContext } from '@strixun/types';
  */
 const NO_JWT_REQUIRED_PATHS = [
     '/auth/request-otp',
-    '/auth/verify-otp',      // ⚠️ CRITICAL - Returns JWT token
+    '/auth/verify-otp',      // ⚠ CRITICAL - Returns JWT token
     '/auth/restore-session',
     '/signup',
     '/signup/verify',
@@ -129,12 +129,12 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             }
         }
         
-        // Try user routes
+        // Try customer routes
         if (!response) {
-            const userResult = await handleUserRoutes(request, path, env);
-            if (userResult) {
-                customerId = userResult.customerId;
-                response = userResult.response;
+            const customerResult = await handleCustomerRoutes(request, path, env);
+            if (customerResult) {
+                customerId = customerResult.customerId;
+                response = customerResult.response;
             }
         }
         
@@ -157,7 +157,7 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         
         // Track response time
         const responseTime = performance.now() - startTime;
-        if (customerId && (path.startsWith('/admin/') || path.startsWith('/auth/') || path.startsWith('/user/') || path.startsWith('/game/'))) {
+        if (customerId && (path.startsWith('/admin/') || path.startsWith('/auth/') || path.startsWith('/customer/') || path.startsWith('/game/'))) {
             await trackResponseTime(customerId, endpoint, responseTime, env);
         }
         
@@ -261,7 +261,7 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         // Track response time even for errors
         const responseTime = performance.now() - startTime;
         if (customerId) {
-            await trackResponseTime(customerId, endpoint, responseTime, env);
+            await trackResponseTime(customerId, endpoint, responseTime);
         }
         
         // Apply encryption to error responses (but don't require JWT for errors)
@@ -285,4 +285,3 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         }
     }
 }
-

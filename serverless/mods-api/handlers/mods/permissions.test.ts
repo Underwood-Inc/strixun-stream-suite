@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleGetUserPermissions } from './permissions.js';
+import { handleGetCustomerPermissions } from './permissions.js';
 
 // Mock dependencies
 vi.mock('../../utils/admin.js', () => ({
@@ -29,7 +29,7 @@ vi.mock('../../utils/errors.js', () => ({
 
 import { hasUploadPermission, isSuperAdminEmail } from '../../utils/admin.js';
 
-describe('handleGetUserPermissions', () => {
+describe('handleGetCustomerPermissions', () => {
     const mockEnv = {
         ALLOWED_ORIGINS: '*',
     } as any;
@@ -47,12 +47,11 @@ describe('handleGetUserPermissions', () => {
         vi.mocked(isSuperAdminEmail).mockResolvedValue(false);
 
         const auth = {
-            userId: 'user_123',
-            email: 'user@example.com',
             customerId: 'cust_abc',
+            email: 'user@example.com',
         };
 
-        const response = await handleGetUserPermissions(mockRequest, mockEnv, auth);
+        const response = await handleGetCustomerPermissions(mockRequest, mockEnv, auth);
         const data = await response.json();
 
         // CRITICAL: email must NOT be in response
@@ -60,7 +59,7 @@ describe('handleGetUserPermissions', () => {
         expect(data).toEqual({
             hasPermission: true,
             isSuperAdmin: false,
-            userId: 'user_123',
+            customerId: 'cust_abc',
         });
     });
 
@@ -69,17 +68,16 @@ describe('handleGetUserPermissions', () => {
         vi.mocked(isSuperAdminEmail).mockResolvedValue(false);
 
         const auth = {
-            userId: 'user_123',
-            email: 'user@example.com',
             customerId: 'cust_abc',
+            email: 'user@example.com',
         };
 
-        const response = await handleGetUserPermissions(mockRequest, mockEnv, auth);
+        const response = await handleGetCustomerPermissions(mockRequest, mockEnv, auth);
         const data = await response.json();
 
         // Verify email is not present
         expect(data).not.toHaveProperty('email');
-        expect(data.userId).toBe('user_123');
+        expect(data.customerId).toBe('cust_abc');
     });
 
     it('should handle missing email in auth gracefully', async () => {
@@ -87,11 +85,10 @@ describe('handleGetUserPermissions', () => {
         vi.mocked(isSuperAdminEmail).mockResolvedValue(false);
 
         const auth = {
-            userId: 'user_123',
             customerId: 'cust_abc',
         };
 
-        const response = await handleGetUserPermissions(mockRequest, mockEnv, auth);
+        const response = await handleGetCustomerPermissions(mockRequest, mockEnv, auth);
         const data = await response.json();
 
         // CRITICAL: email must NOT be in response even if missing in auth
@@ -99,7 +96,7 @@ describe('handleGetUserPermissions', () => {
         expect(data).toEqual({
             hasPermission: false,
             isSuperAdmin: false,
-            userId: 'user_123',
+            customerId: 'cust_abc',
         });
     });
 
@@ -108,12 +105,11 @@ describe('handleGetUserPermissions', () => {
         vi.mocked(isSuperAdminEmail).mockResolvedValue(false);
 
         const auth = {
-            userId: 'user_123',
-            email: 'user@example.com',
             customerId: 'cust_abc',
+            email: 'user@example.com',
         };
 
-        const response = await handleGetUserPermissions(mockRequest, mockEnv, auth);
+        const response = await handleGetCustomerPermissions(mockRequest, mockEnv, auth);
 
         expect(response.status).toBe(200);
         expect(response.headers.get('Content-Type')).toBe('application/json');
@@ -123,12 +119,11 @@ describe('handleGetUserPermissions', () => {
         vi.mocked(hasUploadPermission).mockRejectedValue(new Error('Database error'));
 
         const auth = {
-            userId: 'user_123',
-            email: 'user@example.com',
             customerId: 'cust_abc',
+            email: 'user@example.com',
         };
 
-        const response = await handleGetUserPermissions(mockRequest, mockEnv, auth);
+        const response = await handleGetCustomerPermissions(mockRequest, mockEnv, auth);
         const data = await response.json();
 
         // CRITICAL: Even in error responses, email must NOT be exposed

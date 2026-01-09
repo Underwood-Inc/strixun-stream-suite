@@ -72,13 +72,13 @@ sequenceDiagram
     
     API->>Auth: 17. GET /auth/me (with JWT token)
     Note over Auth: May return encrypted response
-    Auth-->>API: 18. User data (displayName, userId, customerId)
+    Auth-->>API: 18. User data (displayName, customerId, customerId)
     API->>API: 19. Decrypt response if encrypted
     
     API->>API: 20. Create mod metadata
     Note over API: customerId: auth.customerId
     Note over API: authorDisplayName: from /auth/me (with retry)
-    Note over API: authorId: auth.userId
+    Note over API: authorId: auth.customerId
     
     alt Thumbnail provided
         API->>API: 21a. Validate thumbnail (binary or base64)
@@ -187,7 +187,7 @@ sequenceDiagram
     end
     
     API->>Auth: 10. GET /auth/user/:authorId (public endpoint)
-    Note over Auth: Returns: { userId, displayName } (no email)
+    Note over Auth: Returns: { customerId, displayName } (no email)
     Auth-->>API: 11. User displayName (or null if 404/timeout)
     
     API->>API: 12. Update mod.authorDisplayName

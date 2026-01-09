@@ -1,22 +1,23 @@
 <script lang="ts">
+  import ObfuscatedText from '@shared-components/svelte/ObfuscatedText.svelte';
+
   export let title: string = 'Passwordless Authentication Made Simple';
   export let description: string = 'Secure, scalable OTP authentication API built for modern applications. No passwords, no complexity—just email verification that works.';
-  export let highlightText: string = 'Open-source and self-hostable.';
   export let dashboardLink: string = '/dashboard';
   export let getStartedLink: string = '#code-examples';
-  export let selfHostLink: string = '#self-hosting';
+  export let pricingLink: string = '#pricing';
 </script>
 
 <section class="hero">
   <h1>{title}</h1>
   <p>
     {description}
-    <strong style="color: var(--accent);">{highlightText}</strong> 
+    <strong style="color: var(--accent);">Free tier available. Start with <ObfuscatedText text="1,000" length={5} /> OTP requests/month.</strong> 
   </p>
   <div class="hero-cta">
-    <a href={dashboardLink} class="btn btn-primary">Developer Dashboard</a>
+    <a href={dashboardLink} class="btn btn-primary">Get Started Free</a>
+    <a href={pricingLink} class="btn btn-secondary">View Pricing</a>
     <a href={getStartedLink} class="btn btn-secondary">Start Integrating</a>
-    <a href={selfHostLink} class="btn btn-secondary">Self-Host Option</a>
   </div>
 </section>
 
@@ -91,6 +92,36 @@
   .btn-secondary:hover {
     background: var(--border);
     border-color: var(--border-light);
+  }
+
+  @media (max-width: 768px) {
+    .hero {
+      padding: var(--spacing-2xl) var(--spacing-md);
+    }
+
+    .hero-cta {
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .btn {
+      width: 100%;
+      text-align: center;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .hero {
+      padding: var(--spacing-xl) var(--spacing-sm);
+    }
+
+    .hero p {
+      font-size: 1rem;
+    }
+
+    .btn {
+      padding: var(--spacing-sm) var(--spacing-md);
+    }
   }
 </style>
 

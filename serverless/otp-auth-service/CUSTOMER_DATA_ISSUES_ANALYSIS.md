@@ -307,7 +307,7 @@ serverless/user-api/
 │   └── errors.ts               # Error handling
 └── types/
     ├── customer.ts             # Customer types
-    └── user.ts                 # User types
+    └── customer.ts                 # User types
 ```
 
 ---
@@ -353,7 +353,7 @@ compatibility_date = "2024-01-01"
 
 [env.production]
 routes = [
-  { pattern = "user.idling.app", zone_name = "idling.app" },
+  { pattern = "customer.idling.app", zone_name = "idling.app" },
   { pattern = "api.idling.app/user/*", zone_name = "idling.app" }
 ]
 

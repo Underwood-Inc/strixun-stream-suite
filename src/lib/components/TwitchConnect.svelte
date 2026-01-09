@@ -7,7 +7,7 @@
 
   import { onMount } from 'svelte';
   import { TwitchAttachmentService, type TwitchAccountData } from '../../services/twitchAttachment';
-  import { user, setAuth } from '../../stores/auth';
+  import { customer, setAuth } from '../../stores/auth';
   import { getTwitchClientId, getTwitchOAuthCallback } from '../../modules/twitch-api';
   import { showToast } from '../../stores/toast-queue';
   import { getApiUrl } from '../../stores/auth';
@@ -43,12 +43,12 @@
       loading = true;
       attachedAccount = await twitchService.getAttachedAccount();
       
-      // Update user store if account is attached
+      // Update customer store if account is attached
       if (attachedAccount) {
-        const currentUser = $user;
-        if (currentUser) {
+        const currentCustomer = $customer;
+        if (currentCustomer) {
           setAuth({
-            ...currentUser,
+            ...currentCustomer,
             twitchAccount: {
               twitchUserId: attachedAccount.twitchUserId,
               twitchUsername: attachedAccount.twitchUsername,
@@ -163,11 +163,11 @@
       await twitchService.detachAccount();
       attachedAccount = null;
       
-      // Update user store
-      const currentUser = $user;
-      if (currentUser) {
+      // Update customer store
+      const currentCustomer = $customer;
+      if (currentCustomer) {
         setAuth({
-          ...currentUser,
+          ...currentCustomer,
           twitchAccount: undefined,
         });
       }

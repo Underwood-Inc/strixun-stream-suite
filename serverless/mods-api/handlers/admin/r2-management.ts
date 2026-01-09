@@ -53,10 +53,10 @@ interface AssociatedVersionInfo {
 }
 
 /**
- * Associated user information (human-readable)
+ * Associated customer information (human-readable)
  */
 interface AssociatedUserInfo {
-    userId: string;
+    customerId: string;
     displayName?: string | null;
 }
 
@@ -223,7 +223,7 @@ function extractCustomerIdFromR2Key(r2Key: string): string | null {
 
 /**
  * Fetch all associated data for an R2 file
- * Returns human-readable mod, version, and user information
+ * Returns human-readable mod, version, and customer information
  */
 async function fetchAssociatedData(
     file: R2FileInfo,
@@ -290,7 +290,7 @@ async function fetchAssociatedData(
         }
     }
     
-    // Fetch user display name if uploadedBy is available
+    // Fetch customer display name if uploadedBy is available
     // CRITICAL: Try to use customerId from mod metadata if available (customer is source of truth)
     // TODO: Store customerId in R2 metadata to avoid needing mod lookup
     if (uploadedBy) {
@@ -301,12 +301,11 @@ async function fetchAssociatedData(
             displayName = await fetchDisplayNameByCustomerId(associatedData.mod.customerId, env);
         }
         
-        // Fallback: If no customerId or lookup failed, we'd need userId->customerId mapping
+        // Fallback: If no customerId or lookup failed, cannot determine customer
         // For now, we'll leave this as null if customer lookup fails
         // In the future, R2 metadata should store customerId directly
         
-        associatedData.uploadedBy = {
-            userId: uploadedBy,
+        associatedData.uploadedBy = { customerId: uploadedBy,
             displayName: displayName || null,
         };
     }
@@ -316,7 +315,7 @@ async function fetchAssociatedData(
 
 /**
  * Fetch associated data for multiple files in batch
- * Optimized to fetch user display names in parallel
+ * Optimized to fetch customer display names in parallel
  */
 async function fetchAssociatedDataBatch(
     files: R2FileInfo[],
@@ -415,8 +414,7 @@ async function fetchAssociatedDataBatch(
             const customerIdForLookup = fileModMap.get(file.key) || associatedData.mod?.customerId;
             const displayName = customerIdForLookup ? displayNames.get(customerIdForLookup) || null : null;
             
-            associatedData.uploadedBy = {
-                userId: uploadedBy,
+            associatedData.uploadedBy = { customerId: uploadedBy,
                 displayName: displayName || null,
             };
         }
@@ -440,15 +438,15 @@ async function fetchAssociatedDataBatch(
  * - prefix: Filter by R2 key prefix
  * - limit: Maximum number of files to return (default: 1000, max: 10000)
  * - cursor: Pagination cursor
- * - includeAssociatedData: Include full mod/version/user data (default: true)
+ * - includeAssociatedData: Include full mod/version/customer data (default: true)
  */
 export async function handleListR2Files(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
-        // Route-level protection ensures user is super admin
+        // Route-level protection ensures customer is super admin
         const url = new URL(request.url);
         const prefix = url.searchParams.get('prefix') || '';
         const limit = Math.min(parseInt(url.searchParams.get('limit') || '1000', 10), 10000);
@@ -545,10 +543,10 @@ export async function handleListR2Files(
 export async function handleDetectDuplicates(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
-        // Route-level protection ensures user is super admin
+        // Route-level protection ensures customer is super admin
         const r2SourceInfo = getR2SourceInfo(env, request);
         console.log('[R2Duplicates] Starting duplicate detection scan...');
         console.log('[R2Duplicates] R2 storage source:', r2SourceInfo);
@@ -895,11 +893,11 @@ async function isThumbnailProtected(
 export async function handleDeleteR2File(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null },
+    auth: { customerId: string; email?: string; customerId: string | null },
     key?: string
 ): Promise<Response> {
     try {
-        // Route-level protection ensures user is super admin
+        // Route-level protection ensures customer is super admin
         // Handle bulk delete
         if (request.method === 'POST' && !key) {
             const body = await request.json() as { keys: string[]; force?: boolean };
@@ -1103,11 +1101,11 @@ export async function handleDeleteR2File(
 export async function handleSetDeletionTimestamp(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null },
+    auth: { customerId: string; email?: string; customerId: string | null },
     key: string
 ): Promise<Response> {
     try {
-        // Route-level protection ensures user is super admin
+        // Route-level protection ensures customer is super admin
         const body = await request.json() as { timestamp?: number };
         
         if (!body.timestamp || typeof body.timestamp !== 'number') {
@@ -1196,7 +1194,7 @@ interface Env {
     SUPER_ADMIN_EMAILS?: string;
     ENVIRONMENT?: string;
     ALLOWED_ORIGINS?: string;
-    AUTH_API_URL?: string; // For fetching user display names
+    AUTH_API_URL?: string; // For fetching customer display names
     [key: string]: any;
 }
 

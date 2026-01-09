@@ -113,7 +113,7 @@ export const vanillaJsExample = `<!DOCTYPE html>
     <div id="welcome" style="display: none;" class="welcome">
       <h1>Welcome!</h1>
       <p>You're successfully logged in.</p>
-      <p id="user-email"></p>
+      <p id="customer-email"></p>
       <button onclick="logout()" style="margin-top: 1rem;">Logout</button>
     </div>
   </div>
@@ -154,7 +154,7 @@ export const vanillaJsExample = `<!DOCTYPE html>
       return data;
     }
 
-    async function getCurrentUser() {
+    async function getCurrentCustomer() {
       const token = localStorage.getItem('auth_token');
       if (!token) return null;
       
@@ -211,10 +211,10 @@ export const vanillaJsExample = `<!DOCTYPE html>
       errorDiv.textContent = '';
       
       try {
-        const user = await verifyOTP(currentEmail, otp);
+        const customer = await verifyOTP(currentEmail, otp);
         document.getElementById('login-form').style.display = 'none';
         document.getElementById('welcome').style.display = 'block';
-        document.getElementById('user-email').textContent = user.email;
+        document.getElementById('customer-email').textContent = customer.email;
       } catch (error) {
         errorDiv.textContent = error.message;
       } finally {
@@ -249,13 +249,220 @@ export const vanillaJsExample = `<!DOCTYPE html>
 
     // Check if already logged in
     window.addEventListener('DOMContentLoaded', async () => {
-      const user = await getCurrentUser();
-      if (user) {
+      const customer = await getCurrentCustomer();
+      if (customer) {
         document.getElementById('login-form').style.display = 'none';
         document.getElementById('welcome').style.display = 'block';
-        document.getElementById('user-email').textContent = user.email;
+        document.getElementById('customer-email').textContent = customer.email;
       }
     });
+  </script>
+</body>
+</html>`;
+
+// API Key Usage Examples
+export const vanillaJsApiKeyExample = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OTP Auth - API Key Example</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 2rem;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 { margin-bottom: 1rem; color: #333; }
+    .info {
+      background: #e7f3ff;
+      border-left: 4px solid #007bff;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      border-radius: 4px;
+    }
+    .info code {
+      background: rgba(0,123,255,0.1);
+      padding: 0.2rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+    .form-group { margin-bottom: 1rem; }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #555;
+      font-weight: 500;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+      font-family: monospace;
+    }
+    button {
+      padding: 0.75rem 1.5rem;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    button:hover:not(:disabled) { background: #0056b3; }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .response {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #f8f9fa;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 0.875rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .success { border-left: 4px solid #28a745; }
+    .error { border-left: 4px solid #dc3545; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>◆ API Key Authentication Example</h1>
+    <div class="info">
+      <strong>▸ Getting Your API Key:</strong><br>
+      After signing up at <code>/signup</code> and verifying your email, you'll receive an API key.
+      You can also manage API keys in your dashboard at <code>/dashboard</code>.
+    </div>
+    
+    <div class="form-group">
+      <label for="api-key">Your API Key:</label>
+      <input 
+        type="text" 
+        id="api-key" 
+        placeholder="otp_live_sk_..." 
+        value=""
+      >
+      <small style="color: #666;">Get your API key from the signup response or dashboard</small>
+    </div>
+    
+    <div class="form-group">
+      <label for="email">Email Address:</label>
+      <input type="email" id="email" placeholder="user@example.com">
+    </div>
+    
+    <button onclick="requestOTPWithApiKey()">Request OTP (with API Key)</button>
+    <button onclick="getQuota()">Get Quota Info</button>
+    
+    <div id="response" class="response" style="display: none;"></div>
+  </div>
+
+  <script>
+    const API_URL = 'https://auth.idling.app';
+
+    async function requestOTPWithApiKey() {
+      const apiKey = document.getElementById('api-key').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const responseDiv = document.getElementById('response');
+      
+      if (!apiKey) {
+        responseDiv.className = 'response error';
+        responseDiv.style.display = 'block';
+        responseDiv.textContent = 'Error: Please enter your API key';
+        return;
+      }
+      
+      if (!email) {
+        responseDiv.className = 'response error';
+        responseDiv.style.display = 'block';
+        responseDiv.textContent = 'Error: Please enter an email address';
+        return;
+      }
+      
+      responseDiv.style.display = 'block';
+      responseDiv.className = 'response';
+      responseDiv.textContent = 'Sending request...';
+      
+      try {
+        const response = await fetch(\`\${API_URL}/auth/request-otp\`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-OTP-API-Key': apiKey  // API keys go in X-OTP-API-Key header, NOT Authorization
+          },
+          body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          responseDiv.className = 'response success';
+          responseDiv.textContent = \`✓ Success!\\n\\n\${JSON.stringify(data, null, 2)}\`;
+        } else {
+          responseDiv.className = 'response error';
+          responseDiv.textContent = \`✗ Error (\${response.status}):\\n\\n\${JSON.stringify(data, null, 2)}\`;
+        }
+      } catch (error) {
+        responseDiv.className = 'response error';
+        responseDiv.textContent = \`✗ Network Error:\\n\\n\${error.message}\`;
+      }
+    }
+
+    async function getQuota() {
+      const apiKey = document.getElementById('api-key').value.trim();
+      const responseDiv = document.getElementById('response');
+      
+      if (!apiKey) {
+        responseDiv.className = 'response error';
+        responseDiv.style.display = 'block';
+        responseDiv.textContent = 'Error: Please enter your API key';
+        return;
+      }
+      
+      responseDiv.style.display = 'block';
+      responseDiv.className = 'response';
+      responseDiv.textContent = 'Fetching quota...';
+      
+      try {
+        const response = await fetch(\`\${API_URL}/auth/quota\`, {
+          method: 'GET',
+          headers: {
+            'Authorization': \`Bearer \${apiKey}\`  // NOTE: Quota endpoint requires JWT token, not API key!
+            // This example is simplified - in production, use JWT from verifyOTP
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          responseDiv.className = 'response success';
+          responseDiv.textContent = \`✓ Quota Information:\\n\\n\${JSON.stringify(data, null, 2)}\`;
+        } else {
+          responseDiv.className = 'response error';
+          responseDiv.textContent = \`✗ Error (\${response.status}):\\n\\n\${JSON.stringify(data, null, 2)}\`;
+        }
+      } catch (error) {
+        responseDiv.className = 'response error';
+        responseDiv.textContent = \`✗ Network Error:\\n\\n\${error.message}\`;
+      }
+    }
   </script>
 </body>
 </html>`;
@@ -276,11 +483,11 @@ function LoginForm() {
     // Check if already logged in
     const token = localStorage.getItem('auth_token');
     if (token) {
-      getCurrentUser();
+      getCurrentCustomer();
     }
   }, []);
 
-  async function getCurrentUser() {
+  async function getCurrentCustomer() {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
     
@@ -375,7 +582,7 @@ function LoginForm() {
         <div style={styles.card}>
           <h1 style={styles.title}>Welcome!</h1>
           <p style={styles.text}>You're successfully logged in.</p>
-          <p style={styles.email}>{user.email}</p>
+          <p style={styles.email}>{customer.email}</p>
           <button onClick={logout} style={styles.button}>
             Logout
           </button>
@@ -535,7 +742,7 @@ export const svelteExample = `<!-- LoginForm.svelte -->
   let step = 'email';
   let loading = false;
   let error = '';
-  let user = null;
+  let customer = null;
 
   const API_URL = 'https://auth.idling.app';
 
@@ -543,11 +750,11 @@ export const svelteExample = `<!-- LoginForm.svelte -->
     // Check if already logged in
     const token = localStorage.getItem('auth_token');
     if (token) {
-      await getCurrentUser();
+      await getCurrentCustomer();
     }
   });
 
-  async function getCurrentUser() {
+  async function getCurrentCustomer() {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
     
@@ -556,7 +763,7 @@ export const svelteExample = `<!-- LoginForm.svelte -->
         headers: { 'Authorization': \`Bearer \${token}\` }
       });
       if (response.ok) {
-        user = await response.json();
+        customer = await response.json();
       } else {
         localStorage.removeItem('auth_token');
       }
@@ -612,7 +819,7 @@ export const svelteExample = `<!-- LoginForm.svelte -->
       const data = await response.json();
       if (response.ok) {
         localStorage.setItem('auth_token', data.token);
-        user = data;
+        customer = data;
         error = '';
       } else {
         error = data.detail || 'Invalid OTP';
@@ -626,7 +833,7 @@ export const svelteExample = `<!-- LoginForm.svelte -->
 
   function logout() {
     localStorage.removeItem('auth_token');
-    user = null;
+    customer = null;
     email = '';
     otp = '';
     step = 'email';
@@ -649,7 +856,7 @@ export const svelteExample = `<!-- LoginForm.svelte -->
     {#if user}
       <h1>Welcome!</h1>
       <p class="text">You're successfully logged in.</p>
-      <p class="email">{user.email}</p>
+      <p class="email">{customer.email}</p>
       <button on:click={logout} class="button">Logout</button>
     {:else if step === 'email'}
       <h1>Login</h1>
@@ -810,6 +1017,567 @@ export const svelteExample = `<!-- LoginForm.svelte -->
     color: #007bff;
     font-weight: 500;
     margin-bottom: 1rem;
+  }
+</style>`;
+
+// React API Key Example
+export const reactApiKeyExample = `import React, { useState } from 'react';
+
+const API_URL = 'https://auth.idling.app';
+
+function ApiKeyExample() {
+  const [apiKey, setApiKey] = useState('');
+  const [email, setEmail] = useState('');
+  const [response, setResponse] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function requestOTPWithApiKey() {
+    if (!apiKey.trim()) {
+      setError('Please enter your API key');
+      return;
+    }
+    
+    if (!email.trim()) {
+      setError('Please enter an email address');
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    setResponse(null);
+    
+    try {
+      const res = await fetch(\`\${API_URL}/auth/request-otp\`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-OTP-API-Key': apiKey  // API keys go in X-OTP-API-Key header, NOT Authorization
+        },
+        body: JSON.stringify({ email: email.trim() })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        setResponse({ success: true, data });
+        setError('');
+      } else {
+        setError(\`Error (\${res.status}): \${data.detail || data.error || 'Request failed'}\`);
+        setResponse({ success: false, data });
+      }
+    } catch (err) {
+      setError(\`Network Error: \${err.message}\`);
+      setResponse({ success: false, error: err.message });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function getQuota() {
+    if (!apiKey.trim()) {
+      setError('Please enter your API key');
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    setResponse(null);
+    
+    try {
+      const res = await fetch(\`\${API_URL}/auth/quota\`, {
+        method: 'GET',
+        headers: {
+          'Authorization': \`Bearer \${apiKey}\`  // NOTE: Quota endpoint requires JWT token, not API key!
+          // This example is simplified - in production, use JWT from verifyOTP
+        }
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        setResponse({ success: true, data });
+        setError('');
+      } else {
+        setError(\`Error (\${res.status}): \${data.detail || data.error || 'Request failed'}\`);
+        setResponse({ success: false, data });
+      }
+    } catch (err) {
+      setError(\`Network Error: \${err.message}\`);
+      setResponse({ success: false, error: err.message });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h1 style={styles.title}>◆ API Key Authentication Example</h1>
+        
+        <div style={styles.info}>
+          <strong>▸ Getting Your API Key:</strong><br />
+          After signing up at <code>/signup</code> and verifying your email, you'll receive an API key.
+          You can also manage API keys in your dashboard at <code>/dashboard</code>.
+        </div>
+        
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Your API Key:</label>
+          <input
+            type="text"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="otp_live_sk_..."
+            style={styles.input}
+          />
+          <small style={styles.small}>Get your API key from the signup response or dashboard</small>
+        </div>
+        
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Email Address:</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="customer@example.com"
+            style={styles.input}
+          />
+        </div>
+        
+        <div style={styles.buttonGroup}>
+          <button 
+            onClick={requestOTPWithApiKey} 
+            disabled={loading}
+            style={styles.button}
+          >
+            {loading ? 'Loading...' : 'Request OTP (with API Key)'}
+          </button>
+          <button 
+            onClick={getQuota} 
+            disabled={loading}
+            style={{...styles.button, ...styles.secondaryButton}}
+          >
+            Get Quota Info
+          </button>
+        </div>
+        
+        {error && (
+          <div style={styles.error}>
+            ✗ {error}
+          </div>
+        )}
+        
+        {response && (
+          <div style={{
+            ...styles.response,
+            ...(response.success ? styles.success : styles.errorResponse)
+          }}>
+            <strong>{response.success ? '✓ Success!' : '✗ Error'}</strong>
+            <pre style={styles.pre}>
+              {JSON.stringify(response.data || response, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const styles = {
+  container: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100vh',
+    background: '#f5f5f5',
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    padding: '2rem'
+  },
+  card: {
+    background: 'white',
+    padding: '2rem',
+    borderRadius: '8px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+    width: '100%',
+    maxWidth: '600px'
+  },
+  title: {
+    marginBottom: '1rem',
+    color: '#333'
+  },
+  info: {
+    background: '#e7f3ff',
+    borderLeft: '4px solid #007bff',
+    padding: '1rem',
+    marginBottom: '1.5rem',
+    borderRadius: '4px'
+  },
+  formGroup: {
+    marginBottom: '1rem'
+  },
+  label: {
+    display: 'block',
+    marginBottom: '0.5rem',
+    color: '#555',
+    fontWeight: 500
+  },
+  input: {
+    width: '100%',
+    padding: '0.75rem',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    fontSize: '1rem',
+    fontFamily: 'monospace',
+    boxSizing: 'border-box'
+  },
+  small: {
+    display: 'block',
+    color: '#666',
+    fontSize: '0.875rem',
+    marginTop: '0.25rem'
+  },
+  buttonGroup: {
+    display: 'flex',
+    gap: '0.5rem',
+    flexWrap: 'wrap'
+  },
+  button: {
+    padding: '0.75rem 1.5rem',
+    background: '#007bff',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '1rem',
+    fontWeight: 500,
+    cursor: 'pointer'
+  },
+  secondaryButton: {
+    background: '#6c757d'
+  },
+  error: {
+    color: '#dc3545',
+    marginTop: '1rem',
+    padding: '0.75rem',
+    background: '#f8d7da',
+    border: '1px solid #f5c6cb',
+    borderRadius: '4px'
+  },
+  response: {
+    marginTop: '1.5rem',
+    padding: '1rem',
+    borderRadius: '4px',
+    maxHeight: '400px',
+    overflowY: 'auto'
+  },
+  success: {
+    background: '#d4edda',
+    border: '1px solid #c3e6cb',
+    borderLeft: '4px solid #28a745'
+  },
+  errorResponse: {
+    background: '#f8d7da',
+    border: '1px solid #f5c6cb',
+    borderLeft: '4px solid #dc3545'
+  },
+  pre: {
+    margin: '0.5rem 0 0 0',
+    whiteSpace: 'pre-wrap',
+    fontFamily: 'monospace',
+    fontSize: '0.875rem'
+  }
+};
+
+export default ApiKeyExample;`;
+
+// Svelte API Key Example
+export const svelteApiKeyExample = `<!-- ApiKeyExample.svelte -->
+<script>
+  let apiKey = '';
+  let email = '';
+  let response = null;
+  let loading = false;
+  let error = '';
+
+  const API_URL = 'https://auth.idling.app';
+
+  async function requestOTPWithApiKey() {
+    if (!apiKey.trim()) {
+      error = 'Please enter your API key';
+      return;
+    }
+    
+    if (!email.trim()) {
+      error = 'Please enter an email address';
+      return;
+    }
+    
+    loading = true;
+    error = '';
+    response = null;
+    
+    try {
+      const res = await fetch(\`\${API_URL}/auth/request-otp\`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-OTP-API-Key': apiKey  // API keys go in X-OTP-API-Key header, NOT Authorization
+        },
+        body: JSON.stringify({ email: email.trim() })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        response = { success: true, data };
+        error = '';
+      } else {
+        error = \`Error (\${res.status}): \${data.detail || data.error || 'Request failed'}\`;
+        response = { success: false, data };
+      }
+    } catch (err) {
+      error = \`Network Error: \${err.message}\`;
+      response = { success: false, error: err.message };
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function getQuota() {
+    if (!apiKey.trim()) {
+      error = 'Please enter your API key';
+      return;
+    }
+    
+    loading = true;
+    error = '';
+    response = null;
+    
+    try {
+      const res = await fetch(\`\${API_URL}/auth/quota\`, {
+        method: 'GET',
+        headers: {
+          'Authorization': \`Bearer \${apiKey}\`  // NOTE: Quota endpoint requires JWT token, not API key!
+          // This example is simplified - in production, use JWT from verifyOTP
+        }
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        response = { success: true, data };
+        error = '';
+      } else {
+        error = \`Error (\${res.status}): \${data.detail || data.error || 'Request failed'}\`;
+        response = { success: false, data };
+      }
+    } catch (err) {
+      error = \`Network Error: \${err.message}\`;
+      response = { success: false, error: err.message };
+    } finally {
+      loading = false;
+    }
+  }
+</script>
+
+<div class="container">
+  <div class="card">
+    <h1>◆ API Key Authentication Example</h1>
+    
+    <div class="info">
+      <strong>▸ Getting Your API Key:</strong><br />
+      After signing up at <code>/signup</code> and verifying your email, you'll receive an API key.
+      You can also manage API keys in your dashboard at <code>/dashboard</code>.
+    </div>
+    
+    <div class="form-group">
+      <label for="api-key">Your API Key:</label>
+      <input
+        id="api-key"
+        type="text"
+        bind:value={apiKey}
+        placeholder="otp_live_sk_..."
+      />
+      <small>Get your API key from the signup response or dashboard</small>
+    </div>
+    
+    <div class="form-group">
+      <label for="email">Email Address:</label>
+      <input
+        id="email"
+        type="email"
+        bind:value={email}
+        placeholder="customer@example.com"
+      />
+    </div>
+    
+    <div class="button-group">
+      <button 
+        on:click={requestOTPWithApiKey} 
+        disabled={loading}
+        class="button"
+      >
+        {loading ? 'Loading...' : 'Request OTP (with API Key)'}
+      </button>
+      <button 
+        on:click={getQuota} 
+        disabled={loading}
+        class="button secondary"
+      >
+        Get Quota Info
+      </button>
+    </div>
+    
+    {#if error}
+      <div class="error">
+        ✗ {error}
+      </div>
+    {/if}
+    
+    {#if response}
+      <div class="response" class:success={response.success} class:error={!response.success}>
+        <strong>{response.success ? '✓ Success!' : '✗ Error'}</strong>
+        <pre>{JSON.stringify(response.data || response, null, 2)}</pre>
+      </div>
+    {/if}
+  </div>
+</div>
+
+<style>
+  .container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #f5f5f5;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 2rem;
+  }
+
+  .card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 600px;
+  }
+
+  h1 {
+    margin-bottom: 1rem;
+    color: #333;
+  }
+
+  .info {
+    background: #e7f3ff;
+    border-left: 4px solid #007bff;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+  }
+
+  .info code {
+    background: rgba(0,123,255,0.1);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #555;
+    font-weight: 500;
+  }
+
+  input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-family: monospace;
+    box-sizing: border-box;
+  }
+
+  small {
+    display: block;
+    color: #666;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .button {
+    padding: 0.75rem 1.5rem;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .button:hover:not(:disabled) {
+    background: #0056b3;
+  }
+
+  .button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  .button.secondary {
+    background: #6c757d;
+  }
+
+  .button.secondary:hover:not(:disabled) {
+    background: #5a6268;
+  }
+
+  .error {
+    color: #dc3545;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+  }
+
+  .response {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border-radius: 4px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .response.success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-left: 4px solid #28a745;
+  }
+
+  .response.error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-left: 4px solid #dc3545;
+  }
+
+  .response pre {
+    margin: 0.5rem 0 0 0;
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 0.875rem;
   }
 </style>`;
 

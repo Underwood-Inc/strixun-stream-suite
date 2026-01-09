@@ -1,34 +1,34 @@
 /**
  * Admin approval handler
- * Handles user upload approval/revocation
+ * Handles customer upload approval/revocation
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { isSuperAdminEmail, approveUserUpload, revokeUserUpload, getApprovedUploaders } from '../../utils/admin.js';
+import { isSuperAdminEmail, approveCustomerUpload, revokeCustomerUpload, getApprovedUploaders } from '../../utils/admin.js';
 
 /**
- * Approve user for uploads
- * POST /admin/approvals/:userId
+ * Approve customer for uploads
+ * POST /admin/approvals/:customerId
  */
-export async function handleApproveUser(
+export async function handleApproveCustomer(
     request: Request,
     env: Env,
-    userId: string,
-    auth: { userId: string; email?: string; customerId: string | null }
+    customerId: string,
+    auth: { customerId: string; email?: string; customerIdExternal: string | null }
 ): Promise<Response> {
     try {
-        // Route-level protection ensures user is super admin
+        // Route-level protection ensures customer is super admin
         // Parse request (may include email for metadata)
         const requestData = await request.json().catch(() => ({})) as { email?: string };
         const email = requestData.email || '';
 
-        await approveUserUpload(userId, email, env);
+        await approveCustomerUpload(customerId, email, env);
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
-        return new Response(JSON.stringify({ success: true, userId }), {
+        return new Response(JSON.stringify({ success: true, customerId }), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -36,12 +36,12 @@ export async function handleApproveUser(
             },
         });
     } catch (error: any) {
-        console.error('Approve user error:', error);
+        console.error('Approve customer error:', error);
         const rfcError = createError(
             request,
             500,
-            'Failed to Approve User',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while approving user'
+            'Failed to Approve Customer',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while approving customer'
         );
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -57,23 +57,23 @@ export async function handleApproveUser(
 }
 
 /**
- * Revoke user upload permission
- * DELETE /admin/approvals/:userId
+ * Revoke customer upload permission
+ * DELETE /admin/approvals/:customerId
  */
-export async function handleRevokeUser(
+export async function handleRevokeCustomer(
     request: Request,
     env: Env,
-    userId: string,
-    auth: { userId: string; email?: string; customerId: string | null }
+    customerId: string,
+    auth: { customerId: string; email?: string; customerIdExternal: string | null }
 ): Promise<Response> {
     try {
-        // Route-level protection ensures user is super admin
-        await revokeUserUpload(userId, env);
+        // Route-level protection ensures customer is super admin
+        await revokeCustomerUpload(customerId, env);
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
-        return new Response(JSON.stringify({ success: true, userId }), {
+        return new Response(JSON.stringify({ success: true, customerId }), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -81,12 +81,12 @@ export async function handleRevokeUser(
             },
         });
     } catch (error: any) {
-        console.error('Revoke user error:', error);
+        console.error('Revoke customer error:', error);
         const rfcError = createError(
             request,
             500,
-            'Failed to Revoke User',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while revoking user'
+            'Failed to Revoke Customer',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while revoking customer'
         );
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -108,7 +108,7 @@ export async function handleRevokeUser(
 export async function handleListApprovedUsers(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures user is super admin

@@ -1,7 +1,7 @@
 /**
- * Handle get user permissions request
+ * Handle get customer permissions request
  * GET /mods/permissions/me
- * Returns the current user's upload permission status
+ * Returns the current customer's upload permission status
  */
 
 import { createError } from '../../utils/errors.js';
@@ -9,17 +9,17 @@ import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
 import { hasUploadPermission, isSuperAdminEmail } from '../../utils/admin.js';
 
 /**
- * Handle get user permissions
- * Returns upload permission status for the authenticated user
+ * Handle get customer permissions
+ * Returns upload permission status for the authenticated customer
  */
-export async function handleGetUserPermissions(
+export async function handleGetCustomerPermissions(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerIdExternal: string | null }
 ): Promise<Response> {
     try {
-        // Check if user has upload permission
-        const hasPermission = await hasUploadPermission(auth.userId, auth.email, env);
+        // Check if customer has upload permission
+        const hasPermission = await hasUploadPermission(auth.customerId, auth.email, env);
         const isSuperAdmin = auth.email ? await isSuperAdminEmail(auth.email, env) : false;
         
         const corsHeaders = createCORSHeadersWithLocalhost(request, env);
@@ -27,9 +27,9 @@ export async function handleGetUserPermissions(
         return new Response(JSON.stringify({
             hasPermission: hasPermission,
             isSuperAdmin: isSuperAdmin,
-            userId: auth.userId,
+            customerId: auth.customerId,
             // CRITICAL: email is NEVER returned - it remains encrypted in the OTP auth service
-            // Use displayName from customer account for user identification
+            // Use displayName from customer account for customer identification
         }), {
             status: 200,
             headers: {
@@ -42,7 +42,7 @@ export async function handleGetUserPermissions(
             request,
             500,
             'Internal Server Error',
-            'Failed to check user permissions'
+            'Failed to check customer permissions'
         );
         const corsHeaders = createCORSHeadersWithLocalhost(request, env);
         return new Response(JSON.stringify(rfcError), {

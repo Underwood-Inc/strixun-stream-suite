@@ -492,8 +492,8 @@ describe('Mods Hub API Service - Integration Tests', () => {
             
             // Verify enhanced methods exist on client
             expect(typeof client.requestTyped).toBe('function');
-            expect(typeof client.setUser).toBe('function');
-            expect(typeof client.getUser).toBe('function');
+            expect(typeof client.setCustomer).toBe('function');
+            expect(typeof client.getCustomer).toBe('function');
             expect(typeof client.getWorkerAdapter).toBe('function');
             expect(typeof client.getRequestContext).toBe('function');
         });

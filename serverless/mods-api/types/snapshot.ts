@@ -14,7 +14,7 @@ export interface ModSnapshot {
     snapshotHash: string; // SHA-256 hash of the snapshot data (Strixun verified)
     modData: ModMetadata; // Full mod metadata at time of snapshot
     createdAt: string; // When snapshot was created
-    createdBy: string; // User ID who created the snapshot
+    createdBy: string; // customer ID who created the snapshot
     createdByDisplayName?: string | null; // Display name (never use email)
     // CRITICAL: createdByEmail is NOT stored - email is ONLY for OTP authentication
 }

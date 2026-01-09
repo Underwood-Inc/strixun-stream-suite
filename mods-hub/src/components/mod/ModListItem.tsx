@@ -6,12 +6,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, media } from '../../theme';
 import type { ModMetadata } from '../../types/mod';
 
 const ListItemContainer = styled(Link)`
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: ${spacing.md};
   padding: ${spacing.md} ${spacing.lg};
   text-decoration: none;
@@ -19,6 +19,7 @@ const ListItemContainer = styled(Link)`
   border-bottom: 1px solid ${colors.border};
   transition: background 0.2s ease;
   background: ${colors.bgSecondary};
+  min-height: 110px;
   
   &:hover {
     background: ${colors.bgTertiary};
@@ -26,6 +27,20 @@ const ListItemContainer = styled(Link)`
   
   &:last-child {
     border-bottom: none;
+  }
+  
+  @media (max-width: 1024px) {
+    gap: ${spacing.sm};
+    padding: ${spacing.sm} ${spacing.md};
+  }
+  
+  ${media.mobile} {
+    flex-direction: column;
+    align-items: stretch;
+    gap: ${spacing.md};
+    padding: ${spacing.md};
+    min-height: auto;
+    height: auto;
   }
 `;
 
@@ -38,6 +53,19 @@ const ThumbnailContainer = styled.div`
   overflow: hidden;
   background: ${colors.bgTertiary};
   border: 1px solid ${colors.border};
+  
+  @media (max-width: 1024px) {
+    width: 100px;
+    height: 75px;
+  }
+  
+  ${media.mobile} {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    max-width: 100%;
+    align-self: center;
+  }
 `;
 
 const Thumbnail = styled.img`
@@ -73,16 +101,30 @@ const Content = styled.div`
   flex-direction: column;
   gap: ${spacing.xs};
   min-width: 0;
+  justify-content: center;
+  
+  ${media.mobile} {
+    width: 100%;
+    gap: ${spacing.sm};
+    min-width: auto;
+  }
 `;
 
 const Title = styled.h3`
-  font-size: 1.125rem;
+  font-size: clamp(1rem, 2.5vw, 1.125rem);
   font-weight: 600;
   color: ${colors.text};
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  
+  ${media.mobile} {
+    font-size: clamp(1.125rem, 3vw, 1.25rem);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
 `;
 
 const Author = styled.div`
@@ -92,6 +134,19 @@ const Author = styled.div`
   display: flex;
   align-items: center;
   gap: ${spacing.xs};
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  
+  @media (max-width: 1024px) {
+    font-size: 0.75rem;
+  }
+  
+  ${media.mobile} {
+    font-size: 0.875rem;
+    white-space: normal;
+    overflow: visible;
+  }
 `;
 
 const AuthorLabel = styled.span`
@@ -108,6 +163,19 @@ const Description = styled.p`
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  word-break: break-word;
+  
+  @media (max-width: 1024px) {
+    font-size: 0.8125rem;
+    -webkit-line-clamp: 1;
+  }
+  
+  ${media.mobile} {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    -webkit-line-clamp: 4;
+    display: -webkit-box;
+  }
 `;
 
 const Meta = styled.div`
@@ -117,6 +185,23 @@ const Meta = styled.div`
   align-items: flex-end;
   gap: ${spacing.xs};
   min-width: 120px;
+  justify-content: center;
+  
+  @media (max-width: 1024px) {
+    min-width: 100px;
+    font-size: 0.8125rem;
+  }
+  
+  ${media.mobile} {
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    min-width: 0;
+    margin-top: 0;
+    flex-wrap: wrap;
+    gap: ${spacing.sm};
+  }
 `;
 
 const Category = styled.span`
@@ -126,11 +211,21 @@ const Category = styled.span`
   border-radius: 4px;
   font-weight: 500;
   font-size: 0.75rem;
+  white-space: nowrap;
+  
+  ${media.mobile} {
+    font-size: 0.8125rem;
+    padding: ${spacing.sm} ${spacing.md};
+  }
 `;
 
 const DownloadCount = styled.span`
   font-size: 0.875rem;
   color: ${colors.textMuted};
+  
+  ${media.mobile} {
+    font-size: 0.8125rem;
+  }
 `;
 
 interface ModListItemProps {
@@ -162,7 +257,7 @@ export function ModListItem({ mod }: ModListItemProps) {
                     )
                 ) : (
                     <ThumbnailError>
-                        <ErrorIcon>📦</ErrorIcon>
+                        <ErrorIcon>▣</ErrorIcon>
                         <div>No thumbnail</div>
                     </ThumbnailError>
                 )}

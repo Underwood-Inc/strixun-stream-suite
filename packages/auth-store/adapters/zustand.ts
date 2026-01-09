@@ -5,11 +5,11 @@
 
 import { create, type StateCreator } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { User, AuthState, AuthStoreMethods, AuthStoreConfig } from '../core/types.js';
+import type { AuthenticatedCustomer, AuthState, AuthStoreMethods, AuthStoreConfig } from '../core/types.js';
 import { 
     restoreSessionFromBackend, 
     validateTokenWithBackend, 
-    fetchUserInfo,
+    fetchCustomerInfo,
     decodeJWTPayload 
 } from '../core/api.js';
 
@@ -27,61 +27,52 @@ export function createAuthStore(config?: AuthStoreConfig) {
     const storage = config?.storage || (typeof window !== 'undefined' ? window.localStorage : null);
     
     const authStoreCreator: StateCreator<ZustandAuthState> = (set, get) => ({
-        user: null,
+        customer: null,
         isAuthenticated: false,
         isSuperAdmin: false,
         _isRestoring: false, // Guard to prevent concurrent restore calls
         _lastRestoreAttempt: 0, // Timestamp of last restore attempt to debounce
         _lastLogoutTime: 0, // Timestamp of last logout to prevent immediate restoration
-        setUser: (user: User | null) => {
+        setCustomer: (customer: AuthenticatedCustomer | null) => {
             // CRITICAL: Trim token when storing to ensure consistency with backend
-            if (!user) {
+            if (!customer) {
                 set({ 
-                    user: null, 
+                    customer: null, 
                     isAuthenticated: false,
                     isSuperAdmin: false,
                 });
                 return;
             }
             
-            let userToStore: User = user;
-            // Clear logout timestamp when setting a new user (login)
+            let customerToStore: AuthenticatedCustomer = customer;
+            // Clear logout timestamp when setting a new customer (login)
             const state = get() as any;
             if (state._lastLogoutTime) {
                 state._lastLogoutTime = 0;
             }
             
-            if (user.token) {
-                const trimmedToken = user.token.trim();
-                if (trimmedToken !== user.token) {
-                    userToStore = { ...user, token: trimmedToken };
+            if (customer.token) {
+                const trimmedToken = customer.token.trim();
+                if (trimmedToken !== customer.token) {
+                    customerToStore = { ...customer, token: trimmedToken };
                 }
-                // Extract isSuperAdmin and customerId from JWT if not already set
-                let isSuperAdmin = user.isSuperAdmin || false;
-                let customerId = user.customerId || null;
+                // Extract isSuperAdmin from JWT if not already set
+                let isSuperAdmin = customer.isSuperAdmin || false;
                 const payload = decodeJWTPayload(trimmedToken);
                 if (payload?.isSuperAdmin === true) {
                     isSuperAdmin = true;
                 }
-                if (payload?.customerId && !customerId) {
-                    customerId = payload.customerId as string | null;
-                }
-                
-                // Update user with extracted customerId if needed
-                if (customerId && customerId !== userToStore.customerId) {
-                    userToStore = { ...userToStore, customerId };
-                }
                 
                 set({ 
-                    user: userToStore, 
-                    isAuthenticated: true, // Explicitly set isAuthenticated when user is set
+                    customer: customerToStore, 
+                    isAuthenticated: true, // Explicitly set isAuthenticated when customer is set
                     isSuperAdmin,
                     _lastLogoutTime: 0, // Clear logout timestamp on successful login
                 });
             } else {
                 set({ 
-                    user: userToStore, 
-                    isAuthenticated: true, // Explicitly set isAuthenticated when user is set
+                    customer: customerToStore, 
+                    isAuthenticated: true, // Explicitly set isAuthenticated when customer is set
                     isSuperAdmin: false,
                     _lastLogoutTime: 0, // Clear logout timestamp on successful login
                 });
@@ -90,8 +81,8 @@ export function createAuthStore(config?: AuthStoreConfig) {
         logout: async () => {
             // Try to call logout endpoint to invalidate token on server
             try {
-                const currentUser = get().user;
-                if (currentUser?.token) {
+                const currentCustomer = get().customer;
+                if (currentCustomer?.token) {
                     // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
                     let apiUrl = config?.authApiUrl;
                     if (!apiUrl && typeof window !== 'undefined') {
@@ -111,7 +102,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
                     }
                     
                     // CRITICAL: Store token before creating client (we'll clear it after)
-                    const tokenToUse = currentUser.token.trim();
+                    const tokenToUse = currentCustomer.token.trim();
                     
                     const { createAPIClient } = await import('@strixun/api-framework/client');
                     const authClient = createAPIClient({
@@ -133,52 +124,52 @@ export function createAuthStore(config?: AuthStoreConfig) {
             } finally {
                 // Always clear local auth state and record logout time
                 set({ 
-                    user: null, 
+                    customer: null, 
                     isAuthenticated: false, 
                     isSuperAdmin: false,
                     _lastLogoutTime: Date.now(), // Record logout time to prevent immediate restoration
                 });
             }
         },
-        fetchUserInfo: async () => {
-            const currentUser = get().user;
-            if (!currentUser || !currentUser.token) {
+        fetchCustomerInfo: async () => {
+            const currentCustomer = get().customer;
+            if (!currentCustomer || !currentCustomer.token) {
                 return;
             }
             
             // CRITICAL: Trim token before using it to ensure it matches the token used for encryption on backend
-            const trimmedToken = currentUser.token.trim();
-            if (trimmedToken !== currentUser.token) {
+            const trimmedToken = currentCustomer.token.trim();
+            if (trimmedToken !== currentCustomer.token) {
                 // Token had whitespace - update it
-                const updatedUser = { ...currentUser, token: trimmedToken };
+                const updatedCustomer = { ...currentCustomer, token: trimmedToken };
                 set({ 
-                    user: updatedUser,
-                    isAuthenticated: true, // Ensure isAuthenticated is set when user is updated
+                    customer: updatedCustomer,
+                    isAuthenticated: true, // Ensure isAuthenticated is set when customer is updated
                 });
             }
             
-            // CRITICAL: Don't clear user if fetchUserInfo fails - only update if it succeeds
+            // CRITICAL: Don't clear customer if fetchCustomerInfo fails - only update if it succeeds
             // This prevents undefined cache values from wiping the session
             // EXCEPTION: If token mismatch is detected, we should clear and restore
             try {
-                const userInfo = await fetchUserInfo(trimmedToken, config);
-                if (userInfo) {
-                    const updatedUser: User = { 
-                        ...currentUser, 
-                        isSuperAdmin: userInfo.isSuperAdmin, 
-                        displayName: userInfo.displayName || currentUser.displayName,
-                        customerId: userInfo.customerId || currentUser.customerId,
+                const customerInfo = await fetchCustomerInfo(trimmedToken, config);
+                if (customerInfo) {
+                    const updatedCustomer: AuthenticatedCustomer = { 
+                        ...currentCustomer, 
+                        isSuperAdmin: customerInfo.isSuperAdmin, 
+                        displayName: customerInfo.displayName || currentCustomer.displayName,
+                        customerId: currentCustomer.customerId, // customerId is already in customer, don't override
                     };
                     set({ 
-                        user: updatedUser, 
-                        isSuperAdmin: userInfo.isSuperAdmin,
+                        customer: updatedCustomer, 
+                        isSuperAdmin: customerInfo.isSuperAdmin,
                     });
                 } else {
                     // Check if the response was still encrypted (token mismatch)
-                    // This is detected by fetchUserInfo returning null when decryption fails
+                    // This is detected by fetchCustomerInfo returning null when decryption fails
                     // We can't distinguish between "no data" and "token mismatch" from the return value,
                     // but the error logs will indicate token mismatch
-                    console.warn('[Auth] Failed to fetch user info, but keeping existing auth state');
+                    console.warn('[Auth] Failed to fetch customer info, but keeping existing auth state');
                 }
             } catch (error) {
                 // Check if this is a token mismatch error
@@ -188,12 +179,12 @@ export function createAuthStore(config?: AuthStoreConfig) {
                                         errorMessage.includes('decryption failed');
                 
                 if (isTokenMismatch) {
-                    console.warn('[Auth] Token mismatch detected in fetchUserInfo, extracting customerId from JWT before restoring session');
+                    console.warn('[Auth] Token mismatch detected in fetchCustomerInfo, extracting customerId from JWT before restoring session');
                     
-                    // CRITICAL: Extract customerId from JWT BEFORE clearing user
-                    // This ensures the user can still access features that require customerId
+                    // CRITICAL: Extract customerId from JWT BEFORE clearing customer
+                    // This ensures the customer can still access features that require customerId
                     // even if the token is stale and restore fails
-                    const jwtPayload = decodeJWTPayload(currentUser.token);
+                    const jwtPayload = decodeJWTPayload(currentCustomer.token);
                     const jwtCustomerId = jwtPayload?.customerId as string | null | undefined;
                     
                     // Try to restore session first (this will get a fresh token)
@@ -201,35 +192,35 @@ export function createAuthStore(config?: AuthStoreConfig) {
                         try {
                             const restored = await get().restoreSession();
                             if (restored) {
-                                // Restore succeeded - user should now have fresh token and customerId
+                                // Restore succeeded - customer should now have fresh token and customerId
                                 console.log('[Auth] Session restored successfully after token mismatch');
-                                return; // Exit early - restoreSession already updated the user
+                                return; // Exit early - restoreSession already updated the customer
                             }
                         } catch (restoreError) {
                             console.warn('[Auth] Session restore failed after token mismatch:', restoreError);
                         }
                     }
                     
-                    // If restore failed or is disabled, keep user logged in with customerId from JWT
-                    // This allows the user to continue using the app even with a stale token
+                    // If restore failed or is disabled, keep customer logged in with customerId from JWT
+                    // This allows the customer to continue using the app even with a stale token
                     if (jwtCustomerId) {
-                        const userWithCustomerId: User = {
-                            ...currentUser,
-                            customerId: jwtCustomerId || currentUser.customerId,
+                        const customerWithCustomerId: AuthenticatedCustomer = {
+                            ...currentCustomer,
+                            customerId: jwtCustomerId || currentCustomer.customerId,
                         };
                         set({ 
-                            user: userWithCustomerId, 
-                            isAuthenticated: true, // Ensure isAuthenticated is set when user is updated
+                            customer: customerWithCustomerId, 
+                            isAuthenticated: true, // Ensure isAuthenticated is set when customer is updated
                         });
-                        console.log('[Auth] Kept user logged in with customerId from JWT:', jwtCustomerId);
+                        console.log('[Auth] Kept customer logged in with customerId from JWT:', jwtCustomerId);
                     } else {
-                        // No customerId in JWT and restore failed - clear user
-                        console.warn('[Auth] No customerId in JWT and restore failed - clearing user');
-                        set({ user: null, isAuthenticated: false, isSuperAdmin: false });
+                        // No customerId in JWT and restore failed - clear customer
+                        console.warn('[Auth] No customerId in JWT and restore failed - clearing customer');
+                        set({ customer: null, isAuthenticated: false, isSuperAdmin: false });
                     }
                 } else {
-                    // Other errors - log but don't clear the user
-                    console.warn('[Auth] Failed to fetch user info, but keeping existing auth state:', errorMessage);
+                    // Other errors - log but don't clear the customer
+                    console.warn('[Auth] Failed to fetch customer info, but keeping existing auth state:', errorMessage);
                 }
             }
         },
@@ -245,44 +236,44 @@ export function createAuthStore(config?: AuthStoreConfig) {
             state._isRestoring = true;
             
             try {
-                const currentUser = get().user;
+                const currentCustomer = get().customer;
                 
-                // If we already have a user with a valid (non-expired) token, validate it first
-                if (currentUser && currentUser.token && currentUser.expiresAt) {
-                const isExpired = new Date(currentUser.expiresAt) <= new Date();
+                // If we already have a customer with a valid (non-expired) token, validate it first
+                if (currentCustomer && currentCustomer.token && currentCustomer.expiresAt) {
+                const isExpired = new Date(currentCustomer.expiresAt) <= new Date();
                 
                 if (!isExpired) {
                     // Token not expired - validate with backend to check if it's blacklisted or stale
-                    const isValid = await validateTokenWithBackend(currentUser.token, config);
+                    const isValid = await validateTokenWithBackend(currentCustomer.token, config);
                     
                     if (!isValid) {
                         // Token is invalid (blacklisted or stale) - clear it and try to restore
                         console.log('[Auth] Token validation failed (token is stale or blacklisted), clearing and attempting restore');
-                        set({ user: null, isAuthenticated: false, isSuperAdmin: false });
+                        set({ customer: null, isAuthenticated: false, isSuperAdmin: false });
                         // Fall through to restore from backend
                     } else {
                         // Token is valid, just refresh admin status in background
-                        // CRITICAL: Use the token from currentUser directly to avoid any timing issues
-                        fetchUserInfo(currentUser.token, config).then(userInfo => {
-                            if (userInfo) {
-                                // Get current user again to ensure we have the latest state
-                                const latestUser = get().user;
-                                if (latestUser && latestUser.token === currentUser.token) {
-                                    const updatedUser: User = { 
-                                        ...latestUser, 
-                                        isSuperAdmin: userInfo.isSuperAdmin, 
-                                        displayName: userInfo.displayName || latestUser.displayName,
-                                        customerId: userInfo.customerId || latestUser.customerId,
+                        // CRITICAL: Use the token from currentCustomer directly to avoid any timing issues
+                        fetchCustomerInfo(currentCustomer.token, config).then(customerInfo => {
+                            if (customerInfo) {
+                                // Get current customer again to ensure we have the latest state
+                                const latestCustomer = get().customer;
+                                if (latestCustomer && latestCustomer.token === currentCustomer.token) {
+                                    const updatedCustomer: AuthenticatedCustomer = { 
+                                        ...latestCustomer, 
+                                        isSuperAdmin: customerInfo.isSuperAdmin, 
+                                        displayName: customerInfo.displayName || latestCustomer.displayName,
+                                        customerId: latestCustomer.customerId, // Don't override customerId
                                     };
                                     set({ 
-                                        user: updatedUser, 
-                                        isAuthenticated: true, // Ensure isAuthenticated is set when user is updated
-                                        isSuperAdmin: userInfo.isSuperAdmin,
+                                        customer: updatedCustomer, 
+                                        isAuthenticated: true, // Ensure isAuthenticated is set when customer is updated
+                                        isSuperAdmin: customerInfo.isSuperAdmin,
                                     });
                                 }
                             }
                         }).catch(err => {
-                            // If fetchUserInfo fails with token mismatch, clear and restore session
+                            // If fetchCustomerInfo fails with token mismatch, clear and restore session
                             const errorMessage = err instanceof Error ? err.message : String(err);
                             const isTokenMismatch = (err as any)?.isTokenMismatch === true ||
                                                     errorMessage.includes('token does not match') || 
@@ -292,10 +283,10 @@ export function createAuthStore(config?: AuthStoreConfig) {
                             if (isTokenMismatch) {
                                 // Token mismatch - don't spam restore, just log it
                                 // The token is stale but clearing it will cause infinite loops
-                                // Instead, just log and let the user continue - if the token is truly broken,
+                                // Instead, just log and let the customer continue - if the token is truly broken,
                                 // API calls will fail and they can log in again
                                 console.warn('[Auth] Token mismatch detected during background refresh - token may be stale');
-                                console.warn('[Auth] Keeping user logged in - if API calls fail, user should log in again');
+                                console.warn('[Auth] Keeping customer logged in - if API calls fail, customer should log in again');
                                 // DON'T clear or restore here - that causes infinite loops
                             } else {
                                 console.debug('[Auth] Background admin status refresh failed (non-critical):', err);
@@ -304,47 +295,47 @@ export function createAuthStore(config?: AuthStoreConfig) {
                         return true; // Already authenticated with valid token - don't clear!
                     }
                 }
-                // Token is expired - try to restore from backend, but don't clear user yet
+                // Token is expired - try to restore from backend, but don't clear customer yet
                 // Only clear if backend restore fails
             }
             
             // Try to restore from backend (IP-based session sharing)
-            // This runs if we don't have a user, the user's token is expired, or token validation failed
+            // This runs if we don't have a customer, the customer's token is expired, or token validation failed
             if (!config?.enableSessionRestore) {
                 return false;
             }
             
-            const restoredUser = await restoreSessionFromBackend(config);
-            if (restoredUser) {
-                // CRITICAL: Extract customerId from JWT immediately so user can access upload
-                const jwtPayload = decodeJWTPayload(restoredUser.token);
+            const restoredCustomer = await restoreSessionFromBackend(config);
+            if (restoredCustomer) {
+                // CRITICAL: Extract customerId from JWT immediately so customer can access upload
+                const jwtPayload = decodeJWTPayload(restoredCustomer.token);
                 const jwtCustomerId = jwtPayload?.customerId as string | null | undefined;
-                const userWithCustomerId: User = {
-                    ...restoredUser,
-                    customerId: restoredUser.customerId || jwtCustomerId || null,
+                const customerWithCustomerId: AuthenticatedCustomer = {
+                    ...restoredCustomer,
+                    customerId: restoredCustomer.customerId || jwtCustomerId || '',
                 };
                 
-                set({ user: userWithCustomerId, isAuthenticated: true, isSuperAdmin: false });
+                set({ customer: customerWithCustomerId, isAuthenticated: true, isSuperAdmin: false });
                 // Fetch admin status after restoring session
                 try {
-                    const userInfo = await fetchUserInfo(userWithCustomerId.token, config);
-                    if (userInfo) {
-                        const updatedUser: User = { 
-                            ...userWithCustomerId, 
-                            isSuperAdmin: userInfo.isSuperAdmin, 
-                            displayName: userInfo.displayName || userWithCustomerId.displayName,
-                            customerId: userInfo.customerId || userWithCustomerId.customerId || jwtCustomerId || null,
+                    const customerInfo = await fetchCustomerInfo(customerWithCustomerId.token, config);
+                    if (customerInfo) {
+                        const updatedCustomer: AuthenticatedCustomer = { 
+                            ...customerWithCustomerId, 
+                            isSuperAdmin: customerInfo.isSuperAdmin, 
+                            displayName: customerInfo.displayName || customerWithCustomerId.displayName,
+                            customerId: customerWithCustomerId.customerId, // Don't override customerId
                         };
                         set({ 
-                            user: updatedUser, 
-                            isAuthenticated: true, // Ensure isAuthenticated is set when user is updated
-                            isSuperAdmin: userInfo.isSuperAdmin,
+                            customer: updatedCustomer, 
+                            isAuthenticated: true, // Ensure isAuthenticated is set when customer is updated
+                            isSuperAdmin: customerInfo.isSuperAdmin,
                         });
                         return true; // Successfully restored
                     } else {
-                        // fetchUserInfo returned null - we already have customerId from JWT, keep user logged in
-                        console.warn('[Auth] fetchUserInfo returned null after restore - keeping user logged in with customerId from JWT');
-                        return true; // Keep user logged in - customerId already extracted from JWT
+                        // fetchCustomerInfo returned null - we already have customerId from JWT, keep customer logged in
+                        console.warn('[Auth] fetchCustomerInfo returned null after restore - keeping customer logged in with customerId from JWT');
+                        return true; // Keep customer logged in - customerId already extracted from JWT
                     }
                 } catch (error) {
                     // Check if this is a token mismatch error
@@ -357,37 +348,37 @@ export function createAuthStore(config?: AuthStoreConfig) {
                     if (isTokenMismatch) {
                         // Token mismatch after restore - this can happen if restore created a new token
                         // but the backend session still has the old token. Extract customerId from JWT
-                        // and keep the user logged in - they can still use the app
-                        console.warn('[Auth] Token mismatch detected after restore - keeping restored user logged in');
-                        const jwtPayload = decodeJWTPayload(restoredUser.token);
+                        // and keep the customer logged in - they can still use the app
+                        console.warn('[Auth] Token mismatch detected after restore - keeping restored customer logged in');
+                        const jwtPayload = decodeJWTPayload(restoredCustomer.token);
                         const jwtCustomerId = jwtPayload?.customerId as string | null | undefined;
-                        if (jwtCustomerId && !restoredUser.customerId) {
-                            const userWithCustomerId: User = {
-                                ...restoredUser,
+                        if (jwtCustomerId && !restoredCustomer.customerId) {
+                            const customerWithCustomerId: AuthenticatedCustomer = {
+                                ...restoredCustomer,
                                 customerId: jwtCustomerId,
                             };
                             set({ 
-                                user: userWithCustomerId, 
-                                isAuthenticated: true, // Ensure isAuthenticated is set when user is updated
+                                customer: customerWithCustomerId, 
+                                isAuthenticated: true, // Ensure isAuthenticated is set when customer is updated
                             });
                         }
-                        // Keep the user - don't clear them or we'll get into infinite restore loops
-                        return true; // Consider restore successful even if fetchUserInfo failed
+                        // Keep the customer - don't clear them or we'll get into infinite restore loops
+                        return true; // Consider restore successful even if fetchCustomerInfo failed
                     } else {
-                        // Other error - log but keep the restored user
+                        // Other error - log but keep the restored customer
                         console.warn('[Auth] Failed to fetch admin status after restore (non-critical):', errorMessage);
-                        // Keep the user authenticated even if we couldn't fetch admin status
+                        // Keep the customer authenticated even if we couldn't fetch admin status
                         return true; // Consider restore successful even if admin status fetch failed
                     }
                 }
-            } else if (currentUser && currentUser.expiresAt && new Date(currentUser.expiresAt) <= new Date()) {
-                // Backend restore failed AND token is expired - only now clear the user
+            } else if (currentCustomer && currentCustomer.expiresAt && new Date(currentCustomer.expiresAt) <= new Date()) {
+                // Backend restore failed AND token is expired - only now clear the customer
                 console.log('[Auth] Token expired and backend restore failed, clearing auth state');
-                set({ user: null, isAuthenticated: false, isSuperAdmin: false });
+                set({ customer: null, isAuthenticated: false, isSuperAdmin: false });
                 return false; // Failed to restore
             }
-            // If backend restore failed but we have a valid user, keep them logged in
-            return false; // No user to restore or restore failed
+            // If backend restore failed but we have a valid customer, keep them logged in
+            return false; // No customer to restore or restore failed
             } finally {
                 // Always clear the restoring flag
                 const state = get() as any;
@@ -404,7 +395,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 name: storageKey,
                 storage: storage ? createJSONStorage(() => storage) : undefined,
                 partialize: (state: ZustandAuthState) => ({ 
-                    user: state.user,
+                    customer: state.customer,
                     _lastLogoutTime: state._lastLogoutTime, // Persist logout time to prevent restoration after page reload
                 }),
                 // After hydration, restore session if needed
@@ -412,30 +403,30 @@ export function createAuthStore(config?: AuthStoreConfig) {
                     return async (state) => {
                         if (state) {
                             // CRITICAL: Trim token when hydrating from storage to ensure consistency
-                            if (state.user?.token) {
-                                const trimmedToken = state.user.token.trim();
-                                if (trimmedToken !== state.user.token) {
-                                    state.user = { ...state.user, token: trimmedToken };
+                            if (state.customer?.token) {
+                                const trimmedToken = state.customer.token.trim();
+                                if (trimmedToken !== state.customer.token) {
+                                    state.customer = { ...state.customer, token: trimmedToken };
                                     console.log('[Auth] Trimmed token during hydration');
                                 }
                             }
                             
                             // Extract customerId from JWT immediately if available
-                            if (state.user?.token && !state.user.customerId) {
-                                const jwtPayload = decodeJWTPayload(state.user.token);
+                            if (state.customer?.token && !state.customer.customerId) {
+                                const jwtPayload = decodeJWTPayload(state.customer.token);
                                 const jwtCustomerId = jwtPayload?.customerId as string | null | undefined;
                                 if (jwtCustomerId) {
-                                    state.user = { ...state.user, customerId: jwtCustomerId };
+                                    state.customer = { ...state.customer, customerId: jwtCustomerId };
                                     console.log('[Auth] Extracted customerId from JWT during hydration:', jwtCustomerId);
                                 }
                             }
                             
-                            // CRITICAL: Set isAuthenticated and isSuperAdmin from restored user
-                            if (state.user) {
+                            // CRITICAL: Set isAuthenticated and isSuperAdmin from restored customer
+                            if (state.customer) {
                                 // Validate token exists and is not empty
-                                if (!state.user.token || state.user.token.trim().length === 0) {
-                                    console.warn('[Auth] User found in storage but token is missing or empty, clearing auth state');
-                                    state.user = null;
+                                if (!state.customer.token || state.customer.token.trim().length === 0) {
+                                    console.warn('[Auth] Customer found in storage but token is missing or empty, clearing auth state');
+                                    state.customer = null;
                                     state.isAuthenticated = false;
                                     state.isSuperAdmin = false;
                                     await state.restoreSession();
@@ -443,17 +434,17 @@ export function createAuthStore(config?: AuthStoreConfig) {
                                 }
                                 
                                 // Check if token is expired locally first (fast check)
-                                const isExpired = state.user.expiresAt && new Date(state.user.expiresAt) <= new Date();
+                                const isExpired = state.customer.expiresAt && new Date(state.customer.expiresAt) <= new Date();
                                 
                                 if (!isExpired) {
                                     // Token not expired locally - validate with backend to check if blacklisted or stale
                                     // This ensures we detect tokens that were blacklisted on other domains or are stale
-                                    const isValid = await validateTokenWithBackend(state.user.token, config);
+                                    const isValid = await validateTokenWithBackend(state.customer.token, config);
                                     
                                     if (!isValid) {
                                         // Token is blacklisted, invalid, or stale (token mismatch) - clear auth state
                                         console.log('[Auth] Token validation failed (blacklisted, invalid, or stale), clearing auth state');
-                                        state.user = null;
+                                        state.customer = null;
                                         state.isAuthenticated = false;
                                         state.isSuperAdmin = false;
                                         // Try to restore session from backend (in case there's a valid session for this IP)
@@ -465,20 +456,20 @@ export function createAuthStore(config?: AuthStoreConfig) {
                                     
                                     // Token is valid - restore auth state
                                     // Extract isSuperAdmin from JWT if not already set
-                                    const payload = decodeJWTPayload(state.user.token);
-                                    const isSuperAdmin = payload?.isSuperAdmin === true || state.user.isSuperAdmin || false;
+                                    const payload = decodeJWTPayload(state.customer.token);
+                                    const isSuperAdmin = payload?.isSuperAdmin === true || state.customer.isSuperAdmin || false;
                                     
                                     state.isAuthenticated = true;
                                     state.isSuperAdmin = isSuperAdmin;
                                     
-                                    // Just refresh admin status and customerId in background, don't clear user
-                                    console.log('[Auth] User authenticated from localStorage, token valid until:', state.user.expiresAt);
-                                    if (state.user.token) {
-                                        // CRITICAL: Use the token from state.user directly, not from the store's fetchUserInfo
+                                    // Just refresh admin status and customerId in background, don't clear customer
+                                    console.log('[Auth] Customer authenticated from localStorage, token valid until:', state.customer.expiresAt);
+                                    if (state.customer.token) {
+                                        // CRITICAL: Use the token from state.customer directly, not from the store's fetchCustomerInfo
                                         // This ensures we use the exact token that was validated, avoiding timing issues
                                         // Don't await - let it run in background, don't block hydration
-                                        fetchUserInfo(state.user.token, config).catch(err => {
-                                            // If fetchUserInfo fails with token mismatch, clear and restore
+                                        fetchCustomerInfo(state.customer.token, config).catch(err => {
+                                            // If fetchCustomerInfo fails with token mismatch, clear and restore
                                             const errorMessage = err instanceof Error ? err.message : String(err);
                                             const isTokenMismatch = (err as any)?.isTokenMismatch === true ||
                                                                     errorMessage.includes('token does not match') || 
@@ -488,21 +479,20 @@ export function createAuthStore(config?: AuthStoreConfig) {
                                             if (isTokenMismatch) {
                                                 // Token mismatch - don't spam restore, just extract customerId from JWT if needed
                                                 console.warn('[Auth] Token mismatch detected during background fetch - token may be stale');
-                                                if (state.user) {
-                                                    const jwtPayload = decodeJWTPayload(state.user.token);
+                                                if (state.customer) {
+                                                    const jwtPayload = decodeJWTPayload(state.customer.token);
                                                     const jwtCustomerId = jwtPayload?.customerId as string | null | undefined;
-                                                    if (jwtCustomerId && !state.user.customerId) {
-                                                        state.user = { 
-                                                            ...state.user, 
+                                                    if (jwtCustomerId && !state.customer.customerId) {
+                                                        state.customer = { 
+                                                            ...state.customer, 
                                                             customerId: jwtCustomerId,
-                                                            userId: state.user.userId, // Ensure userId is explicitly set
                                                         };
                                                         console.log('[Auth] Extracted customerId from JWT after token mismatch:', jwtCustomerId);
                                                     }
                                                 }
                                                 // DON'T clear or restore - that causes infinite loops
                                             } else {
-                                                console.debug('[Auth] Background fetchUserInfo failed (non-critical):', err);
+                                                console.debug('[Auth] Background fetchCustomerInfo failed (non-critical):', err);
                                             }
                                         });
                                     }
@@ -513,22 +503,22 @@ export function createAuthStore(config?: AuthStoreConfig) {
                                         const restored = await state.restoreSession();
                                         if (!restored) {
                                             // Backend restore failed, clear auth
-                                            state.user = null;
+                                            state.customer = null;
                                             state.isAuthenticated = false;
                                             state.isSuperAdmin = false;
                                         }
                                     } else {
                                         // Session restore disabled, clear auth
-                                        state.user = null;
+                                        state.customer = null;
                                         state.isAuthenticated = false;
                                         state.isSuperAdmin = false;
                                     }
                                 }
                             } else {
-                                // No user in localStorage - try to restore from backend (IP-based session sharing)
+                                // No customer in localStorage - try to restore from backend (IP-based session sharing)
                                 // BUT: Don't restore here if Layout component will also call restoreSession
                                 // The Layout component's restoreSession call will handle this
-                                console.log('[Auth] No user in storage - Layout component will attempt restore on mount');
+                                console.log('[Auth] No customer in storage - Layout component will attempt restore on mount');
                                 // Don't call restoreSession here to avoid duplicate calls
                             }
                         }

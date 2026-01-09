@@ -109,30 +109,27 @@ export async function encryptWithJWT(
   token: string
 ): Promise<EncryptedData> {
   // Only log for /auth/me related data (check if data contains email or userId)
-  const shouldLog = data && typeof data === 'object' && (
-    'email' in data || 
-    'userId' in data || 
-    'customerId' in data
-  );
+  // const shouldLog = data && typeof data === 'object' && (
+  //   'email' in data || 
+  //   'userId' in data || 
+  //   'customerId' in data
+  // );
   
   // CRITICAL: Trim token to ensure consistency with backend
-  const rawToken = token;
-  const trimmedToken = token?.trim() || token;
-  const wasTrimmed = rawToken !== trimmedToken;
-  const tokenToUse = trimmedToken;
+  const tokenToUse = token?.trim() || token;
   
-  if (shouldLog) {
-    console.log('[encryptWithJWT] Encrypting data with token:', {
-      rawTokenLength: rawToken?.length || 0,
-      trimmedTokenLength: trimmedToken?.length || 0,
-      wasTrimmed,
-      rawTokenPrefix: rawToken ? rawToken.substring(0, 20) + '...' : 'none',
-      trimmedTokenPrefix: trimmedToken ? trimmedToken.substring(0, 20) + '...' : 'none',
-      rawTokenSuffix: rawToken ? '...' + rawToken.substring(rawToken.length - 10) : 'none',
-      trimmedTokenSuffix: trimmedToken ? '...' + trimmedToken.substring(trimmedToken.length - 10) : 'none',
-      dataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
-    });
-  }
+  // if (shouldLog) {
+  //   console.log('[encryptWithJWT] Encrypting data with token:', {
+  //     rawTokenLength: rawToken?.length || 0,
+  //     trimmedTokenLength: trimmedToken?.length || 0,
+  //     wasTrimmed,
+  //     rawTokenPrefix: rawToken ? rawToken.substring(0, 20) + '...' : 'none',
+  //     trimmedTokenPrefix: trimmedToken ? trimmedToken.substring(0, 20) + '...' : 'none',
+  //     rawTokenSuffix: rawToken ? '...' + rawToken.substring(rawToken.length - 10) : 'none',
+  //     trimmedTokenSuffix: trimmedToken ? '...' + trimmedToken.substring(trimmedToken.length - 10) : 'none',
+  //     dataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
+  //   });
+  // }
   
   if (!tokenToUse || tokenToUse.length < 10) {
     throw new Error('Valid JWT token is required for encryption');
@@ -148,12 +145,12 @@ export async function encryptWithJWT(
   // Hash token for verification (use trimmed token)
   const tokenHash = await hashToken(tokenToUse);
   
-  if (shouldLog) {
-    console.log('[encryptWithJWT] Token hash generated:', {
-      tokenHash,
-      tokenHashLength: tokenHash?.length || 0,
-    });
-  }
+  // if (shouldLog) {
+  //   console.log('[encryptWithJWT] Token hash generated:', {
+  //     tokenHash,
+  //     tokenHashLength: tokenHash?.length || 0,
+  //   });
+  // }
 
   // Encrypt data
   const encoder = new TextEncoder();
@@ -213,20 +210,20 @@ export async function decryptWithJWT(
   }
   
   // DEBUG: Log token details for /auth/me debugging
-  const shouldLog = encrypted.tokenHash && encrypted.data;
-  if (shouldLog) {
-    console.log('[decryptWithJWT] Decrypting with token:', {
-      rawTokenLength: rawToken?.length || 0,
-      trimmedTokenLength: trimmedToken?.length || 0,
-      wasTrimmed,
-      rawTokenPrefix: rawToken ? rawToken.substring(0, 20) + '...' : 'none',
-      trimmedTokenPrefix: trimmedToken ? trimmedToken.substring(0, 20) + '...' : 'none',
-      rawTokenSuffix: rawToken ? '...' + rawToken.substring(rawToken.length - 10) : 'none',
-      trimmedTokenSuffix: trimmedToken ? '...' + trimmedToken.substring(trimmedToken.length - 10) : 'none',
-      storedTokenHash: encrypted.tokenHash,
-      hasEncryptedData: !!encrypted.data,
-    });
-  }
+  // const shouldLog = encrypted.tokenHash && encrypted.data;
+  // if (shouldLog) {
+  //   console.log('[decryptWithJWT] Decrypting with token:', {
+  //     rawTokenLength: rawToken?.length || 0,
+  //     trimmedTokenLength: trimmedToken?.length || 0,
+  //     wasTrimmed,
+  //     rawTokenPrefix: rawToken ? rawToken.substring(0, 20) + '...' : 'none',
+  //     trimmedTokenPrefix: trimmedToken ? trimmedToken.substring(0, 20) + '...' : 'none',
+  //     rawTokenSuffix: rawToken ? '...' + rawToken.substring(rawToken.length - 10) : 'none',
+  //     trimmedTokenSuffix: trimmedToken ? '...' + trimmedToken.substring(trimmedToken.length - 10) : 'none',
+  //     storedTokenHash: encrypted.tokenHash,
+  //     hasEncryptedData: !!encrypted.data,
+  //   });
+  // }
   
   // Use trimmed token for all operations
   token = tokenToUse;
@@ -242,21 +239,21 @@ export async function decryptWithJWT(
     const tokenHashMatches = encrypted.tokenHash === tokenHash;
     
     // DEBUG: Log token hash comparison
-    if (shouldLog) {
-      console.log('[decryptWithJWT] Token hash comparison:', {
-        storedTokenHash: encrypted.tokenHash,
-        computedTokenHash: tokenHash,
-        hashesMatch: tokenHashMatches,
-        storedTokenHashLength: encrypted.tokenHash?.length || 0,
-        computedTokenHashLength: tokenHash?.length || 0,
-        tokenLength: token?.length || 0,
-        tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
-        tokenSuffix: token ? '...' + token.substring(token.length - 10) : 'none',
-        rawTokenLength: rawToken?.length || 0,
-        rawTokenPrefix: rawToken ? rawToken.substring(0, 20) + '...' : 'none',
-        wasTrimmed,
-      });
-    }
+    // if (shouldLog) {
+    //   console.log('[decryptWithJWT] Token hash comparison:', {
+    //     storedTokenHash: encrypted.tokenHash,
+    //     computedTokenHash: tokenHash,
+    //     hashesMatch: tokenHashMatches,
+    //     storedTokenHashLength: encrypted.tokenHash?.length || 0,
+    //     computedTokenHashLength: tokenHash?.length || 0,
+    //     tokenLength: token?.length || 0,
+    //     tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
+    //     tokenSuffix: token ? '...' + token.substring(token.length - 10) : 'none',
+    //     rawTokenLength: rawToken?.length || 0,
+    //     rawTokenPrefix: rawToken ? rawToken.substring(0, 20) + '...' : 'none',
+    //     wasTrimmed,
+    //   });
+    // }
     
     if (!tokenHashMatches) {
       const errorMessage = 'Decryption failed - token does not match. ' +

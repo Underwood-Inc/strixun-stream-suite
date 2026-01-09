@@ -22,17 +22,7 @@ body {
   color: var(--text);
   line-height: 1.5;
   @include scrollbar;
-}
-
-// ============ Text Selection ============
-::selection {
-  background: var(--accent);
-  color: var(--bg-dark);
-}
-
-::-moz-selection {
-  background: var(--accent);
-  color: var(--bg-dark);
+  @include text-selection;
 }
 
 // ============ Typography ============

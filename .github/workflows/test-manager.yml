@@ -111,10 +111,10 @@ jobs:
         run: |
           if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
             echo "tests_failed=true" >> $GITHUB_OUTPUT
-            echo "[ERROR] Root/Client tests failed"
+            echo "✗ Root/Client tests failed"
           else
             echo "tests_failed=false" >> $GITHUB_OUTPUT
-            echo "[SUCCESS] Root/Client tests passed"
+            echo "✓ Root/Client tests passed"
           fi
         id: test_result
       
@@ -148,7 +148,7 @@ jobs:
       - name: Test Results
         if: always()
         run: |
-          echo "## [SUCCESS] Root/Client Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## ✓ Root/Client Tests" >> $GITHUB_STEP_SUMMARY
           echo "Svelte component tests completed" >> $GITHUB_STEP_SUMMARY
           if [ -f "coverage/coverage-summary.json" ]; then
             COVERAGE=$(node -e "const data = require('./coverage/coverage-summary.json'); const total = data.total.lines.pct; console.log(total);")
@@ -197,10 +197,10 @@ jobs:
         run: |
           if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
             echo "tests_failed=true" >> $GITHUB_OUTPUT
-            echo "[ERROR] OTP Auth Service tests failed"
+            echo "✗ OTP Auth Service tests failed"
           else
             echo "tests_failed=false" >> $GITHUB_OUTPUT
-            echo "[SUCCESS] OTP Auth Service tests passed"
+            echo "✓ OTP Auth Service tests passed"
           fi
         id: test_result
       
@@ -232,7 +232,7 @@ jobs:
       - name: Test Results
         if: always()
         run: |
-          echo "## [SUCCESS] OTP Auth Service Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## ✓ OTP Auth Service Tests" >> $GITHUB_STEP_SUMMARY
           echo "Unit and integration tests completed" >> $GITHUB_STEP_SUMMARY
           if [ -f "serverless/otp-auth-service/coverage/coverage-summary.json" ]; then
             COVERAGE=$(node -e "const data = require('./serverless/otp-auth-service/coverage/coverage-summary.json'); const total = data.total.lines.pct; console.log(total);")
@@ -300,10 +300,10 @@ jobs:
         run: |
           if [ "${{ steps.run_tests.outcome }}" == "failure" ] || [ "${{ steps.run_integration_tests.outcome }}" == "failure" ]; then
             echo "tests_failed=true" >> $GITHUB_OUTPUT
-            echo "[ERROR] Mods API tests failed"
+            echo "✗ Mods API tests failed"
           else
             echo "tests_failed=false" >> $GITHUB_OUTPUT
-            echo "[SUCCESS] Mods API tests passed"
+            echo "✓ Mods API tests passed"
           fi
         id: test_result
       
@@ -326,14 +326,14 @@ jobs:
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "⚠️ No test script found in Mods API - skipping tests"
-          echo "## ⚠️ Mods API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "⚠ No test script found in Mods API - skipping tests"
+          echo "## ⚠ Mods API Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped" >> $GITHUB_STEP_SUMMARY
       
       - name: Test Results Summary
         if: steps.check_test.outputs.has_tests == 'true' && always()
         run: |
-          echo "## ✅ Mods API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## ✓ Mods API Tests" >> $GITHUB_STEP_SUMMARY
           echo "All tests completed (unit + integration)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Integration Tests:**" >> $GITHUB_STEP_SUMMARY
@@ -395,10 +395,10 @@ jobs:
         run: |
           if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
             echo "tests_failed=true" >> $GITHUB_OUTPUT
-            echo "[ERROR] Customer API tests failed"
+            echo "✗ Customer API tests failed"
           else
             echo "tests_failed=false" >> $GITHUB_OUTPUT
-            echo "[SUCCESS] Customer API tests passed"
+            echo "✓ Customer API tests passed"
           fi
         id: test_result
 
@@ -421,10 +421,10 @@ jobs:
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "[WARNING] No test script found in Customer API - skipping tests"
+          echo "⚠ No test script found in Customer API - skipping tests"
           echo "::warning::Customer API has no test script - tests skipped"
           echo "::notice::Action Required: Add test script to Customer API package.json"
-          echo "## [WARNING] Customer API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## ⚠ Customer API Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped" >> $GITHUB_STEP_SUMMARY
 
   # Twitch API Tests (skip if no test script)
@@ -474,10 +474,10 @@ jobs:
         run: |
           if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
             echo "tests_failed=true" >> $GITHUB_OUTPUT
-            echo "[ERROR] Twitch API tests failed"
+            echo "✗ Twitch API tests failed"
           else
             echo "tests_failed=false" >> $GITHUB_OUTPUT
-            echo "[SUCCESS] Twitch API tests passed"
+            echo "✓ Twitch API tests passed"
           fi
         id: test_result
 
@@ -500,10 +500,10 @@ jobs:
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "[WARNING] No test script found in Twitch API - skipping tests"
+          echo "⚠ No test script found in Twitch API - skipping tests"
           echo "::warning::Twitch API has no test script - tests skipped"
           echo "::notice::Action Required: Add test script to Twitch API package.json"
-          echo "## [WARNING] Twitch API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## ⚠ Twitch API Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped" >> $GITHUB_STEP_SUMMARY
 
   # Game API Tests (skip if no test script)
@@ -553,10 +553,10 @@ jobs:
         run: |
           if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
             echo "tests_failed=true" >> $GITHUB_OUTPUT
-            echo "[ERROR] Game API tests failed"
+            echo "✗ Game API tests failed"
           else
             echo "tests_failed=false" >> $GITHUB_OUTPUT
-            echo "[SUCCESS] Game API tests passed"
+            echo "✓ Game API tests passed"
           fi
         id: test_result
 
@@ -579,10 +579,10 @@ jobs:
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "[WARNING] No test script found in Game API - skipping tests"
+          echo "⚠ No test script found in Game API - skipping tests"
           echo "::warning::Game API has no test script - tests skipped"
           echo "::notice::Action Required: Add test script to Game API package.json"
-          echo "## [WARNING] Game API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## ⚠ Game API Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped" >> $GITHUB_STEP_SUMMARY
 
   # URL Shortener Tests (skip if no test script)
@@ -632,10 +632,10 @@ jobs:
         run: |
           if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
             echo "tests_failed=true" >> $GITHUB_OUTPUT
-            echo "[ERROR] URL Shortener tests failed"
+            echo "✗ URL Shortener tests failed"
           else
             echo "tests_failed=false" >> $GITHUB_OUTPUT
-            echo "[SUCCESS] URL Shortener tests passed"
+            echo "✓ URL Shortener tests passed"
           fi
         id: test_result
 
@@ -658,10 +658,10 @@ jobs:
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "[WARNING] No test script found in URL Shortener - skipping tests"
+          echo "⚠ No test script found in URL Shortener - skipping tests"
           echo "::warning::URL Shortener has no test script - tests skipped"
           echo "::notice::Action Required: Add test script to URL Shortener package.json"
-          echo "## [WARNING] URL Shortener Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## ⚠ URL Shortener Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped" >> $GITHUB_STEP_SUMMARY
 
   # E2E Tests (requires development worker deployment)
@@ -698,10 +698,10 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          echo "[INFO] Validating development worker configurations..."
+          echo "ℹ Validating development worker configurations..."
           pnpm deploy:dev:all:dry-run
           if [ $? -ne 0 ]; then
-            echo "[ERROR] Development worker configuration validation failed"
+            echo "✗ Development worker configuration validation failed"
             exit 1
           fi
       
@@ -711,10 +711,10 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          echo "[INFO] Deploying all workers to development environment..."
+          echo "ℹ Deploying all workers to development environment..."
           pnpm deploy:dev:all
           if [ $? -ne 0 ]; then
-            echo "[ERROR] Development worker deployment failed"
+            echo "✗ Development worker deployment failed"
             exit 1
           fi
       
@@ -724,7 +724,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          echo "[INFO] Setting development secrets..."
+          echo "ℹ Setting development secrets..."
           # OTP Auth Service
           cd serverless/otp-auth-service
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
@@ -748,7 +748,7 @@ jobs:
       
       - name: Verify Workers Health
         run: |
-          echo "[INFO] Verifying development workers are healthy..."
+          echo "ℹ Verifying development workers are healthy..."
           # Wait a moment for deployments to propagate
           sleep 10
           
@@ -766,15 +766,15 @@ jobs:
           FAILED=0
           for WORKER in "${WORKERS[@]}"; do
             if curl -f -s "${WORKER}/health" > /dev/null 2>&1; then
-              echo "[SUCCESS] ${WORKER} is healthy"
+              echo "✓ ${WORKER} is healthy"
             else
-              echo "[ERROR] ${WORKER} is not responding"
+              echo "✗ ${WORKER} is not responding"
               FAILED=$((FAILED + 1))
             fi
           done
           
           if [ $FAILED -gt 0 ]; then
-            echo "[ERROR] $FAILED worker(s) failed health checks"
+            echo "✗ $FAILED worker(s) failed health checks"
             exit 1
           fi
       
@@ -797,10 +797,10 @@ jobs:
         run: |
           if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
             echo "tests_failed=true" >> $GITHUB_OUTPUT
-            echo "[ERROR] E2E tests failed"
+            echo "✗ E2E tests failed"
           else
             echo "tests_failed=false" >> $GITHUB_OUTPUT
-            echo "[SUCCESS] E2E tests passed"
+            echo "✓ E2E tests passed"
           fi
         id: test_result
       
@@ -827,9 +827,9 @@ jobs:
         run: |
           echo "## E2E Tests" >> $GITHUB_STEP_SUMMARY
           if [ "${{ job.status }}" == "success" ]; then
-            echo "[SUCCESS] All E2E tests passed" >> $GITHUB_STEP_SUMMARY
+            echo "✓ All E2E tests passed" >> $GITHUB_STEP_SUMMARY
           else
-            echo "[ERROR] E2E tests failed - check artifacts for details" >> $GITHUB_STEP_SUMMARY
+            echo "✗ E2E tests failed - check artifacts for details" >> $GITHUB_STEP_SUMMARY
           fi
 
   # Test Summary
@@ -879,81 +879,81 @@ jobs:
           
           if [ "${{ inputs.test_root }}" == "true" ]; then
             if [ "${{ needs.test_root.result }}" == "success" ]; then
-              echo "[SUCCESS] **Root/Client** - Tests Passed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Root/Client** - Tests Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_root.result }}" == "failure" ]; then
-              echo "[ERROR] **Root/Client** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Root/Client** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "[INFO] **Root/Client** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "ℹ **Root/Client** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.test_otp_auth }}" == "true" ]; then
             if [ "${{ needs.test_otp_auth.result }}" == "success" ]; then
-              echo "[SUCCESS] **OTP Auth Service** - Tests Passed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **OTP Auth Service** - Tests Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_otp_auth.result }}" == "failure" ]; then
-              echo "[ERROR] **OTP Auth Service** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **OTP Auth Service** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "[INFO] **OTP Auth Service** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "ℹ **OTP Auth Service** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.test_mods_api }}" == "true" ]; then
             if [ "${{ needs.test_mods_api.result }}" == "success" ] || [ "${{ needs.test_mods_api.result }}" == "skipped" ]; then
-              echo "[SUCCESS] **Mods API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Mods API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_mods_api.result }}" == "failure" ]; then
-              echo "[ERROR] **Mods API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Mods API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "[INFO] **Mods API** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "ℹ **Mods API** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.test_customer_api }}" == "true" ]; then
             if [ "${{ needs.test_customer_api.result }}" == "success" ] || [ "${{ needs.test_customer_api.result }}" == "skipped" ]; then
-              echo "[SUCCESS] **Customer API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Customer API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_customer_api.result }}" == "failure" ]; then
-              echo "[ERROR] **Customer API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Customer API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "[INFO] **Customer API** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "ℹ **Customer API** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.test_twitch_api }}" == "true" ]; then
             if [ "${{ needs.test_twitch_api.result }}" == "success" ] || [ "${{ needs.test_twitch_api.result }}" == "skipped" ]; then
-              echo "[SUCCESS] **Twitch API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Twitch API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_twitch_api.result }}" == "failure" ]; then
-              echo "[ERROR] **Twitch API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Twitch API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "[INFO] **Twitch API** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "ℹ **Twitch API** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.test_game_api }}" == "true" ]; then
             if [ "${{ needs.test_game_api.result }}" == "success" ] || [ "${{ needs.test_game_api.result }}" == "skipped" ]; then
-              echo "[SUCCESS] **Game API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Game API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_game_api.result }}" == "failure" ]; then
-              echo "[ERROR] **Game API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Game API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "[INFO] **Game API** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "ℹ **Game API** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.test_url_shortener }}" == "true" ]; then
             if [ "${{ needs.test_url_shortener.result }}" == "success" ] || [ "${{ needs.test_url_shortener.result }}" == "skipped" ]; then
-              echo "[SUCCESS] **URL Shortener** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **URL Shortener** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_url_shortener.result }}" == "failure" ]; then
-              echo "[ERROR] **URL Shortener** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **URL Shortener** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "[INFO] **URL Shortener** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "ℹ **URL Shortener** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.test_e2e }}" == "true" ]; then
             if [ "${{ needs.test_e2e.result }}" == "success" ]; then
-              echo "[SUCCESS] **E2E Tests** - All tests passed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **E2E Tests** - All tests passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_e2e.result }}" == "failure" ]; then
-              echo "[ERROR] **E2E Tests** - Tests Failed (check artifacts for details)" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **E2E Tests** - Tests Failed (check artifacts for details)" >> $GITHUB_STEP_SUMMARY
             else
-              echo "[INFO] **E2E Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "ℹ **E2E Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
@@ -990,13 +990,13 @@ jobs:
           
           if [ $FAILED_COUNT -gt 0 ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "## [ERROR] Test Failures Detected" >> $GITHUB_STEP_SUMMARY
+            echo "## ✗ Test Failures Detected" >> $GITHUB_STEP_SUMMARY
             echo "$FAILED_COUNT test job(s) failed. See individual job logs for details." >> $GITHUB_STEP_SUMMARY
             echo "failed_count=$FAILED_COUNT" >> $GITHUB_OUTPUT
             exit 1
           else
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "## [SUCCESS] All Tests Passed" >> $GITHUB_STEP_SUMMARY
+            echo "## ✓ All Tests Passed" >> $GITHUB_STEP_SUMMARY
             echo "failed_count=0" >> $GITHUB_OUTPUT
           fi
 

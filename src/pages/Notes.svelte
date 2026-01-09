@@ -17,7 +17,7 @@
     type Notebook,
     type NotebookMetadata
   } from '../modules/notes-storage';
-  import { clearAuth, isAuthenticated, user } from '../stores/auth';
+  import { clearAuth, isAuthenticated, customer } from '../stores/auth';
   import { showToast } from '../stores/toast-queue';
   
   let notebooks: NotebookMetadata[] = [];
@@ -341,7 +341,7 @@
       <div class="notebook-list-header">
         <div>
           <h1>⚠ Notes & Notebooks</h1>
-          <p class="user-info">Signed in as {$user?.email}</p>
+          <p class="user-info">Signed in as {$customer?.displayName || 'Customer'}</p>
         </div>
         <div class="header-actions">
           <button 

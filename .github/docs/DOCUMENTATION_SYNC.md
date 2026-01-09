@@ -57,13 +57,13 @@ The workflow monitors these directories:
 ### When Does It Sync?
 
 **Automatic triggers:**
-- ✅ Push to `main` or `master` branch
-- ✅ Any markdown file changes in monitored directories
-- ✅ Changes to the migration script itself
+- ✓ Push to `main` or `master` branch
+- ✓ Any markdown file changes in monitored directories
+- ✓ Changes to the migration script itself
 
 **Manual triggers:**
-- ✅ Workflow dispatch (run manually from Actions tab)
-- ✅ Useful for initial setup or bulk updates
+- ✓ Workflow dispatch (run manually from Actions tab)
+- ✓ Useful for initial setup or bulk updates
 
 ---
 
@@ -100,10 +100,10 @@ The workflow monitors these directories:
 ### Why Protect the Wiki?
 
 We want the wiki to be **read-only via the UI** so that:
-- ✅ All documentation changes go through code review
-- ✅ Documentation is version-controlled in the main repo
-- ✅ No accidental edits that get overwritten
-- ✅ Consistent formatting and structure
+- ✓ All documentation changes go through code review
+- ✓ Documentation is version-controlled in the main repo
+- ✓ No accidental edits that get overwritten
+- ✓ Consistent formatting and structure
 
 ### How to Protect the Wiki
 
@@ -113,8 +113,8 @@ We want the wiki to be **read-only via the UI** so that:
 1. Go to your repository on GitHub
 2. Click **Settings** → **Features**
 3. Under **Wikis**, you'll see:
-   - ✅ **Allow wiki editing** (uncheck this)
-   - ✅ **Restrict editing to collaborators only** (check this)
+   - ✓ **Allow wiki editing** (uncheck this)
+   - ✓ **Restrict editing to collaborators only** (check this)
 
 **Result:** Wiki becomes read-only via the UI, but workflows can still update it!
 
@@ -144,11 +144,11 @@ If you want even more control, you can treat the wiki as a git repository:
 #### Option 3: Repository Settings (Additional Protection)
 
 **Repository Settings → General → Features:**
-- ✅ **Wikis**: Enabled
-- ✅ **Restrict editing to collaborators only**: Enabled
+- ✓ **Wikis**: Enabled
+- ✓ **Restrict editing to collaborators only**: Enabled
 
 **Repository Settings → Actions → General → Workflow permissions:**
-- ✅ **Read and write permissions**: Enabled (required for wiki sync)
+- ✓ **Read and write permissions**: Enabled (required for wiki sync)
 
 ---
 
@@ -219,10 +219,10 @@ If you want even more control, you can treat the wiki as a git repository:
 ### Wiki not updating
 
 **Check:**
-1. ✅ Workflow ran successfully? (Check Actions tab)
-2. ✅ Markdown files in monitored directories?
-3. ✅ Changes pushed to main/master branch?
-4. ✅ Wiki enabled in repository settings?
+1. ✓ Workflow ran successfully? (Check Actions tab)
+2. ✓ Markdown files in monitored directories?
+3. ✓ Changes pushed to main/master branch?
+4. ✓ Wiki enabled in repository settings?
 
 ---
 
@@ -233,8 +233,8 @@ If you want even more control, you can treat the wiki as a git repository:
 **GitHub Actions:**
 - Go to **Actions** tab
 - Look for "Sync Documentation to Wiki" workflow
-- Green checkmark = success ✅
-- Red X = failure ❌
+- Green checkmark = success ✓
+- Red X = failure ✗
 
 ### View Sync History
 
@@ -282,22 +282,22 @@ cp "__╠═══ PANDA_CORE ═══╣__/TEMPLATE_GUIDE.md" ".github/docs/TE
 
 ### Documentation Structure
 
-- ✅ **Keep docs in codebase** - Single source of truth
-- ✅ **Use consistent formatting** - Follow the README template
-- ✅ **Organize by directory** - Matches wiki structure
-- ✅ **Version control everything** - All changes go through PRs
+- ✓ **Keep docs in codebase** - Single source of truth
+- ✓ **Use consistent formatting** - Follow the README template
+- ✓ **Organize by directory** - Matches wiki structure
+- ✓ **Version control everything** - All changes go through PRs
 
 ### Wiki Organization
 
-- ✅ **Home page** = Root README.md
-- ✅ **Directory structure** = Mirrors codebase structure
-- ✅ **Automatic organization** - Migration script handles this
+- ✓ **Home page** = Root README.md
+- ✓ **Directory structure** = Mirrors codebase structure
+- ✓ **Automatic organization** - Migration script handles this
 
 ### Workflow Management
 
-- ✅ **Monitor workflow runs** - Check Actions tab regularly
-- ✅ **Fix failures promptly** - Wiki can get out of sync
-- ✅ **Test changes locally** - Before pushing to main
+- ✓ **Monitor workflow runs** - Check Actions tab regularly
+- ✓ **Fix failures promptly** - Wiki can get out of sync
+- ✓ **Test changes locally** - Before pushing to main
 
 ---
 

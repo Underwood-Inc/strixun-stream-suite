@@ -25,20 +25,20 @@ const services = [
     framework: 'React',
   },
   {
+    name: 'OTP Auth Dashboard',
+    location: 'serverless/otp-auth-service',
+    port: 5174,
+    type: 'Frontend',
+    url: 'http://localhost:5174',
+    framework: 'Svelte',
+  },
+  {
     name: 'Control Panel',
     location: 'control-panel',
     port: 5175,
     type: 'Frontend',
     url: 'http://localhost:5175',
     framework: 'React',
-  },
-  {
-    name: 'OTP Auth Dashboard',
-    location: 'serverless/otp-auth-service/dashboard',
-    port: 5174,
-    type: 'Frontend',
-    url: 'http://localhost:5174',
-    framework: 'Svelte',
   },
   {
     name: 'URL Shortener App',
@@ -50,7 +50,7 @@ const services = [
   },
   // Backend Workers
   {
-    name: 'OTP Auth Service',
+    name: 'OTP Auth Service (Worker)',
     location: 'serverless/otp-auth-service',
     port: 8787,
     type: 'Backend (Worker)',
@@ -133,27 +133,35 @@ function formatTable(data) {
 
   if (backends.length > 0) {
     console.log('⚙️   BACKEND WORKERS\n');
-    console.log('┌─────────────────────────────────────┬────────┬─────────────────────────────┐');
-    console.log('│ Service                             │ Port   │ Framework                   │');
-    console.log('├─────────────────────────────────────┼────────┼─────────────────────────────┤');
+    console.log('┌──────────────────────────────────────┬────────┬──────────────────────────────┐');
+    console.log('│ Service                              │ Port   │ Framework                    │');
+    console.log('├──────────────────────────────────────┼────────┼──────────────────────────────┤');
     
     backends.forEach(service => {
-      const name = service.name.padEnd(35);
+      const name = service.name.padEnd(36);
       const port = String(service.port).padEnd(6);
-      const framework = service.framework.padEnd(27);
+      const framework = service.framework.padEnd(28);
       console.log(`│ ${name} │ ${port} │ ${framework} │`);
     });
     
-    console.log('└─────────────────────────────────────┴────────┴─────────────────────────────┘\n');
+    console.log('└──────────────────────────────────────┴────────┴──────────────────────────────┘\n');
   }
 
   console.log('💡  Quick Access:\n');
   frontends.forEach(service => {
     console.log(`   ${service.name.padEnd(30)} → ${service.url}`);
   });
+  
+  // Show backend services that have web UIs
+  const backendsWithUrls = backends.filter(s => s.url);
+  if (backendsWithUrls.length > 0) {
+    backendsWithUrls.forEach(service => {
+      console.log(`   ${service.name.padEnd(30)} → ${service.url}`);
+    });
+  }
 
   console.log('\n' + '='.repeat(80));
-  console.log(`✅  Total: ${frontends.length} frontend(s) + ${backends.length} backend worker(s) = ${data.length} service(s)`);
+  console.log(`✓  Total: ${frontends.length} frontend(s) + ${backends.length} backend worker(s) = ${data.length} service(s)`);
   console.log('='.repeat(80) + '\n');
 }
 

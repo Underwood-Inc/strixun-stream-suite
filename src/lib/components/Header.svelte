@@ -12,12 +12,12 @@
    * - Particle effects on interactions
    */
   
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { connected } from '../../stores/connection';
   import { navigateTo } from '../../stores/navigation';
   import { celebrateClick, celebrateConnection } from '../../utils/particles';
   import { showSuccess, showError, showWarning, showInfo } from '../../stores/toast-queue';
-  import { isAuthenticated, logout as logoutUser, user } from '../../stores/auth';
+  import { isAuthenticated, logout as logoutUser, customer } from '../../stores/auth';
   import { themeSettingsVisible } from '../../stores/theme-settings';
   import Tooltip from './Tooltip.svelte';
   import TruncatedText from './TruncatedText.svelte';
@@ -29,12 +29,23 @@
   let connectButton: HTMLButtonElement;
   let alertsOpen = false;
   
+  // Local reactive copies of auth state to ensure reactivity
+  let authenticated = false;
+  let currentCustomer: typeof $customer = null;
+  
+  // CRITICAL: Manually sync auth state to local variables to force reactivity
+  // This fixes the issue where header doesn't update after session restore
+  $: {
+    authenticated = $isAuthenticated;
+    currentCustomer = $customer;
+  }
+  
   function toggleThemeSettings(): void {
     themeSettingsVisible.set(!$themeSettingsVisible);
   }
   
-  // Computed values for super admin check
-  $: isSuperAdmin = $user?.isSuperAdmin ?? false;
+  // Computed values for super admin check - use local reactive variable
+  $: isSuperAdmin = currentCustomer?.isSuperAdmin ?? false;
   $: testToastsTooltip = isSuperAdmin 
     ? "Test Toasts | This feature is currently in testing" 
     : "Test Toasts | Super admin only";
@@ -138,7 +149,7 @@
       </button>
     </Tooltip>
     <AlertsDropdown open={alertsOpen} onToggle={toggleAlerts} />
-    {#if $isAuthenticated}
+    {#if authenticated}
       <Tooltip text="Sign Out" position="bottom">
         <button class="btn-icon" on:click={handleLogout} title="Sign Out">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

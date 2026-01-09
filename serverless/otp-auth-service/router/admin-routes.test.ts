@@ -44,9 +44,9 @@ vi.mock('../handlers/admin.js', () => ({
     handleGetOnboarding: vi.fn().mockResolvedValue(new Response(JSON.stringify({ onboarding: {} }), { status: 200 })),
     handleUpdateOnboarding: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
     handleTestOTP: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
-    handleListUsers: vi.fn().mockResolvedValue(new Response(JSON.stringify({ users: [] }), { status: 200 })),
-    handleExportUserData: vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {} }), { status: 200 })),
-    handleDeleteUserData: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
+    handleListCustomers: vi.fn().mockResolvedValue(new Response(JSON.stringify({ customers: [] }), { status: 200 })),
+    handleExportCustomerData: vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {} }), { status: 200 })),
+    handleDeleteCustomerData: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
     handleGetAuditLogs: vi.fn().mockResolvedValue(new Response(JSON.stringify({ logs: [] }), { status: 200 })),
     handleGetConfig: vi.fn().mockResolvedValue(new Response(JSON.stringify({ config: {} }), { status: 200 })),
     handleUpdateConfig: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
@@ -202,10 +202,10 @@ describe('OTP Auth Service Admin Routes', () => {
             expect(handleGetAnalytics).toHaveBeenCalledWith(request, mockEnv, 'cust_123');
         });
 
-        it('should match GET /admin/users route and invoke handler when authenticated', async () => {
+        it('should match GET /admin/customers route and invoke handler when authenticated', async () => {
             const { requireSuperAdmin } = await import('../utils/super-admin.js');
             const { verifyJWT } = await import('../utils/crypto.js');
-            const { handleListUsers } = await import('../handlers/admin.js');
+            const { handleListCustomers } = await import('../handlers/admin.js');
             
             vi.mocked(requireSuperAdmin).mockResolvedValue(null);
             vi.mocked(verifyJWT).mockResolvedValue({ 
@@ -213,19 +213,19 @@ describe('OTP Auth Service Admin Routes', () => {
                 email: 'admin@example.com' 
             } as any);
 
-            const request = new Request('https://api.example.com/admin/users', {
+            const request = new Request('https://api.example.com/admin/customers', {
                 method: 'GET',
                 headers: {
                     'Authorization': 'Bearer admin-token',
                 },
             });
 
-            const result = await handleDashboardRoutes(request, '/admin/users', mockEnv);
+            const result = await handleDashboardRoutes(request, '/admin/customers', mockEnv);
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
             // Verify the correct handler was called
-            expect(handleListUsers).toHaveBeenCalledWith(request, mockEnv, 'cust_123');
+            expect(handleListCustomers).toHaveBeenCalledWith(request, mockEnv, 'cust_123');
         });
 
         it('should match GET /admin/config route and invoke handler when authenticated', async () => {
@@ -281,10 +281,10 @@ describe('OTP Auth Service Admin Routes', () => {
             expect(handleGetDomainStatus).toHaveBeenCalledWith(request, mockEnv, 'example.com');
         });
 
-        it('should match dynamic route /admin/users/:userId/export and invoke handler when authenticated', async () => {
+        it('should match dynamic route /admin/customers/:customerId/export and invoke handler when authenticated', async () => {
             const { requireSuperAdmin } = await import('../utils/super-admin.js');
             const { verifyJWT } = await import('../utils/crypto.js');
-            const { handleExportUserData } = await import('../handlers/admin.js');
+            const { handleExportCustomerData } = await import('../handlers/admin.js');
             
             vi.mocked(requireSuperAdmin).mockResolvedValue(null);
             vi.mocked(verifyJWT).mockResolvedValue({ 
@@ -292,20 +292,20 @@ describe('OTP Auth Service Admin Routes', () => {
                 email: 'admin@example.com' 
             } as any);
 
-            const request = new Request('https://api.example.com/admin/users/user-123/export', {
+            const request = new Request('https://api.example.com/admin/customers/customer-123/export', {
                 method: 'GET',
                 headers: {
                     'Authorization': 'Bearer admin-token',
                 },
             });
 
-            const result = await handleDashboardRoutes(request, '/admin/users/user-123/export', mockEnv);
+            const result = await handleDashboardRoutes(request, '/admin/customers/customer-123/export', mockEnv);
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
-            // Verify the correct handler was called with userId parameter
-            // Note: handleExportUserData is called with (request, env, customerId, userId)
-            expect(handleExportUserData).toHaveBeenCalledWith(request, mockEnv, 'cust_123', 'user-123');
+            // Verify the correct handler was called with customerId parameter
+            // Note: handleExportCustomerData is called with (request, env, customerId, targetCustomerId)
+            expect(handleExportCustomerData).toHaveBeenCalledWith(request, mockEnv, 'cust_123', 'customer-123');
         });
     });
 });

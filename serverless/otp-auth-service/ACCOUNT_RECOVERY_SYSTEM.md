@@ -1,6 +1,6 @@
 # Account Recovery System ★ ## Overview
 
-The account recovery system ensures that customer accounts persist indefinitely while allowing automated cleanup of user accounts. When a previously deleted user account is reactivated via new account creation, the system automatically recovers the associated customer account by email, retaining all customer information.
+The account recovery system ensures that customer accounts persist indefinitely while allowing automated cleanup of customer accounts. When a previously deleted customer account is reactivated via new account creation, the system automatically recovers the associated customer account by email, retaining all customer information.
 
 ---
 
@@ -11,7 +11,7 @@ The account recovery system ensures that customer accounts persist indefinitely 
 1. **Customer Accounts** - Persist indefinitely (no TTL)
    - Customer data is stored without expiration
    - Email-to-customerId mapping also persists indefinitely
-   - Allows recovery of customer information even after user account deletion
+   - Allows recovery of customer information even after customer account deletion
 
 2. **User Accounts** - 1-year TTL (automated cleanup)
    - User data expires after 1 year of inactivity
@@ -38,13 +38,13 @@ The account recovery system ensures that customer accounts persist indefinitely 
    - Returns recovered customerId: cust_abc123
    
 3. getOrCreateUser() is called with recovered customerId:
-   - User account doesn't exist (was deleted/expired)
-   - Creates new user account with recovered customerId
+   - Customer account doesn't exist (was deleted/expired)
+   - Creates new customer account with recovered customerId
    - Links user to existing customer account
    
 4. Result:
    - Customer account: ✓ Recovered and reactivated
-   - User account: ✓ Recreated with recovered customerId
+   - Customer account: ✓ Recreated with recovered customerId
    - Customer information: ✓ Retained indefinitely
 ```
 
@@ -74,12 +74,12 @@ The account recovery system ensures that customer accounts persist indefinitely 
    - Returns new customerId
    
 3. getOrCreateUser() finds no existing user
-   - Creates new user account (1-year TTL)
+   - Creates new customer account (1-year TTL)
    - Links to new customer account
    
 4. Result:
    - Customer account: ✓ Created (persists indefinitely)
-   - User account: ✓ Created (1-year TTL)
+   - Customer account: ✓ Created (1-year TTL)
 ```
 
 ---
@@ -109,7 +109,7 @@ export async function storeCustomer(
 **Key Points:**
 - Customer accounts stored without TTL by default
 - Email-to-customerId mapping also persists indefinitely
-- Allows recovery by email even after user account deletion
+- Allows recovery by email even after customer account deletion
 
 ### Customer Account Recovery
 
@@ -171,11 +171,11 @@ async function getOrCreateUser(
     
     // If user doesn't exist but we have customerId, this is account recovery
     if (!user && customerId) {
-        console.log(`[User Recovery] Recreating user account with recovered customerId: ${customerId}`);
+        console.log(`[User Recovery] Recreating customer account with recovered customerId: ${customerId}`);
     }
     
     if (!user) {
-        // Create new user account with recovered customerId
+        // Create new customer account with recovered customerId
         user = {
             userId,
             email: emailLower,
@@ -192,9 +192,9 @@ async function getOrCreateUser(
 ```
 
 **Key Points:**
-- Uses recovered customerId when creating new user account
+- Uses recovered customerId when creating new customer account
 - Links user to existing customer account
-- User account has 1-year TTL (can be cleaned up)
+- Customer account has 1-year TTL (can be cleaned up)
 - Customer account persists (retains information)
 
 ---
@@ -207,9 +207,9 @@ async function getOrCreateUser(
 - Email-to-customerId mapping persists for recovery
 
 ### 2. **Automated User Account Cleanup**
-- User accounts expire after 1 year of inactivity
+- Customer accounts expire after 1 year of inactivity
 - Reduces storage costs for inactive accounts
-- User preferences also expire with user accounts
+- User preferences also expire with customer accounts
 
 ### 3. **Smart Account Recovery**
 - Automatic recovery by email lookup
@@ -217,7 +217,7 @@ async function getOrCreateUser(
 - Seamless user experience (no manual recovery needed)
 
 ### 4. **Data Consistency**
-- User accounts always linked to customer accounts
+- Customer accounts always linked to customer accounts
 - CustomerId preserved across account lifecycle
 - No orphaned customer accounts
 
@@ -273,7 +273,7 @@ cust_{customerId}_preferences_{userId}   # User preferences (1-year TTL)
 ### 3. **User Account Exists but CustomerId Missing**
 - CustomerId is set from recovered customer account
 - Ensures data consistency
-- Updates user account with correct customerId
+- Updates customer account with correct customerId
 
 ### 4. **Multiple Accounts with Same Email**
 - Email-to-customerId mapping ensures single customer per email
@@ -286,10 +286,10 @@ cust_{customerId}_preferences_{userId}   # User preferences (1-year TTL)
 
 ### Test 1: Account Recovery After Deletion
 ```
-1. Create user account with customerId: cust_abc123
-2. Wait for user account to expire (or manually delete)
+1. Create customer account with customerId: cust_abc123
+2. Wait for customer account to expire (or manually delete)
 3. Sign in again with same email
-4. Verify: Customer account recovered, user account recreated
+4. Verify: Customer account recovered, customer account recreated
 ```
 
 ### Test 2: Suspended Account Reactivation
@@ -303,7 +303,7 @@ cust_{customerId}_preferences_{userId}   # User preferences (1-year TTL)
 ```
 1. Sign up with new email
 2. Verify: New customer account created (no TTL)
-3. Verify: New user account created (1-year TTL)
+3. Verify: New customer account created (1-year TTL)
 4. Verify: Email mapping stored (no TTL)
 ```
 
@@ -311,7 +311,7 @@ cust_{customerId}_preferences_{userId}   # User preferences (1-year TTL)
 ```
 1. Sign in with existing account
 2. Verify: Customer account found (no new creation)
-3. Verify: User account updated (lastLogin, TTL reset)
+3. Verify: Customer account updated (lastLogin, TTL reset)
 ```
 
 ---
@@ -363,7 +363,7 @@ cust_{customerId}_preferences_{userId}   # User preferences (1-year TTL)
 
 3. **Data Privacy**
    - Customer accounts retain all historical data
-   - User accounts are recreated (fresh start)
+   - Customer accounts are recreated (fresh start)
    - Preferences reset to defaults on recovery
 
 ---

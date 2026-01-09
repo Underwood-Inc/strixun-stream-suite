@@ -11,6 +11,11 @@ import { useAdminSettings } from '../../hooks/useMods';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
 
+// UI-only type that extends ModVariant with file upload fields
+type ModVariantWithFile = ModVariant & {
+    file?: File;
+};
+
 const Form = styled.form`
   ${getCardStyles('default')}
   display: flex;
@@ -210,7 +215,7 @@ export function ModUploadForm({
     const [visibility, setVisibility] = useState<ModVisibility>(initialData?.visibility || 'public');
     const [file, setFile] = useState<File | null>(null);
     const [thumbnail, setThumbnail] = useState<File | null>(null);
-    const [variants, setVariants] = useState<ModVariant[]>(initialData?.variants || []);
+    const [variants, setVariants] = useState<ModVariantWithFile[]>(initialData?.variants || []);
     const [isDragging, setIsDragging] = useState(false);
     const [isThumbnailDragging, setIsThumbnailDragging] = useState(false);
     
@@ -264,10 +269,16 @@ export function ModUploadForm({
     }, []);
 
     const handleAddVariant = () => {
-        const newVariant: ModVariant = {
+        const newVariant: ModVariantWithFile = {
             variantId: `variant-${Date.now()}`,
+            modId: '', // Will be set when mod is created
             name: '',
             description: '',
+            createdAt: '',
+            updatedAt: '',
+            currentVersionId: '',
+            versionCount: 0,
+            totalDownloads: 0,
         };
         setVariants([...variants, newVariant]);
     };
@@ -276,7 +287,7 @@ export function ModUploadForm({
         setVariants(variants.filter(v => v.variantId !== variantId));
     };
 
-    const handleVariantChange = (variantId: string, field: keyof ModVariant, value: string | File) => {
+    const handleVariantChange = (variantId: string, field: keyof ModVariantWithFile, value: string | File) => {
         setVariants(variants.map(v => 
             v.variantId === variantId 
                 ? { ...v, [field]: value }
@@ -467,7 +478,7 @@ export function ModUploadForm({
                         </FileInfo>
                     ) : (
                         <>
-                            <div>📷 Drop thumbnail image here or click to browse</div>
+                            <div>◇ Drop thumbnail image here or click to browse</div>
                             <DragDropText>Supports .png, .jpg, .webp</DragDropText>
                         </>
                     )}

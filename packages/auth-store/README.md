@@ -4,15 +4,15 @@ Shared, framework-agnostic authentication store for all Strixun projects.
 
 ## Features
 
-- ✅ Framework-agnostic core implementation
-- ✅ Zustand adapter for React projects
-- ✅ Svelte adapter for Svelte projects
-- ✅ Session restoration from backend (IP-based)
-- ✅ Token validation with backend (detects blacklisted tokens)
-- ✅ Automatic user info fetching (displayName, customerId, isSuperAdmin)
-- ✅ JWT payload decoding (CSRF token extraction)
-- ✅ Persistent storage with configurable storage key
-- ✅ TypeScript support
+- ✓ Framework-agnostic core implementation
+- ✓ Zustand adapter for React projects
+- ✓ Svelte adapter for Svelte projects
+- ✓ Session restoration from backend (IP-based)
+- ✓ Token validation with backend (detects blacklisted tokens)
+- ✓ Automatic user info fetching (displayName, customerId, isSuperAdmin)
+- ✓ JWT payload decoding (CSRF token extraction)
+- ✓ Persistent storage with configurable storage key
+- ✓ TypeScript support
 
 ## Installation
 
@@ -87,7 +87,7 @@ import {
 } from '@strixun/auth-store/core';
 
 // Restore session from backend
-const user = await restoreSessionFromBackend({
+const customer = await restoreSessionFromBackend({
     authApiUrl: 'https://auth.idling.app',
 });
 

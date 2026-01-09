@@ -4,6 +4,7 @@
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
+// getCorsHeaders is already imported above
 import { getCustomerCached } from '../utils/cache.js';
 import { getCustomer } from '../services/customer.js';
 import { verifyApiKey } from '../services/api-key.js';
@@ -13,7 +14,7 @@ import { handleRequestOTP } from '../handlers/auth/request-otp.js';
 import { handleVerifyOTP } from '../handlers/auth/verify-otp.js';
 import { handleSessionByIP } from '../handlers/auth/session-by-ip.js';
 import { handleRestoreSession } from '../handlers/auth/restore-session.js';
-import { handleUserLookup } from '../handlers/auth/user-lookup.js';
+// CRITICAL: user-lookup removed - we ONLY use customerId, NO userId
 import { wrapWithEncryption } from '@strixun/api-framework';
 
 interface Env {
@@ -33,23 +34,86 @@ interface RouteResult {
 
 /**
  * Authenticate request using API key
+ * PURPOSE: Multi-tenant identification (subscription tiers, rate limiting, entity separation)
+ * NOT for security - JWT handles authentication/encryption
+ * Checks X-OTP-API-Key header first, then Authorization header
+ * This allows JWT in Authorization header and API key in X-OTP-API-Key header
  */
 async function authenticateRequest(request: Request, env: Env): Promise<ApiKeyAuth | null> {
-    const authHeader = request.headers.get('Authorization');
-    let apiKey: string | null = null;
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        apiKey = authHeader.substring(7).trim();
-    } else {
-        apiKey = request.headers.get('X-OTP-API-Key');
-    }
-    
-    if (!apiKey) {
+    // CRITICAL: API keys MUST be in X-OTP-API-Key header ONLY
+    // Authorization header is for JWT tokens ONLY
+    // This separation ensures clear distinction between authentication (JWT) and identification (API key)
+    const rawApiKey = request.headers.get('X-OTP-API-Key');
+    if (!rawApiKey) {
         return null;
     }
     
-    return await verifyApiKey(apiKey, env);
+    const apiKey = rawApiKey.trim();
+    
+    // Validate API key format
+    // API keys start with 'otp_live_sk_' or 'otp_test_sk_'
+    if (!apiKey.startsWith('otp_live_sk_') && !apiKey.startsWith('otp_test_sk_')) {
+        // Not an API key format - return null
+        console.log(`[AuthRoutes] Invalid API key format in X-OTP-API-Key header: ${apiKey.substring(0, 20)}...`);
+        return null;
+    }
+    
+    // Attempt to verify as API key
+    const authResult = await verifyApiKey(apiKey, env);
+    
+    if (authResult) {
+        console.log(`[AuthRoutes] API key authentication successful:`, {
+            customerId: authResult.customerId,
+            keyId: authResult.keyId,
+            apiKeyPrefix: apiKey.substring(0, 20) + '...'
+        });
+    } else {
+        console.log(`[AuthRoutes] API key verification failed:`, {
+            apiKeyPrefix: apiKey.substring(0, 20) + '...',
+            reason: 'Key not found in KV or inactive'
+        });
+    }
+    
+    return authResult;
+}
+
+/**
+ * Authenticate request using JWT token
+ * @param request - HTTP request
+ * @param env - Worker environment
+ * @returns JWT payload with customerId or null
+ */
+async function authenticateJWT(request: Request, env: Env): Promise<{ customerId: string; payload: any } | null> {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return null;
+    }
+    
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    const token = authHeader.substring(7).trim();
+    
+    // Check if it's an API key format - if so, don't try JWT verification
+    if (token.startsWith('otp_live_sk_') || token.startsWith('otp_test_sk_')) {
+        return null; // This is an API key, not a JWT
+    }
+    
+    try {
+        const { verifyJWT, getJWTSecret } = await import('../utils/crypto.js');
+        const jwtSecret = getJWTSecret(env);
+        const payload = await verifyJWT(token, jwtSecret);
+        
+        if (!payload || !payload.customerId) {
+            return null;
+        }
+        
+        return {
+            customerId: payload.customerId,
+            payload
+        };
+    } catch (error) {
+        console.log(`[AuthRoutes] JWT verification failed:`, error instanceof Error ? error.message : String(error));
+        return null;
+    }
 }
 
 /**
@@ -64,17 +128,179 @@ export async function handleAuthRoutes(
     path: string,
     env: Env
 ): Promise<RouteResult | null> {
-    // Authentication endpoints (require API key for multi-tenant)
-    // For backward compatibility, allow requests without API key (customerId will be null)
+    // SECURITY: JWT authentication comes FIRST
+    // API key is NOT a fallback - JWT is ALWAYS required for encryption (no compromising security)
+    // If JWT fails, request fails - we do NOT fall back to API key
+    
     let customerId: string | null = null;
     let customer = null;
-    const auth = await authenticateRequest(request, env);
+    let apiKeyAuth: ApiKeyAuth | null = null;
+    let jwtAuth: { customerId: string; payload: any } | null = null;
     
-    if (auth) {
-        customerId = auth.customerId;
+    // Step 1: Try JWT authentication first
+    jwtAuth = await authenticateJWT(request, env);
+    if (jwtAuth) {
+        customerId = jwtAuth.customerId;
+        console.log(`[AuthRoutes] JWT authentication successful:`, {
+            customerId: jwtAuth.customerId,
+            path
+        });
+    }
+    
+    // Step 2: Check API key (multi-tenant identification, NOT security)
+    // API keys are for: subscription tier management, rate limiting, entity separation
+    // JWT handles security/authentication - API key identifies which customer entity
+    // If API key is provided, it MUST be valid (identifies customer entity for subscription/rate limiting)
+    // EXCEPTION: Auth endpoints that don't require JWT (/auth/request-otp, etc.) don't require API key
+    const AUTH_ENDPOINTS_NO_JWT = ['/auth/request-otp', '/auth/verify-otp', '/auth/restore-session'];
+    const isAuthEndpointNoJWT = AUTH_ENDPOINTS_NO_JWT.includes(path);
+    
+    // CRITICAL: API keys MUST be in X-OTP-API-Key header ONLY
+    // Authorization header is for JWT tokens ONLY
+    const apiKeyHeader = request.headers.get('X-OTP-API-Key');
+    const hasApiKeyInHeader = !!apiKeyHeader;
+    
+    // API Key: Multi-tenant identification (subscription tiers, rate limiting, entity separation)
+    // NOT for security - JWT handles authentication/encryption
+    // API key is OPTIONAL but when provided, validates customer entity for subscription/rate limiting
+    if (!isAuthEndpointNoJWT) {
+        // Check API key if provided (for multi-tenant identification)
+        apiKeyAuth = await authenticateRequest(request, env);
+        
+        // If API key is provided, it must be valid (for subscription/rate limiting purposes)
+        // API key identifies the customer entity, so invalid key = can't identify entity
+        if (hasApiKeyInHeader && !apiKeyAuth) {
+            // API key was provided but is invalid/revoked - reject request
+            // This is required because API key identifies which customer entity (for subscription/rate limiting)
+            console.log(`[AuthRoutes] API key provided but invalid or revoked`);
+            return {
+                response: new Response(JSON.stringify({ error: 'Invalid or revoked API key' }), {
+                    status: 401,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: null
+            };
+        }
+        
+        // If both JWT and API key are provided, validate they match the same customer entity
+        // This ensures the authenticated user (JWT) belongs to the identified entity (API key)
+        if (jwtAuth && apiKeyAuth && jwtAuth.customerId !== apiKeyAuth.customerId) {
+            console.log(`[AuthRoutes] Customer mismatch: JWT and API key must belong to the same customer entity`, {
+                jwtCustomerId: jwtAuth.customerId,
+                apiKeyCustomerId: apiKeyAuth.customerId
+            });
+            return {
+                response: new Response(JSON.stringify({ error: 'Customer mismatch: JWT and API key must belong to the same customer entity' }), {
+                    status: 403,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: null
+            };
+        }
+    } else {
+        // For auth endpoints that don't require JWT, API key is optional
+        // API key is ONLY for CORS bypass and multi-tenant features - JWT requirements are UNCHANGED
+        apiKeyAuth = await authenticateRequest(request, env);
+        
+        // SECURITY: If API key is provided, use it to get customerId for origin validation
+        // This ensures origin validation runs even when no JWT is present
+        if (apiKeyAuth && !customerId) {
+            customerId = apiKeyAuth.customerId;
+        }
+    }
+    
+    // Get customer for origin validation and CORS headers (needed when API key is used)
+    if (customerId) {
         customer = await getCustomerCached(customerId, (id) => getCustomer(id, env));
         
+        // SECURITY: Validate origin when API key is used (prevents API key abuse from unauthorized origins)
+        // This is critical because API keys can be stolen and used from any origin if not validated
+        // CORS headers alone don't prevent server-side requests - we need explicit origin validation
+        // NOTE: API key is ONLY for CORS bypass - NOTHING CHANGES in application logic
+        if (apiKeyAuth) {
+            const requestOrigin = request.headers.get('Origin');
+            const allowedOrigins = customer?.config?.allowedOrigins || [];
+            
+            // SECURITY: If allowedOrigins is configured, validate origin
+            // If allowedOrigins is empty, reject browser requests (Origin header present)
+            // Server-to-server requests (no Origin header) are allowed when allowedOrigins is empty
+            if (requestOrigin) {
+                // Browser request - must validate origin
+                if (allowedOrigins.length === 0) {
+                    // SECURITY: No origins configured - reject browser requests
+                    // Customer must configure allowedOrigins before using API key from browser
+                    const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+                    await logSecurityEvent(customerId, 'origin_blocked_no_config', {
+                        origin: requestOrigin,
+                        endpoint: path,
+                        method: request.method,
+                        ip: clientIP,
+                        keyId: apiKeyAuth.keyId,
+                        reason: 'No allowedOrigins configured - customer must configure allowedOrigins before using API key from browser'
+                    }, env);
+                    
+                    return {
+                        response: new Response(JSON.stringify({ 
+                            error: 'Origin validation required',
+                            detail: 'This API key requires allowedOrigins to be configured. Please configure allowedOrigins in your customer settings before using this API key from a browser.'
+                        }), {
+                            status: 403,
+                            headers: { 
+                                ...getCorsHeaders(env, request, customer), 
+                                'Content-Type': 'application/json' 
+                            },
+                        }),
+                        customerId
+                    };
+                }
+                
+                // Validate origin against allowedOrigins
+                const isOriginAllowed = allowedOrigins.includes('*') || 
+                    allowedOrigins.some(allowed => {
+                        if (allowed === '*') return true;
+                        if (allowed === requestOrigin) return true;
+                        // Support wildcard patterns like "https://*.example.com"
+                        if (allowed.endsWith('*')) {
+                            const prefix = allowed.slice(0, -1);
+                            return requestOrigin.startsWith(prefix);
+                        }
+                        return false;
+                    });
+                
+                if (!isOriginAllowed) {
+                    // SECURITY: Reject request if origin doesn't match allowed origins
+                    // This prevents API key abuse from unauthorized origins
+                    const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+                    await logSecurityEvent(customerId, 'origin_blocked', {
+                        origin: requestOrigin,
+                        allowedOrigins: allowedOrigins,
+                        endpoint: path,
+                        method: request.method,
+                        ip: clientIP,
+                        keyId: apiKeyAuth.keyId
+                    }, env);
+                    
+                    return {
+                        response: new Response(JSON.stringify({ 
+                            error: 'Origin not allowed',
+                            detail: 'This API key is not authorized for requests from this origin'
+                        }), {
+                            status: 403,
+                            headers: { 
+                                ...getCorsHeaders(env, request, customer), 
+                                'Content-Type': 'application/json' 
+                            },
+                        }),
+                        customerId
+                    };
+                }
+            }
+            // If no Origin header (server-to-server request), allow regardless of allowedOrigins configuration
+            // This allows backend services to use API keys without Origin restrictions
+        }
+        
         // Check IP allowlist (CF-Connecting-IP is set by Cloudflare and cannot be spoofed)
+        // Note: IP allowlist is separate from origin validation - both are security layers
         const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         const ipAllowed = await checkIPAllowlist(customerId, clientIP, env);
         
@@ -88,19 +314,27 @@ export async function handleAuthRoutes(
             return { 
                 response: new Response(JSON.stringify({ error: 'IP address not allowed' }), {
                     status: 403,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeaders(env, request, customer), 'Content-Type': 'application/json' },
                 }), 
                 customerId 
             };
         }
         
-        // Log API key authentication
-        await logSecurityEvent(customerId, 'api_key_auth', {
-            keyId: auth.keyId,
-            endpoint: path,
-            method: request.method,
-            ip: clientIP
-        }, env);
+        // Log authentication
+        if (apiKeyAuth) {
+            await logSecurityEvent(customerId, 'api_key_auth', {
+                keyId: apiKeyAuth.keyId,
+                endpoint: path,
+                method: request.method,
+                ip: clientIP
+            }, env);
+        } else if (jwtAuth) {
+            await logSecurityEvent(customerId, 'jwt_auth', {
+                endpoint: path,
+                method: request.method,
+                ip: clientIP
+            }, env);
+        }
     } else if (path.startsWith('/auth/') || path.startsWith('/admin/')) {
         // Log failed authentication attempt (CF-Connecting-IP is set by Cloudflare and cannot be spoofed)
         const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -111,57 +345,92 @@ export async function handleAuthRoutes(
         }, env);
     }
     
-    // Extract JWT token for encryption (if present)
-    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    // Extract JWT token for encryption (CRITICAL: JWT is ALWAYS required for encryption)
+    // API key authentication does NOT replace JWT - JWT is mandatory for encryption
     const authHeader = request.headers.get('Authorization');
     const rawJwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
     const jwtToken = rawJwtToken ? rawJwtToken.trim() : null;
-    const wasTrimmed = rawJwtToken && rawJwtToken !== jwtToken;
     
-    if (path === '/auth/me' && jwtToken) {
+    // Check if the token is actually a JWT (not an API key)
+    const isJWT = jwtToken && !jwtToken.startsWith('otp_live_sk_') && !jwtToken.startsWith('otp_test_sk_');
+    
+    if (path === '/auth/me' && jwtToken && isJWT) {
         console.log('[AuthRoutes] /auth/me - Token extraction for encryption:', {
             rawTokenLength: rawJwtToken?.length || 0,
             trimmedTokenLength: jwtToken?.length || 0,
-            wasTrimmed,
             rawTokenPrefix: rawJwtToken ? rawJwtToken.substring(0, 20) + '...' : 'none',
             trimmedTokenPrefix: jwtToken ? jwtToken.substring(0, 20) + '...' : 'none',
-            rawTokenSuffix: rawJwtToken ? '...' + rawJwtToken.substring(rawJwtToken.length - 10) : 'none',
-            trimmedTokenSuffix: jwtToken ? '...' + jwtToken.substring(jwtToken.length - 10) : 'none',
-            authHeaderPrefix: authHeader ? authHeader.substring(0, 27) + '...' : 'none',
         });
     }
     
-    const authForEncryption = jwtToken ? { userId: 'anonymous', customerId, jwtToken } : null;
-    
-    // Authentication endpoints that generate JWTs - MUST use requireJWT: false
-    const AUTH_ENDPOINTS_NO_JWT = ['/auth/request-otp', '/auth/verify-otp', '/auth/restore-session'];
-    const isAuthEndpointNoJWT = AUTH_ENDPOINTS_NO_JWT.includes(path);
+    // Build auth object for encryption wrapper
+    // CRITICAL: JWT is ALWAYS required for encryption (security requirement)
+    // If JWT is not present or invalid, encryption will fail (as it should)
+    const authForEncryption = (jwtToken && isJWT && jwtAuth)
+        ? { userId: 'anonymous', customerId: jwtAuth.customerId, jwtToken } 
+        : null;
     
     // Attach customerId to request context by wrapping handlers
+    // Note: AUTH_ENDPOINTS_NO_JWT and isAuthEndpointNoJWT are already declared above (lines 162-163)
     if (path === '/auth/request-otp' && request.method === 'POST') {
+        // THIRD-PARTY DEVELOPER INTEGRATION: API key provides CORS bypass for allowed origins
+        // - API key is OPTIONAL and ONLY provides CORS bypass and multi-tenant features
+        // - JWT is STILL REQUIRED for authentication (if provided)
+        // - Customer.config.allowedOrigins is used to validate origin and bypass CORS
+        // - API key does NOT replace JWT - it's additional functionality
         const handlerResponse = await handleRequestOTP(request, env, customerId);
+        
+        // Apply CORS headers based on customer's allowedOrigins (API key-based origin bypass)
+        // This allows third-party developers to configure which origins can call their API
+        // NOTE: This is ONLY for CORS - JWT is still required for authentication
+        const corsHeaders = getCorsHeaders(env, request, customer);
+        const responseWithCors = new Response(handlerResponse.body, {
+            status: handlerResponse.status,
+            statusText: handlerResponse.statusText,
+            headers: {
+                ...Object.fromEntries(handlerResponse.headers.entries()),
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+        
         const encryptedResult = await wrapWithEncryption(
-            handlerResponse,
+            responseWithCors,
             authForEncryption,
             request,
             env,
             { 
-                requireJWT: false, // ⚠️ Exception - part of auth flow
-                allowServiceCallsWithoutJWT: true // ⚠️ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
+                requireJWT: false, // ⚠ Exception - part of auth flow (OTP endpoints don't require JWT)
+                allowServiceCallsWithoutJWT: true // ⚠ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
             }
         );
         return { response: encryptedResult.response, customerId };
     }
     if (path === '/auth/verify-otp' && request.method === 'POST') {
+        // API key is OPTIONAL and ONLY provides CORS bypass for allowed origins
+        // NOTHING CHANGES in application logic - JWT requirements are UNCHANGED
+        // API key is purely additive functionality for CORS bypass only
         const handlerResponse = await handleVerifyOTP(request, env, customerId);
+        
+        // Apply CORS headers based on customer's allowedOrigins (if API key provided)
+        // This is the ONLY thing API key does - provides CORS bypass for allowed origins
+        const corsHeaders = getCorsHeaders(env, request, customer);
+        const responseWithCors = new Response(handlerResponse.body, {
+            status: handlerResponse.status,
+            statusText: handlerResponse.statusText,
+            headers: {
+                ...Object.fromEntries(handlerResponse.headers.entries()),
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+        
         const encryptedResult = await wrapWithEncryption(
-            handlerResponse,
+            responseWithCors,
             authForEncryption,
             request,
             env,
             { 
-                requireJWT: false, // ⚠️ CRITICAL - Returns JWT token (chicken-and-egg problem)
-                allowServiceCallsWithoutJWT: true // ⚠️ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
+                requireJWT: false, // ⚠ CRITICAL - Returns JWT token (chicken-and-egg problem)
+                allowServiceCallsWithoutJWT: true // ⚠ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
             }
         );
         return { response: encryptedResult.response, customerId };
@@ -177,14 +446,28 @@ export async function handleAuthRoutes(
         return { response: encryptedResult.response, customerId };
     }
     if (path === '/auth/quota' && request.method === 'GET') {
-        const handlerResponse = await authHandlers.handleGetQuota(request, env);
+        // Pass customerId from JWT auth (primary) - API key is NOT a fallback
+        // CRITICAL: JWT is ALWAYS required for encryption (security requirement)
+        // If JWT auth failed, customerId will be null and request will fail (as it should)
+        const customerIdToPass = jwtAuth ? jwtAuth.customerId : null;
+        console.log(`[AuthRoutes] /auth/quota - Authentication details:`, {
+            hasJwtAuth: !!jwtAuth,
+            hasApiKeyAuth: !!apiKeyAuth,
+            customerId: customerIdToPass,
+            hasJwtToken: !!(jwtToken && isJWT),
+            authHeader: request.headers.get('Authorization') ? request.headers.get('Authorization')?.substring(0, 30) + '...' : null,
+            xApiKeyHeader: request.headers.get('X-OTP-API-Key') ? request.headers.get('X-OTP-API-Key')?.substring(0, 30) + '...' : null
+        });
+        const handlerResponse = await authHandlers.handleGetQuota(request, env, customerIdToPass);
         const encryptedResult = await wrapWithEncryption(
             handlerResponse,
             authForEncryption,
             request,
             env
+            // CRITICAL: No requireJWT: false - JWT is ALWAYS required for encryption
+            // If JWT is missing or invalid, encryption will fail (security requirement)
         );
-        return { response: encryptedResult.response, customerId };
+        return { response: encryptedResult.response, customerId: customerIdToPass };
     }
     if (path === '/auth/logout' && request.method === 'POST') {
         const handlerResponse = await authHandlers.handleLogout(request, env);
@@ -217,29 +500,39 @@ export async function handleAuthRoutes(
         return { response: encryptedResult.response, customerId };
     }
     if (path === '/auth/restore-session' && request.method === 'POST') {
-        // restore-session doesn't require API key authentication (it's for unauthenticated session restoration)
+        // THIRD-PARTY DEVELOPER INTEGRATION: API key provides CORS bypass for allowed origins
+        // - API key is OPTIONAL and ONLY provides CORS bypass and multi-tenant features
+        // - restore-session doesn't require JWT (it's for unauthenticated session restoration)
+        // - API key does NOT replace JWT - it's additional functionality
         const handlerResponse = await handleRestoreSession(request, env);
+        
+        // Apply CORS headers based on customer's allowedOrigins (API key-based origin bypass)
+        // NOTE: This is ONLY for CORS - JWT is still required for authentication (if provided)
+        const corsHeaders = getCorsHeaders(env, request, customer);
+        const responseWithCors = new Response(handlerResponse.body, {
+            status: handlerResponse.status,
+            statusText: handlerResponse.statusText,
+            headers: {
+                ...Object.fromEntries(handlerResponse.headers.entries()),
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+        
         const encryptedResult = await wrapWithEncryption(
-            handlerResponse,
+            responseWithCors,
             authForEncryption,
             request,
             env,
             { 
-                requireJWT: false, // ⚠️ Exception - may return JWT
-                allowServiceCallsWithoutJWT: true // ⚠️ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
+                requireJWT: false, // ⚠ Exception - may return JWT
+                allowServiceCallsWithoutJWT: true // ⚠ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
             }
         );
-        return { response: encryptedResult.response, customerId: null };
+        return { response: encryptedResult.response, customerId };
     }
     
-    // Public user lookup endpoint - GET /auth/user/:userId
-    // Returns public user info (displayName) by userId for service-to-service communication
-    const userLookupMatch = path.match(/^\/auth\/user\/([^\/]+)$/);
-    if (userLookupMatch && request.method === 'GET') {
-        const userId = userLookupMatch[1];
-        // This is a public endpoint - no authentication required
-        return { response: await handleUserLookup(request, env, userId), customerId: null };
-    }
+    // CRITICAL: User lookup endpoint removed - we ONLY use customerId, NO userId
+    // The only lookup is email -> customerId for OTP to work
     
     return null; // Route not matched
 }

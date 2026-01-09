@@ -1,0 +1,37 @@
+{
+  "name": "@strixun/schemas",
+  "version": "1.0.0",
+  "description": "Shared validation schemas using Valibot for Strixun services",
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    },
+    "./customer": {
+      "types": "./customer.ts",
+      "default": "./customer.ts"
+    },
+    "./auth": {
+      "types": "./auth.ts",
+      "default": "./auth.ts"
+    }
+  },
+  "keywords": [
+    "validation",
+    "schemas",
+    "valibot",
+    "typescript"
+  ],
+  "author": "Strixun",
+  "license": "ISC",
+  "dependencies": {
+    "valibot": "^1.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  }
+}

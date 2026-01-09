@@ -17,6 +17,7 @@ import { candyShopAnimation } from '../../utils/candyShopAnimation';
 import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys } from '../../hooks/useMods';
+import { formatDate } from '@strixun/shared-config/date-utils';
 
 const Container = styled.div`
   display: flex;
@@ -31,11 +32,11 @@ const Title = styled.h2`
   margin-bottom: ${spacing.md};
 `;
 
-const VersionCard = styled.div<{ isExpanded: boolean }>`
+const VersionCard = styled.div<{ $isExpanded: boolean }>`
   ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
-  gap: ${props => props.isExpanded ? spacing.md : '0'};
+  gap: ${props => props.$isExpanded ? spacing.md : '0'};
   transition: all 0.2s ease;
 `;
 
@@ -107,12 +108,12 @@ const DownloadButton = styled.button`
   ${candyShopAnimation}
 `;
 
-const ExpandedContent = styled.div<{ isExpanded: boolean }>`
-  max-height: ${props => props.isExpanded ? '2000px' : '0'};
+const ExpandedContent = styled.div<{ $isExpanded: boolean }>`
+  max-height: ${props => props.$isExpanded ? '2000px' : '0'};
   overflow: hidden;
   transition: max-height 0.3s ease;
-  border-top: ${props => props.isExpanded ? `1px solid ${colors.border}` : 'none'};
-  padding-top: ${props => props.isExpanded ? spacing.md : '0'};
+  border-top: ${props => props.$isExpanded ? `1px solid ${colors.border}` : 'none'};
+  padding-top: ${props => props.$isExpanded ? spacing.md : '0'};
 `;
 
 const VariantsSection = styled.div`
@@ -203,9 +204,6 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
-    const formatDate = (dateString: string): string => {
-        return new Date(dateString).toLocaleDateString();
-    };
 
     const toggleVersion = (versionId: string) => {
         setExpandedVersions(prev => {
@@ -276,8 +274,10 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
 
         try {
             // PESSIMISTIC UPDATE: Wait for download to complete before updating UI
-            const fileName = variant.fileName || `${variant.name || 'variant'}.zip`;
-            await downloadVariant(modSlug, variant.variantId, fileName);
+            if (!variant.fileName) {
+                throw new Error('Variant file name not found');
+            }
+            await downloadVariant(modSlug, variant.variantId, variant.fileName);
             
             // Download successful - refetch mod data to get updated download counts
             console.log('[ModVersionList] Variant download completed, refetching mod data for updated counts');
@@ -295,10 +295,9 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
         }
     };
 
-    // Filter variants by version
-    const getVariantsForVersion = (version: ModVersion): ModVariant[] => {
-        return variants.filter(v => v.version === version.version || !v.version);
-    };
+    // Note: Variants are now mod-level, not version-level
+    // They have their own version control system via VariantVersion
+    // For the public view, we show all variants (they're not tied to specific mod versions)
 
     return (
         <Container>
@@ -316,14 +315,14 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
             )}
             {versions.map((version) => {
                 const isExpanded = expandedVersions.has(version.versionId);
-                const versionVariants = getVariantsForVersion(version);
                 
-                // Calculate cumulative downloads for this version (version + all variants)
-                const variantDownloads = versionVariants.reduce((sum, v) => sum + (v.downloads || 0), 0);
+                // Calculate cumulative downloads for this version
+                // Note: Variants have their own download tracking via totalDownloads
+                const variantDownloads = variants.reduce((sum, v) => sum + (v.totalDownloads || 0), 0);
                 const cumulativeDownloads = version.downloads + variantDownloads;
                 
                 return (
-                    <VersionCard key={version.versionId} isExpanded={isExpanded}>
+                    <VersionCard key={version.versionId} $isExpanded={isExpanded}>
                         <VersionCardHeader onClick={() => toggleVersion(version.versionId)}>
                             <VersionInfo>
                                 <VersionHeader>
@@ -334,17 +333,17 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                 <Meta>
                                     <span>{formatFileSize(version.fileSize)}</span>
                                     <span>•</span>
-                                    <span>{cumulativeDownloads} downloads{versionVariants.length > 0 ? ` (${version.downloads} main + ${variantDownloads} variants)` : ''}</span>
+                                    <span>{cumulativeDownloads} downloads{variants.length > 0 ? ` (${version.downloads} main + ${variantDownloads} variants)` : ''}</span>
                                     {version.gameVersions.length > 0 && (
                                         <>
                                             <span>•</span>
                                             <span>Game: {version.gameVersions.join(', ')}</span>
                                         </>
                                     )}
-                                    {versionVariants.length > 0 && (
+                                    {variants.length > 0 && (
                                         <>
                                             <span>•</span>
-                                            <span>{versionVariants.length} variant{versionVariants.length !== 1 ? 's' : ''}</span>
+                                            <span>{variants.length} variant{variants.length !== 1 ? 's' : ''}</span>
                                         </>
                                     )}
                                 </Meta>
@@ -379,11 +378,22 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                 </ExpandButton>
                             </div>
                         </VersionCardHeader>
-                        <ExpandedContent isExpanded={isExpanded}>
-                            {versionVariants.length > 0 ? (
+                        <ExpandedContent $isExpanded={isExpanded}>
+                            {variants.length > 0 ? (
                                 <VariantsSection>
-                                    <VariantsTitle>Variants ({versionVariants.length})</VariantsTitle>
-                                    {versionVariants.map((variant) => (
+                                    <VariantsTitle>Variants ({variants.length})</VariantsTitle>
+                                    <div style={{ 
+                                        padding: spacing.sm, 
+                                        background: `${colors.accent}20`, 
+                                        color: colors.textSecondary, 
+                                        borderRadius: 4,
+                                        fontSize: '0.875rem',
+                                        marginBottom: spacing.md
+                                    }}>
+                                        ℹ Variants are mod-level alternatives with their own version history. 
+                                        Download the latest version of each variant below.
+                                    </div>
+                                    {variants.map((variant) => (
                                         <VariantCard key={variant.variantId}>
                                             <VariantInfo>
                                                 <VariantName>{variant.name}</VariantName>
@@ -391,25 +401,11 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                                     <VariantDescription>{variant.description}</VariantDescription>
                                                 )}
                                                 <VariantMeta>
-                                                    {variant.fileSize && (
-                                                        <>
-                                                            <span>{formatFileSize(variant.fileSize)}</span>
-                                                            <span>•</span>
-                                                        </>
-                                                    )}
-                                                    <span>{(variant.downloads || 0)} downloads</span>
-                                                    {variant.fileName && (
-                                                        <>
-                                                            <span>•</span>
-                                                            <span>{variant.fileName}</span>
-                                                        </>
-                                                    )}
-                                                    {variant.gameVersions && variant.gameVersions.length > 0 && (
-                                                        <>
-                                                            <span>•</span>
-                                                            <span>Game: {variant.gameVersions.join(', ')}</span>
-                                                        </>
-                                                    )}
+                                                    <span>{variant.versionCount} version{variant.versionCount !== 1 ? 's' : ''}</span>
+                                                    <span>•</span>
+                                                    <span>{variant.totalDownloads} total downloads</span>
+                                                    <span>•</span>
+                                                    <span>Created: {formatDate(variant.createdAt)}</span>
                                                 </VariantMeta>
                                             </VariantInfo>
                                             <VariantDownloadButton
@@ -420,14 +416,14 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                                 disabled={downloadingVariants.has(variant.variantId) || !variant.variantId || !isAuthenticated}
                                                 title={!isAuthenticated ? 'Please log in to download' : undefined}
                                             >
-                                                {downloadingVariants.has(variant.variantId) ? 'Downloading...' : 'Download'}
+                                                {downloadingVariants.has(variant.variantId) ? 'Downloading...' : 'Download Latest'}
                                             </VariantDownloadButton>
                                         </VariantCard>
                                     ))}
                                 </VariantsSection>
                             ) : (
                                 <NoVariantsMessage>
-                                    No variants available for this version
+                                    No variants available for this mod
                                 </NoVariantsMessage>
                             )}
                         </ExpandedContent>

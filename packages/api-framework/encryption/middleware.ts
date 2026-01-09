@@ -20,9 +20,8 @@ export interface RouteResult {
  * Authentication result interface
  */
 export interface AuthResult {
-  customerId: string | null;
+  customerId: string;
   jwtToken?: string;
-  userId?: string;
   email?: string;
   [key: string]: any;
 }
@@ -260,7 +259,7 @@ export async function wrapWithEncryption(
     console.error('[NetworkIntegrity] Service-to-service call detected but request/env not provided for integrity header', {
       hasRequest: !!request,
       hasEnv: !!env,
-      userId: auth?.userId
+      userId: auth?.customerId
     });
     throw new Error('[NetworkIntegrity] Service-to-service calls require request and env to add integrity headers');
   }

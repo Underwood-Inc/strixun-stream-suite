@@ -17,7 +17,7 @@
   import { manualStorageSync, requestStorageFromOBS, saveAutoSyncPref } from '../modules/storage-sync';
   import { checkForUpdates, openGitHubRepo } from '../modules/version';
   import { clearSavedCredentials, loadCredentials, toggleConnection, updateConnectionState, updateSecurityWarning } from '../modules/websocket';
-  import { isAuthenticated, user } from '../stores/auth';
+  import { isAuthenticated, customer } from '../stores/auth';
   import { connected } from '../stores/connection';
   import { showToast } from '../stores/toast-queue';
   
@@ -631,7 +631,7 @@
       </button>
     {:else}
       <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px">
-        Signed in as <strong>{$user?.email}</strong>
+        Signed in as <strong>{$customer?.displayName || 'Customer'}</strong>
       </p>
       
       <!-- Save to Cloud -->

@@ -100,7 +100,7 @@ export const ERROR_LEGEND: Record<string, ErrorInfo> = {
     title: 'Maximum Users Exceeded',
     description: 'Your account has reached the maximum number of users.',
     details: 'Your plan has a limit on the number of users that can be created. You have reached this limit.',
-    suggestion: 'Upgrade your plan to support more users, or remove inactive users.'
+    suggestion: 'Upgrade your plan to support more users, or remove inactive customers.'
   },
   
   // OTP Verification Errors

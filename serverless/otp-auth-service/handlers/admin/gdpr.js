@@ -9,29 +9,29 @@ import { hashEmail } from '../../utils/crypto.js';
 import { logSecurityEvent } from '../../services/security.js';
 
 /**
- * Export user data (GDPR)
- * GET /admin/users/{userId}/export
+ * Export customer data (GDPR)
+ * GET /admin/customers/{customerId}/export
  */
-export async function handleExportUserData(request, env, customerId, userId) {
+export async function handleExportCustomerData(request, env, customerId, customerIdParam) {
     try {
-        // Get user data
-        const userKey = getCustomerKey(customerId, `user_${userId.replace('user_', '')}`);
-        const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' });
+        // Get customer data
+        const customerKey = getCustomerKey(customerId, `customer_${customerIdParam.replace('cust_', '')}`);
+        const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' });
         
-        if (!user) {
-            return new Response(JSON.stringify({ error: 'User not found' }), {
+        if (!customer) {
+            return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
         // Get all related data
-        const emailHash = await hashEmail(user.email);
+        const emailHash = await hashEmail(customer.email);
         const exportData = {
-            userId: user.userId,
-            email: user.email,
-            createdAt: user.createdAt,
-            lastLogin: user.lastLogin,
+            customerId: customer.customerId,
+            email: customer.email,
+            createdAt: customer.createdAt,
+            lastLogin: customer.lastLogin,
             // Note: OTP codes are not stored after use, so no OTP history
             // Sessions are stored but don't contain sensitive data
         };
@@ -44,12 +44,12 @@ export async function handleExportUserData(request, env, customerId, userId) {
             headers: { 
                 ...getCorsHeaders(env, request), 
                 'Content-Type': 'application/json',
-                'Content-Disposition': `attachment; filename="user-data-${userId}.json"`
+                'Content-Disposition': `attachment; filename="customer-data-${customerIdParam}.json"`
             },
         });
     } catch (error) {
         return new Response(JSON.stringify({
-            error: 'Failed to export user data',
+            error: 'Failed to export customer data',
             message: error.message
         }), {
             status: 500,
@@ -59,31 +59,37 @@ export async function handleExportUserData(request, env, customerId, userId) {
 }
 
 /**
- * Delete user data (GDPR)
- * DELETE /admin/users/{userId}
+ * Delete customer data (GDPR)
+ * DELETE /admin/customers/{customerId}
  */
-export async function handleDeleteUserData(request, env, customerId, userId) {
+export async function handleDeleteCustomerData(request, env, customerId, customerIdParam) {
     try {
-        // Get user data first
-        const userKey = getCustomerKey(customerId, `user_${userId.replace('user_', '')}`);
-        const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' });
+        // Get customer data first
+        const customerKey = getCustomerKey(customerId, `customer_${customerIdParam.replace('cust_', '')}`);
+        const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' });
         
-        if (!user) {
-            return new Response(JSON.stringify({ error: 'User not found' }), {
+        if (!customer) {
+            return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        const emailHash = await hashEmail(user.email);
+        const emailHash = await hashEmail(customer.email);
         
-        // Delete all user-related data
+        // CRITICAL: Release display name when customer account is deleted
+        if (customer.displayName) {
+            const { releaseDisplayName } = await import('../../services/nameGenerator.js');
+            await releaseDisplayName(customer.displayName, null, env); // Global scope
+        }
+        
+        // Delete all customer-related data
         // Note: We can't easily list all OTP keys, but they expire automatically
-        // Delete user record
-        await env.OTP_AUTH_KV.delete(userKey);
+        // Delete customer record
+        await env.OTP_AUTH_KV.delete(customerKey);
         
         // Delete session
-        const sessionKey = getCustomerKey(customerId, `session_${userId}`);
+        const sessionKey = getCustomerKey(customerId, `session_${customerIdParam}`);
         await env.OTP_AUTH_KV.delete(sessionKey);
         
         // Delete latest OTP key reference
@@ -91,21 +97,21 @@ export async function handleDeleteUserData(request, env, customerId, userId) {
         await env.OTP_AUTH_KV.delete(latestOtpKey);
         
         // Log deletion for audit
-        await logSecurityEvent(customerId, 'user_data_deleted', {
-            userId,
-            email: user.email,
+        await logSecurityEvent(customerId, 'customer_data_deleted', {
+            customerId: customerIdParam,
+            email: customer.email,
             deletedAt: new Date().toISOString()
         }, env);
         
         return new Response(JSON.stringify({
             success: true,
-            message: 'User data deleted successfully'
+            message: 'Customer data deleted successfully'
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({
-            error: 'Failed to delete user data',
+            error: 'Failed to delete customer data',
             message: error.message
         }), {
             status: 500,

@@ -41,7 +41,7 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
 export function isEmailAllowed(email: string | undefined, env: Env): boolean {
     if (!email) return false;
     
-    // If no whitelist is configured, allow all authenticated users
+    // If no whitelist is configured, allow all authenticated customers
     if (!env.ALLOWED_EMAILS) {
         return true;
     }
@@ -52,7 +52,7 @@ export function isEmailAllowed(email: string | undefined, env: Env): boolean {
 }
 
 /**
- * Fetch user email from auth service if missing from JWT
+ * Fetch customer email from auth service if missing from JWT
  * This is a fallback for older tokens that don't include email
  */
 /**
@@ -86,8 +86,8 @@ async function fetchEmailFromAuthService(token: string, env: Env): Promise<strin
 
 
 /**
- * Authenticate request and extract user info
- * Returns auth object with userId, customerId, and jwtToken
+ * Authenticate request and extract customer info
+ * Returns auth object with customerId and jwtToken
  * If email is missing from JWT, attempts to fetch it from auth service
  * @param request - HTTP request
  * @param env - Worker environment
@@ -125,10 +125,11 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
             }
         }
 
+        // CRITICAL: payload.sub IS the customerId (set by OTP auth service)
+        // NO separate userId exists - customerId is the ONLY identity
         return {
-            userId: payload.sub,
+            customerId: payload.sub, // PRIMARY IDENTITY - MANDATORY
             email: email,
-            customerId: payload.customerId || null,
             jwtToken: token // Include JWT token for encryption
         };
     } catch (error) {
@@ -147,9 +148,8 @@ export type { JWTPayload } from '@strixun/api-framework/jwt';
  * Auth result interface
  */
 export interface AuthResult {
-    userId: string;
+    customerId: string; // PRIMARY IDENTITY - MANDATORY
     email?: string;
-    customerId: string | null;
     jwtToken: string;
 }
 

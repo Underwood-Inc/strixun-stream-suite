@@ -284,7 +284,7 @@ To decrypt userId: Need owner's JWT + approved request key
 2. Update all handlers that return `userId`/`email`:
    - `handlers/auth/session.js` - `GET /auth/me`
    - `handlers/admin/customers.js` - `GET /admin/customers/me`
-   - Any other handlers returning user data
+   - Any other handlers returning customer data
 
 **Challenge:**
 - Need owner's JWT token to encrypt Stage 1

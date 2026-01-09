@@ -17,7 +17,7 @@ export async function handleListModSnapshots(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; customerId: string | null } | null
+    auth: { customerId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
         if (!auth) {
@@ -54,7 +54,7 @@ export async function handleListModSnapshots(
         }
 
         // Check authorization - only mod author can view snapshots
-        if (mod.authorId !== auth.userId) {
+        if (mod.authorId !== auth.customerId) {
             const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to view snapshots for this mod');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -143,7 +143,7 @@ export async function handleLoadSnapshot(
     env: Env,
     modId: string,
     snapshotId: string,
-    auth: { userId: string; customerId: string | null } | null
+    auth: { customerId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
         if (!auth) {
@@ -213,7 +213,7 @@ export async function handleLoadSnapshot(
         }
 
         // Check authorization - only mod author can load snapshots
-        if (mod.authorId !== auth.userId) {
+        if (mod.authorId !== auth.customerId) {
             const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to load snapshots for this mod');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

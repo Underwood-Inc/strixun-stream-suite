@@ -88,6 +88,22 @@ export const GlobalStyle = createGlobalStyle`
     }
   }
 
+  /* Text Selection - Strixun brand orange with pure black text for legibility */
+  ::selection {
+    background: ${colors.accent};
+    color: #000000;
+  }
+
+  ::-moz-selection {
+    background: ${colors.accent};
+    color: #000000;
+  }
+
+  ::-webkit-selection {
+    background: ${colors.accent};
+    color: #000000;
+  }
+
   /* Global click ripple effect - subtle ring ripple */
   .click-ripple {
     position: fixed;

@@ -148,7 +148,7 @@ export interface ErrorHandlingConfig {
 export interface RequestContext {
   request: APIRequest;
   response?: BaseAPIResponse;
-  user?: {
+  customer?: {
     id: string;
     customerId: string;
     email: string;

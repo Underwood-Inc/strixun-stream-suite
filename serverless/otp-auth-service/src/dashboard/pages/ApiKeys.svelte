@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { apiClient } from '$lib/api-client';
-  import type { Customer, ApiKey, ApiKeyResponse } from '$lib/types';
-  import Card from '$components/Card.svelte';
+  import { apiClient } from '$dashboard/lib/api-client';
+  import type { Customer, ApiKey, ApiKeyResponse } from '$dashboard/lib/types';
+  import Card from '$dashboard/components/Card.svelte';
+  import ObfuscatedText from '@shared-components/svelte/ObfuscatedText.svelte';
 
   export let customer: Customer | null = null;
 
@@ -155,19 +156,7 @@
                 <tr>
                   <td>{key.name || 'Unnamed'}</td>
                   <td class="api-keys__key-value">
-                    {#if key.apiKey}
-                      <code class="api-keys__key-code">{key.apiKey}</code>
-                      <button 
-                        class="api-keys__copy-btn" 
-                        onclick={() => {
-                          navigator.clipboard.writeText(key.apiKey);
-                          alert('API key copied to clipboard!');
-                        }}
-                        title="Copy API key"
-                      > ★ </button>
-                    {:else}
-                      <span class="api-keys__key-missing">N/A</span>
-                    {/if}
+                    <code class="api-keys__key-code">sk_<ObfuscatedText text="****" length={12} charset="hex" color="warning" revealOnHover ariaLabel={`API Key ending in ${key.keyId.substring(key.keyId.length - 8)}`} />{key.keyId.substring(key.keyId.length - 8)}</code>
                   </td>
                   <td>
                     <span class="api-keys__status" class:status-active={key.status === 'active'} class:status-revoked={key.status === 'revoked'}>
@@ -226,6 +215,10 @@
 <style>
   .api-keys {
     width: 100%;
+  }
+
+  .api-keys :global(.card + .card) {
+    margin-top: var(--spacing-xl);
   }
 
   .api-keys__title {
@@ -376,6 +369,7 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
+    font-family: monospace;
   }
 
   .api-keys__key-code {
@@ -384,6 +378,9 @@
     color: var(--accent);
     background: var(--bg-dark);
     padding: var(--spacing-xs) var(--spacing-sm);
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
     border-radius: var(--radius-sm);
     word-break: break-all;
     flex: 1;

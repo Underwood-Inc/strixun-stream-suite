@@ -35,9 +35,7 @@ export interface OtpLoginConfig {
 }
 
 export interface LoginSuccessData {
-  /** User ID (OIDC sub claim or userId) */
-  userId?: string;
-  /** User email */
+  customerId: string;
   email: string;
   /** Display name (anonymized) */
   displayName?: string | null;

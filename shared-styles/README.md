@@ -24,6 +24,10 @@ Framework-agnostic SCSS design system for consistent styling across all projects
   .my-input {
     @include input;
   }
+  
+  body {
+    @include text-selection; // Global text selection highlight
+  }
 </style>
 ```
 
@@ -59,6 +63,7 @@ CSS variables are automatically available via `_variables.scss`. They're defined
 - **Animation System** - GPU-accelerated animations (fade, slide, bounce, etc.)
 - **Design Tokens** - Centralized colors, spacing, and typography
 - **Mixins** - Reusable patterns for cards, buttons, inputs, scrollbars
+- **Text Selection** - Consistent Strixun brand orange highlight across all apps
 
 ## Design Philosophy
 

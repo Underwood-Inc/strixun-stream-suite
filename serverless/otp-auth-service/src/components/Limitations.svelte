@@ -1,22 +1,26 @@
+<script lang="ts">
+  import ObfuscatedText from '@shared-components/svelte/ObfuscatedText.svelte';
+</script>
+
 <section class="limitations">
   <h2>Limitations & Considerations</h2>
   <div class="limitations-list">
     <ul>
       <li>
         <strong>Rate Limits</strong>
-        <p>3 OTP requests per email address per hour to prevent abuse and email spam.</p>
+        <p><ObfuscatedText text="3" length={1} /> OTP requests per email address per hour to prevent abuse and email spam.</p>
       </li>
       <li>
         <strong>OTP Expiration</strong>
-        <p>OTP codes expire after 10 minutes. Users must request a new code if expired.</p>
+        <p>OTP codes expire after <ObfuscatedText text="10" length={2} /> minutes. Users must request a new code if expired.</p>
       </li>
       <li>
         <strong>Verification Attempts</strong>
-        <p>Maximum 5 verification attempts per OTP code. After that, a new code must be requested.</p>
+        <p>Maximum <ObfuscatedText text="5" length={1} /> verification attempts per OTP code. After that, a new code must be requested.</p>
       </li>
       <li>
         <strong>Token Expiration</strong>
-        <p>JWT tokens expire after 7 hours. Use the refresh endpoint to extend sessions.</p>
+        <p>JWT tokens expire after <ObfuscatedText text="7" length={1} /> hours. Use the refresh endpoint to extend sessions.</p>
       </li>
       <li>
         <strong>Email Delivery</strong>
@@ -84,6 +88,49 @@
   @media (max-width: 768px) {
     .limitations {
       padding: var(--spacing-2xl) var(--spacing-md);
+    }
+
+    .limitations-list {
+      padding: var(--spacing-md);
+    }
+
+    .limitations-list li {
+      padding: var(--spacing-sm);
+    }
+
+    .limitations-list li strong {
+      font-size: 0.95rem;
+    }
+
+    .limitations-list li p {
+      font-size: 0.875rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .limitations {
+      padding: var(--spacing-xl) var(--spacing-sm);
+    }
+
+    .limitations h2 {
+      font-size: 1.75rem;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .limitations-list {
+      padding: var(--spacing-sm);
+    }
+
+    .limitations-list li {
+      padding: var(--spacing-xs);
+    }
+
+    .limitations-list li strong {
+      font-size: 0.9rem;
+    }
+
+    .limitations-list li p {
+      font-size: 0.8rem;
     }
   }
 </style>

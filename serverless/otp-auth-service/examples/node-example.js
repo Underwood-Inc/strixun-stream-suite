@@ -68,7 +68,7 @@ app.get('/api/user/me', async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
     
-    const user = await client.getMe(token);
+    const customer = await client.getMe(token);
     res.json(user);
   } catch (error) {
     res.status(401).json({ error: error.message });

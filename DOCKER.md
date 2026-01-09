@@ -40,22 +40,22 @@ pnpm docker:dev:down
 
 ## Features
 
-### ✅ Hot Reload
+### ✓ Hot Reload
 - Source code changes reflect immediately
 - No need to restart containers
 - Works for both frontend and backend
 
-### ✅ Persistent Storage
+### ✓ Persistent Storage
 - Wrangler local storage (R2/KV) persisted in Docker volumes
 - Data survives container restarts
 - Separate volumes per service
 
-### ✅ Isolated Network
+### ✓ Isolated Network
 - Services communicate via Docker network
 - No port conflicts with local services
 - Clean separation from host machine
 
-### ✅ Environment Variables
+### ✓ Environment Variables
 - Uses `.dev.vars` and `.env` files from host
 - Test mode enabled by default (emails intercepted)
 - No external services required
@@ -151,27 +151,27 @@ pnpm docker:dev:build
 
 | Aspect | Docker | Local |
 |--------|--------|-------|
-| **Isolation** | ✅ Complete | ❌ Uses host Node.js |
-| **Reproducibility** | ✅ Same for everyone | ⚠️ Depends on host setup |
-| **Cleanup** | ✅ `docker-compose down` | ⚠️ Manual cleanup |
-| **Port Conflicts** | ✅ Isolated | ⚠️ Can conflict |
-| **Setup Time** | ⚠️ First build slower | ✅ Faster |
-| **Resource Usage** | ⚠️ Higher (containers) | ✅ Lower |
+| **Isolation** | ✓ Complete | ✗ Uses host Node.js |
+| **Reproducibility** | ✓ Same for everyone | ⚠ Depends on host setup |
+| **Cleanup** | ✓ `docker-compose down` | ⚠ Manual cleanup |
+| **Port Conflicts** | ✓ Isolated | ⚠ Can conflict |
+| **Setup Time** | ⚠ First build slower | ✓ Faster |
+| **Resource Usage** | ⚠ Higher (containers) | ✓ Lower |
 
 ## When to Use Docker
 
 **Use Docker when:**
-- ✅ You want a completely isolated environment
-- ✅ You're onboarding new developers
-- ✅ You want consistent setup across team
-- ✅ You're testing deployment scenarios
-- ✅ You have Node.js version conflicts
+- ✓ You want a completely isolated environment
+- ✓ You're onboarding new developers
+- ✓ You want consistent setup across team
+- ✓ You're testing deployment scenarios
+- ✓ You have Node.js version conflicts
 
 **Use Local when:**
-- ✅ You want fastest iteration
-- ✅ You're comfortable with local setup
-- ✅ You need to debug with local tools
-- ✅ You're working on a single service
+- ✓ You want fastest iteration
+- ✓ You're comfortable with local setup
+- ✓ You need to debug with local tools
+- ✓ You're working on a single service
 
 ## Advanced Usage
 
