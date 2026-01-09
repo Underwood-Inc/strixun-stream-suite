@@ -28,6 +28,7 @@ import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import { useUpdateCustomer, useCustomersList } from '../hooks/useCustomers';
 import { colors, spacing } from '../theme/index';
 import type { CustomerListItem } from '../types/customer';
+import { formatDate } from '@strixun/shared-config/date-utils';
 import { filterCustomersBySearchQuery } from '../utils/searchCustomers';
 import { getButtonStyles } from '../utils/buttonStyles';
 import { getBadgeStyles } from '../utils/sharedStyles';

@@ -20,6 +20,7 @@ import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import { getButtonStyles } from '../utils/buttonStyles';
 import { getBadgeStyles, getCardStyles, type BadgeType } from '../utils/sharedStyles';
 import { API_BASE_URL } from '../services/api';
+import { formatDate, formatTime } from '@strixun/shared-config/date-utils';
 
 const PageContainer = styled.div`
   max-width: 1800px;

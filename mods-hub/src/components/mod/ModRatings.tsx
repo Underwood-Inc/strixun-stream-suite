@@ -10,6 +10,7 @@ import type { ModRating } from '../../types/mod';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import { getButtonStyles } from '../../utils/buttonStyles';
+import { formatDate } from '@strixun/shared-config/date-utils';
 
 const Container = styled.div`
   background: ${colors.bgSecondary};
