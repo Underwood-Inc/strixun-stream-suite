@@ -230,5 +230,38 @@ export async function handleCustomerRoutes(
         );
     }
     
+    // PROXY: Forward any unhandled /customer/* routes to customer-api service
+    // This allows dashboard to call customer-api endpoints (like /customer/me) through the auth service
+    if (path.startsWith('/customer')) {
+        try {
+            const customerApiUrl = env.CUSTOMER_API_URL || 'https://customer-api.idling.app';
+            const targetUrl = new URL(path, customerApiUrl);
+            
+            // Forward the request with auth headers
+            const headers = new Headers(request.headers);
+            
+            const proxyResponse = await fetch(targetUrl.toString(), {
+                method: request.method,
+                headers: headers,
+                body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.clone().arrayBuffer() : undefined,
+            });
+            
+            // Return the proxied response
+            return {
+                response: proxyResponse,
+                customerId: auth?.customerId || null
+            };
+        } catch (error) {
+            console.error('[Customer Routes] Proxy to customer-api failed:', error);
+            return {
+                response: new Response(JSON.stringify({ error: 'Failed to reach customer API' }), {
+                    status: 503,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: null
+            };
+        }
+    }
+    
     return null; // Route not matched
 }
