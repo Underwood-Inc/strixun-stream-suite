@@ -101,6 +101,7 @@ export async function createMultiWorkerSetup(): Promise<MultiWorkerSetup> {
     console.log(`[Miniflare Setup] ✓ Workers started successfully`);
     console.log(`[Miniflare Setup]   - OTP Auth Service: ${OTP_AUTH_SERVICE_URL}`);
     console.log(`[Miniflare Setup]   - Customer API: ${CUSTOMER_API_URL}`);
+    console.log(`[Miniflare Setup]   - E2E_TEST_OTP_CODE: ${testOtpCode} (${otpSource})`);
     
     // Cleanup function
     const cleanup = async () => {

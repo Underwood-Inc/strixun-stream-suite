@@ -21,26 +21,40 @@ const PROJECT_ROOT = join(__dirname, '..', '..');
  * @returns The OTP code if found, null otherwise
  */
 export function loadE2ETestOTPCode(): string | null {
+  console.log('[OTP Code Loader] Loading E2E_TEST_OTP_CODE...');
+  console.log('[OTP Code Loader] PROJECT_ROOT:', PROJECT_ROOT);
+  
   // Check environment variable first
   if (process.env.E2E_TEST_OTP_CODE) {
+    console.log('[OTP Code Loader] Found in process.env:', process.env.E2E_TEST_OTP_CODE);
     return process.env.E2E_TEST_OTP_CODE;
   }
   
   // Check .dev.vars file
   const devVarsPath = join(PROJECT_ROOT, '.dev.vars');
+  console.log('[OTP Code Loader] Checking .dev.vars at:', devVarsPath);
+  console.log('[OTP Code Loader] .dev.vars exists?', existsSync(devVarsPath));
   
   if (existsSync(devVarsPath)) {
     try {
       const devVars = readFileSync(devVarsPath, 'utf-8');
+      console.log('[OTP Code Loader] .dev.vars content length:', devVars.length);
       const match = devVars.match(/E2E_TEST_OTP_CODE\s*=\s*["']?([^"'\n\r]+)["']?/);
+      console.log('[OTP Code Loader] Match result:', match);
       if (match && match[1]) {
-        return match[1].trim();
+        const otpCode = match[1].trim();
+        console.log('[OTP Code Loader] Found OTP code in .dev.vars:', otpCode);
+        // CRITICAL: Set in process.env so Miniflare workers can access it
+        process.env.E2E_TEST_OTP_CODE = otpCode;
+        console.log('[OTP Code Loader] Set process.env.E2E_TEST_OTP_CODE:', process.env.E2E_TEST_OTP_CODE);
+        return otpCode;
       }
     } catch (error) {
       console.warn(`[OTP Code Loader] Warning: Could not read .dev.vars file at ${devVarsPath}:`, error);
     }
   }
   
+  console.log('[OTP Code Loader] E2E_TEST_OTP_CODE not found!');
   return null;
 }
 
@@ -68,3 +82,6 @@ export function assertE2ETestOTPCode(): string | null {
   
   return otpCode;
 }
+
+// Auto-load E2E_TEST_OTP_CODE when this module is imported (for vitest setupFiles)
+loadE2ETestOTPCode();

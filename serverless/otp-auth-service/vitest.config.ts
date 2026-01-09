@@ -37,6 +37,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node', // Use node environment - Miniflare tests run in Node.js
+    setupFiles: ['./shared/test-helpers/otp-code-loader.ts'], // Load E2E_TEST_OTP_CODE before tests
     include: [
       '**/*.test.{js,ts}',
       '**/*.integration.test.{js,ts}', // Explicitly include integration tests

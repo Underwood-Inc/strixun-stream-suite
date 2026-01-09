@@ -100,11 +100,11 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
     if (jwtToken1 && customerId1) {
       try {
         // First, check if API keys already exist
-        // Use SUPER_ADMIN_API_KEY for admin endpoints (not JWT)
+        // Use customer's JWT token (required for customer-specific endpoints)
         const listResponse1 = await otpAuthService.fetch(`http://example.com/admin/customers/${customerId1}/api-keys`, {
           method: 'GET',
           headers: {
-            'X-Super-Admin-Key': 'test-super-admin-key',
+            'Authorization': `Bearer ${jwtToken1}`,
           },
         });
         
@@ -132,7 +132,7 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
             const revealResponse1 = await otpAuthService.fetch(`http://example.com/admin/customers/${customerId1}/api-keys/${keyId1}/reveal`, {
               method: 'POST',
               headers: {
-                'X-Super-Admin-Key': 'test-super-admin-key',
+                'Authorization': `Bearer ${jwtToken1}`,
               },
             });
             
@@ -167,7 +167,7 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
           const createResponse1 = await otpAuthService.fetch(`http://example.com/admin/customers/${customerId1}/api-keys`, {
             method: 'POST',
             headers: {
-              'X-Super-Admin-Key': 'test-super-admin-key',
+              'Authorization': `Bearer ${jwtToken1}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ name: 'Test API Key 1 (Test Infrastructure)' }),
@@ -255,7 +255,7 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
         const listResponse2 = await otpAuthService.fetch(`http://example.com/admin/customers/${customerId2}/api-keys`, {
           method: 'GET',
           headers: {
-            'X-Super-Admin-Key': 'test-super-admin-key',
+            'Authorization': `Bearer ${jwtToken2}`,
           },
         });
         
@@ -283,7 +283,7 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
             const revealResponse2 = await otpAuthService.fetch(`http://example.com/admin/customers/${customerId2}/api-keys/${keyId2}/reveal`, {
               method: 'POST',
               headers: {
-                'X-Super-Admin-Key': 'test-super-admin-key',
+                'Authorization': `Bearer ${jwtToken2}`,
               },
             });
             
@@ -318,7 +318,7 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
           const createResponse2 = await otpAuthService.fetch(`http://example.com/admin/customers/${customerId2}/api-keys`, {
             method: 'POST',
             headers: {
-              'X-Super-Admin-Key': 'test-super-admin-key',
+              'Authorization': `Bearer ${jwtToken2}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ name: 'Test API Key 2 (Test Infrastructure)' }),
