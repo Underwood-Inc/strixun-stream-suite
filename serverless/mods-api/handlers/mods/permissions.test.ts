@@ -9,7 +9,6 @@ import { handleGetCustomerPermissions } from './permissions.js';
 // Mock dependencies
 vi.mock('../../utils/admin.js', () => ({
     hasUploadPermission: vi.fn(),
-    isSuperAdminEmail: vi.fn(),
 }));
 
 vi.mock('@strixun/api-framework/enhanced', () => ({
@@ -27,7 +26,7 @@ vi.mock('../../utils/errors.js', () => ({
     })),
 }));
 
-import { hasUploadPermission, isSuperAdminEmail } from '../../utils/admin.js';
+import { hasUploadPermission } from '../../utils/admin.js';
 
 describe('handleGetCustomerPermissions', () => {
     const mockEnv = {

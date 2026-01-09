@@ -84,34 +84,19 @@ export async function isApprovedUploaderEmail(email: string | undefined, env: En
 /**
  * Check if customer has upload permission
  * 
- * Three sources checked in order:
- * 1. Super admins (SUPER_ADMIN_EMAILS) - always have permission + admin access
- * 2. Approved uploaders from env (APPROVED_UPLOADER_EMAILS) - upload permission ONLY, NO admin access
- * 3. Approved uploaders from KV (managed via admin dashboard) - upload permission ONLY, NO admin access
+ * IMPORTANT: ALL authenticated customers can upload mods
+ * This function always returns true if a valid customerId is provided
  */
-export async function hasUploadPermission(customerId: string, email: string | undefined, env: Env): Promise<boolean> {
-    // Tier 1: Super admins always have permission (also have admin dashboard access)
-    if (email && await isSuperAdminEmail(email, env)) {
+export async function hasUploadPermission(customerId: string, env: Env): Promise<boolean> {
+    console.log('[hasUploadPermission] Checking permission for:', { customerId });
+    
+    // ALL authenticated customers have upload permission
+    if (customerId) {
+        console.log('[hasUploadPermission] ✓ Authenticated user - upload allowed');
         return true;
     }
     
-    // Tier 2: Check approved uploaders from env var (upload permission ONLY, NO admin access)
-    if (email && await isApprovedUploaderEmail(email, env)) {
-        return true;
-    }
-    
-    // Tier 3: Check if user has explicit approval stored in KV (upload permission ONLY, NO admin access)
-    if (env.MODS_KV) {
-        try {
-            const approvalKey = `upload_approval_${customerId}`;
-            const approval = await env.MODS_KV.get(approvalKey);
-            return approval === 'approved';
-        } catch (e) {
-            // If KV read fails, deny permission
-            return false;
-        }
-    }
-    
+    console.log('[hasUploadPermission] ✗ No customerId - not authenticated');
     return false;
 }
 
@@ -190,30 +175,16 @@ export async function getApprovedUploaders(env: Env): Promise<string[]> {
  */
 export async function getCustomerUploadPermissionInfo(
     customerId: string,
-    email: string | undefined,
     env: Env
 ): Promise<{
     hasPermission: boolean;
     isSuperAdmin: boolean;
     isApprovedUploader: boolean;
     permissionSource: 'super-admin' | 'env-var' | 'kv' | 'none';
-    email?: string; // Email from metadata if available
 }> {
-    // Try to get email from KV approval metadata if not provided
-    let userEmail = email;
-    if (!userEmail && env.MODS_KV) {
-        try {
-            const approvalKey = `upload_approval_${customerId}`;
-            const approvalData = await env.MODS_KV.get(approvalKey, { type: 'json' }) as { 
-                metadata?: { email?: string } 
-            } | null;
-            if (approvalData?.metadata?.email) {
-                userEmail = approvalData.metadata.email;
-            }
-        } catch (e) {
-            // Continue without email
-        }
-    }
+    // SECURITY: Lookup email via customerId, never pass as parameter
+    const { getCustomerEmail } = await import('./customer-email.js');
+    const userEmail = await getCustomerEmail(customerId, env);
     
     // Check super admin (Tier 1)
     if (userEmail && await isSuperAdminEmail(userEmail, env)) {

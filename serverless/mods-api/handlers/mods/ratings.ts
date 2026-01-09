@@ -24,7 +24,7 @@ export async function handleGetModRatings(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; email?: string } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     try {
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
@@ -210,7 +210,7 @@ export async function handleSubmitModRating(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; email?: string }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Parse request body
@@ -234,7 +234,6 @@ export async function handleSubmitModRating(
         // CRITICAL: Validate customerId is present - required for display name lookups
         if (!auth.customerId) {
             console.error('[Ratings] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
-                email: auth.email,
                 note: 'Rejecting rating submission - customerId is required for display name lookups'
             });
             const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for rating submissions. Please ensure your account has a valid customer association.');

@@ -9,7 +9,6 @@ import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { generateSlug, slugExists } from './upload.js';
-import { isEmailAllowed } from '../../utils/auth.js';
 import { MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { createModSnapshot } from '../../utils/snapshot.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
@@ -25,23 +24,10 @@ export async function handleUpdateMod(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; email?: string }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
-        // Check email whitelist
-        if (!isEmailAllowed(auth.email, env)) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Your email address is not authorized to manage mods');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
+        // All authenticated users can update their own mods (authorization check happens below)
 
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
         // Use modId directly - it already includes 'mod_' prefix
@@ -122,7 +108,6 @@ export async function handleUpdateMod(
         // CRITICAL: Validate customerId is present - required for data scoping and display name lookups
         if (!auth.customerId) {
             console.error('[Update] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
-                email: auth.email,
                 note: 'Rejecting mod update - customerId is required for data scoping and display name lookups'
             });
             const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod updates. Please ensure your account has a valid customer association.');

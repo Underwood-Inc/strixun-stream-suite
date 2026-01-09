@@ -25,7 +25,7 @@ export async function handleDeleteVariant(
     env: Env,
     modId: string,
     variantId: string,
-    auth: { customerId: string; email?: string }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         const normalizedModId = normalizeModId(modId);
@@ -33,7 +33,9 @@ export async function handleDeleteVariant(
         let mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
 
         // Try superadmin context if not found in customer context
-        if (!mod && auth.email && isSuperAdminEmail(auth.email, env)) {
+        const { getCustomerEmail } = await import('../../utils/customer-email.js');
+        const email = await getCustomerEmail(auth.customerId, env);
+        if (!mod && email && isSuperAdminEmail(email, env)) {
             const superadminModKey = `mod_${normalizedModId}`;
             mod = await env.MODS_KV.get(superadminModKey, { type: 'json' }) as ModMetadata | null;
         }
@@ -53,7 +55,7 @@ export async function handleDeleteVariant(
         }
 
         // Check authorization
-        const isSuperAdmin = auth.email && isSuperAdminEmail(auth.email, env);
+        const isSuperAdmin = email && isSuperAdminEmail(email, env);
         const isOwner = mod.authorId === auth.customerId || mod.customerId === auth.customerId;
 
         if (!isSuperAdmin && !isOwner) {

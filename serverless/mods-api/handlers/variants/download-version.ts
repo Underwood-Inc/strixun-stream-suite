@@ -25,7 +25,7 @@ export async function handleDownloadVariantVersion(
     modId: string,
     variantId: string,
     variantVersionId: string,
-    auth: { customerId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     try {
         // Get mod metadata

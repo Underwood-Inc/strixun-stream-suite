@@ -127,9 +127,9 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
 
         // CRITICAL: payload.sub IS the customerId (set by OTP auth service)
         // NO separate userId exists - customerId is the ONLY identity
+        // SECURITY: Email is NEVER returned in auth object - use getCustomerEmail() utility when needed
         return {
             customerId: payload.sub, // PRIMARY IDENTITY - MANDATORY
-            email: email,
             jwtToken: token // Include JWT token for encryption
         };
     } catch (error) {
@@ -146,10 +146,10 @@ export type { JWTPayload } from '@strixun/api-framework/jwt';
 
 /**
  * Auth result interface
+ * SECURITY: Email is NEVER included - use getCustomerEmail() utility when needed
  */
 export interface AuthResult {
     customerId: string; // PRIMARY IDENTITY - MANDATORY
-    email?: string;
     jwtToken: string;
 }
 

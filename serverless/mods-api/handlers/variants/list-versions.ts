@@ -26,7 +26,7 @@ export async function handleListVariantVersions(
     env: Env,
     modId: string,
     variantId: string,
-    auth: { customerId: string; email?: string } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     try {
         // Get mod metadata

@@ -15,7 +15,7 @@ export async function handleApproveCustomer(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { customerId: string; email?: string; customerIdExternal: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
@@ -64,7 +64,7 @@ export async function handleRevokeCustomer(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { customerId: string; email?: string; customerIdExternal: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
@@ -108,7 +108,7 @@ export async function handleRevokeCustomer(
 export async function handleListApprovedUsers(
     request: Request,
     env: Env,
-    auth: { customerId: string; email?: string }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures user is super admin

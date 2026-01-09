@@ -14,8 +14,8 @@ interface Env {
 
 interface AuthResult {
     customerId: string; // PRIMARY IDENTITY - we ONLY use customerId
-    email?: string;
     jwtToken: string;
+    // SECURITY: Email is NEVER included - use getCustomerEmail() utility when needed
 }
 
 /**
@@ -74,7 +74,6 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
         
         return {
             customerId,
-            email: payload.email,
             jwtToken: token // Include JWT token for encryption
         };
     } catch (error) {

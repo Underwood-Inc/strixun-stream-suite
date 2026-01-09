@@ -8,9 +8,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
-import { isEmailAllowed } from '../../utils/auth.js';
-import { hasUploadPermission, isSuperAdminEmail } from '../../utils/admin.js';
-import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
+import { calculateStrixunHash } from '../../utils/hash.js';
 import { MAX_MOD_FILE_SIZE, MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { checkUploadQuota, trackUpload } from '../../utils/upload-quota.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
@@ -95,7 +93,7 @@ function generateVersionId(): string {
 export async function handleUploadMod(
     request: Request,
     env: Env,
-    auth: { customerId: string; email?: string }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Check if uploads are globally enabled
@@ -115,47 +113,28 @@ export async function handleUploadMod(
             });
         }
         
-        // Check upload permission (super admins or approved users)
-        const hasPermission = await hasUploadPermission(auth.customerId, auth.email, env);
-        if (!hasPermission) {
-            const rfcError = createError(request, 403, 'Upload Permission Required', 'You do not have permission to upload mods. Please request approval from an administrator.');
+        // Check upload quota (all authenticated users)
+        const quotaCheck = await checkUploadQuota(auth.customerId, env);
+        if (!quotaCheck.allowed) {
+            const quotaMessage = quotaCheck.reason === 'daily_quota_exceeded'
+                ? `Daily upload limit exceeded. You have uploaded ${quotaCheck.usage.daily} of ${quotaCheck.quota.maxUploadsPerDay} allowed uploads today.`
+                : `Monthly upload limit exceeded. You have uploaded ${quotaCheck.usage.monthly} of ${quotaCheck.quota.maxUploadsPerMonth} allowed uploads this month.`;
+            
+            const rfcError = createError(request, 429, 'Upload Quota Exceeded', quotaMessage);
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
-                status: 403,
+                status: 429,
                 headers: {
                     'Content-Type': 'application/problem+json',
+                    'X-Quota-Limit-Daily': quotaCheck.quota.maxUploadsPerDay.toString(),
+                    'X-Quota-Remaining-Daily': Math.max(0, quotaCheck.quota.maxUploadsPerDay - quotaCheck.usage.daily).toString(),
+                    'X-Quota-Limit-Monthly': quotaCheck.quota.maxUploadsPerMonth.toString(),
+                    'X-Quota-Remaining-Monthly': Math.max(0, quotaCheck.quota.maxUploadsPerMonth - quotaCheck.usage.monthly).toString(),
                     ...Object.fromEntries(corsHeaders.entries()),
                 },
             });
-        }
-
-        // Check upload quota (skip for super admins)
-        const isSuperAdmin = await isSuperAdminEmail(auth.email, env);
-        if (!isSuperAdmin) {
-            const quotaCheck = await checkUploadQuota(auth.customerId, env);
-            if (!quotaCheck.allowed) {
-                const quotaMessage = quotaCheck.reason === 'daily_quota_exceeded'
-                    ? `Daily upload limit exceeded. You have uploaded ${quotaCheck.usage.daily} of ${quotaCheck.quota.maxUploadsPerDay} allowed uploads today.`
-                    : `Monthly upload limit exceeded. You have uploaded ${quotaCheck.usage.monthly} of ${quotaCheck.quota.maxUploadsPerMonth} allowed uploads this month.`;
-                
-                const rfcError = createError(request, 429, 'Upload Quota Exceeded', quotaMessage);
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
-                return new Response(JSON.stringify(rfcError), {
-                    status: 429,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        'X-Quota-Limit-Daily': quotaCheck.quota.maxUploadsPerDay.toString(),
-                        'X-Quota-Remaining-Daily': Math.max(0, quotaCheck.quota.maxUploadsPerDay - quotaCheck.usage.daily).toString(),
-                        'X-Quota-Limit-Monthly': quotaCheck.quota.maxUploadsPerMonth.toString(),
-                        'X-Quota-Remaining-Monthly': Math.max(0, quotaCheck.quota.maxUploadsPerMonth - quotaCheck.usage.monthly).toString(),
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
-            }
         }
 
         // Parse multipart form data
@@ -547,7 +526,6 @@ export async function handleUploadMod(
         // customerId is REQUIRED - reject uploads without it
         if (!auth.customerId) {
             console.error('[Upload] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
-                email: auth.email,
                 note: 'Rejecting upload - customerId is required for data scoping and display name lookups'
             });
             const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod uploads. Please ensure your account has a valid customer association.');
@@ -656,10 +634,8 @@ export async function handleUploadMod(
         // They will only be added to the public list when an admin changes status to 'published'
         // This ensures pending mods are not visible to the public, even if visibility is 'public'
 
-        // Track successful upload (skip for super admins)
-        if (!isSuperAdmin) {
-            await trackUpload(auth.customerId, env);
-        }
+        // Track successful upload
+        await trackUpload(auth.customerId, env);
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

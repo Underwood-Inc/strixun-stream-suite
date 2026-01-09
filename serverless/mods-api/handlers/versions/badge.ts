@@ -78,7 +78,7 @@ export async function handleBadge(
     env: Env,
     modId: string,
     versionId: string,
-    auth: { customerId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     try {
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
@@ -140,8 +140,10 @@ export async function handleBadge(
         console.log('[Badge] Mod found:', { modId: mod.modId, slug: mod.slug, status: mod.status, visibility: mod.visibility, customerId: mod.customerId });
 
         // Check if user is super admin
+        const { getCustomerEmail } = await import('../../utils/customer-email.js');
+        const email = auth?.customerId ? await getCustomerEmail(auth.customerId, env) : null;
         const { isSuperAdminEmail } = await import('../../utils/admin.js');
-        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        const isAdmin = email ? await isSuperAdminEmail(email, env) : false;
 
         // CRITICAL: Enforce visibility and status filtering
         // Badges are often loaded as images without auth, so we need to be more permissive

@@ -8,7 +8,6 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { isEmailAllowed } from '../../utils/auth.js';
 import { calculateStrixunHash } from '../../utils/hash.js';
 import { MAX_VERSION_FILE_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
@@ -27,7 +26,7 @@ export async function handleUploadVariantVersion(
     env: Env,
     modId: string,
     variantId: string,
-    auth: { customerId: string; email?: string }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         const { areUploadsEnabled } = await import('../admin/settings.js');
@@ -46,19 +45,7 @@ export async function handleUploadVariantVersion(
             });
         }
 
-        if (!isEmailAllowed(auth.email, env)) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Your email address is not authorized to upload variant versions');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
+        // All authenticated users can upload variant versions for their own mods (authorization check happens below)
 
         if (!auth.customerId) {
             const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required');

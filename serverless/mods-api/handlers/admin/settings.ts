@@ -22,7 +22,7 @@ interface AdminSettings {
 export async function handleGetSettings(
     request: Request,
     env: Env,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures user is super admin
@@ -75,7 +75,7 @@ export async function handleGetSettings(
 export async function handleUpdateSettings(
     request: Request,
     env: Env,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures user is super admin

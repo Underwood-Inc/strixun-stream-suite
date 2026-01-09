@@ -19,7 +19,7 @@ import { getCustomerKey } from './customer.js';
 export async function resolveSlugToModId(
     slug: string,
     env: Env,
-    auth: { customerId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string; jwtToken: string } | null
 ): Promise<string | null> {
     console.log('[SlugResolver] Resolving slug to modId:', { slug, hasAuth: !!auth, customerId: auth?.customerId });
     

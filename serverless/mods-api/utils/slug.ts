@@ -14,10 +14,15 @@ import type { ModMetadata } from '../types/mod.js';
 export async function findModBySlug(
     slug: string,
     env: Env,
-    auth: { customerId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string; jwtToken: string } | null
 ): Promise<ModMetadata | null> {
-    // Check if user is super admin
-    const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+    // Check if user is super admin (SECURITY: lookup email by customerId)
+    let isAdmin = false;
+    if (auth?.customerId) {
+        const { getCustomerEmail } = await import('./customer-email.js');
+        const email = await getCustomerEmail(auth.customerId, env);
+        isAdmin = email ? await isSuperAdminEmail(email, env) : false;
+    }
     
     // Check global scope (public mods)
     const globalListKey = 'mods_list_public';

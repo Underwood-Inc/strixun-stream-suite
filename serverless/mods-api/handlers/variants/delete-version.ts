@@ -21,7 +21,7 @@ export async function handleDeleteVariantVersion(
     modId: string,
     variantId: string,
     variantVersionId: string,
-    auth: { customerId: string; email?: string }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Normalize modId
@@ -49,7 +49,9 @@ export async function handleDeleteVariantVersion(
                 });
             }
             // Check authorization for global mod
-            const isAdmin = isSuperAdminEmail(auth.email || '', env);
+            const { getCustomerEmail } = await import('../../utils/customer-email.js');
+            const email = await getCustomerEmail(auth.customerId, env);
+            const isAdmin = isSuperAdminEmail(email || '', env);
             if (globalMod.authorId !== auth.customerId && !isAdmin) {
                 const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to delete this variant version');
                 const corsHeaders = createCORSHeaders(request, {
@@ -65,7 +67,9 @@ export async function handleDeleteVariantVersion(
             }
         } else {
             // Check authorization for customer-scoped mod
-            const isAdmin = isSuperAdminEmail(auth.email || '', env);
+            const { getCustomerEmail } = await import('../../utils/customer-email.js');
+            const email = await getCustomerEmail(auth.customerId, env);
+            const isAdmin = isSuperAdminEmail(email || '', env);
             if (mod.authorId !== auth.customerId && !isAdmin) {
                 const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to delete this variant version');
                 const corsHeaders = createCORSHeaders(request, {

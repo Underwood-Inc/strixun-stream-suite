@@ -443,7 +443,7 @@ async function fetchAssociatedDataBatch(
 export async function handleListR2Files(
     request: Request,
     env: Env,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
@@ -543,7 +543,7 @@ export async function handleListR2Files(
 export async function handleDetectDuplicates(
     request: Request,
     env: Env,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
@@ -893,7 +893,7 @@ async function isThumbnailProtected(
 export async function handleDeleteR2File(
     request: Request,
     env: Env,
-    auth: { customerId: string; email?: string; customerId: string | null },
+    auth: { customerId: string },
     key?: string
 ): Promise<Response> {
     try {
@@ -1101,7 +1101,7 @@ export async function handleDeleteR2File(
 export async function handleSetDeletionTimestamp(
     request: Request,
     env: Env,
-    auth: { customerId: string; email?: string; customerId: string | null },
+    auth: { customerId: string },
     key: string
 ): Promise<Response> {
     try {

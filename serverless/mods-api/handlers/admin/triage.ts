@@ -18,7 +18,7 @@ export async function handleUpdateModStatus(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
@@ -358,7 +358,7 @@ export async function handleAddReviewComment(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Get mod metadata
@@ -417,7 +417,9 @@ export async function handleAddReviewComment(
         }
 
         // Check access: only admin or uploader can comment
-        const isAdmin = auth.email && await isSuperAdminEmail(auth.email, env);
+        const { getCustomerEmail } = await import('../../utils/customer-email.js');
+        const email = await getCustomerEmail(auth.customerId, env);
+        const isAdmin = email && await isSuperAdminEmail(email, env);
         const isUploader = mod.authorId === auth.customerId;
 
         if (!isAdmin && !isUploader) {
@@ -437,7 +439,6 @@ export async function handleAddReviewComment(
         // CRITICAL: For non-admin users (uploaders), customerId is required for display name lookup
         if (!isAdmin && !auth.customerId) {
             console.error('[Triage] CRITICAL: customerId is null for non-admin customer:', { customerId: auth.customerId,
-                email: auth.email,
                 isUploader,
                 note: 'Rejecting comment - customerId is required for display name lookups'
             });

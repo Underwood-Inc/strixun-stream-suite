@@ -264,7 +264,7 @@ async function getCustomerModCount(customerId: string, env: Env): Promise<number
 export async function handleListUsers(
     request: Request,
     env: Env,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         const url = new URL(request.url);
@@ -370,7 +370,7 @@ export async function handleGetUserDetails(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Find customer
@@ -479,7 +479,7 @@ export async function handleUpdateUser(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         const requestData = await request.json().catch(() => ({})) as {
@@ -554,7 +554,7 @@ export async function handleGetUserMods(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         const url = new URL(request.url);

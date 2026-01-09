@@ -26,7 +26,7 @@ async function createErrorResponse(
     status: number,
     title: string,
     detail: string,
-    auth: { customerId?: string; customerId?: string | null } | null = null
+    auth: { customerId: string; jwtToken: string } | null = null
 ): Promise<RouteResult> {
     const rfcError = createError(request, status, title, detail);
     const corsHeaders = createCORSHeadersWithLocalhost(request, env);
@@ -48,7 +48,7 @@ async function createErrorResponse(
 async function resolveSlugIfNeeded(
     slugOrModId: string,
     env: Env,
-    auth: { customerId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string; jwtToken: string } | null
 ): Promise<string | null> {
     // Check if it looks like a slug (short, no mod_ prefix) vs modId (long with mod_ prefix or timestamp)
     const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;

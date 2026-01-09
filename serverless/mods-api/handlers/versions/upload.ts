@@ -8,7 +8,6 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
-import { isEmailAllowed } from '../../utils/auth.js';
 import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
 import { MAX_VERSION_FILE_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { checkUploadQuota, trackUpload } from '../../utils/upload-quota.js';
@@ -30,7 +29,7 @@ export async function handleUploadVersion(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Check if uploads are globally enabled
@@ -49,25 +48,11 @@ export async function handleUploadVersion(
                 },
             });
         }
-        // Check email whitelist
-        if (!isEmailAllowed(auth.email, env)) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Your email address is not authorized to upload mod versions');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
+        // All authenticated users can upload versions for their own mods (authorization check happens below)
 
         // CRITICAL: Validate customerId is present - required for data scoping and display name lookups
         if (!auth.customerId) {
             console.error('[UploadVersion] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
-                email: auth.email,
                 note: 'Rejecting version upload - customerId is required for data scoping and display name lookups'
             });
             const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod version uploads. Please ensure your account has a valid customer association.');
@@ -119,7 +104,7 @@ export async function handleUploadVersion(
         }
 
         // Check upload quota (skip for super admins)
-        const isSuperAdmin = await isSuperAdminEmail(auth.email, env);
+        const isSuperAdmin = email ? await isSuperAdminEmail(email, env) : false;
         if (!isSuperAdmin) {
             const quotaCheck = await checkUploadQuota(auth.customerId, env);
             if (!quotaCheck.allowed) {

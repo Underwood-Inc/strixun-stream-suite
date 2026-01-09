@@ -18,7 +18,7 @@ export async function handleAdminDeleteMod(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures user is super admin

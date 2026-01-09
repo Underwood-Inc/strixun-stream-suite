@@ -15,22 +15,29 @@ import { hasUploadPermission, isSuperAdminEmail } from '../../utils/admin.js';
 export async function handleGetCustomerPermissions(
     request: Request,
     env: Env,
-    auth: { customerId: string; email?: string; customerIdExternal: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
-        // Check if customer has upload permission
-        const hasPermission = await hasUploadPermission(auth.customerId, auth.email, env);
-        const isSuperAdmin = auth.email ? await isSuperAdminEmail(auth.email, env) : false;
+        // Check if customer has upload permission (all authenticated users can upload)
+        const hasPermission = await hasUploadPermission(auth.customerId, env);
+        
+        console.log('[Permissions] Customer permission check:', {
+            customerId: auth.customerId,
+            hasPermission,
+        });
         
         const corsHeaders = createCORSHeadersWithLocalhost(request, env);
         
-        return new Response(JSON.stringify({
+        const responseData = {
             hasPermission: hasPermission,
-            isSuperAdmin: isSuperAdmin,
             customerId: auth.customerId,
             // CRITICAL: email is NEVER returned - it remains encrypted in the OTP auth service
             // Use displayName from customer account for customer identification
-        }), {
+        };
+        
+        console.log('[Permissions] Returning response:', responseData);
+        
+        return new Response(JSON.stringify(responseData), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
