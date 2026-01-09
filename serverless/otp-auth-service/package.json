@@ -39,7 +39,7 @@
     "test": "vitest run --passWithNoTests --exclude **/*.integration.test.ts",
     "test:all": "cross-env VITEST_INTEGRATION=true vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests --exclude **/*.integration.test.ts",
     "test:integration": "vitest run --passWithNoTests",
     "test:integration:dev": "vitest run --passWithNoTests",
     "test:integration:prod": "vitest run --passWithNoTests",
