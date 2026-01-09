@@ -398,7 +398,7 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
         console.warn('[Comprehensive Auth Tests] Failed to provision API key 2:', error);
       }
     }
-  }, 180000); // Wrangler unstable_dev can take 60-120 seconds in CI environments
+  }, 240000); // Wrangler unstable_dev can take 60-120 seconds in CI environments, plus setup time for 2 accounts
 
   afterAll(async () => {
     if (cleanup) {

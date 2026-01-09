@@ -455,7 +455,7 @@ describe.skipIf(!E2E_OTP_CODE)('OTP Login Flow - Integration Tests (Miniflare)',
   describe('Service Integration', () => {
     it('should verify customer-api is reachable from OTP auth service', async () => {
       // This test verifies the integration between services
-      const { getCustomerByEmailService } = await import('../../utils/customer-api-service-client.js');
+      const { getCustomerByEmailService } = await import('@strixun/api-framework');
       const mockEnv = {
         CUSTOMER_API_URL: 'http://localhost:8790', // Miniflare worker URL
         ENVIRONMENT: 'dev', // Always dev for local testing
