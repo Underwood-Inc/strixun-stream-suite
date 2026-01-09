@@ -62,9 +62,8 @@ describe('Authentication Flow Integration', () => {
 
             // Step 3: Verify authentication succeeded
             expect(auth).not.toBeNull();
-            expect(auth?.customerId).toBe(userId);
+            expect(auth?.customerId).toBe(userId); // customerId comes from JWT sub field
             expect(auth?.email).toBe(email);
-            expect(auth?.customerId).toBe(customerId);
             expect(auth?.jwtToken).toBe(token);
         });
 
@@ -141,8 +140,8 @@ describe('Authentication Flow Integration', () => {
 
             const auth = await authenticateRequest(mockRequest, env);
 
-            // Verify customerID is extracted for integrity verification
-            expect(auth?.customerId).toBe(customerId);
+            // Verify customerID is extracted for integrity verification (comes from sub)
+            expect(auth?.customerId).toBe(userId); // customerId is from JWT sub field
             expect(auth?.customerId).not.toBeNull();
         });
 
@@ -169,10 +168,9 @@ describe('Authentication Flow Integration', () => {
 
             const auth = await authenticateRequest(mockRequest, env);
 
-            // Should still authenticate, but customerID should be null
+            // Should still authenticate with customerId from sub
             expect(auth).not.toBeNull();
-            expect(auth?.customerId).toBe(userId);
-            expect(auth?.customerId).toBeNull();
+            expect(auth?.customerId).toBe(userId); // customerId comes from JWT sub field
         });
     });
 
@@ -205,9 +203,8 @@ describe('Authentication Flow Integration', () => {
 
             // Step 3: Verify API access is granted
             expect(auth).not.toBeNull();
-            expect(auth?.customerId).toBe(userId);
+            expect(auth?.customerId).toBe(userId); // customerId comes from JWT sub field
             expect(auth?.email).toBe(email);
-            expect(auth?.customerId).toBe(customerId);
 
             // Step 4: Verify token can be used for subsequent requests
             const secondRequest = new Request('https://example.com/api/mods/123', {

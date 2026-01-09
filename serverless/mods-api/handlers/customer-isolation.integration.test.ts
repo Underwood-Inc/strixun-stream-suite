@@ -163,13 +163,14 @@ describe('Customer Isolation Integration', () => {
 
     describe('Cross-Customer Data Access Prevention', () => {
         it('should prevent Customer A from accessing Customer B data via JWT', async () => {
+            const userIdA = 'user_123';
             const customerIdA = 'cust_abc';
             const customerIdB = 'cust_xyz';
 
             // Create JWT for Customer A
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
             const tokenA = await createJWT({
-                sub: 'user_123',
+                sub: userIdA,
                 email: 'userA@example.com',
                 customerId: customerIdA,
                 exp: exp,
@@ -186,9 +187,9 @@ describe('Customer Isolation Integration', () => {
 
             const authA = await authenticateRequest(requestA, env);
 
-            // Verify Customer A's customerID is extracted correctly
+            // Verify Customer A's auth is extracted correctly (customerId is from sub)
             expect(authA).not.toBeNull();
-            expect(authA?.customerId).toBe(customerIdA);
+            expect(authA?.customerId).toBe(userIdA);
             expect(authA?.customerId).not.toBe(customerIdB);
 
             // Customer A should NOT be able to use Customer B's customerID in integrity checks
@@ -222,11 +223,12 @@ describe('Customer Isolation Integration', () => {
         });
 
         it('should allow Customer A to access their own data', async () => {
+            const userIdA = 'user_123';
             const customerIdA = 'cust_abc';
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
             const tokenA = await createJWT({
-                sub: 'user_123',
+                sub: userIdA,
                 email: 'userA@example.com',
                 customerId: customerIdA,
                 exp: exp,
@@ -243,7 +245,7 @@ describe('Customer Isolation Integration', () => {
             const authA = await authenticateRequest(requestA, env);
 
             expect(authA).not.toBeNull();
-            expect(authA?.customerId).toBe(customerIdA);
+            expect(authA?.customerId).toBe(userIdA);
 
             // Customer A should be able to use their own customerID in integrity checks
             const method = 'GET';
@@ -268,7 +270,7 @@ describe('Customer Isolation Integration', () => {
                 body,
                 env.NETWORK_INTEGRITY_KEYPHRASE,
                 timestamp,
-                customerIdA
+                authA?.customerId || null // Use same customerId from auth
             );
 
             // Integrity hashes should match

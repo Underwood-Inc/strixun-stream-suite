@@ -55,7 +55,6 @@ vi.mock('../../utils/r2-source.js', () => ({
 
 describe('Slug Release Integration', () => {
     const mockCustomerId = 'customer_123';
-    const mockUserId = 'user_123';
     const mockEmail = 'test@example.com';
     const mockModId = 'mod_123';
     const oldSlug = 'old-mod-title';
@@ -65,7 +64,7 @@ describe('Slug Release Integration', () => {
         modId: mockModId,
         slug: oldSlug,
         title: 'Old Mod Title',
-        authorId: mockUserId,
+        authorId: mockCustomerId, // authorId must match auth.customerId for permissions
         customerId: mockCustomerId,
         visibility: 'public',
         status: 'published',
@@ -184,9 +183,9 @@ describe('Slug Release Integration', () => {
                 body: JSON.stringify({ title: 'New Mod Title' }),
             });
 
-            const auth = { customerId: mockUserId,
-                email: mockEmail,
+            const auth = {
                 customerId: mockCustomerId,
+                email: mockEmail,
             };
 
             const response = await handleUpdateMod(request, mockEnv, mockModId, auth);
@@ -254,12 +253,15 @@ describe('Slug Release Integration', () => {
                 body: JSON.stringify({ title: 'New Mod Title' }),
             });
 
-            const auth = { customerId: mockUserId,
-                email: mockEmail,
+            const auth = {
                 customerId: mockCustomerId,
+                email: mockEmail,
             };
 
-            await handleUpdateMod(request, mockEnv, mockModId, auth);
+            const response = await handleUpdateMod(request, mockEnv, mockModId, auth);
+            
+            // Verify update succeeded
+            expect(response.status).toBe(200);
 
             // Verify old slug indexes were deleted (released)
             const oldCustomerSlugKey = getCustomerKey(mockCustomerId, `slug_${oldSlug}`);
@@ -290,12 +292,15 @@ describe('Slug Release Integration', () => {
                 body: JSON.stringify({ title: 'New Mod Title' }),
             });
 
-            const auth = { customerId: mockUserId,
-                email: mockEmail,
+            const auth = {
                 customerId: mockCustomerId,
+                email: mockEmail,
             };
 
-            await handleUpdateMod(request, mockEnv, mockModId, auth);
+            const response = await handleUpdateMod(request, mockEnv, mockModId, auth);
+            
+            // Verify update succeeded
+            expect(response.status).toBe(200);
 
             // Should delete old customer slug index
             const oldCustomerSlugKey = getCustomerKey(mockCustomerId, `slug_${oldSlug}`);
@@ -319,9 +324,9 @@ describe('Slug Release Integration', () => {
                 body: JSON.stringify({ description: 'New description' }),
             });
 
-            const auth = { customerId: mockUserId,
-                email: mockEmail,
+            const auth = {
                 customerId: mockCustomerId,
+                email: mockEmail,
             };
 
             await handleUpdateMod(request, mockEnv, mockModId, auth);
@@ -339,12 +344,15 @@ describe('Slug Release Integration', () => {
                 method: 'DELETE',
             });
 
-            const auth = { customerId: mockUserId,
-                email: mockEmail,
+            const auth = {
                 customerId: mockCustomerId,
+                email: mockEmail,
             };
 
-            await handleDeleteMod(request, mockEnv, mockModId, auth);
+            const response = await handleDeleteMod(request, mockEnv, mockModId, auth);
+            
+            // Verify delete succeeded
+            expect(response.status).toBe(200);
 
             // Verify both customer and global slug indexes were deleted
             // Note: After update tests, the mod's slug might be 'new-mod-title', not 'old-mod-title'
@@ -371,12 +379,15 @@ describe('Slug Release Integration', () => {
                 method: 'DELETE',
             });
 
-            const auth = { customerId: mockUserId,
-                email: mockEmail,
+            const auth = {
                 customerId: mockCustomerId,
+                email: mockEmail,
             };
 
-            await handleDeleteMod(request, mockEnv, mockModId, auth);
+            const response = await handleDeleteMod(request, mockEnv, mockModId, auth);
+            
+            // Verify delete succeeded
+            expect(response.status).toBe(200);
 
             // Should delete customer slug index and global slug index
             // Note: The mod's slug might have changed in previous tests, so we check for any slug deletion
@@ -393,12 +404,15 @@ describe('Slug Release Integration', () => {
                 body: JSON.stringify({ title: 'New Mod Title' }),
             });
 
-            const auth = { customerId: mockUserId,
-                email: mockEmail,
+            const auth = {
                 customerId: mockCustomerId,
+                email: mockEmail,
             };
 
-            await handleUpdateMod(updateRequest, mockEnv, mockModId, auth);
+            const updateResponse = await handleUpdateMod(updateRequest, mockEnv, mockModId, auth);
+            
+            // Verify update succeeded
+            expect(updateResponse.status).toBe(200);
 
             // Step 2: Verify old slug indexes were deleted
             const oldCustomerSlugKey = getCustomerKey(mockCustomerId, `slug_${oldSlug}`);
@@ -434,12 +448,15 @@ describe('Slug Release Integration', () => {
                 method: 'DELETE',
             });
 
-            const auth = { customerId: mockUserId,
-                email: mockEmail,
+            const auth = {
                 customerId: mockCustomerId,
+                email: mockEmail,
             };
 
-            await handleDeleteMod(deleteRequest, mockEnv, mockModId, auth);
+            const deleteResponse = await handleDeleteMod(deleteRequest, mockEnv, mockModId, auth);
+            
+            // Verify delete succeeded
+            expect(deleteResponse.status).toBe(200);
 
             // Step 2: Verify slug indexes were deleted
             const slugDeletes = deleteOrder.filter(key => key.includes('slug_'));
@@ -474,9 +491,9 @@ describe('Slug Release Integration', () => {
                 method: 'DELETE',
             });
 
-            const auth = { customerId: mockUserId,
-                email: mockEmail,
+            const auth = {
                 customerId: mockCustomerId,
+                email: mockEmail,
             };
 
             await handleDeleteMod(request, mockEnv, mockModId, auth);
@@ -496,12 +513,15 @@ describe('Slug Release Integration', () => {
                 body: JSON.stringify({ visibility: 'private' }),
             });
 
-            const auth = { customerId: mockUserId,
-                email: mockEmail,
+            const auth = {
                 customerId: mockCustomerId,
+                email: mockEmail,
             };
 
-            await handleUpdateMod(request, mockEnv, mockModId, auth);
+            const response = await handleUpdateMod(request, mockEnv, mockModId, auth);
+            
+            // Verify update succeeded
+            expect(response.status).toBe(200);
 
             // Should delete global slug index (mod is no longer public)
             // Note: After previous tests, the mod's slug might be 'new-mod-title'

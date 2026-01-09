@@ -103,7 +103,7 @@ vi.mock('@strixun/api-framework', async (importOriginal) => {
             if (level === 'super-admin' && !isSuperAdmin) {
                 return { allowed: false, error: new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 }) };
             }
-            return { allowed: true, auth: { customerId: (payload as any).sub, email: (payload as any).email, customerId: customerId || null } };
+            return { allowed: true, auth: { userId: (payload as any).sub, email: (payload as any).email, customerId: customerId || null } };
         }),
     };
 });

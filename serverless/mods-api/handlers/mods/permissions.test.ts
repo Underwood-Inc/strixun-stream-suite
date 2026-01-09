@@ -46,9 +46,9 @@ describe('handleGetCustomerPermissions', () => {
         vi.mocked(hasUploadPermission).mockResolvedValue(true);
         vi.mocked(isSuperAdminEmail).mockResolvedValue(false);
 
-        const auth = { customerId: 'user_123',
-            email: 'user@example.com',
+        const auth = {
             customerId: 'cust_abc',
+            email: 'user@example.com',
         };
 
         const response = await handleGetCustomerPermissions(mockRequest, mockEnv, auth);
@@ -58,7 +58,8 @@ describe('handleGetCustomerPermissions', () => {
         expect(data).not.toHaveProperty('email');
         expect(data).toEqual({
             hasPermission: true,
-            isSuperAdmin: false, customerId: 'user_123',
+            isSuperAdmin: false,
+            customerId: 'cust_abc',
         });
     });
 
@@ -66,9 +67,9 @@ describe('handleGetCustomerPermissions', () => {
         vi.mocked(hasUploadPermission).mockResolvedValue(true);
         vi.mocked(isSuperAdminEmail).mockResolvedValue(false);
 
-        const auth = { customerId: 'user_123',
-            email: 'user@example.com',
+        const auth = {
             customerId: 'cust_abc',
+            email: 'user@example.com',
         };
 
         const response = await handleGetCustomerPermissions(mockRequest, mockEnv, auth);
@@ -76,14 +77,14 @@ describe('handleGetCustomerPermissions', () => {
 
         // Verify email is not present
         expect(data).not.toHaveProperty('email');
-        expect(data.customerId).toBe('user_123');
+        expect(data.customerId).toBe('cust_abc');
     });
 
     it('should handle missing email in auth gracefully', async () => {
         vi.mocked(hasUploadPermission).mockResolvedValue(false);
         vi.mocked(isSuperAdminEmail).mockResolvedValue(false);
 
-        const auth = { customerId: 'user_123',
+        const auth = {
             customerId: 'cust_abc',
         };
 
@@ -94,7 +95,8 @@ describe('handleGetCustomerPermissions', () => {
         expect(data).not.toHaveProperty('email');
         expect(data).toEqual({
             hasPermission: false,
-            isSuperAdmin: false, customerId: 'user_123',
+            isSuperAdmin: false,
+            customerId: 'cust_abc',
         });
     });
 
@@ -102,9 +104,9 @@ describe('handleGetCustomerPermissions', () => {
         vi.mocked(hasUploadPermission).mockResolvedValue(true);
         vi.mocked(isSuperAdminEmail).mockResolvedValue(false);
 
-        const auth = { customerId: 'user_123',
-            email: 'user@example.com',
+        const auth = {
             customerId: 'cust_abc',
+            email: 'user@example.com',
         };
 
         const response = await handleGetCustomerPermissions(mockRequest, mockEnv, auth);
@@ -116,9 +118,9 @@ describe('handleGetCustomerPermissions', () => {
     it('should handle errors without exposing email', async () => {
         vi.mocked(hasUploadPermission).mockRejectedValue(new Error('Database error'));
 
-        const auth = { customerId: 'user_123',
-            email: 'user@example.com',
+        const auth = {
             customerId: 'cust_abc',
+            email: 'user@example.com',
         };
 
         const response = await handleGetCustomerPermissions(mockRequest, mockEnv, auth);

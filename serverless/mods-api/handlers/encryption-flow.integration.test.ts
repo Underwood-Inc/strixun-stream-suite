@@ -319,7 +319,8 @@ describe('Encryption/Decryption Flow Integration', () => {
 
             // Simulate /auth/me response
             const responseData = {
-                email: email, customerId: userId,
+                email: email,
+                userId: userId,
                 customerId: customerId,
                 isSuperAdmin: false,
                 displayName: 'Test User',

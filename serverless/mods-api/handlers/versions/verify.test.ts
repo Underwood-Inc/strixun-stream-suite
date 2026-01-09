@@ -112,7 +112,7 @@ describe('File Verification Handler', () => {
                 method: 'GET',
             });
 
-            const auth = { customerId: 'user-123',
+            const auth = {
                 customerId: 'cust-123',
             };
 

@@ -7,7 +7,7 @@
 
   import type { ChatMessage } from '../../../types/chat';
   import { sevenTVEmoteService } from '../../../services/chat/emotes';
-  import { getCurrentUserId } from '../../../stores/chat';
+  import { getCurrentCustomerId } from '../../../stores/chat';
 
   export let message: ChatMessage;
 
@@ -63,7 +63,7 @@
     // For now, placeholder
   });
 
-  $: isOwnMessage = getCurrentUserId() === message.senderId;
+  $: isOwnMessage = getCurrentCustomerId() === message.senderId;
   $: timestamp = new Date(message.timestamp).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
