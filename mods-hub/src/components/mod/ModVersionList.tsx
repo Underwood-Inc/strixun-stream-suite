@@ -204,7 +204,9 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
     };
 
     const formatDate = (dateString: string): string => {
-        return new Date(dateString).toLocaleDateString();
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
     };
 
     const toggleVersion = (versionId: string) => {

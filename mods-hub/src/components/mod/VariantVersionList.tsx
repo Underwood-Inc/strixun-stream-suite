@@ -136,7 +136,9 @@ export function VariantVersionList({
     };
 
     const formatDate = (dateString: string): string => {
-        return new Date(dateString).toLocaleDateString();
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
     };
 
     const handleDownload = async (version: VariantVersion) => {

@@ -483,13 +483,14 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     };
 
     const handleAddVariant = () => {
+        const now = new Date().toISOString();
         const newVariant: ModVariantWithFile = {
             variantId: `variant-${Date.now()}`,
             modId: mod.modId,
             name: '',
             description: '',
-            createdAt: '',
-            updatedAt: '',
+            createdAt: now,
+            updatedAt: now,
             currentVersionId: '',
             versionCount: 0,
             totalDownloads: 0,

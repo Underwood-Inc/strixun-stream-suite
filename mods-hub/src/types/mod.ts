@@ -112,6 +112,11 @@ export interface ModVariant {
     modId: string; // Parent mod ID
     name: string;
     description?: string;
+    fileName?: string; // Original filename of variant file
+    fileSize?: number; // File size in bytes
+    fileUrl?: string; // Download URL
+    r2Key?: string; // R2 storage key
+    downloads?: number; // Download count
     createdAt: string;
     updatedAt: string;
     currentVersionId: string; // Points to latest VariantVersion
