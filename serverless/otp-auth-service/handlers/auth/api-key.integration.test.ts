@@ -57,7 +57,7 @@ describe.skipIf(!E2E_OTP_CODE)('API Key System - Integration Tests (Miniflare)',
     otpAuthService = setup.otpAuthService;
     customerAPI = setup.customerAPI;
     cleanup = setup.cleanup;
-  }, 60000); // Miniflare starts in 2-5 seconds, 60s allows for CI overhead (GitHub Actions can be slow)
+  }, 30000); // Miniflare starts in 2-5 seconds, 30s is plenty when tests run sequentially
 
   afterAll(async () => {
     if (cleanup) {

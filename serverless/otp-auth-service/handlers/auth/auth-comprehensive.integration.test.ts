@@ -132,7 +132,7 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
             const revealResponse1 = await otpAuthService.fetch(`http://example.com/admin/customers/${customerId1}/api-keys/${keyId1}/reveal`, {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${jwtToken1}`,
+                'X-Super-Admin-Key': 'test-super-admin-key',
               },
             });
             
@@ -167,7 +167,7 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
           const createResponse1 = await otpAuthService.fetch(`http://example.com/admin/customers/${customerId1}/api-keys`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${jwtToken1}`,
+              'X-Super-Admin-Key': 'test-super-admin-key',
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ name: 'Test API Key 1 (Test Infrastructure)' }),
@@ -255,7 +255,7 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
         const listResponse2 = await otpAuthService.fetch(`http://example.com/admin/customers/${customerId2}/api-keys`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${jwtToken2}`,
+            'X-Super-Admin-Key': 'test-super-admin-key',
           },
         });
         
@@ -283,7 +283,7 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
             const revealResponse2 = await otpAuthService.fetch(`http://example.com/admin/customers/${customerId2}/api-keys/${keyId2}/reveal`, {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${jwtToken2}`,
+                'X-Super-Admin-Key': 'test-super-admin-key',
               },
             });
             
@@ -318,7 +318,7 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
           const createResponse2 = await otpAuthService.fetch(`http://example.com/admin/customers/${customerId2}/api-keys`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${jwtToken2}`,
+              'X-Super-Admin-Key': 'test-super-admin-key',
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ name: 'Test API Key 2 (Test Infrastructure)' }),
@@ -399,7 +399,7 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
         console.warn('[Comprehensive Auth Tests] Failed to provision API key 2:', error);
       }
     }
-  }, 240000); // Wrangler unstable_dev can take 60-120 seconds in CI environments, plus setup time for 2 accounts
+  }, 90000); // Miniflare starts in 2-5 seconds, 90s allows for setup of 2 accounts + API keys when tests run sequentially
 
   afterAll(async () => {
     if (cleanup) {

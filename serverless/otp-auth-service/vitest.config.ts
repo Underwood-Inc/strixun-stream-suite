@@ -51,6 +51,9 @@ export default defineConfig({
     ],
     testTimeout: 10000, // 10 second timeout per test
     passWithNoTests: true, // Don't fail if no tests are found
+    // CRITICAL: Run integration tests sequentially to avoid port conflicts
+    // Multiple Miniflare workers cannot bind to the same ports simultaneously
+    fileParallelism: false, // Run test files one at a time
     // NOTE: Integration tests using Miniflare don't need globalSetup
     // They create workers directly in beforeAll hooks
     coverage: {
