@@ -53,7 +53,7 @@ describe.skipIf(!E2E_OTP_CODE)('OTP Login Flow - Integration Tests (Miniflare)',
     cleanup = setup.cleanup;
     
     console.log(`[Integration Tests] Test email: ${testEmail}`);
-  }, 30000); // Miniflare starts in 2-5 seconds, 30s allows for CI overhead
+  }, 60000); // Miniflare starts in 2-5 seconds, 60s allows for CI overhead (GitHub Actions can be slow)
 
   afterAll(async () => {
     if (cleanup) {

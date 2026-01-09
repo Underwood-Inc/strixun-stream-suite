@@ -56,6 +56,9 @@ export async function createMultiWorkerSetup(): Promise<MultiWorkerSetup> {
     console.log(`[Miniflare Setup] Using E2E_TEST_OTP_CODE=${testOtpCode} (${otpSource})`);
     
     // Prepare environment bindings for OTP Auth Service
+    // NOTE: SUPER_ADMIN_EMAILS allows test emails to access admin endpoints
+    // This is needed because tests use JWT tokens from OTP login, and those emails
+    // need to be in SUPER_ADMIN_EMAILS to access /admin/* routes
     const otpAuthEnv = {
       JWT_SECRET: process.env.JWT_SECRET || 'test-jwt-secret-for-integration-tests',
       NETWORK_INTEGRITY_KEYPHRASE: process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-integration-tests',
@@ -65,6 +68,7 @@ export async function createMultiWorkerSetup(): Promise<MultiWorkerSetup> {
       ENVIRONMENT: 'test',
       CUSTOMER_API_URL: CUSTOMER_API_URL,
       SUPER_ADMIN_API_KEY: process.env.SUPER_ADMIN_API_KEY || 'test-super-admin-key',
+      SUPER_ADMIN_EMAILS: process.env.SUPER_ADMIN_EMAILS || 'test@integration-test.example.com,test1@integration-test.example.com,test2@integration-test.example.com',
     };
     
     // Prepare environment bindings for Customer API

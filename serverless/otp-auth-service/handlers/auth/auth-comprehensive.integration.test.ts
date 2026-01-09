@@ -100,10 +100,11 @@ describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Inte
     if (jwtToken1 && customerId1) {
       try {
         // First, check if API keys already exist
+        // Use SUPER_ADMIN_API_KEY for admin endpoints (not JWT)
         const listResponse1 = await otpAuthService.fetch(`http://example.com/admin/customers/${customerId1}/api-keys`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${jwtToken1}`,
+            'X-Super-Admin-Key': 'test-super-admin-key',
           },
         });
         
