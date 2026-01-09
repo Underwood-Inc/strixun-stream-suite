@@ -8,7 +8,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
-import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
+import type { ModMetadata, ModVersion, ModDetailResponse, VariantVersion } from '../../types/mod.js';
 
 /**
  * Handle get mod detail request
@@ -19,12 +19,19 @@ export async function handleGetModDetail(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string; } | null
 ): Promise<Response> {
     try {
         // Check if customer is super admin (needed for filtering)
-        const { isSuperAdminEmail } = await import('../../utils/admin.js');
-        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        // Lookup email via customerId
+        let isAdmin = false;
+        if (auth?.customerId) {
+            const { fetchCustomerByCustomerId } = await import('@strixun/api-framework');
+            const { isSuperAdminEmail } = await import('../../utils/admin.js');
+            const customer = await fetchCustomerByCustomerId(auth.customerId, env);
+            const email = customer?.email;
+            isAdmin = email ? await isSuperAdminEmail(email, env) : false;
+        }
         
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
         // Use modId directly - it already includes 'mod_' prefix
@@ -71,7 +78,7 @@ export async function handleGetModDetail(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
         
@@ -97,7 +104,7 @@ export async function handleGetModDetail(
                 'The requested mod was not found'
             );
             const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -136,7 +143,7 @@ export async function handleGetModDetail(
                         'The requested mod was not found'
                     );
                     const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                     });
                     return new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -162,7 +169,7 @@ export async function handleGetModDetail(
                         'The requested mod was not found'
                     );
                     const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                     });
                     return new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -183,7 +190,7 @@ export async function handleGetModDetail(
                     'The requested mod was not found'
                 );
                 const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 404,
@@ -326,13 +333,26 @@ export async function handleGetModDetail(
             });
         }
 
+        // Populate fileName for each variant from its current VariantVersion
+        if (mod.variants && mod.variants.length > 0) {
+            for (const variant of mod.variants) {
+                if (variant.currentVersionId) {
+                    const variantVersionKey = `variantversion:${variant.currentVersionId}`;
+                    const variantVersion = await env.MODS_KV.get(variantVersionKey, { type: 'json' }) as VariantVersion | null;
+                    if (variantVersion && variantVersion.fileName) {
+                        variant.fileName = variantVersion.fileName;
+                    }
+                }
+            }
+        }
+
         const response: ModDetailResponse = {
             mod,
             versions
         };
 
         const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(response), {
             status: 200,
@@ -350,7 +370,7 @@ export async function handleGetModDetail(
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while fetching mod details'
         );
         const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

@@ -8,7 +8,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { verifyStrixunHash } from '../../utils/hash.js';
-import type { ModMetadata, ModVersion } from '../../types/mod.js';
+import type { ModMetadata, ModVersion, VariantVersion } from '../../types/mod.js';
 
 type VerificationStatus = 'verified' | 'unverified' | 'tampered';
 
@@ -231,17 +231,87 @@ export async function handleBadge(
             } while (cursor);
         }
 
+        // If ModVersion not found, try searching for VariantVersion
+        // Variants use variantVersionId as the identifier, which is what we receive as versionId
+        let variantVersion: VariantVersion | null = null;
+        if (!version) {
+            console.log('[Badge] ModVersion not found, searching for VariantVersion:', { versionId });
+            
+            // Check global scope first
+            const globalVariantVersionKey = `variant_version_${versionId}`;
+            variantVersion = await env.MODS_KV.get(globalVariantVersionKey, { type: 'json' }) as VariantVersion | null;
+            
+            // If not found, check mod's customer scope
+            if (!variantVersion && mod.customerId) {
+                const modCustomerVariantVersionKey = getCustomerKey(mod.customerId, `variant_version_${versionId}`);
+                variantVersion = await env.MODS_KV.get(modCustomerVariantVersionKey, { type: 'json' }) as VariantVersion | null;
+            }
+            
+            // Check auth customer scope (if authenticated and different from mod's customer scope)
+            if (!variantVersion && auth?.customerId && auth.customerId !== mod.customerId) {
+                const authCustomerVariantVersionKey = getCustomerKey(auth.customerId, `variant_version_${versionId}`);
+                variantVersion = await env.MODS_KV.get(authCustomerVariantVersionKey, { type: 'json' }) as VariantVersion | null;
+            }
+            
+            // Last resort: search all customer scopes
+            if (!variantVersion) {
+                console.log('[Badge] VariantVersion not found in expected scopes, searching all customer scopes');
+                const customerListPrefix = 'customer_';
+                let cursor: string | undefined;
+                
+                do {
+                    const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                    for (const key of listResult.keys) {
+                        if (key.name.endsWith('_mods_list') || key.name.endsWith('/mods_list')) {
+                            let customerId: string | null = null;
+                            if (key.name.endsWith('_mods_list')) {
+                                const match = key.name.match(/^customer_(.+)_mods_list$/);
+                                customerId = match ? match[1] : null;
+                            } else if (key.name.endsWith('/mods_list')) {
+                                const match = key.name.match(/^customer_(.+)\/mods_list$/);
+                                customerId = match ? match[1] : null;
+                            }
+                            
+                            if (customerId) {
+                                const customerVariantVersionKey = getCustomerKey(customerId, `variant_version_${versionId}`);
+                                variantVersion = await env.MODS_KV.get(customerVariantVersionKey, { type: 'json' }) as VariantVersion | null;
+                                if (variantVersion) {
+                                    console.log('[Badge] Found VariantVersion in customer scope:', { customerId, variantVersionId: variantVersion.variantVersionId });
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (variantVersion) break;
+                    cursor = listResult.listComplete ? undefined : listResult.cursor;
+                } while (cursor);
+            }
+            
+            if (variantVersion) {
+                console.log('[Badge] Found VariantVersion:', { 
+                    variantVersionId: variantVersion.variantVersionId,
+                    variantId: variantVersion.variantId,
+                    modId: variantVersion.modId,
+                    hasSha256: !!variantVersion.sha256
+                });
+            }
+        }
+
         // Check version belongs to mod (compare with mod.modId, not the input parameter)
         // Normalize both modIds before comparison to handle cases where one has mod_ prefix and the other doesn't
-        if (!version) {
-            console.error('[Badge] Version not found:', { versionId, modId: mod.modId, modCustomerId: mod.customerId, hasAuth: !!auth });
+        if (!version && !variantVersion) {
+            console.error('[Badge] Version/VariantVersion not found:', { versionId, modId: mod.modId, modCustomerId: mod.customerId, hasAuth: !!auth });
             return new Response('Version not found', { status: 404 });
         }
         
-        const normalizedVersionModId = normalizeModId(version.modId);
+        // Use whichever version type was found
+        const fileVersion = version || variantVersion;
+        const isVariantVersion = !!variantVersion;
+        
+        const normalizedVersionModId = normalizeModId(fileVersion!.modId);
         const normalizedModModId = normalizeModId(mod.modId);
         if (normalizedVersionModId !== normalizedModModId) {
-            console.error('[Badge] Version modId mismatch:', { versionModId: version.modId, normalizedVersionModId, modModId: mod.modId, normalizedModModId });
+            console.error('[Badge] Version modId mismatch:', { versionModId: fileVersion!.modId, normalizedVersionModId, modModId: mod.modId, normalizedModModId, isVariantVersion });
             return new Response('Version not found', { status: 404 });
         }
 
@@ -261,13 +331,16 @@ export async function handleBadge(
         const authHeader = request.headers.get('Authorization');
         const jwtToken = authHeader?.replace('Bearer ', '').trim() || null;
         
+        const displayVersionId = isVariantVersion ? (variantVersion as VariantVersion).variantVersionId : (version as ModVersion).versionId;
+        
         console.log('[Badge] Badge request received:', {
             modId: mod.modId,
-            versionId: version.versionId,
+            versionId: displayVersionId,
+            isVariantVersion,
             hasAuthHeader: !!authHeader,
             hasJwtToken: !!jwtToken,
-            hasSha256: !!version.sha256,
-            r2Key: version.r2Key,
+            hasSha256: !!fileVersion!.sha256,
+            r2Key: fileVersion!.r2Key,
         });
 
         // Determine verification status
@@ -275,18 +348,18 @@ export async function handleBadge(
         // For authenticated users, attempt actual verification
         let verificationStatus: VerificationStatus = 'unverified';
         
-        if (version.sha256) {
+        if (fileVersion!.sha256) {
             // Hash exists - file has integrity tracking
             if (jwtToken) {
                 // Authenticated request - attempt actual verification
                 console.log('[Badge] Attempting verification with JWT token:', {
-                    versionId: version.versionId,
-                    sha256Prefix: version.sha256.substring(0, 16) + '...',
+                    versionId: displayVersionId,
+                    sha256Prefix: fileVersion!.sha256.substring(0, 16) + '...',
                 });
                 
                 try {
                     // Get file from R2
-                    const encryptedFile = await env.MODS_R2.get(version.r2Key);
+                    const encryptedFile = await env.MODS_R2.get(fileVersion!.r2Key);
                     
                     if (encryptedFile) {
                         // Decrypt file to calculate hash (same as upload process)
@@ -324,29 +397,29 @@ export async function handleBadge(
                         }
                         
                         // Verify hash matches (verifyStrixunHash accepts ArrayBuffer)
-                        const isValid = await verifyStrixunHash(decryptedFileData as ArrayBuffer, version.sha256, env);
+                        const isValid = await verifyStrixunHash(decryptedFileData as ArrayBuffer, fileVersion!.sha256, env);
                         verificationStatus = isValid ? 'verified' : 'tampered';
                         
                         console.log('[Badge] Verification result:', {
-                            versionId: version.versionId,
-                            modId: version.modId,
+                            versionId: displayVersionId,
+                            modId: fileVersion!.modId,
                             isValid,
                             status: verificationStatus,
-                            expectedHashPrefix: version.sha256.substring(0, 16) + '...',
+                            expectedHashPrefix: fileVersion!.sha256.substring(0, 16) + '...',
                         });
                         
                         if (!isValid) {
                             console.warn('[Badge] File integrity check failed - hash mismatch:', {
-                                versionId: version.versionId,
-                                modId: version.modId,
-                                expectedHash: version.sha256.substring(0, 16) + '...',
+                                versionId: displayVersionId,
+                                modId: fileVersion!.modId,
+                                expectedHash: fileVersion!.sha256.substring(0, 16) + '...',
                             });
                         }
                     } else {
                         // File not found in R2 - treat as unverified
                         console.warn('[Badge] File not found in R2 for verification:', {
-                            versionId: version.versionId,
-                            r2Key: version.r2Key,
+                            versionId: displayVersionId,
+                            r2Key: fileVersion!.r2Key,
                         });
                         verificationStatus = 'unverified';
                     }
@@ -355,7 +428,7 @@ export async function handleBadge(
                     // For public API, fall back to showing "verified" if hash exists
                     // This allows badges to work for social media embeds
                     console.log('[Badge] Verification failed (expected for public badges or token mismatch):', {
-                        versionId: version.versionId,
+                        versionId: displayVersionId,
                         error: error instanceof Error ? error.message : 'Unknown error',
                     });
                     // Show as "verified" if hash exists (file has integrity tracking)
@@ -373,12 +446,12 @@ export async function handleBadge(
             verificationStatus = 'unverified';
         }
         
-        const hash = version.sha256 || 'unknown';
+        const hash = fileVersion!.sha256 || 'unknown';
         const badge = generateBadge(verificationStatus, hash, domain, style);
         
         console.log('[Badge] Badge generated:', {
             modId: mod.modId,
-            versionId: version.versionId,
+            versionId: displayVersionId,
             verificationStatus,
             domain,
             style,

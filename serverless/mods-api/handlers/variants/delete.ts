@@ -39,7 +39,17 @@ export async function handleDeleteVariant(
         }
 
         if (!mod) {
-            return createError(request, env, 404, 'Mod not found');
+            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
         }
 
         // Check authorization
@@ -47,13 +57,33 @@ export async function handleDeleteVariant(
         const isOwner = mod.authorId === auth.customerId || mod.customerId === auth.customerId;
 
         if (!isSuperAdmin && !isOwner) {
-            return createError(request, env, 403, 'You do not have permission to delete this variant');
+            const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to delete this variant');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 403,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
         }
 
         // Find the variant
         const variant = mod.variants?.find(v => v.variantId === variantId);
         if (!variant) {
-            return createError(request, env, 404, 'Variant not found');
+            const rfcError = createError(request, 404, 'Variant Not Found', 'The requested variant was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
         }
 
         // Remove variant from mod metadata
@@ -129,6 +159,16 @@ export async function handleDeleteVariant(
         });
     } catch (error: any) {
         console.error('[DeleteVariant] Error:', error);
-        return createError(request, env, 500, 'Failed to delete variant', error.message);
+        const rfcError = createError(request, 500, 'Internal Server Error', `Failed to delete variant: ${error.message}`);
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
     }
 }

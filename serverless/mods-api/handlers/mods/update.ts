@@ -415,8 +415,19 @@ export async function handleUpdateMod(
                             }
                         }
                         
-                        // Store variant file in R2
-                        const variantR2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/variants/${variant.variantId}.${extensionForR2}`);
+                        // ARCHITECTURAL IMPROVEMENT: Create a VariantVersion for proper version control
+                        const { 
+                            generateVariantVersionId,
+                            saveVariantVersion,
+                            addVariantVersionToList,
+                            saveVariant,
+                            getVariantVersionR2Key
+                        } = await import('../../utils/variant-versions.js');
+                        
+                        const variantVersionId = generateVariantVersionId();
+                        
+                        // Use proper hierarchical R2 key for variant versions
+                        const variantR2Key = getVariantVersionR2Key(normalizedModId, variant.variantId, variantVersionId, extensionForR2, auth.customerId);
                         
                         // Add R2 source metadata
                         const r2SourceInfo = getR2SourceInfo(env, request);
@@ -430,6 +441,7 @@ export async function handleUpdateMod(
                             customMetadata: addR2SourceMetadata({
                                 modId,
                                 variantId: variant.variantId,
+                                variantVersionId: variantVersionId,
                                 uploadedBy: auth.customerId,
                                 uploadedAt: now,
                                 encrypted: 'true',
@@ -445,24 +457,43 @@ export async function handleUpdateMod(
                             ? `${env.MODS_PUBLIC_URL}/${variantR2Key}`
                             : `https://pub-${(env.MODS_R2 as any).id}.r2.dev/${variantR2Key}`;
                         
-                        // Update variant metadata with file info (use original filename, not encrypted filename)
-                        variant.fileUrl = downloadUrl;
-                        variant.r2Key = variantR2Key; // Store R2 key for reliable lookup
-                        variant.fileName = originalFileName;
-                        variant.fileSize = fileSize; // Use decrypted file size
+                        // Create VariantVersion with version 1.0.0 (auto-increment for subsequent uploads)
+                        // Get the current version count to generate the next version number
+                        const newVersionNumber = variant.versionCount > 0 ? `1.0.${variant.versionCount}` : '1.0.0';
+                        
+                        const variantVersion: import('../../types/mod.js').VariantVersion = {
+                            variantVersionId,
+                            variantId: variant.variantId,
+                            modId: normalizedModId,
+                            version: newVersionNumber,
+                            changelog: 'Uploaded via mod update',
+                            fileSize: fileSize,
+                            fileName: originalFileName,
+                            r2Key: variantR2Key,
+                            downloadUrl: downloadUrl,
+                            sha256: fileHash,
+                            createdAt: now,
+                            downloads: 0,
+                            gameVersions: [],
+                            dependencies: []
+                        };
+                        
+                        // Save VariantVersion
+                        await saveVariantVersion(variantVersion, auth.customerId, env);
+                        await addVariantVersionToList(variant.variantId, variantVersionId, auth.customerId, env);
+                        
+                        // Update local variant object with new version
+                        variant.currentVersionId = variantVersionId;
+                        variant.versionCount = (variant.versionCount || 0) + 1;
                         variant.updatedAt = now;
                         
-                        // CRITICAL: Reset download counter when variant file is replaced
-                        // This ensures accurate tracking - old downloads don't count for the new file
-                        variant.downloads = 0;
-                        console.log('[UpdateMod] Reset download counter for variant (file replaced):', {
-                            variantId: variant.variantId,
-                            variantName: variant.name,
-                            previousDownloads: variant.downloads
-                        });
+                        // Save updated variant to KV (works for both new and existing variants)
+                        await saveVariant(variant, auth.customerId, env);
                         
-                        console.log('[UpdateMod] Variant file uploaded:', {
+                        console.log('[UpdateMod] Variant version created:', {
                             variantId: variant.variantId,
+                            variantVersionId,
+                            version: newVersionNumber,
                             fileName: originalFileName,
                             fileSize: fileSize,
                             encryptedSize: fileBytes.length,
@@ -493,6 +524,7 @@ export async function handleUpdateMod(
             }
             
             // Update mod.variants with the updated variant metadata
+            // Variants were already updated in-place during file upload processing
             mod.variants = updateData.variants;
         }
         

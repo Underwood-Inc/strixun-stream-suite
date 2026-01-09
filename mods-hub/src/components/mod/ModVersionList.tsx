@@ -274,9 +274,6 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
 
         try {
             // PESSIMISTIC UPDATE: Wait for download to complete before updating UI
-            if (!variant.fileName) {
-                throw new Error('Variant file name not found');
-            }
             await downloadVariant(modSlug, variant.variantId, variant.fileName);
             
             // Download successful - refetch mod data to get updated download counts
@@ -407,6 +404,12 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                                     <span>•</span>
                                                     <span>Created: {formatDate(variant.createdAt)}</span>
                                                 </VariantMeta>
+                                                {variant.currentVersionId && (
+                                                    <IntegrityBadge 
+                                                        slug={modSlug}
+                                                        versionId={variant.currentVersionId}
+                                                    />
+                                                )}
                                             </VariantInfo>
                                             <VariantDownloadButton
                                                 onClick={(e) => {

@@ -177,10 +177,11 @@ export interface ModVariant {
     description?: string;
     createdAt: string;
     updatedAt: string;
-    currentVersionId: string; // Points to latest VariantVersion
+    currentVersionId: string | null; // Points to latest VariantVersion (null if no versions yet)
     versionCount: number; // Total number of versions
     totalDownloads: number; // Cumulative downloads across all versions
-    // REMOVED: fileUrl, r2Key, fileName, fileSize, version, changelog, gameVersions, dependencies, downloads
+    fileName: string; // Current version's fileName (populated from VariantVersion)
+    // REMOVED: fileUrl, r2Key, fileSize, version, changelog, gameVersions, dependencies, downloads
     // These fields now live in VariantVersion for proper version control
 }
 

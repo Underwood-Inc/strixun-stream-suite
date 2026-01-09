@@ -492,7 +492,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
             description: '',
             createdAt: now,
             updatedAt: now,
-            currentVersionId: '',
+            currentVersionId: null,
             versionCount: 0,
             totalDownloads: 0,
         };
