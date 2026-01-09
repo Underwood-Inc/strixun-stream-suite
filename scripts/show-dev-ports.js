@@ -25,6 +25,14 @@ const services = [
     framework: 'React',
   },
   {
+    name: 'OTP Auth Dashboard',
+    location: 'serverless/otp-auth-service',
+    port: 5174,
+    type: 'Frontend',
+    url: 'http://localhost:5174',
+    framework: 'Svelte',
+  },
+  {
     name: 'Control Panel',
     location: 'control-panel',
     port: 5175,
@@ -40,14 +48,14 @@ const services = [
     url: 'http://localhost:5176',
     framework: 'React',
   },
-  // Backend Workers (some serve their own dashboards)
+  // Backend Workers
   {
-    name: 'OTP Auth Service + Dashboard',
+    name: 'OTP Auth Service (Worker)',
     location: 'serverless/otp-auth-service',
     port: 8787,
     type: 'Backend (Worker)',
-    url: 'http://localhost:8787',
-    framework: 'Cloudflare Worker + Svelte',
+    url: null,
+    framework: 'Cloudflare Worker',
   },
   {
     name: 'Mods API',

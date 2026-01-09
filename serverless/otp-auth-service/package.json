@@ -22,9 +22,10 @@
     }
   },
   "scripts": {
-    "dev": "wrangler dev --port 8787 --local",
+    "dev": "concurrently -n worker,app -c yellow,cyan --kill-others-on-fail --success first \"pnpm dev:worker\" \"pnpm dev:app\"",
+    "dev:worker": "wrangler dev --port 8787 --local",
     "dev:app": "vite",
-    "dev:all": "concurrently -n worker,customer-api,app -c yellow,green,cyan --kill-others-on-fail --success first \"pnpm dev\" \"pnpm --filter strixun-customer-api dev\" \"pnpm dev:app\"",
+    "dev:all": "concurrently -n worker,customer-api,app -c yellow,green,cyan --kill-others-on-fail --success first \"pnpm dev:worker\" \"pnpm --filter strixun-customer-api dev\" \"pnpm dev:app\"",
     "setup:test-secrets": "node scripts/setup-test-secrets.js",
     "dev:with-secrets": "pnpm setup:test-secrets && pnpm dev",
     "build": "vite build && node scripts/build-landing-assets.js",

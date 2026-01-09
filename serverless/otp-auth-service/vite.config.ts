@@ -82,7 +82,7 @@ export default defineConfig({
     exclude: ['swagger-ui-dist'] // Exclude from pre-bundling, will be loaded dynamically
   },
   server: {
-    port: 5175,
+    port: 5174,
     open: false,
     proxy: {
       '/auth': {
