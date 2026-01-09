@@ -40,7 +40,8 @@ export default defineConfig({
     setupFiles: ['./shared/test-helpers/otp-code-loader.ts'], // Load E2E_TEST_OTP_CODE before tests
     include: [
       '**/*.test.{js,ts}',
-      '**/*.integration.test.{js,ts}', // Explicitly include integration tests
+      // Only include integration tests when explicitly enabled via VITEST_INTEGRATION=true
+      ...(process.env.VITEST_INTEGRATION === 'true' ? ['**/*.integration.test.{js,ts}'] : []),
       '../shared/**/*.test.{js,ts}', // Include shared encryption tests
     ],
     exclude: [
@@ -49,6 +50,9 @@ export default defineConfig({
       'dashboard', 
       '**/*.e2e.{test,spec}.{js,ts}',
       '**/*.spec.{js,ts}', // Exclude .spec files (Playwright e2e only)
+      // By default, exclude integration tests (they need Miniflare setup)
+      // Only include them when VITEST_INTEGRATION=true (test:all command)
+      ...(process.env.VITEST_INTEGRATION !== 'true' ? ['**/*.integration.test.{js,ts}'] : []),
     ],
     testTimeout: 10000, // 10 second timeout per test
     passWithNoTests: true, // Don't fail if no tests are found
