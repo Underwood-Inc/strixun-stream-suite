@@ -1,6 +1,6 @@
 {
   "name": "strixun-customer-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Dedicated Cloudflare Worker for customer data management",
   "type": "module",
   "main": "worker.ts",
@@ -33,4 +33,3 @@
     "@strixun/schemas": "workspace:*"
   }
 }
-
