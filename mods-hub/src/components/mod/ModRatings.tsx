@@ -420,7 +420,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                     )}
                     {userRating.updatedAt && userRating.updatedAt !== userRating.createdAt && (
                         <div style={{ fontSize: '0.75rem', color: colors.textMuted, marginTop: spacing.xs }}>
-                            Updated: {new Date(userRating.updatedAt).toLocaleDateString()}
+                            Updated: {formatDate(userRating.updatedAt)}
                         </div>
                     )}
                 </div>
@@ -433,7 +433,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                         <Review key={rating.ratingId}>
                             <ReviewHeader>
                                 <ReviewAuthor>{rating.userDisplayName || 'Unknown User'}</ReviewAuthor>
-                                <ReviewDate>{new Date(rating.createdAt).toLocaleDateString()}</ReviewDate>
+                                <ReviewDate>{formatDate(rating.createdAt)}</ReviewDate>
                             </ReviewHeader>
                             <ReviewRating>{renderStars(rating.rating)}</ReviewRating>
                             {rating.comment && (

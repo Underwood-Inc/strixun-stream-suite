@@ -5,6 +5,7 @@
 
 import { useParams, useNavigate } from 'react-router-dom';
 import { useModDetail, useUpdateMod, useDeleteMod, useUploadVersion, useUpdateModStatus, useDeleteVariant } from '../hooks/useMods';
+import { formatDateTime } from '@strixun/shared-config/date-utils';
 import { useUploadPermission } from '../hooks/useUploadPermission';
 import { ModManageForm } from '../components/mod/ModManageForm';
 import { VersionUploadForm } from '../components/mod/VersionUploadForm';
@@ -194,7 +195,7 @@ export function ModManagePage() {
         <PageContainer>
             <Title>Manage Mod: {data.mod.title}</Title>
             <div style={{ color: colors.textSecondary, fontSize: '0.875rem', marginBottom: spacing.md }}>
-                Last updated: {new Date(data.mod.updatedAt).toLocaleString()}
+                Last updated: {formatDateTime(data.mod.updatedAt)}
             </div>
             
             <ModManageForm

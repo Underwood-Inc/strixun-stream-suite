@@ -790,7 +790,7 @@ export function R2ManagementPage() {
                     )}
                     <FileMeta>
                         <span><strong>Size:</strong> {formatBytes(file.size)}</span>
-                        <span><strong>Uploaded:</strong> {file.uploaded.toLocaleDateString()} {file.uploaded.toLocaleTimeString()}</span>
+                        <span><strong>Uploaded:</strong> {formatDate(file.uploaded.toISOString())} {formatTime(file.uploaded.toISOString())}</span>
                         {file.contentType && <span><strong>Type:</strong> {file.contentType}</span>}
                     </FileMeta>
                     <FileKey>{file.key}</FileKey>

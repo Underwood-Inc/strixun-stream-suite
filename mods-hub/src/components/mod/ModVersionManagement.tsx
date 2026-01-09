@@ -7,6 +7,7 @@ import { useState } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModVersion, VersionUploadRequest } from '../../types/mod';
+import { formatDate } from '@strixun/shared-config/date-utils';
 import { downloadVersion } from '../../services/api';
 import { IntegrityBadge } from './IntegrityBadge';
 import { celebrateClick } from '../../utils/confetti';
@@ -189,9 +190,6 @@ export function ModVersionManagement({ modSlug, modId, versions }: ModVersionMan
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
-    const formatDate = (dateString: string): string => {
-        return new Date(dateString).toLocaleDateString();
-    };
 
     const handleDownload = async (version: ModVersion) => {
         if (!isAuthenticated) {

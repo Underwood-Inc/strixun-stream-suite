@@ -12,6 +12,7 @@ import { colors, spacing, media } from '../../theme';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { Tooltip } from '@strixun/shared-components/react';
 import type { TooltipTheme } from '@strixun/shared-components/react';
+import { useShallow } from 'zustand/react/shallow';
 
 // Theme configuration for shared Tooltip component
 const tooltipTheme: TooltipTheme = {
@@ -192,29 +193,19 @@ const NavActions = styled.div`
 `;
 
 export function Header() {
-    // Use a single selector to get all auth state at once for better reactivity
-    // This ensures the header updates immediately when any auth state changes
-    const authState = useAuthStore(state => ({
-        customer: state.customer,
-        isAuthenticated: state.isAuthenticated,
-        isSuperAdmin: state.isSuperAdmin,
-        logout: state.logout,
-    }));
+    // Use shallow comparison selector to prevent unnecessary re-renders
+    // This ensures the component updates when session is restored
+    const { customer, isAuthenticated, isSuperAdmin, logout } = useAuthStore(
+        useShallow(state => ({
+            customer: state.customer,
+            isAuthenticated: state.isAuthenticated,
+            isSuperAdmin: state.isSuperAdmin,
+            logout: state.logout,
+        }))
+    );
     
     // Mobile menu state
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    
-    // Force re-render when auth state changes by subscribing to store changes
-    const [, forceUpdate] = useState({});
-    useEffect(() => {
-        const unsubscribe = useAuthStore.subscribe(() => {
-            // Trigger re-render when customer or isAuthenticated changes
-            forceUpdate({});
-        });
-        return unsubscribe;
-    }, []);
-    
-    const { customer, isAuthenticated, isSuperAdmin, logout } = authState;
     
     const { hasPermission } = useUploadPermission();
     const { data: draftsData } = useDrafts();

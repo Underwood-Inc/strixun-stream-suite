@@ -15,7 +15,7 @@ interface EnhancedHandlerOptions {
 
 interface Context {
   env: any;
-  user?: {
+  customer?: {
     id: string;
     customerId: string;
     email?: string;
@@ -127,7 +127,7 @@ export function createEnhancedResponse(data: any, context: EnhancedResponseConte
   
   // Ensure root config is present
   const rootConfig = {
-    id: data.id || context.customer?.id || generateId(),
+    id: data.id || context.customer?.customerId || generateId(),
     customerId: data.customerId || context.customer?.customerId || '',
   };
   
@@ -168,16 +168,16 @@ export function createErrorResponse(request: Request, error: any, status = 500):
   return createRFC7807Response(apiRequest as any, apiError, new Headers());
 }
 
-interface User {
+interface Customer {
   id: string;
   customerId: string;
   email?: string;
 }
 
 /**
- * Extract user from request (JWT token)
+ * Extract customer from request (JWT token)
  */
-export async function extractUserFromRequest(request: Request, env: any): Promise<User | null> {
+export async function extractCustomerFromRequest(request: Request, env: any): Promise<Customer | null> {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;

@@ -11,7 +11,7 @@
     "build:apps": "turbo run build --filter=./mods-hub --filter=./control-panel --filter=./serverless/*/app --filter=./serverless/*/dashboard",
     "build:all": "turbo run build --filter=./packages/* --filter=./dice-board-game --filter=./mods-hub --filter=./control-panel --filter=./serverless/*/app --filter=./serverless/*/dashboard --filter=.",
     "build:clean": "turbo run build --force",
-    "dev": "vite",
+    "dev": "pnpm build:packages && vite",
     "dev:turbo": "turbo run dev --concurrency=15",
     "dev:ports": "node scripts/show-dev-ports.js",
     "preview": "vite preview",

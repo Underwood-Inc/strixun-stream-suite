@@ -378,7 +378,7 @@ export function CustomerManagementPage() {
             width: '120px',
             sortable: true,
             render: (customer) => customer.createdAt 
-                ? new Date(customer.createdAt).toLocaleDateString()
+                ? formatDate(customer.createdAt)
                 : 'N/A',
         },
         {
@@ -387,7 +387,7 @@ export function CustomerManagementPage() {
             width: '120px',
             sortable: true,
             render: (customer) => customer.lastLogin 
-                ? new Date(customer.lastLogin).toLocaleDateString()
+                ? formatDate(customer.lastLogin)
                 : 'Never',
         },
         {

@@ -293,6 +293,9 @@ importers:
       '@strixun/shared-components':
         specifier: workspace:*
         version: link:../shared-components
+      '@strixun/shared-config':
+        specifier: workspace:*
+        version: link:../shared-config
       '@strixun/virtualized-table':
         specifier: workspace:*
         version: link:../packages/virtualized-table
@@ -1062,6 +1065,8 @@ importers:
       wrangler:
         specifier: ^4.54.0
         version: 4.56.0(@cloudflare/workers-types@4.20251225.0)
+
+  shared-config: {}
 
 packages:
 

@@ -16,6 +16,7 @@ import { candyShopAnimation } from '../../utils/candyShopAnimation';
 import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys } from '../../hooks/useMods';
+import { formatDate } from '@strixun/shared-config/date-utils';
 
 const Container = styled.div`
   display: flex;
@@ -135,11 +136,6 @@ export function VariantVersionList({
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
-    const formatDate = (dateString: string): string => {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
-    };
 
     const handleDownload = async (version: VariantVersion) => {
         if (!isAuthenticated) {

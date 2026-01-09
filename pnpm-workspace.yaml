@@ -24,4 +24,5 @@ packages:
   - 'control-panel'
   - 'mods-hub'
   - 'shared-components'
+  - 'shared-config'
 
