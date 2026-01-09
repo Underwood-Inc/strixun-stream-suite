@@ -85,6 +85,7 @@ export async function createMultiWorkerSetup(): Promise<MultiWorkerSetup> {
       experimental: { disableExperimentalWarning: true },
       port: 8790,
       local: true,
+      persist: true, // Enable KV persistence across requests
       vars: customerApiEnv,
     });
     
@@ -95,6 +96,7 @@ export async function createMultiWorkerSetup(): Promise<MultiWorkerSetup> {
       experimental: { disableExperimentalWarning: true },
       port: 8787,
       local: true,
+      persist: true, // Enable KV persistence across requests
       vars: otpAuthEnv,
     });
     

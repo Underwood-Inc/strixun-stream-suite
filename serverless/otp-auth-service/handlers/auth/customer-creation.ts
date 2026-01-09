@@ -128,8 +128,10 @@ async function upsertCustomerAccount(
         }
         
         // CRITICAL: Email is IMMUTABLE - it's the authentication identifier
-        // If email doesn't match, log a warning but DO NOT change it
-        if (existingCustomer.email !== emailLower) {
+        // NOTE: customer-api intentionally strips email from responses for security
+        // Email IS stored in KV, but not exposed in API responses
+        // Only log mismatch if email is actually present (not undefined) and different
+        if (existingCustomer.email && existingCustomer.email !== emailLower) {
             console.warn(`[Customer Creation] Email mismatch for customer ${resolvedCustomerId}: stored="${existingCustomer.email}", login="${emailLower}". Email is immutable - keeping stored value.`);
         }
         
