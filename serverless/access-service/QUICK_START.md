@@ -67,25 +67,15 @@ pnpm run deploy:dev
 
 ---
 
-### 5. Seed Default Roles & Permissions
+### 5. ~~Seed Defaults~~ (AUTOMATIC - NO ACTION REQUIRED)
 
-```bash
-# After deployment, seed defaults (use workers.dev URL)
-curl -X POST https://access.idling.app/access/seed
+**Seeding happens automatically** on the first request after deployment!
 
-# OR for local development
-curl -X POST http://localhost:8791/access/seed
-```
+The service automatically:
+- ✅ Runs pending migrations
+- ✅ Seeds default roles and permissions
 
-**Expected Response:**
-```json
-{
-  "message": "Default roles and permissions seeded successfully",
-  "seeded": true,
-  "rolesCount": 7,
-  "permissionsCount": 10
-}
-```
+No manual seeding required!
 
 ---
 
@@ -125,25 +115,25 @@ wrangler kv namespace create AUTHORIZATION_KV --preview
 ## 📋 **Full Deployment Checklist**
 
 ### Local Development:
-- [ ] Navigate to `serverless/authorization-service`
+- [ ] Navigate to `serverless/access-service`
 - [ ] `.dev.vars` file already exists (gitignored, shared secrets)
 - [ ] Run `pnpm install`
 - [ ] Run `pnpm run dev` (starts on port 8791)
 - [ ] Test: `Invoke-RestMethod -Uri "http://localhost:8791/health"`
-- [ ] Seed: `Invoke-RestMethod -Method Post -Uri "http://localhost:8791/access/seed"`
+- [ ] **Auto-initializes on first request** (migrations + seeding automatic)
 
 ### Production Deployment:
-- [ ] Navigate to `serverless/authorization-service`
-- [ ] Run `wrangler kv namespace create AUTHORIZATION_KV`
-- [ ] Update `wrangler.toml` line 23 with production KV ID
+- [ ] Navigate to `serverless/access-service`
+- [ ] Run `wrangler kv namespace create ACCESS_KV`
+- [ ] Update `wrangler.toml` with production KV ID
 - [ ] Run `pnpm install`
 - [ ] Run `wrangler secret put JWT_SECRET`
+- [ ] Run `wrangler secret put SERVICE_API_KEY`
 - [ ] Run `wrangler secret put SUPER_ADMIN_API_KEY`
 - [ ] Run `wrangler secret put ALLOWED_ORIGINS`
 - [ ] Run `pnpm run deploy`
-- [ ] Run `curl -X POST https://access.idling.app/access/seed`
 - [ ] Run `curl https://access.idling.app/health` (verify working)
-- [ ] Run `curl https://access.idling.app/access/roles` (verify seeded)
+- [ ] **Auto-initializes on first request** (migrations + seeding automatic)
 
 ---
 
@@ -157,10 +147,9 @@ pnpm run dev
 
 # In another terminal, test endpoints (PowerShell)
 Invoke-RestMethod -Uri "http://localhost:8791/health"
-Invoke-RestMethod -Uri "http://localhost:8791/access/roles"
 
-# Seed defaults locally (PowerShell)
-Invoke-RestMethod -Method Post -Uri "http://localhost:8791/access/seed"
+# Note: Roles/permissions endpoints require X-Service-Key header
+# Auto-seeding happens on first request - no manual seeding needed
 ```
 
 **What is "access"?**

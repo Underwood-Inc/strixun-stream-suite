@@ -22,9 +22,9 @@ describe('Access Service Integration Tests', () => {
     let accessServiceUrl: string;
 
     beforeAll(async () => {
-        // Start Miniflare worker for Access Service
+        // Start Miniflare worker for Access Service (using pre-built JavaScript from pretest script)
         mf = new Miniflare({
-            scriptPath: './worker.ts',
+            scriptPath: './dist/worker.js', // Use compiled JavaScript instead of TypeScript
             modules: true,
             compatibilityDate: '2024-01-01',
             compatibilityFlags: ['nodejs_compat'],
@@ -64,14 +64,7 @@ describe('Access Service Integration Tests', () => {
         });
 
         it('should accept valid service key', async () => {
-            // First seed the service
-            await mf.dispatchFetch('http://localhost:8791/access/seed', {
-                method: 'POST',
-                headers: {
-                    'X-Service-Key': SERVICE_API_KEY,
-                },
-            });
-
+            // Note: No need to manually seed - auto-seeding happens on first request
             const response = await mf.dispatchFetch('http://localhost:8791/access/cust_test', {
                 headers: {
                     'X-Service-Key': SERVICE_API_KEY,
@@ -170,13 +163,8 @@ describe('Access Service Integration Tests', () => {
 
     describe('Permission Checks', () => {
         beforeEach(async () => {
-            // Seed default roles and permissions
-            await mf.dispatchFetch('http://localhost:8791/access/seed', {
-                method: 'POST',
-                headers: {
-                    'X-Service-Key': SERVICE_API_KEY,
-                },
-            });
+            // Note: Auto-seeding happens on first request to the worker
+            // No manual seeding required
         });
 
         it('should check permission for customer with role', async () => {
@@ -231,12 +219,8 @@ describe('Access Service Integration Tests', () => {
 
     describe('Quota Management', () => {
         beforeEach(async () => {
-            await mf.dispatchFetch('http://localhost:8791/access/seed', {
-                method: 'POST',
-                headers: {
-                    'X-Service-Key': SERVICE_API_KEY,
-                },
-            });
+            // Note: Auto-seeding happens on first request to the worker
+            // No manual seeding required
         });
 
         it('should check quota availability', async () => {
@@ -336,13 +320,8 @@ describe('Access Service Integration Tests', () => {
         it('should complete full access control workflow', async () => {
             const customerId = 'cust_e2e_test';
 
-            // 1. Seed defaults
-            await mf.dispatchFetch('http://localhost:8791/access/seed', {
-                method: 'POST',
-                headers: {
-                    'X-Service-Key': SERVICE_API_KEY,
-                },
-            });
+            // Note: Auto-seeding happens on first request to the worker
+            // No manual seeding required
 
             // 2. Assign roles
             await mf.dispatchFetch(`http://localhost:8791/access/${customerId}/roles`, {

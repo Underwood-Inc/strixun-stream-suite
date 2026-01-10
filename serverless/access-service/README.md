@@ -201,34 +201,13 @@ pnpm run deploy:dev
 pnpm run deploy
 ```
 
-### 4. Seed Default Roles/Permissions
+### 4. ~~Seed Defaults~~ (AUTOMATIC)
 
-```bash
-# First time seed (one-time only)
-curl -X POST https://access.idling.app/access/seed
-```
+**No manual seeding required!** The service automatically seeds defaults on first request.
 
-### 5. Run Migrations
+### 5. ~~Run Migrations~~ (AUTOMATIC)
 
-Migrations update role definitions and fix issues without re-seeding everything.
-
-```bash
-# Check migration status
-curl https://access.idling.app/access/migrations/status
-
-# Run pending migrations
-curl -X POST https://access.idling.app/access/migrate
-```
-
-**Important:** After deploying code changes that include new migrations, always run migrations in production!
-
-### 5. Run Migration (Optional)
-
-If migrating from existing permission system:
-
-```bash
-curl -X POST https://access.idling.app/migrate
-```
+**No manual migrations required!** The service automatically runs pending migrations on first request after deploy.
 
 ## Default Roles
 

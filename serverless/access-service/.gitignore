@@ -1,7 +1,20 @@
-node_modules
-.wrangler
+# Build output
+dist/
+*.js
+*.js.map
+
+# Except config files
+!*.config.js
+!vitest.config.ts
+
+# Dependencies
+node_modules/
+.wrangler/
+
+# Environment
 .dev.vars
-dist
 .env
-.env.local
-*.log
+
+# Coverage
+coverage/
+.vitest/

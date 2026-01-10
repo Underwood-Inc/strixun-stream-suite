@@ -119,10 +119,6 @@ export async function createAuthToken(
     // Generate CSRF token for this session
     const csrfToken = generateCSRFToken();
     
-    // Check if user is a super admin
-    const { isSuperAdminEmail } = await import('../../utils/super-admin.js');
-    const isSuperAdmin = await isSuperAdminEmail(emailLower, env);
-    
     // FAIL-FAST: Require customerId - MANDATORY
     if (!customerId) {
         throw new Error('Customer ID is MANDATORY for JWT creation. Customer account must be created before token generation.');
@@ -139,6 +135,10 @@ export async function createAuthToken(
         // Don't throw - authorization provisioning failure shouldn't break login
         // Customer will still get JWT, but may have permission issues until manually provisioned
     }
+    
+    // Check if customer is a super admin (via Access Service)
+    const { isSuperAdmin: checkSuperAdmin } = await import('../../utils/super-admin.js');
+    const isSuperAdmin = await checkSuperAdmin(customerId, env);
     
     // FAIL-FAST: Ensure customerId matches
     if (customer.customerId !== customerId) {

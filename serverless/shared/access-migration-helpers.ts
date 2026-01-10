@@ -45,8 +45,11 @@ export async function ensureCustomerAccess(
     
     console.log('[AccessMigration] ✓ Customer provisioned in Access Service:', customerId);
   } catch (error) {
-    console.error('[AccessMigration] Failed to provision customer:', customerId, error);
-    // Don't throw - provisioning failure shouldn't break login
+    console.error('[AccessMigration] ❌ CRITICAL: Failed to provision customer:', customerId);
+    console.error('[AccessMigration] Error details:', error);
+    console.error('[AccessMigration] Stack:', error instanceof Error ? error.stack : 'No stack trace');
+    // THROW - provisioning failure MUST be visible!
+    throw new Error(`Failed to provision customer ${customerId} in Access Service: ${error}`);
   }
 }
 
@@ -62,8 +65,11 @@ export async function ensureCustomerAccess(
  * @returns Array of role names
  */
 async function determineDefaultRoles(email: string | undefined, env: any): Promise<string[]> {
+  // DEFAULT: ALL customers get uploader permission
+  const defaultRoles = ['customer', 'uploader'];
+
   if (!email) {
-    return ['customer']; // Default role for all customers
+    return defaultRoles;
   }
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -76,12 +82,13 @@ async function determineDefaultRoles(email: string | undefined, env: any): Promi
     
     if (superAdminEmails.includes(normalizedEmail)) {
       console.log('[AccessMigration] Detected super admin:', email);
-      return ['super-admin']; // Super admins get all permissions
+      // Super admins get super-admin role + uploader permission
+      return ['super-admin', 'uploader'];
     }
   }
 
-  // Default: regular customer
-  return ['customer'];
+  // Default: ALL customers get customer + uploader roles
+  return defaultRoles;
 }
 
 /**

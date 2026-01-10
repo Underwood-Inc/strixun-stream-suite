@@ -26,9 +26,17 @@ describe('Rate Limiting', () => {
         mockKV = new Map();
         mockEnv = {
             ACCESS_KV: {
-                get: vi.fn((key: string) => {
+                get: vi.fn((key: string, options?: { type?: string }) => {
                     const value = mockKV.get(key);
-                    return Promise.resolve(value ? JSON.stringify(value) : null);
+                    if (!value) return Promise.resolve(null);
+                    
+                    // If type: 'json' is specified, return parsed object
+                    if (options?.type === 'json') {
+                        return Promise.resolve(value);
+                    }
+                    
+                    // Otherwise return JSON string
+                    return Promise.resolve(JSON.stringify(value));
                 }),
                 put: vi.fn((key: string, value: string) => {
                     mockKV.set(key, JSON.parse(value));
@@ -44,7 +52,8 @@ describe('Rate Limiting', () => {
     describe('checkRateLimit', () => {
         it('should allow requests under limit', async () => {
             const config = { maxRequests: 5, windowSeconds: 60, keyPrefix: 'test' };
-            const result = await checkRateLimit('user_123', config, mockEnv);
+            const userId = `user_${Date.now()}_1`;
+            const result = await checkRateLimit(userId, config, mockEnv);
 
             expect(result.allowed).toBe(true);
             expect(result.remaining).toBe(4); // 5 - 1 = 4
@@ -52,13 +61,14 @@ describe('Rate Limiting', () => {
 
         it('should block requests over limit', async () => {
             const config = { maxRequests: 2, windowSeconds: 60, keyPrefix: 'test' };
+            const userId = `user_${Date.now()}_2`;
 
             // Make 2 requests (should succeed)
-            await checkRateLimit('user_123', config, mockEnv);
-            await checkRateLimit('user_123', config, mockEnv);
+            await checkRateLimit(userId, config, mockEnv);
+            await checkRateLimit(userId, config, mockEnv);
 
             // 3rd request should be blocked
-            const result = await checkRateLimit('user_123', config, mockEnv);
+            const result = await checkRateLimit(userId, config, mockEnv);
 
             expect(result.allowed).toBe(false);
             expect(result.remaining).toBe(0);
@@ -67,13 +77,14 @@ describe('Rate Limiting', () => {
 
         it('should use sliding window (old requests expire)', async () => {
             const config = { maxRequests: 2, windowSeconds: 1, keyPrefix: 'test' }; // 1 second window
+            const userId = `user_${Date.now()}_3`;
 
             // Make 2 requests
-            await checkRateLimit('user_123', config, mockEnv);
-            await checkRateLimit('user_123', config, mockEnv);
+            await checkRateLimit(userId, config, mockEnv);
+            await checkRateLimit(userId, config, mockEnv);
 
             // Wait for window to expire (simulate by manipulating stored data)
-            const key = 'test_user_123';
+            const key = `test_${userId}`;
             const oldData = mockKV.get(key);
             if (oldData) {
                 // Make requests appear old (outside window)
@@ -82,40 +93,44 @@ describe('Rate Limiting', () => {
             }
 
             // Should allow new request after window expires
-            const result = await checkRateLimit('user_123', config, mockEnv);
+            const result = await checkRateLimit(userId, config, mockEnv);
             expect(result.allowed).toBe(true);
         });
 
         it('should handle different identifiers separately', async () => {
             const config = { maxRequests: 1, windowSeconds: 60, keyPrefix: 'test' };
+            const userId1 = `user_${Date.now()}_4a`;
+            const userId2 = `user_${Date.now()}_4b`;
 
             // User 1 makes request
-            const result1 = await checkRateLimit('user_123', config, mockEnv);
+            const result1 = await checkRateLimit(userId1, config, mockEnv);
             expect(result1.allowed).toBe(true);
 
             // User 2 should still be able to make request
-            const result2 = await checkRateLimit('user_456', config, mockEnv);
+            const result2 = await checkRateLimit(userId2, config, mockEnv);
             expect(result2.allowed).toBe(true);
         });
 
         it('should calculate correct remaining count', async () => {
             const config = { maxRequests: 5, windowSeconds: 60, keyPrefix: 'test' };
+            const userId = `user_${Date.now()}_5`;
 
-            let result = await checkRateLimit('user_123', config, mockEnv);
+            let result = await checkRateLimit(userId, config, mockEnv);
             expect(result.remaining).toBe(4);
 
-            result = await checkRateLimit('user_123', config, mockEnv);
+            result = await checkRateLimit(userId, config, mockEnv);
             expect(result.remaining).toBe(3);
 
-            result = await checkRateLimit('user_123', config, mockEnv);
+            result = await checkRateLimit(userId, config, mockEnv);
             expect(result.remaining).toBe(2);
         });
 
         it('should provide retry-after when blocked', async () => {
             const config = { maxRequests: 1, windowSeconds: 60, keyPrefix: 'test' };
+            const userId = `user_${Date.now()}_6`;
 
-            await checkRateLimit('user_123', config, mockEnv);
-            const result = await checkRateLimit('user_123', config, mockEnv);
+            await checkRateLimit(userId, config, mockEnv);
+            const result = await checkRateLimit(userId, config, mockEnv);
 
             expect(result.allowed).toBe(false);
             expect(result.retryAfter).toBeGreaterThan(0);
