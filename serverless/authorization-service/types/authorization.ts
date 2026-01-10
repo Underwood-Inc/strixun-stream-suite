@@ -158,6 +158,7 @@ export interface Env {
     AUTHORIZATION_KV: KVNamespace;
     JWT_SECRET?: string;
     SUPER_ADMIN_API_KEY?: string;
+    MIGRATION_SECRET_KEY?: string;        // Secret key for running migrations (deployment only)
     ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
     [key: string]: any;
