@@ -204,8 +204,23 @@ pnpm run deploy
 ### 4. Seed Default Roles/Permissions
 
 ```bash
+# First time seed (one-time only)
 curl -X POST https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/seed
 ```
+
+### 5. Run Migrations
+
+Migrations update role definitions and fix issues without re-seeding everything.
+
+```bash
+# Check migration status
+curl https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/migrations/status
+
+# Run pending migrations
+curl -X POST https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/migrate
+```
+
+**Important:** After deploying code changes that include new migrations, always run migrations in production!
 
 ### 5. Run Migration (Optional)
 

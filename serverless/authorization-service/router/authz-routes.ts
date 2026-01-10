@@ -11,6 +11,9 @@ import { handleAssignRoles, handleGrantPermissions, handleSetQuotas, handleReset
 import { handleListRoles, handleGetRole, handleSaveRole, handleListPermissions } from '../handlers/definitions.js';
 import { handleGetAuditLog } from '../handlers/audit.js';
 import { handleSeedDefaults } from '../handlers/seed.js';
+import { MigrationRunner } from '../../shared/migration-runner.js';
+import { migrations } from '../migrations/index.js';
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 
 export interface RouteResult {
     response: Response;
@@ -28,6 +31,59 @@ export async function handleAuthzRoutes(
     // This is async and non-blocking - seed happens in background
     if (request.method === 'POST' && path === '/authz/seed') {
         return { response: await handleSeedDefaults(request, env) };
+    }
+
+    // Migration management
+    if (request.method === 'POST' && path === '/authz/migrate') {
+        try {
+            const runner = new MigrationRunner(env.AUTHORIZATION_KV, 'authz');
+            const result = await runner.runPending(migrations);
+            return {
+                response: new Response(JSON.stringify({
+                    success: true,
+                    message: `Ran ${result.ran.length} migration(s), skipped ${result.skipped.length}`,
+                    ran: result.ran,
+                    skipped: result.skipped,
+                }), {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    },
+                }),
+            };
+        } catch (error) {
+            return {
+                response: new Response(JSON.stringify({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Migration failed',
+                }), {
+                    status: 500,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    },
+                }),
+            };
+        }
+    }
+
+    if (request.method === 'GET' && path === '/authz/migrations/status') {
+        const runner = new MigrationRunner(env.AUTHORIZATION_KV, 'authz');
+        const status = await runner.getStatus(migrations);
+        return {
+            response: new Response(JSON.stringify({
+                migrations: status,
+                pending: status.filter(m => !m.run).length,
+                completed: status.filter(m => m.run).length,
+            }), {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                },
+            }),
+        };
     }
 
     // Read-only endpoints (any authenticated service can call these)

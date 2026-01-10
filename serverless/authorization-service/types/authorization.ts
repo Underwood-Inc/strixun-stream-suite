@@ -5,6 +5,8 @@
  * Service-agnostic: works for ANY resource type, not just mods.
  */
 
+import type { KVNamespace } from '@cloudflare/workers-types';
+
 /**
  * Customer authorization data
  * Stored in KV: `authz_{customerId}`
@@ -229,8 +231,15 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     {
         name: 'customer',
         displayName: 'Customer',
-        description: 'Basic customer access',
-        permissions: [],
+        description: 'Basic customer access with mod upload capabilities',
+        permissions: [
+            'upload:mod',
+            'edit:mod-own',
+            'delete:mod-own',
+        ],
+        defaultQuotas: {
+            'upload:mod': { limit: 10, period: 'day' },
+        },
         priority: 10,
     },
     {

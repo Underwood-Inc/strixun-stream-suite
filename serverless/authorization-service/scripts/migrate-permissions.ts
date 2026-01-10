@@ -51,7 +51,7 @@ async function migrateCustomer(
     };
     
     // Apply default quotas from roles
-    if (roles.includes('uploader')) {
+    if (roles.includes('customer') || roles.includes('uploader')) {
         authz.quotas['upload:mod'] = {
             limit: 10,
             period: 'day',
@@ -82,7 +82,7 @@ async function migrateCustomer(
         'moderator': ['approve:mod', 'edit:mod-any'],
         'uploader': ['upload:mod', 'edit:mod-own', 'delete:mod-own'],
         'premium': ['upload:mod', 'edit:mod-own', 'delete:mod-own', 'api:unlimited'],
-        'customer': [],
+        'customer': ['upload:mod', 'edit:mod-own', 'delete:mod-own'],
         'banned': [],
     };
     

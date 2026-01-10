@@ -24,10 +24,14 @@ export async function handleSeedDefaults(
     env: Env
 ): Promise<Response> {
     try {
-        // Check if already seeded
-        if (await isSeeded(env)) {
+        // Parse query params to check for force flag
+        const url = new URL(request.url);
+        const force = url.searchParams.get('force') === 'true';
+        
+        // Check if already seeded (skip if force=true)
+        if (!force && await isSeeded(env)) {
             return new Response(JSON.stringify({
-                message: 'Default roles and permissions already seeded',
+                message: 'Default roles and permissions already seeded. Use ?force=true to re-seed.',
                 seeded: false,
             }), {
                 status: 200,
@@ -55,11 +59,13 @@ export async function handleSeedDefaults(
         // Mark as seeded
         await markSeeded(env);
         
-        console.log('[Seed] Default roles and permissions seeded successfully');
+        const action = force ? 're-seeded' : 'seeded';
+        console.log(`[Seed] Default roles and permissions ${action} successfully`);
         
         return new Response(JSON.stringify({
-            message: 'Default roles and permissions seeded successfully',
+            message: `Default roles and permissions ${action} successfully`,
             seeded: true,
+            forced: force,
             rolesCount: DEFAULT_ROLES.length,
             permissionsCount: DEFAULT_PERMISSIONS.length,
         }), {
