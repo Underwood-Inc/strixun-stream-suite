@@ -17,7 +17,7 @@ const workers = [
   { name: 'game-api', path: 'game-api' },
   { name: 'chat-signaling', path: 'chat-signaling' },
   { name: 'url-shortener', path: 'url-shortener' },
-  { name: 'authorization-service', path: 'authorization-service' },
+  { name: 'access-service', path: 'access-service' },
 ];
 
 const dryRun = process.argv.includes('--dry-run');

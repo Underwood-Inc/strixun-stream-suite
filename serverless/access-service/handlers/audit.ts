@@ -5,11 +5,11 @@
  */
 
 import type { Env } from '../types/authorization.js';
-import { getAuditLogs } from '../utils/authz-kv.js';
+import { getAuditLogs } from '../utils/access-kv.js';
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 
 /**
- * GET /authz/:customerId/audit-log
+ * GET /access/:customerId/audit-log
  * Get audit log for a customer
  */
 export async function handleGetAuditLog(

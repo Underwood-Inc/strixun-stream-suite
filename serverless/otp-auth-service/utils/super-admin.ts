@@ -8,11 +8,11 @@
  */
 
 import { getCorsHeaders } from './cors.js';
-import { createAuthzClient } from '../../shared/authz-client.js';
+import { createAccessClient } from '../../shared/access-client.js';
 
 interface Env {
     SUPER_ADMIN_API_KEY?: string;
-    AUTHORIZATION_SERVICE_URL?: string;
+    ACCESS_SERVICE_URL?: string;
     SERVICE_API_KEY?: string;
     OTP_AUTH_KV?: KVNamespace;
     [key: string]: any;
@@ -33,8 +33,8 @@ export async function isSuperAdmin(customerId: string, env: Env): Promise<boolea
     }
 
     try {
-        const authz = createAuthzClient(env);
-        const isSuperAdmin = await authz.isSuperAdmin(customerId);
+        const access = createAccessClient(env);
+        const isSuperAdmin = await access.isSuperAdmin(customerId);
         
         console.log('[SuperAdmin] Checking super admin status:', {
             customerId,

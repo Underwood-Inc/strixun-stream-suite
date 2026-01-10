@@ -17,7 +17,7 @@ import type {
  * KV key prefixes
  */
 const KEYS = {
-    AUTHZ: 'authz_',
+    ACCESS: 'access_',
     ROLE: 'role_',
     PERMISSION: 'permission_',
     AUDIT: 'audit_',
@@ -27,35 +27,35 @@ const KEYS = {
 /**
  * Get customer authorization from KV
  */
-export async function getCustomerAuthz(
+export async function getCustomerAccess(
     customerId: string,
     env: Env
 ): Promise<CustomerAuthorization | null> {
-    const key = `${KEYS.AUTHZ}${customerId}`;
-    const data = await env.AUTHORIZATION_KV.get(key, { type: 'json' });
+    const key = `${KEYS.ACCESS}${customerId}`;
+    const data = await env.ACCESS_KV.get(key, { type: 'json' });
     return data as CustomerAuthorization | null;
 }
 
 /**
  * Save customer authorization to KV
  */
-export async function saveCustomerAuthz(
-    authz: CustomerAuthorization,
+export async function saveCustomerAccess(
+    access: CustomerAuthorization,
     env: Env
 ): Promise<void> {
-    const key = `${KEYS.AUTHZ}${authz.customerId}`;
-    await env.AUTHORIZATION_KV.put(key, JSON.stringify(authz));
+    const key = `${KEYS.ACCESS}${access.customerId}`;
+    await env.ACCESS_KV.put(key, JSON.stringify(access));
 }
 
 /**
  * Delete customer authorization from KV
  */
-export async function deleteCustomerAuthz(
+export async function deleteCustomerAccess(
     customerId: string,
     env: Env
 ): Promise<void> {
-    const key = `${KEYS.AUTHZ}${customerId}`;
-    await env.AUTHORIZATION_KV.delete(key);
+    const key = `${KEYS.ACCESS}${customerId}`;
+    await env.ACCESS_KV.delete(key);
 }
 
 /**
@@ -66,7 +66,7 @@ export async function getRoleDefinition(
     env: Env
 ): Promise<RoleDefinition | null> {
     const key = `${KEYS.ROLE}${roleName}`;
-    const data = await env.AUTHORIZATION_KV.get(key, { type: 'json' });
+    const data = await env.ACCESS_KV.get(key, { type: 'json' });
     return data as RoleDefinition | null;
 }
 
@@ -78,7 +78,7 @@ export async function saveRoleDefinition(
     env: Env
 ): Promise<void> {
     const key = `${KEYS.ROLE}${role.name}`;
-    await env.AUTHORIZATION_KV.put(key, JSON.stringify(role));
+    await env.ACCESS_KV.put(key, JSON.stringify(role));
 }
 
 /**
@@ -89,7 +89,7 @@ export async function deleteRoleDefinition(
     env: Env
 ): Promise<void> {
     const key = `${KEYS.ROLE}${roleName}`;
-    await env.AUTHORIZATION_KV.delete(key);
+    await env.ACCESS_KV.delete(key);
 }
 
 /**
@@ -100,13 +100,13 @@ export async function listRoleDefinitions(env: Env): Promise<RoleDefinition[]> {
     let cursor: string | undefined;
     
     do {
-        const result = await env.AUTHORIZATION_KV.list({
+        const result = await env.ACCESS_KV.list({
             prefix: KEYS.ROLE,
             cursor,
         });
         
         for (const key of result.keys) {
-            const roleData = await env.AUTHORIZATION_KV.get(key.name, { type: 'json' });
+            const roleData = await env.ACCESS_KV.get(key.name, { type: 'json' });
             if (roleData) {
                 roles.push(roleData as RoleDefinition);
             }
@@ -127,7 +127,7 @@ export async function getPermissionDefinition(
     env: Env
 ): Promise<PermissionDefinition | null> {
     const key = `${KEYS.PERMISSION}${permissionName}`;
-    const data = await env.AUTHORIZATION_KV.get(key, { type: 'json' });
+    const data = await env.ACCESS_KV.get(key, { type: 'json' });
     return data as PermissionDefinition | null;
 }
 
@@ -139,7 +139,7 @@ export async function savePermissionDefinition(
     env: Env
 ): Promise<void> {
     const key = `${KEYS.PERMISSION}${permission.name}`;
-    await env.AUTHORIZATION_KV.put(key, JSON.stringify(permission));
+    await env.ACCESS_KV.put(key, JSON.stringify(permission));
 }
 
 /**
@@ -150,13 +150,13 @@ export async function listPermissionDefinitions(env: Env): Promise<PermissionDef
     let cursor: string | undefined;
     
     do {
-        const result = await env.AUTHORIZATION_KV.list({
+        const result = await env.ACCESS_KV.list({
             prefix: KEYS.PERMISSION,
             cursor,
         });
         
         for (const key of result.keys) {
-            const permData = await env.AUTHORIZATION_KV.get(key.name, { type: 'json' });
+            const permData = await env.ACCESS_KV.get(key.name, { type: 'json' });
             if (permData) {
                 permissions.push(permData as PermissionDefinition);
             }
@@ -182,7 +182,7 @@ export async function addAuditLog(
 ): Promise<void> {
     const timestamp = Date.now();
     const key = `${KEYS.AUDIT}${customerId}_${timestamp}`;
-    await env.AUTHORIZATION_KV.put(key, JSON.stringify(entry), {
+    await env.ACCESS_KV.put(key, JSON.stringify(entry), {
         expirationTtl: 31536000, // 1 year
     });
 }
@@ -200,7 +200,7 @@ export async function getAuditLogs(
     let cursor: string | undefined;
     
     do {
-        const result = await env.AUTHORIZATION_KV.list({
+        const result = await env.ACCESS_KV.list({
             prefix,
             cursor,
         });
@@ -208,7 +208,7 @@ export async function getAuditLogs(
         for (const key of result.keys) {
             if (logs.length >= limit) break;
             
-            const logData = await env.AUTHORIZATION_KV.get(key.name, { type: 'json' });
+            const logData = await env.ACCESS_KV.get(key.name, { type: 'json' });
             if (logData) {
                 logs.push(logData as AuditLogEntry);
             }
@@ -228,7 +228,7 @@ export async function getAuditLogs(
  * Check if default roles/permissions have been seeded
  */
 export async function isSeeded(env: Env): Promise<boolean> {
-    const value = await env.AUTHORIZATION_KV.get(KEYS.SEEDED);
+    const value = await env.ACCESS_KV.get(KEYS.SEEDED);
     return value === 'true';
 }
 
@@ -236,5 +236,5 @@ export async function isSeeded(env: Env): Promise<boolean> {
  * Mark as seeded
  */
 export async function markSeeded(env: Env): Promise<void> {
-    await env.AUTHORIZATION_KV.put(KEYS.SEEDED, 'true');
+    await env.ACCESS_KV.put(KEYS.SEEDED, 'true');
 }

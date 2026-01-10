@@ -132,8 +132,8 @@ export async function createAuthToken(
     // This is called on every login to auto-provision new customers with default roles
     // Idempotent - safe to call multiple times (skips if already provisioned)
     try {
-        const { ensureCustomerAuthorization } = await import('../../../shared/authz-migration-helpers.js');
-        await ensureCustomerAuthorization(customerId, emailLower, env);
+        const { ensureCustomerAccess } = await import('../../../shared/access-migration-helpers.js');
+        await ensureCustomerAccess(customerId, emailLower, env);
     } catch (error) {
         console.error('[JWT] Failed to provision customer authorization:', error);
         // Don't throw - authorization provisioning failure shouldn't break login

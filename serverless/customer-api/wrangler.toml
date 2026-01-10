@@ -49,9 +49,9 @@ binding = "CUSTOMER_KV"
 id = "86ef5ab4419b40eab3fe65b75f052789"
 
 # Default routes (production)
-routes = [
-  { pattern = "customer-api.idling.app/*", zone_name = "idling.app" }
-]
+[[routes]]
+pattern = "customer-api.idling.app/*"
+zone_name = "idling.app"
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard ΓåÆ Workers & Pages ΓåÆ strixun-customer-api

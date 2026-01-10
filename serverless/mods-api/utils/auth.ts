@@ -33,22 +33,15 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
 }
 
 /**
+ * @deprecated This function is deprecated. Use Access Service (hasUploadPermission from utils/admin.ts) instead.
  * Check if email is in allowed list
  * @param email - Email address to check
  * @param env - Worker environment
- * @returns True if email is allowed (or no whitelist configured)
+ * @returns Always returns false (deprecated - use Access Service instead)
  */
 export function isEmailAllowed(email: string | undefined, env: Env): boolean {
-    if (!email) return false;
-    
-    // If no whitelist is configured, allow all authenticated customers
-    if (!env.ALLOWED_EMAILS) {
-        return true;
-    }
-    
-    // Parse comma-separated list of allowed emails
-    const allowedEmails = env.ALLOWED_EMAILS.split(',').map(e => e.trim().toLowerCase());
-    return allowedEmails.includes(email.toLowerCase());
+    console.warn('[Auth] isEmailAllowed is DEPRECATED - use Access Service (hasUploadPermission) instead');
+    return false;
 }
 
 /**
@@ -158,7 +151,8 @@ export interface AuthResult {
  */
 interface Env {
     JWT_SECRET?: string;
-    ALLOWED_EMAILS?: string; // Comma-separated list of allowed email addresses
+    // DEPRECATED: ALLOWED_EMAILS - Use Access Service instead (hasUploadPermission from utils/admin.ts)
+    // ALLOWED_EMAILS?: string;
     AUTH_API_URL?: string; // URL of the auth service (for fetching email if missing from JWT)
     [key: string]: any;
 }

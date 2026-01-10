@@ -7,11 +7,11 @@
  * @module admin
  */
 
-import { createAuthzClient } from '../../shared/authz-client.js';
+import { createAccessClient } from '../../shared/access-client.js';
 
 interface Env {
     MODS_KV: KVNamespace;
-    AUTHORIZATION_SERVICE_URL?: string;
+    ACCESS_SERVICE_URL?: string;
     SERVICE_API_KEY?: string;
     [key: string]: any;
 }
@@ -26,8 +26,8 @@ interface Env {
  */
 export async function isSuperAdmin(customerId: string, env: Env): Promise<boolean> {
     try {
-        const authz = createAuthzClient(env);
-        return await authz.isSuperAdmin(customerId);
+        const access = createAccessClient(env);
+        return await access.isSuperAdmin(customerId);
     } catch (error) {
         console.error('[Admin] Failed to check super admin status:', error);
         return false; // Fail closed
@@ -44,8 +44,8 @@ export async function isSuperAdmin(customerId: string, env: Env): Promise<boolea
  */
 export async function isAdmin(customerId: string, env: Env): Promise<boolean> {
     try {
-        const authz = createAuthzClient(env);
-        return await authz.isAdmin(customerId);
+        const access = createAccessClient(env);
+        return await access.isAdmin(customerId);
     } catch (error) {
         console.error('[Admin] Failed to check admin status:', error);
         return false; // Fail closed
@@ -69,8 +69,8 @@ export async function hasUploadPermission(customerId: string, env: Env): Promise
     }
 
     try {
-        const authz = createAuthzClient(env);
-        const hasPermission = await authz.checkPermission(customerId, 'upload:mod');
+        const access = createAccessClient(env);
+        const hasPermission = await access.checkPermission(customerId, 'upload:mod');
         
         console.log('[Admin] Upload permission check:', { customerId, hasPermission });
         return hasPermission;
@@ -105,8 +105,8 @@ export async function canManageMod(
 
     // Check if user has admin permissions (can manage any mod)
     try {
-        const authz = createAuthzClient(env);
-        const hasAdminPerm = await authz.checkPermission(customerId, 'edit:mod-any');
+        const access = createAccessClient(env);
+        const hasAdminPerm = await access.checkPermission(customerId, 'edit:mod-any');
         return hasAdminPerm;
     } catch (error) {
         console.error('[Admin] Failed to check manage permission:', error);
@@ -124,8 +124,8 @@ export async function canManageMod(
  */
 export async function canDeleteAnyMod(customerId: string, env: Env): Promise<boolean> {
     try {
-        const authz = createAuthzClient(env);
-        return await authz.checkPermission(customerId, 'delete:mod-any');
+        const access = createAccessClient(env);
+        return await access.checkPermission(customerId, 'delete:mod-any');
     } catch (error) {
         console.error('[Admin] Failed to check delete permission:', error);
         return false; // Fail closed
@@ -142,8 +142,8 @@ export async function canDeleteAnyMod(customerId: string, env: Env): Promise<boo
  */
 export async function canReviewMods(customerId: string, env: Env): Promise<boolean> {
     try {
-        const authz = createAuthzClient(env);
-        return await authz.checkPermission(customerId, 'review:mod');
+        const access = createAccessClient(env);
+        return await access.checkPermission(customerId, 'review:mod');
     } catch (error) {
         console.error('[Admin] Failed to check review permission:', error);
         return false; // Fail closed
@@ -160,8 +160,8 @@ export async function canReviewMods(customerId: string, env: Env): Promise<boole
  */
 export async function hasAdminDashboardAccess(customerId: string, env: Env): Promise<boolean> {
     try {
-        const authz = createAuthzClient(env);
-        return await authz.checkPermission(customerId, 'admin:dashboard');
+        const access = createAccessClient(env);
+        return await access.checkPermission(customerId, 'admin:dashboard');
     } catch (error) {
         console.error('[Admin] Failed to check dashboard access:', error);
         return false; // Fail closed
@@ -178,8 +178,8 @@ export async function hasAdminDashboardAccess(customerId: string, env: Env): Pro
  */
 export async function getCustomerPermissionInfo(customerId: string, env: Env) {
     try {
-        const authz = createAuthzClient(env);
-        const authorization = await authz.getCustomerAuthorization(customerId);
+        const access = createAccessClient(env);
+        const authorization = await access.getCustomerAuthorization(customerId);
         
         if (!authorization) {
             return {
@@ -199,7 +199,7 @@ export async function getCustomerPermissionInfo(customerId: string, env: Env) {
             roles: authorization.roles,
             permissions: authorization.permissions,
             quotas: authorization.quotas,
-            permissionSource: 'authorization-service',
+            permissionSource: 'access-service',
         };
     } catch (error) {
         console.error('[Admin] Failed to get customer permission info:', error);

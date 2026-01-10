@@ -6,7 +6,7 @@
  */
 
 import type { Env, CustomerAuthorization, QuotaInfo } from '../types/authorization.js';
-import { getCustomerAuthz, saveCustomerAuthz, listRoleDefinitions, addAuditLog } from '../utils/authz-kv.js';
+import { getCustomerAccess, saveCustomerAccess, listRoleDefinitions, addAuditLog } from '../utils/access-kv.js';
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 
 /**
@@ -34,7 +34,7 @@ function calculateResetAt(period: 'day' | 'month' | 'year'): string {
 }
 
 /**
- * PUT /authz/:customerId/roles
+ * PUT /access/:customerId/roles
  * Assign roles to a customer
  */
 export async function handleAssignRoles(
@@ -60,10 +60,10 @@ export async function handleAssignRoles(
         }
         
         // Get or create authorization data
-        let authz = await getCustomerAuthz(customerId, env);
+        let access = await getCustomerAccess(customerId, env);
         
-        if (!authz) {
-            authz = {
+        if (!access) {
+            access = {
                 customerId,
                 roles: [],
                 permissions: [],
@@ -77,11 +77,11 @@ export async function handleAssignRoles(
         }
         
         // Update roles
-        const oldRoles = [...authz.roles];
-        authz.roles = body.roles;
-        authz.metadata.updatedAt = new Date().toISOString();
+        const oldRoles = [...access.roles];
+        access.roles = body.roles;
+        access.metadata.updatedAt = new Date().toISOString();
         if (body.reason) {
-            authz.metadata.reason = body.reason;
+            access.metadata.reason = body.reason;
         }
         
         // Apply default quotas from roles
@@ -92,8 +92,8 @@ export async function handleAssignRoles(
             const role = roleMap.get(roleName);
             if (role && role.defaultQuotas) {
                 for (const [resource, quotaConfig] of Object.entries(role.defaultQuotas)) {
-                    if (!authz.quotas[resource]) {
-                        authz.quotas[resource] = {
+                    if (!access.quotas[resource]) {
+                        access.quotas[resource] = {
                             limit: quotaConfig.limit,
                             period: quotaConfig.period,
                             current: 0,
@@ -112,10 +112,10 @@ export async function handleAssignRoles(
                 role.permissions.forEach(p => resolvedPermissions.add(p));
             }
         }
-        authz.permissions = Array.from(resolvedPermissions);
+        access.permissions = Array.from(resolvedPermissions);
         
         // Save
-        await saveCustomerAuthz(authz, env);
+        await saveCustomerAccess(access, env);
         
         // Audit log
         await addAuditLog(customerId, {
@@ -126,7 +126,7 @@ export async function handleAssignRoles(
             reason: body.reason,
         }, env);
         
-        return new Response(JSON.stringify(authz), {
+        return new Response(JSON.stringify(access), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -150,7 +150,7 @@ export async function handleAssignRoles(
 }
 
 /**
- * PUT /authz/:customerId/permissions
+ * PUT /access/:customerId/permissions
  * Grant specific permissions to a customer
  */
 export async function handleGrantPermissions(
@@ -175,10 +175,10 @@ export async function handleGrantPermissions(
             });
         }
         
-        let authz = await getCustomerAuthz(customerId, env);
+        let access = await getCustomerAccess(customerId, env);
         
-        if (!authz) {
-            authz = {
+        if (!access) {
+            access = {
                 customerId,
                 roles: [],
                 permissions: [],
@@ -191,14 +191,14 @@ export async function handleGrantPermissions(
             };
         }
         
-        const oldPermissions = [...authz.permissions];
-        authz.permissions = body.permissions;
-        authz.metadata.updatedAt = new Date().toISOString();
+        const oldPermissions = [...access.permissions];
+        access.permissions = body.permissions;
+        access.metadata.updatedAt = new Date().toISOString();
         if (body.reason) {
-            authz.metadata.reason = body.reason;
+            access.metadata.reason = body.reason;
         }
         
-        await saveCustomerAuthz(authz, env);
+        await saveCustomerAccess(access, env);
         
         await addAuditLog(customerId, {
             timestamp: new Date().toISOString(),
@@ -208,7 +208,7 @@ export async function handleGrantPermissions(
             reason: body.reason,
         }, env);
         
-        return new Response(JSON.stringify(authz), {
+        return new Response(JSON.stringify(access), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -232,7 +232,7 @@ export async function handleGrantPermissions(
 }
 
 /**
- * PUT /authz/:customerId/quotas
+ * PUT /access/:customerId/quotas
  * Set quotas for a customer
  */
 export async function handleSetQuotas(
@@ -260,10 +260,10 @@ export async function handleSetQuotas(
             });
         }
         
-        let authz = await getCustomerAuthz(customerId, env);
+        let access = await getCustomerAccess(customerId, env);
         
-        if (!authz) {
-            authz = {
+        if (!access) {
+            access = {
                 customerId,
                 roles: [],
                 permissions: [],
@@ -278,20 +278,20 @@ export async function handleSetQuotas(
         
         // Update quotas
         for (const [resource, quotaConfig] of Object.entries(body.quotas)) {
-            authz.quotas[resource] = {
+            access.quotas[resource] = {
                 limit: quotaConfig.limit,
                 period: quotaConfig.period,
-                current: authz.quotas[resource]?.current || 0,
+                current: access.quotas[resource]?.current || 0,
                 resetAt: calculateResetAt(quotaConfig.period),
             };
         }
         
-        authz.metadata.updatedAt = new Date().toISOString();
+        access.metadata.updatedAt = new Date().toISOString();
         if (body.reason) {
-            authz.metadata.reason = body.reason;
+            access.metadata.reason = body.reason;
         }
         
-        await saveCustomerAuthz(authz, env);
+        await saveCustomerAccess(access, env);
         
         await addAuditLog(customerId, {
             timestamp: new Date().toISOString(),
@@ -301,7 +301,7 @@ export async function handleSetQuotas(
             reason: body.reason,
         }, env);
         
-        return new Response(JSON.stringify(authz), {
+        return new Response(JSON.stringify(access), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -325,7 +325,7 @@ export async function handleSetQuotas(
 }
 
 /**
- * POST /authz/:customerId/quotas/reset
+ * POST /access/:customerId/quotas/reset
  * Reset quota counters for a customer
  */
 export async function handleResetQuotas(
@@ -336,13 +336,13 @@ export async function handleResetQuotas(
     try {
         const body = await request.json() as { resources?: string[]; reason?: string };
         
-        const authz = await getCustomerAuthz(customerId, env);
+        const access = await getCustomerAccess(customerId, env);
         
-        if (!authz) {
+        if (!access) {
             return new Response(JSON.stringify({
                 error: 'Not Found',
                 message: `Authorization data not found for customer: ${customerId}`,
-                code: 'AUTHZ_NOT_FOUND',
+                code: 'ACCESS_NOT_FOUND',
             }), {
                 status: 404,
                 headers: {
@@ -352,18 +352,18 @@ export async function handleResetQuotas(
             });
         }
         
-        const resourcesToReset = body.resources || Object.keys(authz.quotas);
+        const resourcesToReset = body.resources || Object.keys(access.quotas);
         
         for (const resource of resourcesToReset) {
-            if (authz.quotas[resource]) {
-                authz.quotas[resource].current = 0;
-                authz.quotas[resource].resetAt = calculateResetAt(authz.quotas[resource].period);
+            if (access.quotas[resource]) {
+                access.quotas[resource].current = 0;
+                access.quotas[resource].resetAt = calculateResetAt(access.quotas[resource].period);
             }
         }
         
-        authz.metadata.updatedAt = new Date().toISOString();
+        access.metadata.updatedAt = new Date().toISOString();
         
-        await saveCustomerAuthz(authz, env);
+        await saveCustomerAccess(access, env);
         
         await addAuditLog(customerId, {
             timestamp: new Date().toISOString(),
@@ -373,7 +373,7 @@ export async function handleResetQuotas(
             reason: body.reason,
         }, env);
         
-        return new Response(JSON.stringify(authz), {
+        return new Response(JSON.stringify(access), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -397,7 +397,7 @@ export async function handleResetQuotas(
 }
 
 /**
- * POST /authz/:customerId/quotas/increment
+ * POST /access/:customerId/quotas/increment
  * Increment quota usage (called by services after consuming resource)
  */
 export async function handleIncrementQuota(
@@ -422,13 +422,13 @@ export async function handleIncrementQuota(
             });
         }
         
-        const authz = await getCustomerAuthz(customerId, env);
+        const access = await getCustomerAccess(customerId, env);
         
-        if (!authz) {
+        if (!access) {
             return new Response(JSON.stringify({
                 error: 'Not Found',
                 message: `Authorization data not found for customer: ${customerId}`,
-                code: 'AUTHZ_NOT_FOUND',
+                code: 'ACCESS_NOT_FOUND',
             }), {
                 status: 404,
                 headers: {
@@ -440,15 +440,15 @@ export async function handleIncrementQuota(
         
         const amount = body.amount || 1;
         
-        if (authz.quotas[body.resource]) {
-            authz.quotas[body.resource].current += amount;
-            authz.metadata.updatedAt = new Date().toISOString();
-            await saveCustomerAuthz(authz, env);
+        if (access.quotas[body.resource]) {
+            access.quotas[body.resource].current += amount;
+            access.metadata.updatedAt = new Date().toISOString();
+            await saveCustomerAccess(access, env);
         }
         
         return new Response(JSON.stringify({
             success: true,
-            quota: authz.quotas[body.resource] || null,
+            quota: access.quotas[body.resource] || null,
         }), {
             status: 200,
             headers: {

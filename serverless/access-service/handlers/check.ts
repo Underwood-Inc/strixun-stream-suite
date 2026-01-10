@@ -6,7 +6,7 @@
  */
 
 import type { Env, CheckPermissionRequest, CheckQuotaRequest } from '../types/authorization.js';
-import { getCustomerAuthz, listRoleDefinitions } from '../utils/authz-kv.js';
+import { getCustomerAccess, listRoleDefinitions } from '../utils/access-kv.js';
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 
 /**
@@ -18,24 +18,24 @@ async function hasPermission(
     permission: string,
     env: Env
 ): Promise<{ allowed: boolean; reason?: string }> {
-    const authz = await getCustomerAuthz(customerId, env);
+    const access = await getCustomerAccess(customerId, env);
     
-    if (!authz) {
+    if (!access) {
         return { allowed: false, reason: 'No authorization data found' };
     }
     
     // Check for banned role (highest priority)
-    if (authz.roles.includes('banned')) {
+    if (access.roles.includes('banned')) {
         return { allowed: false, reason: 'User is banned' };
     }
     
     // Check explicit permissions first
-    if (authz.permissions.includes(permission)) {
+    if (access.permissions.includes(permission)) {
         return { allowed: true };
     }
     
     // Check wildcard permission (super-admin)
-    if (authz.permissions.includes('*')) {
+    if (access.permissions.includes('*')) {
         return { allowed: true };
     }
     
@@ -43,7 +43,7 @@ async function hasPermission(
     const roleDefinitions = await listRoleDefinitions(env);
     const roleMap = new Map(roleDefinitions.map(r => [r.name, r]));
     
-    for (const roleName of authz.roles) {
+    for (const roleName of access.roles) {
         const role = roleMap.get(roleName);
         if (!role) continue;
         
@@ -62,7 +62,7 @@ async function hasPermission(
 }
 
 /**
- * POST /authz/check-permission
+ * POST /access/check-permission
  * Check if customer has specific permission
  */
 export async function handleCheckPermission(
@@ -112,7 +112,7 @@ export async function handleCheckPermission(
 }
 
 /**
- * POST /authz/check-quota
+ * POST /access/check-quota
  * Check if customer has quota available for a resource
  */
 export async function handleCheckQuota(
@@ -136,9 +136,9 @@ export async function handleCheckQuota(
             });
         }
         
-        const authz = await getCustomerAuthz(body.customerId, env);
+        const access = await getCustomerAccess(body.customerId, env);
         
-        if (!authz) {
+        if (!access) {
             return new Response(JSON.stringify({
                 allowed: false,
                 quota: {
@@ -156,7 +156,7 @@ export async function handleCheckQuota(
             });
         }
         
-        const quota = authz.quotas[body.resource];
+        const quota = access.quotas[body.resource];
         
         if (!quota) {
             // No quota defined = unlimited

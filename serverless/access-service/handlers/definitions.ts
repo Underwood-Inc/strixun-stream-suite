@@ -11,11 +11,11 @@ import {
     getRoleDefinition, 
     saveRoleDefinition,
     listPermissionDefinitions,
-} from '../utils/authz-kv.js';
+} from '../utils/access-kv.js';
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 
 /**
- * GET /authz/roles
+ * GET /access/roles
  * List all role definitions
  */
 export async function handleListRoles(
@@ -49,7 +49,7 @@ export async function handleListRoles(
 }
 
 /**
- * GET /authz/roles/:roleName
+ * GET /access/roles/:roleName
  * Get specific role definition
  */
 export async function handleGetRole(
@@ -98,7 +98,7 @@ export async function handleGetRole(
 }
 
 /**
- * PUT /authz/roles/:roleName
+ * PUT /access/roles/:roleName
  * Create or update role definition
  */
 export async function handleSaveRole(
@@ -158,7 +158,7 @@ export async function handleSaveRole(
 }
 
 /**
- * GET /authz/permissions
+ * GET /access/permissions
  * List all permission definitions
  */
 export async function handleListPermissions(

@@ -7,10 +7,10 @@
  * @module upload-quota
  */
 
-import { createAuthzClient } from '../../shared/authz-client.js';
+import { createAccessClient } from '../../shared/access-client.js';
 
 interface Env {
-    AUTHORIZATION_SERVICE_URL?: string;
+    ACCESS_SERVICE_URL?: string;
     SERVICE_API_KEY?: string;
     [key: string]: any;
 }
@@ -36,8 +36,8 @@ export async function checkUploadQuota(
     env: Env
 ): Promise<QuotaCheckResult> {
     try {
-        const authz = createAuthzClient(env);
-        const quotaResult = await authz.checkQuota(customerId, 'upload:mod', 'mod');
+        const access = createAccessClient(env);
+        const quotaResult = await access.checkQuota(customerId, 'upload:mod', 'mod');
         
         return {
             allowed: quotaResult.allowed,
@@ -68,8 +68,8 @@ export async function checkUploadQuota(
  */
 export async function trackUpload(customerId: string, env: Env): Promise<void> {
     try {
-        const authz = createAuthzClient(env);
-        await authz.incrementQuota(customerId, 'upload:mod', 'mod');
+        const access = createAccessClient(env);
+        await access.incrementQuota(customerId, 'upload:mod', 'mod');
         console.log('[UploadQuota] Tracked upload for customer:', customerId);
     } catch (error) {
         console.error('[UploadQuota] Failed to track upload:', error);

@@ -10,8 +10,8 @@
  * 3. SERVICE_API_KEY must be set for service-to-service auth
  * 
  * Usage:
- *   pnpm tsx serverless/authorization-service/scripts/migrate-existing-customers.ts
- *   pnpm tsx serverless/authorization-service/scripts/migrate-existing-customers.ts --dry-run
+ *   pnpm tsx serverless/access-service/scripts/migrate-existing-customers.ts
+ *   pnpm tsx serverless/access-service/scripts/migrate-existing-customers.ts --dry-run
  * 
  * What it does:
  * 1. Reads all customers from OTP Auth Service (via wrangler kv:key list)
@@ -25,7 +25,7 @@
 interface MigrationOptions {
   dryRun?: boolean;
   verbose?: boolean;
-  authzUrl?: string;
+  accessUrl?: string;
   serviceApiKey?: string;
 }
 
@@ -33,7 +33,7 @@ async function migrateExistingCustomers(options: MigrationOptions = {}) {
   const { 
     dryRun = false, 
     verbose = false,
-    authzUrl = process.env.AUTHORIZATION_SERVICE_URL || 'https://strixun-authorization-service.strixuns-script-suite.workers.dev',
+    accessUrl = process.env.ACCESS_SERVICE_URL || 'https://access.idling.app',
     serviceApiKey = process.env.SERVICE_API_KEY || ''
   } = options;
 
@@ -43,7 +43,7 @@ async function migrateExistingCustomers(options: MigrationOptions = {}) {
   console.log('');
   console.log(dryRun ? '🔍 DRY RUN MODE - No changes will be made' : '⚠  LIVE MODE - Changes will be applied');
   console.log('');
-  console.log(`Authorization Service: ${authzUrl}`);
+  console.log(`Access Service: ${accessUrl}`);
   console.log('');
 
   if (!serviceApiKey) {
@@ -84,7 +84,7 @@ async function migrateExistingCustomers(options: MigrationOptions = {}) {
   console.log('    "Content-Type" = "application/json"');
   console.log('  }');
   console.log('  $body = @{ roles = @("customer") } | ConvertTo-Json');
-  console.log(`  Invoke-RestMethod -Method Put -Uri "${authzUrl}/authz/<customerId>/roles" -Headers $headers -Body $body`);
+  console.log(`  Invoke-RestMethod -Method Put -Uri "${accessUrl}/access/<customerId>/roles" -Headers $headers -Body $body`);
   console.log('');
   console.log('ALTERNATIVE: Use the auto-provisioning system');
   console.log('  The OTP Auth Service now auto-provisions customers on login.');
@@ -123,7 +123,7 @@ async function migrateExistingCustomers(options: MigrationOptions = {}) {
     console.log('  }');
     console.log('  $body = @{ roles = @("super-admin") } | ConvertTo-Json');
     console.log(`  Write-Host "Provisioning $($admin.email) as super-admin..."`);
-    console.log(`  Invoke-RestMethod -Method Put -Uri "${authzUrl}/authz/$($admin.customerId)/roles" -Headers $headers -Body $body`);
+    console.log(`  Invoke-RestMethod -Method Put -Uri "${accessUrl}/access/$($admin.customerId)/roles" -Headers $headers -Body $body`);
     console.log('}');
     console.log('');
   }

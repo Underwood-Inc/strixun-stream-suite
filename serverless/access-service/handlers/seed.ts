@@ -11,11 +11,11 @@ import {
     markSeeded, 
     saveRoleDefinition, 
     savePermissionDefinition 
-} from '../utils/authz-kv.js';
+} from '../utils/access-kv.js';
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 
 /**
- * POST /authz/seed
+ * POST /access/seed
  * Seed default roles and permissions
  * Only runs if not already seeded
  */

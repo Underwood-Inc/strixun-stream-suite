@@ -6,26 +6,26 @@
  */
 
 import type { Env } from '../types/authorization.js';
-import { getCustomerAuthz } from '../utils/authz-kv.js';
+import { getCustomerAccess } from '../utils/access-kv.js';
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 
 /**
- * GET /authz/:customerId
+ * GET /access/:customerId
  * Get full authorization data for a customer
  */
-export async function handleGetAuthz(
+export async function handleGetAccess(
     request: Request,
     env: Env,
     customerId: string
 ): Promise<Response> {
     try {
-        const authz = await getCustomerAuthz(customerId, env);
+        const access = await getCustomerAccess(customerId, env);
         
-        if (!authz) {
+        if (!access) {
             return new Response(JSON.stringify({
                 error: 'Not Found',
                 message: `Authorization data not found for customer: ${customerId}`,
-                code: 'AUTHZ_NOT_FOUND',
+                code: 'ACCESS_NOT_FOUND',
             }), {
                 status: 404,
                 headers: {
@@ -35,7 +35,7 @@ export async function handleGetAuthz(
             });
         }
         
-        return new Response(JSON.stringify(authz), {
+        return new Response(JSON.stringify(access), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -43,7 +43,7 @@ export async function handleGetAuthz(
             },
         });
     } catch (error) {
-        console.error('[GetAuthz] Error:', error);
+        console.error('[GetAccess] Error:', error);
         return new Response(JSON.stringify({
             error: 'Internal Server Error',
             message: error instanceof Error ? error.message : 'Unknown error',
@@ -59,7 +59,7 @@ export async function handleGetAuthz(
 }
 
 /**
- * GET /authz/:customerId/permissions
+ * GET /access/:customerId/permissions
  * Get just permissions for a customer
  */
 export async function handleGetPermissions(
@@ -68,9 +68,9 @@ export async function handleGetPermissions(
     customerId: string
 ): Promise<Response> {
     try {
-        const authz = await getCustomerAuthz(customerId, env);
+        const access = await getCustomerAccess(customerId, env);
         
-        if (!authz) {
+        if (!access) {
             return new Response(JSON.stringify({
                 permissions: [],
             }), {
@@ -83,7 +83,7 @@ export async function handleGetPermissions(
         }
         
         return new Response(JSON.stringify({
-            permissions: authz.permissions,
+            permissions: access.permissions,
         }), {
             status: 200,
             headers: {
@@ -108,7 +108,7 @@ export async function handleGetPermissions(
 }
 
 /**
- * GET /authz/:customerId/roles
+ * GET /access/:customerId/roles
  * Get just roles for a customer
  */
 export async function handleGetRoles(
@@ -117,9 +117,9 @@ export async function handleGetRoles(
     customerId: string
 ): Promise<Response> {
     try {
-        const authz = await getCustomerAuthz(customerId, env);
+        const access = await getCustomerAccess(customerId, env);
         
-        if (!authz) {
+        if (!access) {
             return new Response(JSON.stringify({
                 roles: [],
             }), {
@@ -132,7 +132,7 @@ export async function handleGetRoles(
         }
         
         return new Response(JSON.stringify({
-            roles: authz.roles,
+            roles: access.roles,
         }), {
             status: 200,
             headers: {
@@ -157,7 +157,7 @@ export async function handleGetRoles(
 }
 
 /**
- * GET /authz/:customerId/quotas
+ * GET /access/:customerId/quotas
  * Get just quotas for a customer
  */
 export async function handleGetQuotas(
@@ -166,9 +166,9 @@ export async function handleGetQuotas(
     customerId: string
 ): Promise<Response> {
     try {
-        const authz = await getCustomerAuthz(customerId, env);
+        const access = await getCustomerAccess(customerId, env);
         
-        if (!authz) {
+        if (!access) {
             return new Response(JSON.stringify({
                 quotas: {},
             }), {
@@ -181,7 +181,7 @@ export async function handleGetQuotas(
         }
         
         return new Response(JSON.stringify({
-            quotas: authz.quotas,
+            quotas: access.quotas,
         }), {
             status: 200,
             headers: {

@@ -6,7 +6,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { hasAdminDashboardAccess } from '../../utils/admin.js';
-import { createAuthzClient } from '../../../shared/authz-client.js';
+import { createAccessClient } from '../../../shared/access-client.js';
 
 /**
  * Approve customer for uploads
@@ -20,12 +20,12 @@ export async function handleApproveCustomer(
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
-        // Add 'uploader' role to customer via Authorization Service
-        const authz = createAuthzClient(env);
-        const authorization = await authz.getCustomerAuthorization(customerId);
+        // Add 'uploader' role to customer via Access Service
+        const access = createAccessClient(env);
+        const authorization = await access.getCustomerAuthorization(customerId);
         
         if (!authorization) {
-            throw new Error('Customer not found in Authorization Service');
+            throw new Error('Customer not found in Access Service');
         }
         
         // Add 'uploader' role if not already present
@@ -33,9 +33,9 @@ export async function handleApproveCustomer(
             ? authorization.roles
             : [...authorization.roles, 'uploader'];
         
-        // Note: This would require an admin endpoint in Authorization Service
+        // Note: This would require an admin endpoint in Access Service
         // For now, this is a placeholder - the actual implementation would call:
-        // await fetch(`${AUTHZ_URL}/authz/${customerId}/roles`, { method: 'PUT', body: JSON.stringify({ roles: updatedRoles }) })
+        // await fetch(`${ACCESS_URL}/access/${customerId}/roles`, { method: 'PUT', body: JSON.stringify({ roles: updatedRoles }) })
         
         console.log('[Admin] Customer approval via Authorization Service:', { customerId, roles: updatedRoles });
 

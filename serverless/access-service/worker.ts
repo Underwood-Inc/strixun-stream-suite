@@ -1,18 +1,18 @@
 /**
- * Authorization Service Worker
+ * Access Service Worker
  * 
- * Handles authorization decisions, roles, permissions, and quotas.
+ * Handles access control decisions, roles, permissions, and quotas.
  * Service-agnostic: works for ANY service (mods, customer, analytics, etc.)
  * 
  * Key Principles:
- * - No authentication (relies on JWT from OTP auth service)
+ * - Service-to-service authentication (X-Service-Key required for all endpoints)
  * - No customer data storage (only references customerId)
- * - No business logic (only authorization decisions)
+ * - No business logic (only access control decisions)
  * - Service-agnostic (resource types are generic strings)
  */
 
 import type { Env } from './types/authorization.js';
-import { handleAuthzRoutes } from './router/authz-routes.js';
+import { handleAccessRoutes } from './router/access-routes.js';
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 
 /**
@@ -27,7 +27,7 @@ export default {
         if (path === '/health' || path === '/health/ready') {
             return new Response(JSON.stringify({
                 status: 'healthy',
-                service: 'authorization-service',
+                service: 'access-service',
                 timestamp: new Date().toISOString(),
                 environment: env.ENVIRONMENT || 'production',
             }), {
@@ -47,9 +47,9 @@ export default {
             });
         }
 
-        // Route to authorization handlers
+        // Route to access control handlers
         try {
-            const result = await handleAuthzRoutes(request, path, env);
+            const result = await handleAccessRoutes(request, path, env);
             
             if (result) {
                 return result.response;
@@ -68,7 +68,7 @@ export default {
                 },
             });
         } catch (error) {
-            console.error('[AuthzWorker] Unhandled error:', error);
+            console.error('[AccessWorker] Unhandled error:', error);
             
             return new Response(JSON.stringify({
                 error: 'Internal Server Error',

@@ -1,14 +1,14 @@
 /**
- * Authorization Service Migration Helpers
+ * Access Service Migration Helpers
  * 
- * Helper functions for migrating existing customers to the Authorization Service.
+ * Helper functions for migrating existing customers to the Access Service.
  * These should be called during the migration period to ensure all customers
  * are properly provisioned with roles and permissions.
  * 
- * @module authz-migration-helpers
+ * @module access-migration-helpers
  */
 
-import { createAuthzClient } from './authz-client.js';
+import { createAccessClient } from './access-client.js';
 
 /**
  * Ensure a customer has authorization provisioned
@@ -20,32 +20,32 @@ import { createAuthzClient } from './authz-client.js';
  * @param email - Customer email (for super admin check)
  * @param env - Environment variables
  */
-export async function ensureCustomerAuthorization(
+export async function ensureCustomerAccess(
   customerId: string,
   email: string | undefined,
   env: any
 ): Promise<void> {
   try {
-    const authz = createAuthzClient(env);
+    const access = createAccessClient(env);
     
     // Check if customer already exists
-    const existing = await authz.getCustomerAuthorization(customerId);
+    const existing = await access.getCustomerAuthorization(customerId);
     if (existing) {
-      console.log('[AuthzMigration] Customer already provisioned:', customerId);
+      console.log('[AccessMigration] Customer already provisioned:', customerId);
       return;
     }
 
     // Determine default roles based on email (for super admins)
     const defaultRoles = await determineDefaultRoles(email, env);
     
-    console.log('[AuthzMigration] Provisioning customer:', customerId, 'with roles:', defaultRoles);
+    console.log('[AccessMigration] Provisioning customer:', customerId, 'with roles:', defaultRoles);
     
     // Provision customer with default roles
-    await authz.ensureCustomer(customerId, defaultRoles);
+    await access.ensureCustomer(customerId, defaultRoles);
     
-    console.log('[AuthzMigration] ✓ Customer provisioned in Authorization Service:', customerId);
+    console.log('[AccessMigration] ✓ Customer provisioned in Access Service:', customerId);
   } catch (error) {
-    console.error('[AuthzMigration] Failed to provision customer:', customerId, error);
+    console.error('[AccessMigration] Failed to provision customer:', customerId, error);
     // Don't throw - provisioning failure shouldn't break login
   }
 }
@@ -75,7 +75,7 @@ async function determineDefaultRoles(email: string | undefined, env: any): Promi
       .map((e: string) => e.trim().toLowerCase());
     
     if (superAdminEmails.includes(normalizedEmail)) {
-      console.log('[AuthzMigration] Detected super admin:', email);
+      console.log('[AccessMigration] Detected super admin:', email);
       return ['super-admin']; // Super admins get all permissions
     }
   }
@@ -85,7 +85,7 @@ async function determineDefaultRoles(email: string | undefined, env: any): Promi
 }
 
 /**
- * Bulk migrate existing customers to Authorization Service
+ * Bulk migrate existing customers to Access Service
  * 
  * This should be run once during deployment to migrate all existing customers.
  * 
@@ -103,7 +103,7 @@ export async function bulkMigrateCustomers(
   skipped: number;
   failed: number;
 }> {
-  console.log('[AuthzMigration] Starting bulk migration for', customerIds.length, 'customers');
+  console.log('[AccessMigration] Starting bulk migration for', customerIds.length, 'customers');
   
   let provisioned = 0;
   let skipped = 0;
@@ -115,22 +115,22 @@ export async function bulkMigrateCustomers(
       const email = await getCustomerEmail(customerId);
       
       // Check if already provisioned
-      const authz = createAuthzClient(env);
-      const existing = await authz.getCustomerAuthorization(customerId);
+      const access = createAccessClient(env);
+      const existing = await access.getCustomerAuthorization(customerId);
       
       if (existing) {
-        console.log('[AuthzMigration] Customer already provisioned, skipping:', customerId);
+        console.log('[AccessMigration] Customer already provisioned, skipping:', customerId);
         skipped++;
         continue;
       }
 
       // Provision with default roles
-      await ensureCustomerAuthorization(customerId, email, env);
+      await ensureCustomerAccess(customerId, email, env);
       provisioned++;
       
-      console.log(`[AuthzMigration] Progress: ${provisioned + skipped + failed}/${customerIds.length}`);
+      console.log(`[AccessMigration] Progress: ${provisioned + skipped + failed}/${customerIds.length}`);
     } catch (error) {
-      console.error('[AuthzMigration] Failed to migrate customer:', customerId, error);
+      console.error('[AccessMigration] Failed to migrate customer:', customerId, error);
       failed++;
     }
   }
@@ -142,7 +142,7 @@ export async function bulkMigrateCustomers(
     failed,
   };
 
-  console.log('[AuthzMigration] Migration complete:', summary);
+  console.log('[AccessMigration] Migration complete:', summary);
   
   return summary;
 }

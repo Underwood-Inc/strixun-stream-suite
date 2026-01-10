@@ -9,7 +9,7 @@ import type { KVNamespace } from '@cloudflare/workers-types';
 
 /**
  * Customer authorization data
- * Stored in KV: `authz_{customerId}`
+ * Stored in KV: `access_{customerId}`
  */
 export interface CustomerAuthorization {
     customerId: string;         // Only reference, not full customer data
@@ -109,8 +109,8 @@ export type AuditAction =
     | 'permission_revoked'
     | 'quota_updated'
     | 'quota_reset'
-    | 'authz_created'
-    | 'authz_deleted';
+    | 'access_created'
+    | 'access_deleted';
 
 /**
  * Check permission request
@@ -155,10 +155,12 @@ export interface CheckQuotaResponse {
  * Environment interface
  */
 export interface Env {
-    AUTHORIZATION_KV: KVNamespace;
+    ACCESS_KV: KVNamespace;
     JWT_SECRET?: string;
+    SERVICE_API_KEY?: string;             // REQUIRED: Service-to-service authentication key
     SUPER_ADMIN_API_KEY?: string;
     MIGRATION_SECRET_KEY?: string;        // Secret key for running migrations (deployment only)
+    ACCESS_SERVICE_URL?: string;          // URL of this service (for local dev)
     ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
     [key: string]: any;

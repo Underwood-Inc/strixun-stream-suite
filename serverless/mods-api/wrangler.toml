@@ -13,17 +13,17 @@ compatibility_flags = ["nodejs_compat"]
 # DO NOT put actual secrets here - use wrangler CLI:
 #   wrangler secret put JWT_SECRET          # REQUIRED: JWT signing secret (must match OTP auth service)
 #   wrangler secret put MODS_ENCRYPTION_KEY # REQUIRED: Shared encryption key for mod files (minimum 32 characters)
-#   wrangler secret put ALLOWED_EMAILS      # REQUIRED: Comma-separated list of allowed email addresses for upload/management
+#   wrangler secret put SERVICE_API_KEY     # REQUIRED: Service API key for Access Service authentication
 #   wrangler secret put ALLOWED_ORIGINS     # OPTIONAL: Comma-separated CORS origins (recommended for production)
 #   wrangler secret put MODS_PUBLIC_URL     # OPTIONAL: Public URL for R2 bucket (if using custom domain)
 #
 # IMPORTANT: 
 #   - JWT_SECRET must match the OTP auth service secret for authentication to work
-#   - ALLOWED_EMAILS restricts who can upload/manage mods (leave unset to allow all authenticated users)
+#   - Upload permissions are managed via Access Service (access.idling.app) - NOT environment variables
 
 # Development environment (only used with --env development)
 [env.development]
-vars = { ENVIRONMENT = "development", AUTHORIZATION_SERVICE_URL = "http://localhost:8791" }
+vars = { ENVIRONMENT = "development", ACCESS_SERVICE_URL = "http://localhost:8791" }
 
 # Development KV Namespaces (using same namespaces for testing)
 [[env.development.kv_namespaces]]
@@ -43,7 +43,7 @@ bucket_name = "mods-storage"
 # We use default deployment (wrangler deploy) NOT --env production
 [vars]
 ENVIRONMENT = "production"
-AUTHORIZATION_SERVICE_URL = "https://strixun-authorization-service.strixuns-script-suite.workers.dev"
+ACCESS_SERVICE_URL = "https://access.idling.app"
 ROUTES = '[{"pattern":"mods-api.idling.app/mods/*","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/health","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/api/*","zone_name":"idling.app"}]'
 
 # Default KV Namespaces
@@ -61,9 +61,10 @@ binding = "MODS_R2"
 bucket_name = "mods-storage"
 
 # Default routes (production) - this is the ONLY route configuration
-routes = [
-  { pattern = "mods-api.idling.app", zone_name = "idling.app", custom_domain = true },
-]
+[[routes]]
+pattern = "mods-api.idling.app"
+zone_name = "idling.app"
+custom_domain = true
 
 # Note: The remote also has specific routes in vars.routes (dashboard-managed):
 # - mods-api.idling.app/mods/*

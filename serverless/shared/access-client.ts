@@ -1,11 +1,11 @@
 /**
- * Authorization Service SDK
+ * Access Service SDK
  * 
- * Client for service-to-service communication with the Authorization Service.
+ * Client for service-to-service communication with the Access Service.
  * Used by all services (Mods API, OTP Auth, Customer API, etc.) to check permissions,
  * roles, and quotas.
  * 
- * @module authz-client
+ * @module access-client
  */
 
 export interface CustomerAuthorization {
@@ -59,27 +59,27 @@ export interface EnsureCustomerRequest {
   roles?: string[];
 }
 
-export interface AuthzClientOptions {
-  authzUrl?: string;
+export interface AccessClientOptions {
+  accessUrl?: string;
   serviceApiKey?: string;
   timeout?: number;
 }
 
 /**
- * Authorization Service Client
+ * Access Service Client
  * 
- * Provides methods for checking permissions, quotas, and managing customer authorization.
+ * Provides methods for checking permissions, quotas, and managing customer access control.
  */
-export class AuthzClient {
-  private readonly authzUrl: string;
+export class AccessClient {
+  private readonly accessUrl: string;
   private readonly serviceApiKey: string;
   private readonly timeout: number;
 
-  constructor(env: any, options: AuthzClientOptions = {}) {
+  constructor(env: any, options: AccessClientOptions = {}) {
     // Default to production URL, override with env var or option
-    this.authzUrl = options.authzUrl 
-      || env.AUTHORIZATION_SERVICE_URL 
-      || 'https://strixun-authorization-service.strixuns-script-suite.workers.dev';
+    this.accessUrl = options.accessUrl 
+      || env.ACCESS_SERVICE_URL 
+      || 'https://access.idling.app';
     
     this.serviceApiKey = options.serviceApiKey || env.SERVICE_API_KEY || '';
     this.timeout = options.timeout || 5000; // 5 second timeout
@@ -89,7 +89,7 @@ export class AuthzClient {
    * Check if a customer has a specific permission
    * 
    * @example
-   * const allowed = await authz.checkPermission('cust_123', 'upload:mod');
+   * const allowed = await access.checkPermission('cust_123', 'upload:mod');
    * if (allowed) { /* allow upload *\/ }
    */
   async checkPermission(
@@ -98,20 +98,20 @@ export class AuthzClient {
     resource?: string
   ): Promise<boolean> {
     try {
-      const response = await this.fetch('/authz/check-permission', {
+      const response = await this.fetch('/access/check-permission', {
         method: 'POST',
         body: JSON.stringify({ customerId, permission, resource }),
       });
 
       if (!response.ok) {
-        console.error('[AuthzClient] Permission check failed:', response.status);
+        console.error('[AccessClient] Permission check failed:', response.status);
         return false; // Fail closed - deny access on error
       }
 
       const data: CheckPermissionResponse = await response.json();
       return data.allowed;
     } catch (error) {
-      console.error('[AuthzClient] Permission check error:', error);
+      console.error('[AccessClient] Permission check error:', error);
       return false; // Fail closed
     }
   }
@@ -120,7 +120,7 @@ export class AuthzClient {
    * Check if a customer has quota remaining for an action
    * 
    * @example
-   * const quota = await authz.checkQuota('cust_123', 'upload:mod', 'mod');
+   * const quota = await access.checkQuota('cust_123', 'upload:mod', 'mod');
    * if (!quota.allowed) {
    *   throw new Error(`Quota exceeded. Resets at ${quota.resetAt}`);
    * }
@@ -131,13 +131,13 @@ export class AuthzClient {
     resource: string
   ): Promise<CheckQuotaResponse> {
     try {
-      const response = await this.fetch('/authz/check-quota', {
+      const response = await this.fetch('/access/check-quota', {
         method: 'POST',
         body: JSON.stringify({ customerId, action, resource }),
       });
 
       if (!response.ok) {
-        console.error('[AuthzClient] Quota check failed:', response.status);
+        console.error('[AccessClient] Quota check failed:', response.status);
         // On error, deny (quota exceeded)
         return {
           allowed: false,
@@ -150,7 +150,7 @@ export class AuthzClient {
 
       return await response.json();
     } catch (error) {
-      console.error('[AuthzClient] Quota check error:', error);
+      console.error('[AccessClient] Quota check error:', error);
       return {
         allowed: false,
         remaining: 0,
@@ -166,7 +166,7 @@ export class AuthzClient {
    * Should be called after a successful action (e.g., after uploading a mod)
    * 
    * @example
-   * await authz.incrementQuota('cust_123', 'upload:mod', 'mod');
+   * await access.incrementQuota('cust_123', 'upload:mod', 'mod');
    */
   async incrementQuota(
     customerId: string,
@@ -174,17 +174,17 @@ export class AuthzClient {
     resource: string
   ): Promise<void> {
     try {
-      const response = await this.fetch(`/authz/${customerId}/quotas/increment`, {
+      const response = await this.fetch(`/access/${customerId}/quotas/increment`, {
         method: 'POST',
         body: JSON.stringify({ action, resource }),
       });
 
       if (!response.ok) {
-        console.error('[AuthzClient] Quota increment failed:', response.status);
+        console.error('[AccessClient] Quota increment failed:', response.status);
         // Don't throw - tracking shouldn't break the flow
       }
     } catch (error) {
-      console.error('[AuthzClient] Quota increment error:', error);
+      console.error('[AccessClient] Quota increment error:', error);
       // Don't throw - tracking shouldn't break the flow
     }
   }
@@ -194,59 +194,59 @@ export class AuthzClient {
    * Returns roles, permissions, and quotas
    * 
    * @example
-   * const authz = await authzClient.getCustomerAuthorization('cust_123');
-   * console.log('Roles:', authz.roles);
-   * console.log('Permissions:', authz.permissions);
+   * const access = await accessClient.getCustomerAuthorization('cust_123');
+   * console.log('Roles:', access.roles);
+   * console.log('Permissions:', access.permissions);
    */
   async getCustomerAuthorization(customerId: string): Promise<CustomerAuthorization | null> {
     try {
-      const response = await this.fetch(`/authz/${customerId}`);
+      const response = await this.fetch(`/access/${customerId}`);
 
       if (!response.ok) {
         if (response.status === 404) {
-          return null; // Customer not found in authz system
+          return null; // Customer not found in access system
         }
-        console.error('[AuthzClient] Get authorization failed:', response.status);
+        console.error('[AccessClient] Get authorization failed:', response.status);
         return null;
       }
 
       return await response.json();
     } catch (error) {
-      console.error('[AuthzClient] Get authorization error:', error);
+      console.error('[AccessClient] Get authorization error:', error);
       return null;
     }
   }
 
   /**
-   * Ensure a customer exists in the Authorization Service with default roles
+   * Ensure a customer exists in the Access Service with default roles
    * Called during login to auto-provision customers
    * 
    * @example
    * // On successful OTP login:
-   * await authz.ensureCustomer('cust_123', ['customer']);
+   * await access.ensureCustomer('cust_123', ['customer']);
    */
   async ensureCustomer(customerId: string, defaultRoles: string[] = ['customer']): Promise<void> {
     try {
       // Check if customer already exists
       const existing = await this.getCustomerAuthorization(customerId);
       if (existing) {
-        console.log('[AuthzClient] Customer already exists in authz:', customerId);
+        console.log('[AccessClient] Customer already exists in access service:', customerId);
         return; // Already provisioned
       }
 
       // Create customer with default roles
-      const response = await this.fetch(`/authz/${customerId}/roles`, {
+      const response = await this.fetch(`/access/${customerId}/roles`, {
         method: 'PUT',
         body: JSON.stringify({ roles: defaultRoles }),
       });
 
       if (!response.ok) {
-        console.error('[AuthzClient] Ensure customer failed:', response.status);
+        console.error('[AccessClient] Ensure customer failed:', response.status);
       } else {
-        console.log('[AuthzClient] Customer provisioned in authz:', customerId, 'roles:', defaultRoles);
+        console.log('[AccessClient] Customer provisioned in access service:', customerId, 'roles:', defaultRoles);
       }
     } catch (error) {
-      console.error('[AuthzClient] Ensure customer error:', error);
+      console.error('[AccessClient] Ensure customer error:', error);
       // Don't throw - provisioning failure shouldn't break login
     }
   }
@@ -255,14 +255,14 @@ export class AuthzClient {
    * Check if a customer has a specific role
    * 
    * @example
-   * const isAdmin = await authz.hasRole('cust_123', 'admin');
+   * const isAdmin = await access.hasRole('cust_123', 'admin');
    */
   async hasRole(customerId: string, role: string): Promise<boolean> {
     try {
-      const authz = await this.getCustomerAuthorization(customerId);
-      return authz?.roles.includes(role) || false;
+      const access = await this.getCustomerAuthorization(customerId);
+      return access?.roles.includes(role) || false;
     } catch (error) {
-      console.error('[AuthzClient] Has role error:', error);
+      console.error('[AccessClient] Has role error:', error);
       return false;
     }
   }
@@ -279,15 +279,15 @@ export class AuthzClient {
    * Check if a customer is an admin (includes super-admins)
    */
   async isAdmin(customerId: string): Promise<boolean> {
-    const authz = await this.getCustomerAuthorization(customerId);
-    return authz?.roles.some(r => r === 'admin' || r === 'super-admin') || false;
+    const access = await this.getCustomerAuthorization(customerId);
+    return access?.roles.some(r => r === 'admin' || r === 'super-admin') || false;
   }
 
   /**
    * Internal fetch wrapper with headers and timeout
    */
   private async fetch(path: string, options: RequestInit = {}): Promise<Response> {
-    const url = `${this.authzUrl}${path}`;
+    const url = `${this.accessUrl}${path}`;
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
@@ -311,12 +311,17 @@ export class AuthzClient {
 }
 
 /**
- * Create an Authorization Service client
+ * Create an Access Service client
  * 
  * @example
- * const authz = createAuthzClient(env);
- * const allowed = await authz.checkPermission('cust_123', 'upload:mod');
+ * const access = createAccessClient(env);
+ * const allowed = await access.checkPermission('cust_123', 'upload:mod');
  */
-export function createAuthzClient(env: any, options: AuthzClientOptions = {}): AuthzClient {
-  return new AuthzClient(env, options);
+export function createAccessClient(env: any, options: AccessClientOptions = {}): AccessClient {
+  return new AccessClient(env, options);
 }
+
+// Backwards compatibility alias
+export const createAuthzClient = createAccessClient;
+export type AuthzClient = AccessClient;
+export type AuthzClientOptions = AccessClientOptions;

@@ -67,26 +67,26 @@ The Authorization Service handles:
 
 ```bash
 # Get full authorization data
-GET /authz/:customerId
+GET /access/:customerId
 
 # Get permissions only
-GET /authz/:customerId/permissions
+GET /access/:customerId/permissions
 
 # Get roles only
-GET /authz/:customerId/roles
+GET /access/:customerId/roles
 
 # Get quotas only
-GET /authz/:customerId/quotas
+GET /access/:customerId/quotas
 
 # Check permission
-POST /authz/check-permission
+POST /access/check-permission
 {
   "customerId": "cust_123",
   "permission": "upload:mod"
 }
 
 # Check quota
-POST /authz/check-quota
+POST /access/check-quota
 {
   "customerId": "cust_123",
   "resource": "upload:mod",
@@ -98,21 +98,21 @@ POST /authz/check-quota
 
 ```bash
 # Assign roles
-PUT /authz/:customerId/roles
+PUT /access/:customerId/roles
 {
   "roles": ["uploader", "premium"],
   "reason": "Customer upgraded"
 }
 
 # Grant permissions
-PUT /authz/:customerId/permissions
+PUT /access/:customerId/permissions
 {
   "permissions": ["upload:mod", "edit:mod-own"],
   "reason": "Manual permission grant"
 }
 
 # Set quotas
-PUT /authz/:customerId/quotas
+PUT /access/:customerId/quotas
 {
   "quotas": {
     "upload:mod": { "limit": 50, "period": "day" }
@@ -121,14 +121,14 @@ PUT /authz/:customerId/quotas
 }
 
 # Reset quotas
-POST /authz/:customerId/quotas/reset
+POST /access/:customerId/quotas/reset
 {
   "resources": ["upload:mod"],
   "reason": "Monthly reset"
 }
 
 # Increment quota (called by services)
-POST /authz/:customerId/quotas/increment
+POST /access/:customerId/quotas/increment
 {
   "resource": "upload:mod",
   "amount": 1
@@ -139,13 +139,13 @@ POST /authz/:customerId/quotas/increment
 
 ```bash
 # List all roles
-GET /authz/roles
+GET /access/roles
 
 # Get specific role
-GET /authz/roles/:roleName
+GET /access/roles/:roleName
 
 # Create/update role
-PUT /authz/roles/:roleName
+PUT /access/roles/:roleName
 {
   "displayName": "Uploader",
   "description": "Can upload mods",
@@ -157,14 +157,14 @@ PUT /authz/roles/:roleName
 }
 
 # List all permissions
-GET /authz/permissions
+GET /access/permissions
 ```
 
 ### Audit Log
 
 ```bash
 # Get audit log
-GET /authz/:customerId/audit-log?limit=100
+GET /access/:customerId/audit-log?limit=100
 ```
 
 ## Setup
@@ -205,7 +205,7 @@ pnpm run deploy
 
 ```bash
 # First time seed (one-time only)
-curl -X POST https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/seed
+curl -X POST https://access.idling.app/access/seed
 ```
 
 ### 5. Run Migrations
@@ -214,10 +214,10 @@ Migrations update role definitions and fix issues without re-seeding everything.
 
 ```bash
 # Check migration status
-curl https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/migrations/status
+curl https://access.idling.app/access/migrations/status
 
 # Run pending migrations
-curl -X POST https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/migrate
+curl -X POST https://access.idling.app/access/migrate
 ```
 
 **Important:** After deploying code changes that include new migrations, always run migrations in production!
@@ -227,7 +227,7 @@ curl -X POST https://strixun-authorization-service.strixuns-script-suite.workers
 If migrating from existing permission system:
 
 ```bash
-curl -X POST https://strixun-authorization-service.strixuns-script-suite.workers.dev/migrate
+curl -X POST https://access.idling.app/migrate
 ```
 
 ## Default Roles
@@ -267,7 +267,7 @@ curl -X POST https://strixun-authorization-service.strixuns-script-suite.workers
 
 ```typescript
 // In mods service handler
-const response = await fetch('https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/check-permission', {
+const response = await fetch('https://access.idling.app/access/check-permission', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -286,7 +286,7 @@ if (!result.allowed) {
 
 ```typescript
 // Before processing upload
-const response = await fetch('https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/check-quota', {
+const response = await fetch('https://access.idling.app/access/check-quota', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -304,7 +304,7 @@ if (!result.allowed) {
 // ... process upload ...
 
 // After successful upload, increment quota
-await fetch(`https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/cust_123/quotas/increment`, {
+await fetch(`https://access.idling.app/access/cust_123/quotas/increment`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -318,7 +318,7 @@ await fetch(`https://strixun-authorization-service.strixuns-script-suite.workers
 
 ```typescript
 // Admin assigns uploader role to customer
-await fetch(`https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/cust_123/roles`, {
+await fetch(`https://access.idling.app/access/cust_123/roles`, {
   method: 'PUT',
   headers: { 
     'Content-Type': 'application/json',

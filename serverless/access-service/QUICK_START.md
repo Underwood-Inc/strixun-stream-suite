@@ -71,10 +71,10 @@ pnpm run deploy:dev
 
 ```bash
 # After deployment, seed defaults (use workers.dev URL)
-curl -X POST https://strixun-authorization-service.workers.dev/authz/seed
+curl -X POST https://access.idling.app/access/seed
 
 # OR for local development
-curl -X POST http://localhost:8791/authz/seed
+curl -X POST http://localhost:8791/access/seed
 ```
 
 **Expected Response:**
@@ -93,13 +93,13 @@ curl -X POST http://localhost:8791/authz/seed
 
 ```bash
 # Health check (PowerShell)
-Invoke-RestMethod -Uri "https://strixun-authorization-service.strixuns-script-suite.workers.dev/health"
+Invoke-RestMethod -Uri "https://access.idling.app/health"
 
 # List roles (PowerShell)
-Invoke-RestMethod -Uri "https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/roles"
+Invoke-RestMethod -Uri "https://access.idling.app/access/roles"
 
 # List permissions (PowerShell)
-Invoke-RestMethod -Uri "https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/permissions"
+Invoke-RestMethod -Uri "https://access.idling.app/access/permissions"
 ```
 
 ---
@@ -130,7 +130,7 @@ wrangler kv namespace create AUTHORIZATION_KV --preview
 - [ ] Run `pnpm install`
 - [ ] Run `pnpm run dev` (starts on port 8791)
 - [ ] Test: `Invoke-RestMethod -Uri "http://localhost:8791/health"`
-- [ ] Seed: `Invoke-RestMethod -Method Post -Uri "http://localhost:8791/authz/seed"`
+- [ ] Seed: `Invoke-RestMethod -Method Post -Uri "http://localhost:8791/access/seed"`
 
 ### Production Deployment:
 - [ ] Navigate to `serverless/authorization-service`
@@ -141,9 +141,9 @@ wrangler kv namespace create AUTHORIZATION_KV --preview
 - [ ] Run `wrangler secret put SUPER_ADMIN_API_KEY`
 - [ ] Run `wrangler secret put ALLOWED_ORIGINS`
 - [ ] Run `pnpm run deploy`
-- [ ] Run `curl -X POST https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/seed`
-- [ ] Run `curl https://strixun-authorization-service.strixuns-script-suite.workers.dev/health` (verify working)
-- [ ] Run `curl https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/roles` (verify seeded)
+- [ ] Run `curl -X POST https://access.idling.app/access/seed`
+- [ ] Run `curl https://access.idling.app/health` (verify working)
+- [ ] Run `curl https://access.idling.app/access/roles` (verify seeded)
 
 ---
 
@@ -157,15 +157,15 @@ pnpm run dev
 
 # In another terminal, test endpoints (PowerShell)
 Invoke-RestMethod -Uri "http://localhost:8791/health"
-Invoke-RestMethod -Uri "http://localhost:8791/authz/roles"
+Invoke-RestMethod -Uri "http://localhost:8791/access/roles"
 
 # Seed defaults locally (PowerShell)
-Invoke-RestMethod -Method Post -Uri "http://localhost:8791/authz/seed"
+Invoke-RestMethod -Method Post -Uri "http://localhost:8791/access/seed"
 ```
 
-**What is "authz"?**
-"authz" = shorthand for "authorization" (like "auth" = "authentication")
-- It's NOT a domain name (you don't need authz.idling.app)
+**What is "access"?**
+"access" = the Access Service handles authorization (roles, permissions, quotas)
+- It's available at access.idling.app
 - It's just the service name / URL path prefix
 
 **Local Dev Ports:**

@@ -16,7 +16,7 @@
  */
 
 import type { Env, CustomerAuthorization } from '../types/authorization.js';
-import { saveCustomerAuthz, addAuditLog } from '../utils/authz-kv.js';
+import { saveCustomerAccess, addAuditLog } from '../utils/access-kv.js';
 
 interface MigrationResult {
     success: boolean;
@@ -37,7 +37,7 @@ async function migrateCustomer(
     source: string,
     env: Env
 ): Promise<void> {
-    const authz: CustomerAuthorization = {
+    const access: CustomerAuthorization = {
         customerId,
         roles,
         permissions: [], // Will be resolved from roles
@@ -52,7 +52,7 @@ async function migrateCustomer(
     
     // Apply default quotas from roles
     if (roles.includes('customer') || roles.includes('uploader')) {
-        authz.quotas['upload:mod'] = {
+        access.quotas['upload:mod'] = {
             limit: 10,
             period: 'day',
             current: 0,
@@ -61,13 +61,13 @@ async function migrateCustomer(
     }
     
     if (roles.includes('premium')) {
-        authz.quotas['upload:mod'] = {
+        access.quotas['upload:mod'] = {
             limit: 50,
             period: 'day',
             current: 0,
             resetAt: new Date(Date.now() + 86400000).toISOString(),
         };
-        authz.quotas['storage:bytes'] = {
+        access.quotas['storage:bytes'] = {
             limit: 53687091200, // 50 GB
             period: 'month',
             current: 0,
@@ -91,13 +91,13 @@ async function migrateCustomer(
         const perms = permissionMap[role] || [];
         perms.forEach(p => allPermissions.add(p));
     }
-    authz.permissions = Array.from(allPermissions);
+    access.permissions = Array.from(allPermissions);
     
-    await saveCustomerAuthz(authz, env);
+    await saveCustomerAccess(access, env);
     
     await addAuditLog(customerId, {
         timestamp: new Date().toISOString(),
-        action: 'authz_created',
+        action: 'access_created',
         details: { roles, source, method: 'migration' },
         performedBy: 'system:migration',
         reason: 'Migrated from existing permission system',

@@ -1,7 +1,7 @@
 {
-  "name": "@strixun/authorization-service",
+  "name": "@strixun/access-service",
   "version": "1.0.0",
-  "description": "Authorization service for Strixun - handles roles, permissions, and quotas",
+  "description": "Access control service for Strixun - handles roles, permissions, and quotas",
   "main": "worker.ts",
   "type": "module",
   "scripts": {
@@ -10,12 +10,15 @@
     "deploy:dev": "wrangler deploy --env development",
     "tail": "wrangler tail",
     "tail:dev": "wrangler tail --env development",
-    "test": "vitest",
+    "test": "vitest run",
     "test:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage",
+    "test:unit": "vitest run --testNamePattern='(Unit|unit)' --exclude='**/*.integration.test.ts'",
+    "test:integration": "vitest run **/*.integration.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
-    "authorization",
+    "access-control",
     "permissions",
     "roles",
     "cloudflare-workers"
@@ -27,6 +30,9 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241218.0",
+    "@strixun/otp-auth-service": "workspace:*",
+    "@vitest/coverage-v8": "^1.0.0",
+    "miniflare": "^3.20231030.4",
     "typescript": "^5.3.3",
     "wrangler": "^3.104.0",
     "vitest": "^1.0.0"

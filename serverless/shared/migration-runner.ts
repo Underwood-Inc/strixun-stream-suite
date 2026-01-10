@@ -24,7 +24,7 @@ export class MigrationRunner {
 
     /**
      * @param kv - KV namespace to use for migration tracking
-     * @param servicePrefix - Unique prefix for this service (e.g., 'authz', 'mods', 'customer')
+     * @param servicePrefix - Unique prefix for this service (e.g., 'access', 'mods', 'customer')
      */
     constructor(kv: KVNamespace, servicePrefix: string) {
         this.kv = kv;
