@@ -551,7 +551,23 @@ export async function getCustomerMods(customerId: string, params: {
  * Check upload permission (authenticated customers)
  */
 export async function checkUploadPermission(): Promise<{ hasPermission: boolean }> {
-    const response = await api.get<{ hasPermission: boolean }>('/mods/permissions/me');
+    const response = await api.get<{ 
+        hasUploadPermission: boolean;
+        isAdmin: boolean;
+        isSuperAdmin: boolean;
+        roles: string[];
+        permissions: string[];
+    }>('/mods/permissions/me');
+    // Backend returns hasUploadPermission, map to hasPermission for backwards compatibility
+    return { hasPermission: response.data.hasUploadPermission };
+}
+
+/**
+ * Get mod upload settings (authenticated customers)
+ * Returns allowed file extensions and upload enabled status
+ */
+export async function getModSettings(): Promise<{ allowedFileExtensions: string[]; uploadsEnabled: boolean }> {
+    const response = await api.get<{ allowedFileExtensions: string[]; uploadsEnabled: boolean }>('/mods/settings');
     return response.data;
 }
 

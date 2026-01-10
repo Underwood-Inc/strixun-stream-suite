@@ -144,6 +144,16 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             };
         }
 
+        // Route: GET /mods/settings or GET /settings - Get mod upload settings (JWT required, encrypted)
+        if (pathSegments.length === 1 && pathSegments[0] === 'settings' && request.method === 'GET') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
+            }
+            const { handleGetSettings } = await import('../handlers/settings/get-settings.js');
+            const response = await handleGetSettings(request, env, auth);
+            return await wrapWithEncryption(response, auth, request, env);
+        }
+
         // Route: GET /mods/:slug/review or GET /:slug/review - Get mod review page (admin/uploader only)
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 2 && pathSegments[1] === 'review' && request.method === 'GET') {

@@ -10,7 +10,7 @@ import type { ModMetadata, ModUpdateRequest, ModCategory, ModVisibility, ModStat
 import { nowISO } from '@strixun/shared-config/date-utils';
 import { FileUploader } from './FileUploader';
 import { GamesPicker } from './GamesPicker';
-import { useAdminSettings } from '../../hooks/useMods';
+import { useModSettings } from '../../hooks/useMods';
 import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixun/api-framework';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getBadgeStyles } from '../../utils/sharedStyles';
@@ -325,7 +325,7 @@ const RecommendationText = styled.p`
 `;
 
 export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoading }: ModManageFormProps) {
-    const { data: settings } = useAdminSettings();
+    const { data: settings } = useModSettings();
     const [title, setTitle] = useState(mod.title);
     const [description, setDescription] = useState(mod.description);
     const [category, setCategory] = useState<ModCategory>(mod.category);

@@ -437,13 +437,27 @@ export function useSubmitModRating() {
 }
 
 /**
- * Get admin settings query
+ * Get mod upload settings (authenticated users)
+ * Returns allowed file extensions and upload enabled status
  */
-export function useAdminSettings() {
+export function useModSettings() {
+    return useQuery({
+        queryKey: ['mod', 'settings'],
+        queryFn: () => api.getModSettings(),
+        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    });
+}
+
+/**
+ * Get admin settings query (super admins only)
+ * Only runs if enabled (e.g., for super admins only)
+ */
+export function useAdminSettings(options?: { enabled?: boolean }) {
     return useQuery({
         queryKey: ['admin', 'settings'],
         queryFn: () => api.getAdminSettings(),
         staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+        enabled: options?.enabled ?? true, // Only run if enabled
     });
 }
 

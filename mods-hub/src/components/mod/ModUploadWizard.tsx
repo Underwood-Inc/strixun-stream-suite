@@ -8,7 +8,7 @@ import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import { ModUploadRequest, ModCategory, ModVisibility, ModVariant, ModStatus } from '../../types/mod';
 import { GamesPicker } from './GamesPicker';
-import { useAdminSettings } from '../../hooks/useMods';
+import { useModSettings } from '../../hooks/useMods';
 import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixun/api-framework';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
@@ -396,7 +396,7 @@ export function ModUploadWizard({
     initialData 
 }: ModUploadWizardProps) {
     const [currentStep, setCurrentStep] = useState(1);
-    const { data: settings } = useAdminSettings();
+    const { data: settings } = useModSettings();
     
     // Form state
     const [file, setFile] = useState<File | null>(null);
