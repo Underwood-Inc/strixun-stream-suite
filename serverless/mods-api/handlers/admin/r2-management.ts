@@ -8,7 +8,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { isSuperAdminEmail } from '../../utils/admin.js';
+import { hasAdminDashboardAccess } from '../../utils/admin.js';
 import { getCustomerR2Key, getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { fetchDisplayNameByCustomerId, fetchDisplayNamesByCustomerIds } from '@strixun/api-framework';
 import { getR2SourceInfo } from '../../utils/r2-source.js';

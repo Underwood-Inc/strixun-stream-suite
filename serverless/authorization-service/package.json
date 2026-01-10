@@ -1,0 +1,34 @@
+{
+  "name": "@strixun/authorization-service",
+  "version": "1.0.0",
+  "description": "Authorization service for Strixun - handles roles, permissions, and quotas",
+  "main": "worker.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8791",
+    "deploy": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --env development",
+    "tail": "wrangler tail",
+    "tail:dev": "wrangler tail --env development",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "authorization",
+    "permissions",
+    "roles",
+    "cloudflare-workers"
+  ],
+  "author": "Strixun",
+  "license": "PROPRIETARY",
+  "dependencies": {
+    "@strixun/api-framework": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241218.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.104.0",
+    "vitest": "^1.0.0"
+  }
+}

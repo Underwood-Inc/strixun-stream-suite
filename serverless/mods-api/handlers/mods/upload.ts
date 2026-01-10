@@ -113,12 +113,10 @@ export async function handleUploadMod(
             });
         }
         
-        // Check upload quota (all authenticated users)
+        // Check upload quota (uses Authorization Service)
         const quotaCheck = await checkUploadQuota(auth.customerId, env);
         if (!quotaCheck.allowed) {
-            const quotaMessage = quotaCheck.reason === 'daily_quota_exceeded'
-                ? `Daily upload limit exceeded. You have uploaded ${quotaCheck.usage.daily} of ${quotaCheck.quota.maxUploadsPerDay} allowed uploads today.`
-                : `Monthly upload limit exceeded. You have uploaded ${quotaCheck.usage.monthly} of ${quotaCheck.quota.maxUploadsPerMonth} allowed uploads this month.`;
+            const quotaMessage = `Upload quota exceeded. Limit: ${quotaCheck.limit}, Remaining: ${quotaCheck.remaining}. Resets at ${new Date(quotaCheck.resetAt).toLocaleString()}.`;
             
             const rfcError = createError(request, 429, 'Upload Quota Exceeded', quotaMessage);
             const corsHeaders = createCORSHeaders(request, {
@@ -128,10 +126,9 @@ export async function handleUploadMod(
                 status: 429,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    'X-Quota-Limit-Daily': quotaCheck.quota.maxUploadsPerDay.toString(),
-                    'X-Quota-Remaining-Daily': Math.max(0, quotaCheck.quota.maxUploadsPerDay - quotaCheck.usage.daily).toString(),
-                    'X-Quota-Limit-Monthly': quotaCheck.quota.maxUploadsPerMonth.toString(),
-                    'X-Quota-Remaining-Monthly': Math.max(0, quotaCheck.quota.maxUploadsPerMonth - quotaCheck.usage.monthly).toString(),
+                    'X-Quota-Limit': quotaCheck.limit.toString(),
+                    'X-Quota-Remaining': quotaCheck.remaining.toString(),
+                    'X-Quota-Reset': quotaCheck.resetAt,
                     ...Object.fromEntries(corsHeaders.entries()),
                 },
             });
@@ -413,7 +410,7 @@ export async function handleUploadMod(
                 encrypted: 'true', // Mark as encrypted
                 encryptionFormat: encryptionFormat, // 'binary-v4' or 'json-v3'
                 originalFileName,
-                originalContentType: 'application/zip', // Original file type
+                originalContentType: file.type || 'application/octet-stream', // Use actual file type from upload
                 sha256: fileHash, // Hash of decrypted file for verification
             }, env, request),
         });

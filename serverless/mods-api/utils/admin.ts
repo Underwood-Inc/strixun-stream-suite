@@ -1,251 +1,254 @@
 /**
  * Admin utilities for mods API
- * Handles super-admin authentication and upload permissions
  * 
- * Three-tier permission system:
- * 1. Super Admins: From SUPER_ADMIN_EMAILS env var (full admin access + upload permission)
- * 2. Approved Uploaders (Env): From APPROVED_UPLOADER_EMAILS env var (upload permission ONLY, NO admin access)
- *    - This is a hardcoded backup list in case the admin dashboard UI is broken
- * 3. Approved Uploaders (KV): Stored in KV, managed via admin dashboard UI (upload permission ONLY, NO admin access)
+ * NEW: Now uses Authorization Service for all permission checks.
+ * All email-based permission checks have been migrated to role-based authorization.
  * 
- * IMPORTANT: Only SUPER_ADMIN_EMAILS grants admin dashboard access.
- * APPROVED_UPLOADER_EMAILS and KV approvals grant upload permission ONLY.
+ * @module admin
  */
 
-/**
- * Get list of super admin emails from environment
- * Uses SUPER_ADMIN_EMAILS environment variable (comma-separated list)
- * 
- * NOTE: This serves as a hardcoded backup list in case the admin dashboard UI
- * is broken or inaccessible. Super admins have full access + automatic upload permission.
- */
-export async function getSuperAdminEmails(env: Env): Promise<string[]> {
-    // Check environment variable (comma-separated list)
-    // This is the primary source and serves as a backup if UI is broken
-    if (env.SUPER_ADMIN_EMAILS) {
-        return env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
-    }
-    
-    // Fallback: Check KV for super admin list (secondary backup)
-    if (env.MODS_KV) {
-        try {
-            const kvEmails = await env.MODS_KV.get('super_admin_emails');
-            if (kvEmails) {
-                return kvEmails.split(',').map(email => email.trim().toLowerCase());
-            }
-        } catch (e) {
-            // If KV read fails, continue
-        }
-    }
-    
-    return [];
+import { createAuthzClient } from '../../shared/authz-client.js';
+
+interface Env {
+    MODS_KV: KVNamespace;
+    AUTHORIZATION_SERVICE_URL?: string;
+    SERVICE_API_KEY?: string;
+    [key: string]: any;
 }
 
 /**
- * Check if an email is a super admin
- */
-export async function isSuperAdminEmail(email: string | undefined, env: Env): Promise<boolean> {
-    if (!email) return false;
-    
-    // Normalize email (trim and lowercase) to match how super admin emails are stored
-    const normalizedEmail = email.trim().toLowerCase();
-    const adminEmails = await getSuperAdminEmails(env);
-    return adminEmails.includes(normalizedEmail);
-}
-
-/**
- * Get list of approved uploader emails from environment
- * Uses APPROVED_UPLOADER_EMAILS environment variable (comma-separated list)
+ * Check if a customer is a super admin
+ * Uses Authorization Service to check for 'super-admin' role
  * 
- * NOTE: This is a hardcoded backup list in case the admin dashboard UI is broken.
- * These users get upload permission ONLY - they do NOT get admin dashboard access.
- * This is separate from SUPER_ADMIN_EMAILS which grants both admin access and upload permission.
+ * @param customerId - Customer ID
+ * @param env - Environment
+ * @returns True if customer has super-admin role
  */
-export async function getApprovedUploaderEmails(env: Env): Promise<string[]> {
-    // Check environment variable (comma-separated list)
-    if (env.APPROVED_UPLOADER_EMAILS) {
-        return env.APPROVED_UPLOADER_EMAILS.split(',').map(email => email.trim().toLowerCase());
+export async function isSuperAdmin(customerId: string, env: Env): Promise<boolean> {
+    try {
+        const authz = createAuthzClient(env);
+        return await authz.isSuperAdmin(customerId);
+    } catch (error) {
+        console.error('[Admin] Failed to check super admin status:', error);
+        return false; // Fail closed
     }
-    
-    return [];
 }
 
 /**
- * Check if an email is an approved uploader (from env var)
- * These users have upload permission ONLY - NO admin dashboard access
+ * Check if a customer is an admin (includes super-admins)
+ * Uses Authorization Service to check for 'admin' or 'super-admin' role
+ * 
+ * @param customerId - Customer ID
+ * @param env - Environment
+ * @returns True if customer has admin or super-admin role
  */
-export async function isApprovedUploaderEmail(email: string | undefined, env: Env): Promise<boolean> {
-    if (!email) return false;
-    
-    const approvedEmails = await getApprovedUploaderEmails(env);
-    return approvedEmails.includes(email.toLowerCase());
+export async function isAdmin(customerId: string, env: Env): Promise<boolean> {
+    try {
+        const authz = createAuthzClient(env);
+        return await authz.isAdmin(customerId);
+    } catch (error) {
+        console.error('[Admin] Failed to check admin status:', error);
+        return false; // Fail closed
+    }
 }
 
 /**
  * Check if customer has upload permission
  * 
- * IMPORTANT: ALL authenticated customers can upload mods
- * This function always returns true if a valid customerId is provided
+ * NEW: Uses Authorization Service to check 'upload:mod' permission
+ * ALL authenticated customers have this permission by default via 'customer' role
+ * 
+ * @param customerId - Customer ID
+ * @param env - Environment
+ * @returns True if customer has upload permission
  */
 export async function hasUploadPermission(customerId: string, env: Env): Promise<boolean> {
-    console.log('[hasUploadPermission] Checking permission for:', { customerId });
-    
-    // ALL authenticated customers have upload permission
-    if (customerId) {
-        console.log('[hasUploadPermission] ✓ Authenticated user - upload allowed');
+    if (!customerId) {
+        console.log('[Admin] No customerId provided - not authenticated');
+        return false;
+    }
+
+    try {
+        const authz = createAuthzClient(env);
+        const hasPermission = await authz.checkPermission(customerId, 'upload:mod');
+        
+        console.log('[Admin] Upload permission check:', { customerId, hasPermission });
+        return hasPermission;
+    } catch (error) {
+        console.error('[Admin] Failed to check upload permission:', error);
+        return false; // Fail closed
+    }
+}
+
+/**
+ * Check if customer has permission to manage (edit/delete) a specific mod
+ * 
+ * Rules:
+ * - Mod author can always manage their own mods
+ * - Super admins can manage any mod
+ * - Admins can manage any mod
+ * 
+ * @param customerId - Customer ID making the request
+ * @param modAuthorId - Author ID of the mod
+ * @param env - Environment
+ * @returns True if customer can manage the mod
+ */
+export async function canManageMod(
+    customerId: string,
+    modAuthorId: string,
+    env: Env
+): Promise<boolean> {
+    // Mod author can always manage their own mods
+    if (customerId === modAuthorId) {
         return true;
     }
-    
-    console.log('[hasUploadPermission] ✗ No customerId - not authenticated');
+
+    // Check if user has admin permissions (can manage any mod)
+    try {
+        const authz = createAuthzClient(env);
+        const hasAdminPerm = await authz.checkPermission(customerId, 'edit:mod-any');
+        return hasAdminPerm;
+    } catch (error) {
+        console.error('[Admin] Failed to check manage permission:', error);
+        return false; // Fail closed
+    }
+}
+
+/**
+ * Check if customer has permission to delete any mod
+ * Only super admins and admins with 'delete:mod-any' permission
+ * 
+ * @param customerId - Customer ID
+ * @param env - Environment
+ * @returns True if customer can delete any mod
+ */
+export async function canDeleteAnyMod(customerId: string, env: Env): Promise<boolean> {
+    try {
+        const authz = createAuthzClient(env);
+        return await authz.checkPermission(customerId, 'delete:mod-any');
+    } catch (error) {
+        console.error('[Admin] Failed to check delete permission:', error);
+        return false; // Fail closed
+    }
+}
+
+/**
+ * Check if customer has permission to review/approve mods
+ * Requires 'review:mod' permission (moderator, admin, super-admin)
+ * 
+ * @param customerId - Customer ID
+ * @param env - Environment
+ * @returns True if customer can review mods
+ */
+export async function canReviewMods(customerId: string, env: Env): Promise<boolean> {
+    try {
+        const authz = createAuthzClient(env);
+        return await authz.checkPermission(customerId, 'review:mod');
+    } catch (error) {
+        console.error('[Admin] Failed to check review permission:', error);
+        return false; // Fail closed
+    }
+}
+
+/**
+ * Check if customer has admin dashboard access
+ * Requires 'admin:dashboard' permission (admin, super-admin)
+ * 
+ * @param customerId - Customer ID
+ * @param env - Environment
+ * @returns True if customer can access admin dashboard
+ */
+export async function hasAdminDashboardAccess(customerId: string, env: Env): Promise<boolean> {
+    try {
+        const authz = createAuthzClient(env);
+        return await authz.checkPermission(customerId, 'admin:dashboard');
+    } catch (error) {
+        console.error('[Admin] Failed to check dashboard access:', error);
+        return false; // Fail closed
+    }
+}
+
+/**
+ * Get comprehensive permission info for a customer
+ * Returns all roles, permissions, and quotas from Authorization Service
+ * 
+ * @param customerId - Customer ID
+ * @param env - Environment
+ * @returns Customer authorization data or null
+ */
+export async function getCustomerPermissionInfo(customerId: string, env: Env) {
+    try {
+        const authz = createAuthzClient(env);
+        const authorization = await authz.getCustomerAuthorization(customerId);
+        
+        if (!authorization) {
+            return {
+                hasUploadPermission: false,
+                isAdmin: false,
+                isSuperAdmin: false,
+                roles: [],
+                permissions: [],
+                permissionSource: 'none',
+            };
+        }
+
+        return {
+            hasUploadPermission: authorization.permissions.includes('upload:mod'),
+            isAdmin: authorization.roles.includes('admin') || authorization.roles.includes('super-admin'),
+            isSuperAdmin: authorization.roles.includes('super-admin'),
+            roles: authorization.roles,
+            permissions: authorization.permissions,
+            quotas: authorization.quotas,
+            permissionSource: 'authorization-service',
+        };
+    } catch (error) {
+        console.error('[Admin] Failed to get customer permission info:', error);
+        return {
+            hasUploadPermission: false,
+            isAdmin: false,
+            isSuperAdmin: false,
+            roles: [],
+            permissions: [],
+            permissionSource: 'error',
+        };
+    }
+}
+
+/**
+ * DEPRECATED: Old email-based functions (kept for reference, not used)
+ * Use the Authorization Service functions above instead
+ */
+
+/**
+ * @deprecated Use isSuperAdmin(customerId, env) instead
+ */
+export async function isSuperAdminEmail(email: string | undefined, env: Env): Promise<boolean> {
+    console.warn('[Admin] DEPRECATED: isSuperAdminEmail() called. Use isSuperAdmin(customerId, env) instead.');
+    // This function is deprecated but kept for backward compatibility during migration
+    // It now returns false - use the Authorization Service instead
     return false;
 }
 
 /**
- * Approve customer for uploads (adds to approved uploaders list)
- * Only super admins can approve customers (via admin dashboard or API)
- * 
- * This grants upload permission to regular customers (not super admins).
- * Super admins don't need approval - they get permission automatically from SUPER_ADMIN_EMAILS.
+ * @deprecated Use Authorization Service for approved uploader checks
  */
-export async function approveCustomerUpload(customerId: string, email: string, env: Env): Promise<void> {
-    if (!env.MODS_KV) {
-        throw new Error('MODS_KV not available');
-    }
-    
-    const approvalKey = `upload_approval_${customerId}`;
-    await env.MODS_KV.put(approvalKey, 'approved', {
-        metadata: {
-            approvedAt: new Date().toISOString(),
-            email: email.toLowerCase(),
-        }
-    });
-    
-    // Also add to approved customers list for easy lookup
-    const approvedListKey = 'approved_uploaders';
-    const existingList = await env.MODS_KV.get(approvedListKey, { type: 'json' }) as string[] | null;
-    const updatedList = [...(existingList || []), customerId].filter((id, index, arr) => arr.indexOf(id) === index);
-    await env.MODS_KV.put(approvedListKey, JSON.stringify(updatedList));
+export async function isApprovedUploaderEmail(email: string | undefined, env: Env): Promise<boolean> {
+    console.warn('[Admin] DEPRECATED: isApprovedUploaderEmail() called. All customers can upload now.');
+    return false;
 }
 
 /**
- * Revoke customer upload permission
- * Only super admins can revoke permissions
+ * @deprecated Use Authorization Service
  */
-export async function revokeCustomerUpload(customerId: string, env: Env): Promise<void> {
-    if (!env.MODS_KV) {
-        throw new Error('MODS_KV not available');
-    }
-    
-    const approvalKey = `upload_approval_${customerId}`;
-    await env.MODS_KV.delete(approvalKey);
-    
-    // Remove from approved customers list
-    const approvedListKey = 'approved_uploaders';
-    const existingList = await env.MODS_KV.get(approvedListKey, { type: 'json' }) as string[] | null;
-    if (existingList) {
-        const updatedList = existingList.filter(id => id !== customerId);
-        await env.MODS_KV.put(approvedListKey, JSON.stringify(updatedList));
-    }
+export async function getSuperAdminEmails(env: Env): Promise<string[]> {
+    console.warn('[Admin] DEPRECATED: getSuperAdminEmails() called. Use Authorization Service instead.');
+    return [];
 }
 
 /**
- * Get list of approved uploaders (from KV only)
- * Note: This doesn't include customers from APPROVED_UPLOADER_EMAILS env var
- * Use getCustomerUploadPermissionInfo() for complete permission checking
+ * @deprecated Use Authorization Service
  */
-export async function getApprovedUploaders(env: Env): Promise<string[]> {
-    if (!env.MODS_KV) {
-        return [];
-    }
-    
-    try {
-        const approvedListKey = 'approved_uploaders';
-        const list = await env.MODS_KV.get(approvedListKey, { type: 'json' }) as string[] | null;
-        return list || [];
-    } catch (e) {
-        return [];
-    }
+export async function getApprovedUploaderEmails(env: Env): Promise<string[]> {
+    console.warn('[Admin] DEPRECATED: getApprovedUploaderEmails() called. Use Authorization Service instead.');
+    return [];
 }
-
-/**
- * Get comprehensive upload permission info for a user
- * Checks all three permission sources and returns detailed info
- * 
- * This is useful for admin dashboard UI to show accurate permission status
- */
-export async function getCustomerUploadPermissionInfo(
-    customerId: string,
-    env: Env
-): Promise<{
-    hasPermission: boolean;
-    isSuperAdmin: boolean;
-    isApprovedUploader: boolean;
-    permissionSource: 'super-admin' | 'env-var' | 'kv' | 'none';
-}> {
-    // SECURITY: Lookup email via customerId, never pass as parameter
-    const { getCustomerEmail } = await import('./customer-email.js');
-    const userEmail = await getCustomerEmail(customerId, env);
-    
-    // Check super admin (Tier 1)
-    if (userEmail && await isSuperAdminEmail(userEmail, env)) {
-        return {
-            hasPermission: true,
-            isSuperAdmin: true,
-            isApprovedUploader: false,
-            permissionSource: 'super-admin',
-            email: userEmail,
-        };
-    }
-    
-    // Check approved uploader from env var (Tier 2)
-    if (userEmail && await isApprovedUploaderEmail(userEmail, env)) {
-        return {
-            hasPermission: true,
-            isSuperAdmin: false,
-            isApprovedUploader: true,
-            permissionSource: 'env-var',
-            email: userEmail,
-        };
-    }
-    
-    // Check KV approval (Tier 3)
-    if (env.MODS_KV) {
-        try {
-            const approvalKey = `upload_approval_${customerId}`;
-            const approval = await env.MODS_KV.get(approvalKey);
-            if (approval === 'approved') {
-                // Get email from metadata if available
-                const approvalData = await env.MODS_KV.get(approvalKey, { type: 'json' }) as { 
-                    metadata?: { email?: string } 
-                } | null;
-                const emailFromMetadata = approvalData?.metadata?.email;
-                
-                return {
-                    hasPermission: true,
-                    isSuperAdmin: false,
-                    isApprovedUploader: true,
-                    permissionSource: 'kv',
-                    email: emailFromMetadata || userEmail,
-                };
-            }
-        } catch (e) {
-            // Continue
-        }
-    }
-    
-    return {
-        hasPermission: false,
-        isSuperAdmin: false,
-        isApprovedUploader: false,
-        permissionSource: 'none',
-        email: userEmail,
-    };
-}
-
-interface Env {
-    SUPER_ADMIN_EMAILS?: string;
-    APPROVED_UPLOADER_EMAILS?: string;
-    MODS_KV?: KVNamespace;
-    [key: string]: any;
-}
-

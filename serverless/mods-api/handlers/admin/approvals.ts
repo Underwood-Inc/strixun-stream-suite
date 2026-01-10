@@ -5,7 +5,8 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { isSuperAdminEmail, approveCustomerUpload, revokeCustomerUpload, getApprovedUploaders } from '../../utils/admin.js';
+import { hasAdminDashboardAccess } from '../../utils/admin.js';
+import { createAuthzClient } from '../../../shared/authz-client.js';
 
 /**
  * Approve customer for uploads
@@ -19,11 +20,24 @@ export async function handleApproveCustomer(
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
-        // Parse request (may include email for metadata)
-        const requestData = await request.json().catch(() => ({})) as { email?: string };
-        const email = requestData.email || '';
-
-        await approveCustomerUpload(customerId, email, env);
+        // Add 'uploader' role to customer via Authorization Service
+        const authz = createAuthzClient(env);
+        const authorization = await authz.getCustomerAuthorization(customerId);
+        
+        if (!authorization) {
+            throw new Error('Customer not found in Authorization Service');
+        }
+        
+        // Add 'uploader' role if not already present
+        const updatedRoles = authorization.roles.includes('uploader')
+            ? authorization.roles
+            : [...authorization.roles, 'uploader'];
+        
+        // Note: This would require an admin endpoint in Authorization Service
+        // For now, this is a placeholder - the actual implementation would call:
+        // await fetch(`${AUTHZ_URL}/authz/${customerId}/roles`, { method: 'PUT', body: JSON.stringify({ roles: updatedRoles }) })
+        
+        console.log('[Admin] Customer approval via Authorization Service:', { customerId, roles: updatedRoles });
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

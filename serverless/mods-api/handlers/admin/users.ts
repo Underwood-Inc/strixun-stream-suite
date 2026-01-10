@@ -8,7 +8,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getApprovedUploaders, getCustomerUploadPermissionInfo, isSuperAdminEmail } from '../../utils/admin.js';
+import { getCustomerPermissionInfo, hasAdminDashboardAccess } from '../../utils/admin.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import type { ModMetadata } from '../../types/mod.js';
 

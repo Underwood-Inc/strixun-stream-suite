@@ -7,8 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
-import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
-import type { ModMetadata, ModVersion, ModDetailResponse, VariantVersion } from '../../types/mod.js';
+import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
 
 /**
  * Handle get mod detail request
@@ -23,14 +22,10 @@ export async function handleGetModDetail(
 ): Promise<Response> {
     try {
         // Check if customer is super admin (needed for filtering)
-        // Lookup email via customerId
         let isAdmin = false;
         if (auth?.customerId) {
-            const { fetchCustomerByCustomerId } = await import('@strixun/api-framework');
-            const { isSuperAdminEmail } = await import('../../utils/admin.js');
-            const customer = await fetchCustomerByCustomerId(auth.customerId, env);
-            const email = customer?.email;
-            isAdmin = email ? await isSuperAdminEmail(email, env) : false;
+            const { isSuperAdmin } = await import('../../utils/admin.js');
+            isAdmin = await isSuperAdmin(auth.customerId, env);
         }
         
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
@@ -114,9 +109,6 @@ export async function handleGetModDetail(
                 },
             });
         }
-        
-        // ✨ LAZY MIGRATION: Automatically migrate variants if needed
-        mod = await migrateModVariantsIfNeeded(mod, env);
         
         // Use mod.modId directly - no normalization needed
         const storedModId = mod.modId;

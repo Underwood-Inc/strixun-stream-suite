@@ -7,7 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { isSuperAdminEmail } from '../../utils/admin.js';
+import { isAdmin as checkIsAdmin } from '../../utils/admin.js';
 import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
 
 /**
@@ -94,7 +94,7 @@ export async function handleGetModReview(
         }
         
         // Check access: only admin or uploader can access review page
-        const isAdmin = auth.email && await isSuperAdminEmail(auth.email, env);
+        const isAdmin = await checkIsAdmin(auth.customerId, env);
         const isUploader = mod.authorId === auth.customerId;
 
         if (!isAdmin && !isUploader) {

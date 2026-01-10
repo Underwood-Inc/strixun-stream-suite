@@ -88,8 +88,8 @@ export async function handleThumbnail(
 
         // CRITICAL: Enforce visibility and status filtering
         // Thumbnails are often loaded as images without auth, so we need to be more permissive
-        const { isSuperAdminEmail } = await import('../../utils/admin.js');
-        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        const { isAdmin: checkIsAdmin } = await import('../../utils/admin.js');
+        const isAdmin = auth?.customerId ? await checkIsAdmin(auth.customerId, env) : false;
         const isAuthor = mod.authorId === auth?.customerId;
         const modVisibility = mod.visibility || 'public';
         const modStatus = mod.status || 'published';

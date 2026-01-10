@@ -6,7 +6,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { isSuperAdminEmail } from '../../utils/admin.js';
+import { isSuperAdmin as checkIsSuperAdmin } from '../../utils/admin.js';
 import type { ModMetadata } from '../../types/mod.js';
 
 interface Env {
@@ -33,9 +33,8 @@ export async function handleDeleteVariant(
         let mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
 
         // Try superadmin context if not found in customer context
-        const { getCustomerEmail } = await import('../../utils/customer-email.js');
-        const email = await getCustomerEmail(auth.customerId, env);
-        if (!mod && email && isSuperAdminEmail(email, env)) {
+        const isSuperAdmin = await checkIsSuperAdmin(auth.customerId, env);
+        if (!mod && isSuperAdmin) {
             const superadminModKey = `mod_${normalizedModId}`;
             mod = await env.MODS_KV.get(superadminModKey, { type: 'json' }) as ModMetadata | null;
         }
@@ -55,7 +54,6 @@ export async function handleDeleteVariant(
         }
 
         // Check authorization
-        const isSuperAdmin = email && isSuperAdminEmail(email, env);
         const isOwner = mod.authorId === auth.customerId || mod.customerId === auth.customerId;
 
         if (!isSuperAdmin && !isOwner) {
@@ -95,47 +93,30 @@ export async function handleDeleteVariant(
         // Save updated mod metadata
         await env.MODS_KV.put(modKey, JSON.stringify(mod));
 
-        // Delete the variant metadata from KV
-        const variantKey = getCustomerKey(auth.customerId, `variant_${variantId}`);
-        await env.MODS_KV.delete(variantKey);
-
-        // Delete all variant version metadata and files from R2
-        // List all variant versions
-        const variantVersionListKey = getCustomerKey(auth.customerId, `variant_versions_${variantId}`);
+        // UNIFIED SYSTEM: Delete all variant version metadata and files from R2
+        // List all variant versions (using unified key pattern)
+        const variantVersionListKey = getCustomerKey(auth.customerId, `variant_${variantId}_versions`);
         const versionList = await env.MODS_KV.get(variantVersionListKey, { type: 'json' }) as string[] | null;
 
         if (versionList && versionList.length > 0) {
             // Delete each version's metadata and R2 file
             for (const versionId of versionList) {
-                // Delete version metadata from KV
-                const versionKey = getCustomerKey(auth.customerId, `variant_version_${versionId}`);
+                // UNIFIED SYSTEM: Variant versions are stored as ModVersion with same key pattern as main versions
+                const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
                 await env.MODS_KV.delete(versionKey);
 
-                // Delete version file from R2
-                // Try to delete with various possible R2 key patterns
-                const possibleR2Keys = [
-                    `variants/${variantId}/versions/${versionId}`,
-                    `mods/${normalizedModId}/variants/${variantId}/versions/${versionId}`,
-                    `${auth.customerId}/variants/${variantId}/versions/${versionId}`,
-                    `${auth.customerId}/mods/${normalizedModId}/variants/${variantId}/versions/${versionId}`,
-                ];
+                // UNIFIED SYSTEM: Delete version file from R2 using unified path pattern
+                // R2 keys follow pattern: {customerId}/mods/{modId}/variants/{variantId}/versions/{versionId}.{ext}
+                const r2KeyPrefix = auth.customerId 
+                    ? `${auth.customerId}/mods/${normalizedModId}/variants/${variantId}/versions/${versionId}`
+                    : `mods/${normalizedModId}/variants/${variantId}/versions/${versionId}`;
 
-                for (const r2Key of possibleR2Keys) {
+                // Try common extensions
+                for (const ext of ['zip', 'jar', 'lua', 'js', 'mod', 'dat', 'json']) {
                     try {
-                        await env.MODS_R2.delete(r2Key);
+                        await env.MODS_R2.delete(`${r2KeyPrefix}.${ext}`);
                     } catch (error) {
-                        // Continue trying other keys
-                    }
-                }
-
-                // Also try with common extensions
-                for (const r2Key of possibleR2Keys) {
-                    for (const ext of ['zip', 'jar', 'lua', 'js']) {
-                        try {
-                            await env.MODS_R2.delete(`${r2Key}.${ext}`);
-                        } catch (error) {
-                            // Continue
-                        }
+                        // Continue with other extensions
                     }
                 }
             }

@@ -484,38 +484,8 @@ export function useVariantVersions(modSlug: string, variantId: string) {
 }
 
 /**
- * Upload variant version mutation
- */
-export function useUploadVariantVersion() {
-    const queryClient = useQueryClient();
-    const addNotification = useUIStore((state) => state.addNotification);
-    
-    return useMutation({
-        mutationFn: ({ modId, variantId, file, metadata }: {
-            modId: string;
-            variantId: string;
-            file: File;
-            metadata: VariantVersionUploadRequest;
-        }) => api.uploadVariantVersion(modId, variantId, file, metadata),
-        onSuccess: (_data, variables) => {
-            queryClient.invalidateQueries({ queryKey: modKeys.variantVersions(variables.modId, variables.variantId) });
-            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
-            addNotification({
-                message: 'Variant version uploaded successfully!',
-                type: 'success',
-            });
-        },
-        onError: (error: Error) => {
-            addNotification({
-                message: error.message || 'Failed to upload variant version',
-                type: 'error',
-            });
-        },
-    });
-}
-
-/**
  * Delete mod version mutation
+ * UNIFIED SYSTEM: Works for both main mod and variant versions
  */
 export function useDeleteModVersion() {
     const queryClient = useQueryClient();
@@ -534,36 +504,6 @@ export function useDeleteModVersion() {
         onError: (error: Error) => {
             addNotification({
                 message: error.message || 'Failed to delete version',
-                type: 'error',
-            });
-        },
-    });
-}
-
-/**
- * Delete variant version mutation
- */
-export function useDeleteVariantVersion() {
-    const queryClient = useQueryClient();
-    const addNotification = useUIStore((state) => state.addNotification);
-    
-    return useMutation({
-        mutationFn: ({ modId, variantId, variantVersionId }: { 
-            modId: string; 
-            variantId: string; 
-            variantVersionId: string;
-        }) => api.deleteVariantVersion(modId, variantId, variantVersionId),
-        onSuccess: (_data, variables) => {
-            queryClient.invalidateQueries({ queryKey: modKeys.variantVersions(variables.modId, variables.variantId) });
-            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
-            addNotification({
-                message: 'Variant version deleted successfully!',
-                type: 'success',
-            });
-        },
-        onError: (error: Error) => {
-            addNotification({
-                message: error.message || 'Failed to delete variant version',
                 type: 'error',
             });
         },

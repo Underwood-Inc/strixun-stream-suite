@@ -5,15 +5,13 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { generateSlug, slugExists } from './upload.js';
 import { MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { createModSnapshot } from '../../utils/snapshot.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
-import { calculateStrixunHash } from '../../utils/hash.js';
-import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
+import { handleThumbnailBinaryUpload } from './thumbnail.js';
 // handleThumbnailUpload is defined locally in this file
 import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
 
@@ -69,7 +67,7 @@ export async function handleUpdateMod(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
 
@@ -86,9 +84,6 @@ export async function handleUpdateMod(
                 },
             });
         }
-
-        // ✨ LAZY MIGRATION: Automatically migrate variants if needed
-        mod = await migrateModVariantsIfNeeded(mod, env);
 
         // Check authorization
         if (mod.authorId !== auth.customerId) {
@@ -235,281 +230,94 @@ export async function handleUpdateMod(
             }
         }
         
-        // Handle variant file uploads
-        if (formData && updateData.variants) {
-            const normalizedModId = normalizeModId(modId);
-            const now = new Date().toISOString();
-            
-            // Process each variant file from FormData
-            // CRITICAL: Variant files must use the same encryption system as main mod uploads (shared key, not JWT)
-            const sharedKey = env.MODS_ENCRYPTION_KEY;
-            if (!sharedKey || sharedKey.length < 32) {
-                const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
-                return new Response(JSON.stringify(rfcError), {
-                    status: 500,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
+        // Validate variant metadata before processing
+        if (updateData.variants) {
+            for (const variant of updateData.variants) {
+                // Validate variant name is present and not empty
+                if (!variant.name || variant.name.trim().length === 0) {
+                    const rfcError = createError(request, 400, 'Invalid Variant Data', 'Variant name is required and cannot be empty');
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 400,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
             }
+        }
+        
+        // Handle variant file uploads
+        // UNIFIED SYSTEM: Reuse handleUploadVersion for variant files (with variantId parameter)
+        if (formData && updateData.variants) {
+            // Process each variant file from FormData
+            // UNIFIED SYSTEM: Reuse handleUploadVersion for variant uploads
+            const { handleUploadVersion } = await import('../versions/upload.js');
             
             for (const variant of updateData.variants) {
+                // Check if there's a file for this variant
                 const variantFile = formData.get(`variant_${variant.variantId}`) as File | null;
                 if (variantFile) {
-                    try {
-                        // Variant files should already be encrypted by the client with shared key
-                        // Validate and process them the same way as main mod uploads
-                        const fileBuffer = await variantFile.arrayBuffer();
-                        const fileBytes = new Uint8Array(fileBuffer);
-                        
-                        // Get original file name (remove .encrypted extension if present)
-                        let originalFileName = variantFile.name;
-                        if (originalFileName.endsWith('.encrypted')) {
-                            originalFileName = originalFileName.slice(0, -10); // Remove '.encrypted'
-                        }
-                        
-                        // Get file extension
-                        const fileExtension = originalFileName.includes('.') 
-                            ? originalFileName.substring(originalFileName.lastIndexOf('.')) 
-                            : '.zip';
-                        const extensionForR2 = fileExtension.substring(1); // Remove dot
-                        
-                        // Validate encryption format - must be binary encrypted with shared key (version 4 or 5)
-                        // CRITICAL: Same validation as main mod upload - reject files that aren't encrypted with shared key
-                        const isBinaryEncrypted = fileBytes.length >= 4 && (fileBytes[0] === 4 || fileBytes[0] === 5);
-                        const isLegacyEncrypted = fileBytes.length > 0 && fileBytes[0] === 0x7B; // '{' for JSON
-                        
-                        if (!isBinaryEncrypted && !isLegacyEncrypted) {
-                            const rfcError = createError(request, 400, 'File Must Be Encrypted', 'Variant files must be encrypted with shared key encryption (binary format v4 or v5) before upload. Please ensure the file is encrypted.');
-                            const corsHeaders = createCORSHeaders(request, {
-                                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                            });
-                            return new Response(JSON.stringify(rfcError), {
-                                status: 400,
-                                headers: {
-                                    'Content-Type': 'application/problem+json',
-                                    ...Object.fromEntries(corsHeaders.entries()),
-                                },
-                            });
-                        }
-                        
-                        // Temporarily decrypt to calculate file hash (for integrity verification)
-                        // This validates the file is encrypted with the correct shared key
-                        let fileHash: string;
-                        let fileSize: number;
-                        let encryptionFormat: string;
-                        
-                        try {
-                            if (isBinaryEncrypted) {
-                                // Binary encrypted format - Shared key encryption is MANDATORY
-                                // CRITICAL: Reject JWT-encrypted files (they would have version 4/5 but wrong key)
-                                let decryptedBytes: Uint8Array;
-                                try {
-                                    decryptedBytes = await decryptBinaryWithSharedKey(fileBytes, sharedKey);
-                                    console.log('[UpdateMod] Variant file decryption successful with shared key');
-                                } catch (decryptError) {
-                                    const errorMsg = decryptError instanceof Error ? decryptError.message : String(decryptError);
-                                    // If decryption fails, the file might be JWT-encrypted or encrypted with wrong key
-                                    const rfcError = createError(request, 400, 'Invalid Encryption', `Variant file must be encrypted with shared key encryption. Failed to decrypt with shared key: ${errorMsg}. Please ensure the file is encrypted with MODS_ENCRYPTION_KEY (not JWT encryption).`);
-                                    const corsHeaders = createCORSHeaders(request, {
-                                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                                    });
-                                    return new Response(JSON.stringify(rfcError), {
-                                        status: 400,
-                                        headers: {
-                                            'Content-Type': 'application/problem+json',
-                                            ...Object.fromEntries(corsHeaders.entries()),
-                                        },
-                                    });
-                                }
-                                
-                                fileSize = decryptedBytes.length;
-                                fileHash = await calculateStrixunHash(decryptedBytes, env);
-                                // Determine version from first byte (4 or 5)
-                                encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
-                            } else {
-                                // Legacy JSON encrypted format - not supported
-                                const rfcError = createError(request, 400, 'Unsupported Format', 'Legacy JSON encryption format is not supported for variant files. Please re-upload the file using shared key encryption (binary format v4 or v5).');
-                                const corsHeaders = createCORSHeaders(request, {
-                                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                                });
-                                return new Response(JSON.stringify(rfcError), {
-                                    status: 400,
-                                    headers: {
-                                        'Content-Type': 'application/problem+json',
-                                        ...Object.fromEntries(corsHeaders.entries()),
-                                    },
-                                });
-                            }
-                        } catch (error) {
-                            const errorMsg = error instanceof Error ? error.message : String(error);
-                            const rfcError = createError(request, 400, 'Encryption Validation Failed', `Failed to validate variant file encryption: ${errorMsg}`);
-                            const corsHeaders = createCORSHeaders(request, {
-                                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                            });
-                            return new Response(JSON.stringify(rfcError), {
-                                status: 400,
-                                headers: {
-                                    'Content-Type': 'application/problem+json',
-                                    ...Object.fromEntries(corsHeaders.entries()),
-                                },
-                            });
-                        }
-                        
-                        // CRITICAL: Delete any existing variant files for this variantId before storing the new one
-                        // This ensures we don't leave orphaned files when the extension changes
-                        const commonExtensions = ['zip', 'jar', 'mod', 'dat', 'json'];
-                        for (const ext of commonExtensions) {
-                            try {
-                                const oldVariantKey = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/variants/${variant.variantId}.${ext}`);
-                                const oldFile = await env.MODS_R2.get(oldVariantKey);
-                                if (oldFile) {
-                                    // Check if this file belongs to this variant by checking metadata
-                                    const oldMetadata = oldFile.customMetadata;
-                                    if (oldMetadata?.variantId === variant.variantId) {
-                                        console.log('[UpdateMod] Deleting old variant file:', oldVariantKey);
-                                        await env.MODS_R2.delete(oldVariantKey);
-                                    }
-                                }
-                            } catch (error) {
-                                // Ignore errors when deleting old files (file might not exist)
-                                console.log('[UpdateMod] Could not delete old variant file (may not exist):', error);
-                            }
-                        }
-                        
-                        // Also try to delete using the variant's existing fileUrl if available
-                        if (variant.fileUrl) {
-                            try {
-                                const url = new URL(variant.fileUrl);
-                                const oldKey = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
-                                const oldFile = await env.MODS_R2.get(oldKey);
-                                if (oldFile) {
-                                    const oldMetadata = oldFile.customMetadata;
-                                    if (oldMetadata?.variantId === variant.variantId) {
-                                        console.log('[UpdateMod] Deleting old variant file from fileUrl:', oldKey);
-                                        await env.MODS_R2.delete(oldKey);
-                                    }
-                                }
-                            } catch (error) {
-                                // Ignore errors - fileUrl might be invalid or file might not exist
-                                console.log('[UpdateMod] Could not delete variant file from fileUrl:', error);
-                            }
-                        }
-                        
-                        // ARCHITECTURAL IMPROVEMENT: Create a VariantVersion for proper version control
-                        const { 
-                            generateVariantVersionId,
-                            saveVariantVersion,
-                            addVariantVersionToList,
-                            saveVariant,
-                            getVariantVersionR2Key
-                        } = await import('../../utils/variant-versions.js');
-                        
-                        const variantVersionId = generateVariantVersionId();
-                        
-                        // Use proper hierarchical R2 key for variant versions
-                        const variantR2Key = getVariantVersionR2Key(normalizedModId, variant.variantId, variantVersionId, extensionForR2, auth.customerId);
-                        
-                        // Add R2 source metadata
-                        const r2SourceInfo = getR2SourceInfo(env, request);
-                        console.log('[UpdateMod] Variant file R2 storage source:', r2SourceInfo);
-                        
-                        await env.MODS_R2.put(variantR2Key, fileBytes, {
-                            httpMetadata: {
-                                contentType: 'application/octet-stream', // Binary encrypted format
-                                cacheControl: 'private, no-cache',
-                            },
-                            customMetadata: addR2SourceMetadata({
-                                modId,
-                                variantId: variant.variantId,
-                                variantVersionId: variantVersionId,
-                                uploadedBy: auth.customerId,
-                                uploadedAt: now,
-                                encrypted: 'true',
-                                encryptionFormat: encryptionFormat, // 'binary-v4' or 'binary-v5' - CRITICAL for download handler
-                                originalFileName: originalFileName, // Original filename without .encrypted
-                                originalContentType: 'application/zip', // Original file type
-                                sha256: fileHash, // Hash of decrypted file for verification
-                            }, env, request),
-                        });
-                        
-                        // Generate download URL
-                        const downloadUrl = env.MODS_PUBLIC_URL 
-                            ? `${env.MODS_PUBLIC_URL}/${variantR2Key}`
-                            : `https://pub-${(env.MODS_R2 as any).id}.r2.dev/${variantR2Key}`;
-                        
-                        // Create VariantVersion with version 1.0.0 (auto-increment for subsequent uploads)
-                        // Get the current version count to generate the next version number
-                        const newVersionNumber = variant.versionCount > 0 ? `1.0.${variant.versionCount}` : '1.0.0';
-                        
-                        const variantVersion: import('../../types/mod.js').VariantVersion = {
-                            variantVersionId,
+                    console.log('[UpdateMod] Processing variant file upload:', {
+                        variantId: variant.variantId,
+                        fileName: variantFile.name,
+                        size: variantFile.size
+                    });
+                    
+                    // Create FormData for version upload (reuse existing handler)
+                    const variantFormData = new FormData();
+                    variantFormData.append('file', variantFile);
+                    
+                    // Generate version number based on existing versions
+                    const variantVersionsListKey = getCustomerKey(auth.customerId, `variant_${variant.variantId}_versions`);
+                    const existingVersions = await env.MODS_KV.get(variantVersionsListKey, { type: 'json' }) as string[] | null;
+                    const versionCount = existingVersions ? existingVersions.length : 0;
+                    const newVersionNumber = versionCount > 0 ? `1.0.${versionCount}` : '1.0.0';
+                    
+                    const variantMetadata = {
+                        version: newVersionNumber,
+                        changelog: 'Uploaded via mod update',
+                        gameVersions: [],
+                        dependencies: []
+                    };
+                    variantFormData.append('metadata', JSON.stringify(variantMetadata));
+                    
+                    // Create mock request with FormData for version upload handler
+                    const variantUploadRequest = new Request(request.url, {
+                        method: 'POST',
+                        headers: request.headers,
+                        body: variantFormData
+                    });
+                    
+                    // Call unified version upload handler with variantId
+                    const uploadResponse = await handleUploadVersion(
+                        variantUploadRequest,
+                        env,
+                        modId,
+                        auth,
+                        variant.variantId  // Pass variantId to indicate this is a variant version
+                    );
+                    
+                    // If upload failed, return error
+                    if (uploadResponse.status !== 201) {
+                        console.error('[UpdateMod] Variant file upload failed:', {
                             variantId: variant.variantId,
-                            modId: normalizedModId,
-                            version: newVersionNumber,
-                            changelog: 'Uploaded via mod update',
-                            fileSize: fileSize,
-                            fileName: originalFileName,
-                            r2Key: variantR2Key,
-                            downloadUrl: downloadUrl,
-                            sha256: fileHash,
-                            createdAt: now,
-                            downloads: 0,
-                            gameVersions: [],
-                            dependencies: []
-                        };
-                        
-                        // Save VariantVersion
-                        await saveVariantVersion(variantVersion, auth.customerId, env);
-                        await addVariantVersionToList(variant.variantId, variantVersionId, auth.customerId, env);
-                        
-                        // Update local variant object with new version
-                        variant.currentVersionId = variantVersionId;
-                        variant.versionCount = (variant.versionCount || 0) + 1;
-                        variant.updatedAt = now;
-                        
-                        // Save updated variant to KV (works for both new and existing variants)
-                        await saveVariant(variant, auth.customerId, env);
-                        
-                        console.log('[UpdateMod] Variant version created:', {
-                            variantId: variant.variantId,
-                            variantVersionId,
-                            version: newVersionNumber,
-                            fileName: originalFileName,
-                            fileSize: fileSize,
-                            encryptedSize: fileBytes.length,
-                            encryptionFormat,
-                            r2Key: variantR2Key,
+                            status: uploadResponse.status
                         });
-                    } catch (error) {
-                        console.error(`[UpdateMod] Variant file upload error for ${variant.variantId}:`, error);
-                        // If error is already a Response (from validation), return it
-                        if (error instanceof Response) {
-                            return error;
-                        }
-                        // Otherwise, return error response
-                        const errorMsg = error instanceof Error ? error.message : String(error);
-                        const rfcError = createError(request, 400, 'Variant Upload Failed', `Failed to upload variant file for ${variant.variantId}: ${errorMsg}`);
-                        const corsHeaders = createCORSHeaders(request, {
-                            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                        });
-                        return new Response(JSON.stringify(rfcError), {
-                            status: 400,
-                            headers: {
-                                'Content-Type': 'application/problem+json',
-                                ...Object.fromEntries(corsHeaders.entries()),
-                            },
-                        });
+                        return uploadResponse;
                     }
+                    
+                    console.log('[UpdateMod] Variant file uploaded successfully:', {
+                        variantId: variant.variantId,
+                        version: newVersionNumber
+                    });
                 }
             }
             
             // Update mod.variants with the updated variant metadata
-            // Variants were already updated in-place during file upload processing
             mod.variants = updateData.variants;
         }
         

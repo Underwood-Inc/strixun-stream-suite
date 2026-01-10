@@ -109,10 +109,8 @@ export async function handleDownloadVersion(
         const modVisibility = mod.visibility || 'public';
         
         // Check if user is admin (for admin access to private mods)
-        const { getCustomerEmail } = await import('../../utils/customer-email.js');
-        const email = auth?.customerId ? await getCustomerEmail(auth.customerId, env) : null;
-        const { isSuperAdminEmail } = await import('../../utils/admin.js');
-        const isAdmin = email ? await isSuperAdminEmail(email, env) : false;
+        const { isSuperAdmin } = await import('../../utils/admin.js');
+        const isAdmin = auth?.customerId ? await isSuperAdmin(auth.customerId, env) : false;
         const isAuthor = mod.authorId === auth?.customerId;
         
         // Private mods: only author or admin can download
@@ -391,8 +389,8 @@ export async function handleDownloadVersion(
                     throw new Error('Legacy JSON encryption format is not supported. File must be re-uploaded with shared key encryption.');
                 }
                 
-                // Get original content type from metadata
-                originalContentType = encryptedFile.customMetadata?.originalContentType || 'application/zip';
+                // Get original content type from metadata - NO FALLBACK (file must have correct metadata)
+                originalContentType = encryptedFile.customMetadata?.originalContentType;
                 console.log('[Download] Original content type:', originalContentType);
             } catch (error) {
                 console.error('[Download] File decryption error:', error);

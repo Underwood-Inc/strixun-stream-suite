@@ -7,7 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
-import { isSuperAdminEmail } from '../../utils/admin.js';
+import { isSuperAdmin } from '../../utils/admin.js';
 import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 
 /**
@@ -29,7 +29,7 @@ export async function handleListMods(
         const visibility = url.searchParams.get('visibility') || 'public'; // Default to public
 
         // Check if customer is super admin (once, not in loop)
-        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        const isAdmin = auth?.customerId ? await isSuperAdmin(auth.customerId, env) : false;
 
         // Get all mod IDs from global public list
         // This list contains ALL public mods regardless of customer

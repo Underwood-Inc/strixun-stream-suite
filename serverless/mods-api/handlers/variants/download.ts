@@ -8,9 +8,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
-import { getVariantVersion } from '../../utils/variant-versions.js';
-import type { ModMetadata } from '../../types/mod.js';
+import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 /**
  * Handle download variant request
@@ -81,9 +79,6 @@ export async function handleDownloadVariant(
             });
         }
 
-        // ✨ LAZY MIGRATION: Automatically migrate variants if needed
-        mod = await migrateModVariantsIfNeeded(mod, env);
-
         // Find the variant
         const variant = mod.variants?.find(v => v.variantId === variantId);
         if (!variant) {
@@ -117,7 +112,10 @@ export async function handleDownloadVariant(
         }
 
         console.log('[VariantDownload] Fetching current version:', { variantId, currentVersionId: variant.currentVersionId });
-        const variantVersion = await getVariantVersion(variant.currentVersionId, mod.customerId, env);
+        
+        // UNIFIED SYSTEM: Variant versions are stored as ModVersion with variantId field
+        const versionKey = getCustomerKey(mod.customerId, `version_${variant.currentVersionId}`);
+        const variantVersion = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
         
         if (!variantVersion) {
             const rfcError = createError(request, 404, 'Version Not Found', 'The current version of this variant was not found');
@@ -274,14 +272,17 @@ export async function handleDownloadVariant(
             });
         }
 
-        // ARCHITECTURAL IMPROVEMENT: Increment download counters using variant version system
-        // Increment download counters (async, don't wait)
-        const { incrementVariantVersionDownloads, incrementVariantTotalDownloads } = await import('../../utils/variant-versions.js');
-        Promise.all([
-            incrementVariantVersionDownloads(variantVersion.variantVersionId, mod.customerId, env),
-            incrementVariantTotalDownloads(variantId, mod.customerId, env)
-        ]).catch(error => {
-            console.error('[VariantDownload] Error incrementing download counters:', error);
+        // UNIFIED SYSTEM: Increment download counters
+        // Increment version download count (async, don't wait)
+        Promise.resolve().then(async () => {
+            const versionKey = getCustomerKey(mod.customerId, `version_${variantVersion.versionId}`);
+            const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
+            if (version) {
+                version.downloads += 1;
+                await env.MODS_KV.put(versionKey, JSON.stringify(version));
+            }
+        }).catch(error => {
+            console.error('[VariantDownload] Error incrementing download counter:', error);
         });
 
         // Increment mod download count

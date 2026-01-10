@@ -128,6 +128,18 @@ export async function createAuthToken(
         throw new Error('Customer ID is MANDATORY for JWT creation. Customer account must be created before token generation.');
     }
     
+    // AUTHORIZATION SERVICE INTEGRATION: Ensure customer has roles/permissions provisioned
+    // This is called on every login to auto-provision new customers with default roles
+    // Idempotent - safe to call multiple times (skips if already provisioned)
+    try {
+        const { ensureCustomerAuthorization } = await import('../../../shared/authz-migration-helpers.js');
+        await ensureCustomerAuthorization(customerId, emailLower, env);
+    } catch (error) {
+        console.error('[JWT] Failed to provision customer authorization:', error);
+        // Don't throw - authorization provisioning failure shouldn't break login
+        // Customer will still get JWT, but may have permission issues until manually provisioned
+    }
+    
     // FAIL-FAST: Ensure customerId matches
     if (customer.customerId !== customerId) {
         throw new Error(`Customer ID mismatch: expected ${customerId}, got ${customer.customerId}`);

@@ -1,0 +1,225 @@
+name: Deploy Authorization Service
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'serverless/authorization-service/**'
+  workflow_dispatch:
+
+jobs:
+  # Test job - required before deployment (skip if no test script)
+  test:
+    runs-on: ubuntu-latest
+    name: Test Authorization Service
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/authorization-service
+        run: |
+          # Check for actual test files or vitest/jest config
+          if [ -f "vitest.config.ts" ] || [ -f "vitest.config.js" ] || [ -f "jest.config.js" ] || [ -f "jest.config.ts" ]; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          elif grep -q '"test"' package.json && ! grep -q 'Error: no test specified' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Authorization Service Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/authorization-service
+        run: pnpm test
+      
+      - name: Generate coverage report
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/authorization-service
+        run: pnpm test:coverage
+        continue-on-error: true
+
+      - name: Annotate coverage
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ -f "serverless/authorization-service/coverage/coverage-summary.json" ]; then
+            node scripts/annotate-coverage.js serverless/authorization-service/coverage/coverage-summary.json . "Authorization Service"
+          else
+            echo "::warning::Authorization Service coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
+
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: |
+          echo "⚠ No test script found in Authorization Service - skipping tests"
+          echo "::warning::Authorization Service has no test script - tests skipped"
+          echo "::notice::Action Required: Add test script to Authorization Service package.json"
+          echo "## ⚠ Authorization Service Tests" >> $GITHUB_STEP_SUMMARY
+          echo "No test script found - skipped (tests will be required when added)" >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    needs: test
+    if: needs.test.result == 'success' || needs.test.result == 'skipped'
+    runs-on: ubuntu-latest
+    name: Build and Deploy Authorization Service
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Create KV Namespace (if needed)
+        working-directory: serverless/authorization-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          # Create KV namespace if it doesn't exist
+          echo "Creating KV namespace AUTHORIZATION_KV (if it doesn't exist)..."
+          pnpm exec wrangler kv namespace create "AUTHORIZATION_KV" || true
+          
+          # List namespaces to verify creation and show ID
+          echo "Listing KV namespaces..."
+          pnpm exec wrangler kv namespace list || echo "Could not list namespaces"
+        continue-on-error: true
+      
+      - name: Deploy to Cloudflare Workers
+        id: deploy
+        working-directory: serverless/authorization-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "✗ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
+      
+      - name: Set Worker Secrets (if needed)
+        working-directory: serverless/authorization-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET
+          fi
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS
+          fi
+          if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
+            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY
+          fi
+          if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
+            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE
+          fi
+        continue-on-error: true
+      
+      - name: Get KV Namespace ID
+        id: get-kv-id
+        working-directory: serverless/authorization-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          # Extract namespace ID from wrangler.toml
+          KV_ID=$(grep -A 1 'binding = "AUTHORIZATION_KV"' wrangler.toml | grep 'id = ' | sed 's/.*id = "\([^"]*\)".*/\1/' || echo "")
+          if [ -n "$KV_ID" ] && [ "$KV_ID" != "PLACEHOLDER_ID" ]; then
+            echo "kv_id=$KV_ID" >> $GITHUB_OUTPUT
+            echo "Found KV namespace ID: $KV_ID"
+          else
+            echo "kv_id=" >> $GITHUB_OUTPUT
+            echo "⚠ Warning: KV namespace ID not found in wrangler.toml or still set to PLACEHOLDER_ID"
+            echo "Please update wrangler.toml with the actual namespace ID from: wrangler kv namespace list"
+          fi
+        continue-on-error: true
+      
+      - name: Seed Default Roles & Permissions
+        working-directory: serverless/authorization-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "Seeding default roles and permissions..."
+          # Get the worker URL from deployment
+          WORKER_URL="https://strixun-authorization-service.strixuns-script-suite.workers.dev"
+          
+          # Seed defaults
+          curl -X POST "$WORKER_URL/authz/seed" || echo "⚠ Seed endpoint not responding - may need manual seeding"
+        continue-on-error: true
+      
+      - name: Deployment Summary
+        run: |
+          echo "## 🔐 Authorization Service Deployed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The Authorization Service has been deployed to Cloudflare Workers." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service URL:** \`https://strixun-authorization-service.strixuns-script-suite.workers.dev\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 API Endpoints:" >> $GITHUB_STEP_SUMMARY
+          echo "- Health: \`GET /health\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Check Permission: \`POST /authz/check-permission\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Check Quota: \`POST /authz/check-quota\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Get Customer Authorization: \`GET /authz/:customerId\`" >> $GITHUB_STEP_SUMMARY
+          echo "- List Roles: \`GET /authz/roles\`" >> $GITHUB_STEP_SUMMARY
+          echo "- List Permissions: \`GET /authz/permissions\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Admin: Manage roles/permissions/quotas" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔑 Required Secrets:" >> $GITHUB_STEP_SUMMARY
+          echo "- \`JWT_SECRET\` - JWT verification (must match OTP Auth)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ALLOWED_ORIGINS\` - CORS origins (optional)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`SERVICE_API_KEY\` - Service-to-service auth (optional)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`NETWORK_INTEGRITY_KEYPHRASE\` - Network security (optional)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          KV_ID="${{ steps.get-kv-id.outputs.kv_id }}"
+          if [ -n "$KV_ID" ]; then
+            echo "**KV Namespace ID:** \`$KV_ID\` ✓" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**⚠ Action Required:** Update \`wrangler.toml\` with the KV namespace ID from \`wrangler kv namespace list\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🌱 Post-Deployment:" >> $GITHUB_STEP_SUMMARY
+          echo "Default roles and permissions have been seeded automatically." >> $GITHUB_STEP_SUMMARY
+          echo "If seeding failed, run manually:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "curl -X POST https://strixun-authorization-service.strixuns-script-suite.workers.dev/authz/seed" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+

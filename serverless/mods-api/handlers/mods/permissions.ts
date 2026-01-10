@@ -1,16 +1,16 @@
 /**
  * Handle get customer permissions request
  * GET /mods/permissions/me
- * Returns the current customer's upload permission status
+ * Returns the current customer's permissions from Authorization Service
  */
 
 import { createError } from '../../utils/errors.js';
 import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
-import { hasUploadPermission, isSuperAdminEmail } from '../../utils/admin.js';
+import { getCustomerPermissionInfo } from '../../utils/admin.js';
 
 /**
  * Handle get customer permissions
- * Returns upload permission status for the authenticated customer
+ * Returns full authorization details for the authenticated customer
  */
 export async function handleGetCustomerPermissions(
     request: Request,
@@ -18,24 +18,30 @@ export async function handleGetCustomerPermissions(
     auth: { customerId: string }
 ): Promise<Response> {
     try {
-        // Check if customer has upload permission (all authenticated users can upload)
-        const hasPermission = await hasUploadPermission(auth.customerId, env);
+        // Get full permission info from Authorization Service
+        const permissionInfo = await getCustomerPermissionInfo(auth.customerId, env);
         
         console.log('[Permissions] Customer permission check:', {
             customerId: auth.customerId,
-            hasPermission,
+            roles: permissionInfo.roles,
+            hasUploadPermission: permissionInfo.hasUploadPermission,
         });
         
         const corsHeaders = createCORSHeadersWithLocalhost(request, env);
         
         const responseData = {
-            hasPermission: hasPermission,
             customerId: auth.customerId,
+            hasUploadPermission: permissionInfo.hasUploadPermission,
+            isAdmin: permissionInfo.isAdmin,
+            isSuperAdmin: permissionInfo.isSuperAdmin,
+            roles: permissionInfo.roles,
+            permissions: permissionInfo.permissions,
+            quotas: permissionInfo.quotas || {},
             // CRITICAL: email is NEVER returned - it remains encrypted in the OTP auth service
             // Use displayName from customer account for customer identification
         };
         
-        console.log('[Permissions] Returning response:', responseData);
+        console.log('[Permissions] Returning response with', responseData.permissions.length, 'permissions');
         
         return new Response(JSON.stringify(responseData), {
             status: 200,

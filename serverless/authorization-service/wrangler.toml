@@ -1,0 +1,50 @@
+# Authorization Service - Cloudflare Worker Configuration
+# Handles authorization decisions, roles, permissions, and quotas
+# Service-agnostic: works for ANY service (mods, customer, analytics, etc.)
+
+name = "strixun-authorization-service"
+main = "worker.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables (secrets should be set via wrangler secret put)
+# DO NOT put actual secrets here - use wrangler CLI:
+#   wrangler secret put JWT_SECRET          # REQUIRED: JWT signing secret (must match OTP auth service)
+#   wrangler secret put SUPER_ADMIN_API_KEY # REQUIRED: API key for super admin access
+#   wrangler secret put ALLOWED_ORIGINS     # OPTIONAL: Comma-separated CORS origins (recommended for production)
+
+# Production environment (default)
+[vars]
+ENVIRONMENT = "production"
+
+# Production KV Namespace for authorization data
+[[kv_namespaces]]
+binding = "AUTHORIZATION_KV"
+id = "ee3fee37d3d74ffdb7ebeeae4b0d86ff"
+
+# Production routes - NO CUSTOM DOMAIN NEEDED
+# Service-to-service calls use: https://strixun-authorization-service.strixuns-script-suite.workers.dev
+# This is an internal service (no browser/public access) so no custom domain is required
+# routes = []
+
+# Development environment (uses shared KV namespaces for local testing)
+[env.development]
+
+[env.development.vars]
+ENVIRONMENT = "development"
+
+# Development KV Namespace (shares production namespace for local testing)
+[[env.development.kv_namespaces]]
+binding = "AUTHORIZATION_KV"
+id = "ee3fee37d3d74ffdb7ebeeae4b0d86ff"
+
+# Observability Configuration
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true

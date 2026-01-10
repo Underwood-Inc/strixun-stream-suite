@@ -11,7 +11,7 @@ import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
 import { VariantVersionList } from './VariantVersionList';
 import { VariantVersionUpload } from './VariantVersionUpload';
-import { useVariantVersions, useUploadVariantVersion, useDeleteVariantVersion } from '../../hooks/useMods';
+import { useVariantVersions, useDeleteModVersion } from '../../hooks/useMods';
 
 const Container = styled.div`
   ${getCardStyles('default')}
@@ -138,8 +138,7 @@ export function VariantManagement({ modSlug, modId, variants }: VariantManagemen
     const [expandedVariants, setExpandedVariants] = useState<Set<string>>(new Set());
     const [uploadingVariant, setUploadingVariant] = useState<string | null>(null);
     
-    const uploadVariantVersion = useUploadVariantVersion();
-    const deleteVariantVersion = useDeleteVariantVersion();
+    const deleteVersion = useDeleteModVersion();
 
     const toggleVariant = (variantId: string) => {
         setExpandedVariants(prev => {
@@ -157,25 +156,17 @@ export function VariantManagement({ modSlug, modId, variants }: VariantManagemen
         variantId: string, 
         data: { file: File; metadata: any }
     ) => {
-        try {
-            await uploadVariantVersion.mutateAsync({
-                modId,
-                variantId,
-                file: data.file,
-                metadata: data.metadata,
-            });
-            setUploadingVariant(null);
-        } catch {
-            // Error handled by mutation
-        }
+        // TODO: Implement variant file upload via updateMod endpoint
+        console.error('Variant file upload not yet implemented with unified system');
+        setUploadingVariant(null);
     };
 
     const handleDeleteVersion = async (variantId: string, version: VariantVersion) => {
         try {
-            await deleteVariantVersion.mutateAsync({
+            // UNIFIED SYSTEM: Use deleteModVersion for variant versions (they're stored as ModVersion with variantId)
+            await deleteVersion.mutateAsync({
                 modId,
-                variantId,
-                variantVersionId: version.variantVersionId,
+                versionId: version.variantVersionId,
             });
         } catch {
             // Error handled by mutation
@@ -238,7 +229,7 @@ export function VariantManagement({ modSlug, modId, variants }: VariantManagemen
                                     variantName={variant.name}
                                     onSubmit={(data) => handleUploadVersion(variant.variantId, data)}
                                     onCancel={() => setUploadingVariant(null)}
-                                    isLoading={uploadVariantVersion.isPending}
+                                    isLoading={false}
                                 />
                             )}
                             

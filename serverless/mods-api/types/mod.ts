@@ -49,10 +49,13 @@ export interface ModMetadata {
 
 /**
  * Mod version metadata
+ * UNIFIED SYSTEM: Supports both main mod versions and variant versions
+ * variantId is null for main mod versions, set to variantId for variant versions
  */
 export interface ModVersion {
     versionId: string;
     modId: string;
+    variantId?: string | null; // null for main mod versions, variantId for variant versions
     version: string; // Semantic version: "1.0.0"
     changelog: string;
     fileSize: number;
@@ -167,8 +170,8 @@ export interface ModReviewComment {
 }
 
 /**
- * Mod variant (metadata only - files are in VariantVersion)
- * ARCHITECTURAL IMPROVEMENT: Variants now support full version control
+ * Mod variant (metadata only - files are in ModVersion with variantId set)
+ * UNIFIED SYSTEM: Variants reuse ModVersion for version control
  */
 export interface ModVariant {
     variantId: string;
@@ -177,17 +180,14 @@ export interface ModVariant {
     description?: string;
     createdAt: string;
     updatedAt: string;
-    currentVersionId: string | null; // Points to latest VariantVersion (null if no versions yet)
-    versionCount: number; // Total number of versions
-    totalDownloads: number; // Cumulative downloads across all versions
-    fileName: string; // Current version's fileName (populated from VariantVersion)
-    // REMOVED: fileUrl, r2Key, fileSize, version, changelog, gameVersions, dependencies, downloads
-    // These fields now live in VariantVersion for proper version control
+    currentVersionId: string | null; // Points to latest ModVersion (null if no versions yet)
+    // fileName is populated from currentVersionId's ModVersion
 }
 
 /**
- * Variant version metadata (for version control of variant files)
- * ARCHITECTURAL IMPROVEMENT: Each variant can now have multiple versions
+ * @deprecated Use ModVersion with variantId field instead
+ * Variant version metadata - REPLACED BY UNIFIED ModVersion
+ * This type is kept for backward compatibility during migration
  */
 export interface VariantVersion {
     variantVersionId: string;

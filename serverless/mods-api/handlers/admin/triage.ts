@@ -6,7 +6,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
-import { isSuperAdminEmail } from '../../utils/admin.js';
+import { isAdmin as checkIsAdmin } from '../../utils/admin.js';
 import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
 import type { ModMetadata, ModStatus, ModStatusHistory, ModReviewComment, ModVersion } from '../../types/mod.js';
 
@@ -417,9 +417,7 @@ export async function handleAddReviewComment(
         }
 
         // Check access: only admin or uploader can comment
-        const { getCustomerEmail } = await import('../../utils/customer-email.js');
-        const email = await getCustomerEmail(auth.customerId, env);
-        const isAdmin = email && await isSuperAdminEmail(email, env);
+        const isAdmin = await checkIsAdmin(auth.customerId, env);
         const isUploader = mod.authorId === auth.customerId;
 
         if (!isAdmin && !isUploader) {

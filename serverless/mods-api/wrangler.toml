@@ -23,7 +23,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # Development environment (only used with --env development)
 [env.development]
-vars = { ENVIRONMENT = "development" }
+vars = { ENVIRONMENT = "development", AUTHORIZATION_SERVICE_URL = "http://localhost:8791" }
 
 # Development KV Namespaces (using same namespaces for testing)
 [[env.development.kv_namespaces]]
@@ -43,6 +43,7 @@ bucket_name = "mods-storage"
 # We use default deployment (wrangler deploy) NOT --env production
 [vars]
 ENVIRONMENT = "production"
+AUTHORIZATION_SERVICE_URL = "https://strixun-authorization-service.strixuns-script-suite.workers.dev"
 ROUTES = '[{"pattern":"mods-api.idling.app/mods/*","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/health","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/api/*","zone_name":"idling.app"}]'
 
 # Default KV Namespaces
