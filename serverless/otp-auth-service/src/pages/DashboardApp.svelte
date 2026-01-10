@@ -10,11 +10,12 @@
   import ApiKeys from '$dashboard/pages/ApiKeys.svelte';
   import AuditLogs from '$dashboard/pages/AuditLogs.svelte';
   import Dashboard from '$dashboard/pages/Dashboard.svelte';
+  import RolesPermissions from '$dashboard/pages/RolesPermissions.svelte';
   import TwitchAdCarousel from '@strixun/ad-carousel/TwitchAdCarousel.svelte';
 
   let customer: Customer | null = null;
   let isAuthenticated = false;
-  let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' = 'dashboard';
+  let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' | 'roles-permissions' = 'dashboard';
   let loading = true;
   let authView: 'login' | 'signup' = 'login';
 
@@ -158,6 +159,8 @@
           <AuditLogs {customer} />
         {:else if currentPage === 'analytics'}
           <Analytics {customer} />
+        {:else if currentPage === 'roles-permissions'}
+          <RolesPermissions {customer} />
         {/if}
       </div>
     </main>

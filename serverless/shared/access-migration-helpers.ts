@@ -57,8 +57,9 @@ export async function ensureCustomerAccess(
  * Determine default roles for a customer based on their email
  * 
  * Checks:
- * 1. SUPER_ADMIN_EMAILS env var → ['super-admin']
- * 2. Otherwise → ['customer'] (default)
+ * 1. Hardcoded DEFAULT_SUPER_ADMIN_EMAILS → ['super-admin', 'uploader']
+ * 2. SUPER_ADMIN_EMAILS env var → ['super-admin', 'uploader']
+ * 3. Otherwise → ['customer', 'uploader'] (default)
  * 
  * @param email - Customer email (may be undefined)
  * @param env - Environment variables
@@ -74,17 +75,24 @@ async function determineDefaultRoles(email: string | undefined, env: any): Promi
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  // Check if email is in SUPER_ADMIN_EMAILS env var
+  // HARDCODED super admins (ALWAYS included, cannot be removed)
+  // This ensures m.seaward@pm.me ALWAYS has super admin access
+  const hardcodedSuperAdmins = ['m.seaward@pm.me'];
+  
+  // Combine hardcoded + env var super admins
+  const superAdminEmails = [...hardcodedSuperAdmins];
   if (env.SUPER_ADMIN_EMAILS) {
-    const superAdminEmails = env.SUPER_ADMIN_EMAILS
+    const envAdmins = env.SUPER_ADMIN_EMAILS
       .split(',')
       .map((e: string) => e.trim().toLowerCase());
-    
-    if (superAdminEmails.includes(normalizedEmail)) {
-      console.log('[AccessMigration] Detected super admin:', email);
-      // Super admins get super-admin role + uploader permission
-      return ['super-admin', 'uploader'];
-    }
+    superAdminEmails.push(...envAdmins);
+  }
+  
+  // Check if email is a super admin
+  if (superAdminEmails.includes(normalizedEmail)) {
+    console.log('[AccessMigration] Detected super admin:', email);
+    // Super admins get super-admin role + uploader permission
+    return ['super-admin', 'uploader'];
   }
 
   // Default: ALL customers get customer + uploader roles

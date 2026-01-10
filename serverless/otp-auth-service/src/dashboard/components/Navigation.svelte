@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
 
-  export let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' = 'dashboard';
+  export let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' | 'roles-permissions' = 'dashboard';
 
   const dispatch = createEventDispatcher();
 
@@ -10,7 +10,8 @@
     { id: 'dashboard', label: 'Dashboard', status: null as 'wip' | 'in-testing' | null },
     { id: 'api-keys', label: 'API Keys', status: null as 'wip' | 'in-testing' | null },
     { id: 'audit-logs', label: 'Audit Logs', status: 'in-testing' as 'wip' | 'in-testing' | null },
-    { id: 'analytics', label: 'Analytics', status: 'in-testing' as 'wip' | 'in-testing' | null }
+    { id: 'analytics', label: 'Analytics', status: 'in-testing' as 'wip' | 'in-testing' | null },
+    { id: 'roles-permissions', label: 'Roles & Permissions', status: null as 'wip' | 'in-testing' | null }
   ] as const;
 
   function handleClick(page: typeof currentPage) {

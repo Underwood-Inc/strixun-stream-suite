@@ -169,6 +169,14 @@ export interface Env {
 /**
  * Default roles (seeded on first deployment)
  */
+/**
+ * Default Super Admin Emails
+ * These emails are ALWAYS granted super-admin role during auto-provisioning
+ */
+export const DEFAULT_SUPER_ADMIN_EMAILS = [
+    'm.seaward@pm.me', // Primary admin
+] as const;
+
 export const DEFAULT_ROLES: RoleDefinition[] = [
     {
         name: 'super-admin',
