@@ -16,7 +16,7 @@ import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 export async function handleListMods(
     request: Request,
     env: Env,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     try {
         const url = new URL(request.url);
@@ -259,7 +259,7 @@ export async function handleListMods(
         };
 
         const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
 
         return new Response(JSON.stringify(response), {
@@ -278,7 +278,7 @@ export async function handleListMods(
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while listing mods'
         );
         const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

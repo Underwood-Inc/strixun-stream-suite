@@ -107,9 +107,15 @@ export interface ModDetailResponse {
  * Mod variant (metadata only - files are in VariantVersion)
  * ARCHITECTURAL IMPROVEMENT: Variants now support full version control
  */
+/**
+ * Mod variant (uses agnostic variant system)
+ * 
+ * This maintains backward compatibility while internally using the agnostic
+ * Variant type. The modId field is kept for convenience.
+ */
 export interface ModVariant {
     variantId: string;
-    modId: string; // Parent mod ID
+    modId: string; // Parent mod ID (for backward compatibility)
     name: string;
     description?: string;
     createdAt: string;
@@ -117,7 +123,7 @@ export interface ModVariant {
     currentVersionId: string | null; // Points to latest VariantVersion (null if no versions yet)
     versionCount: number; // Total number of versions
     totalDownloads: number; // Cumulative downloads across all versions
-    fileName: string; // Current version's fileName (populated from VariantVersion)
+    fileName?: string; // Current version's fileName (populated from VariantVersion)
     // REMOVED: fileUrl, r2Key, fileSize, downloads
     // These fields now live in VariantVersion for proper version control
 }

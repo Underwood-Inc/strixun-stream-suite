@@ -95,7 +95,7 @@ function getErrorMessage(error: unknown): { title: string; message: string } | n
 
 export function ModUploadPage() {
     const navigate = useNavigate();
-    const { isAuthenticated, isSuperAdmin } = useAuthStore();
+    const { isAuthenticated } = useAuthStore();
     const { hasPermission, isLoading: permissionLoading } = useUploadPermission();
     const uploadMod = useUploadMod();
     const addNotification = useUIStore((state) => state.addNotification);

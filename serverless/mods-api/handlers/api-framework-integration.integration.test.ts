@@ -26,7 +26,7 @@ vi.mock('../utils/cors.js', () => ({
 }));
 
 vi.mock('../../utils/admin.js', () => ({
-    isSuperAdminEmail: vi.fn(() => Promise.resolve(true)),
+    isSuperAdmin: vi.fn(() => Promise.resolve(true)),
 }));
 
 describe('API Framework Integration Tests', () => {

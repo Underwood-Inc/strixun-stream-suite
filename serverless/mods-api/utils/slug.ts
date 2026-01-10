@@ -148,7 +148,7 @@ export async function findModBySlug(
                 }
             }
             
-            cursor = listResult.listComplete ? undefined : listResult.cursor;
+            cursor = listResult.list_complete ? undefined : listResult.cursor;
         } while (cursor);
         
         console.log('[findModBySlug] Finished searching customer scopes:', { slug, searchedCustomers, checkedMods, found: false });

@@ -13,11 +13,13 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import type { ExecutionContext } from '@strixun/types';
+import type { ExecutionContext } from '@cloudflare/workers-types';
 import { createError } from './utils/errors.js';
 import { handleModRoutes } from './router/mod-routes.js';
 import { handleAdminRoutes } from './router/admin-routes.js';
 import { handleR2Cleanup } from './handlers/admin/r2-cleanup.js';
+import { MigrationRunner } from '../shared/migration-runner.js';
+import { migrations } from './migrations/index.js';
 
 /**
  * Route configuration interface
@@ -120,6 +122,42 @@ function getCorsHeaders(env: Env, request: Request): Record<string, string> {
 }
 
 /**
+ * Auto-run migrations on startup
+ * 
+ * SAFE FOR PRODUCTION: Idempotent
+ * - Tracks which migrations have been run
+ * - Skips duplicates automatically
+ * - Only runs new/pending migrations
+ * - Runs on ALL environments (dev + production)
+ * 
+ * This ensures database schema/data is always up-to-date on every deploy.
+ */
+async function autoRunMigrations(env: Env): Promise<void> {
+    const envName = env.ENVIRONMENT || 'production';
+    console.log(`[ModsAPI] 🔄 Checking for pending migrations in ${envName}...`);
+    
+    try {
+        const runner = new MigrationRunner(env.MODS_KV, 'mods');
+        const result = await runner.runPending(migrations, env);
+        
+        if (result.ran.length > 0) {
+            console.log(`[ModsAPI] ✅ Ran ${result.ran.length} migrations:`, result.ran);
+        }
+        
+        if (result.skipped.length > 0) {
+            console.log(`[ModsAPI] ⏭️  Skipped ${result.skipped.length} migrations (already run)`);
+        }
+        
+        if (result.ran.length === 0 && result.skipped.length === 0) {
+            console.log(`[ModsAPI] ✓ No migrations to run`);
+        }
+    } catch (error) {
+        console.error(`[ModsAPI] ❌ Failed to run migrations in ${envName}:`, error);
+        // Don't throw - migration failure shouldn't break the service
+    }
+}
+
+/**
  * Health check endpoint
  * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health
  */
@@ -151,9 +189,24 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
     const { authenticateRequest } = await import('./utils/auth.js');
     const auth = await authenticateRequest(request, env);
     
-    // If authentication fails, still require JWT for encryption (even if invalid)
-    // We'll use the raw token for encryption
-    const authForEncryption = auth || { jwtToken, customerId: null };
+    // If authentication fails, return error since JWT is required
+    if (!auth) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'Invalid JWT token. Please provide a valid JWT token in the Authorization header.',
+            instance: request.url
+        };
+        
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...getCorsHeaders(env, request),
+            },
+        });
+    }
     
     const routes = parseRoutes(env);
     const healthData = { 
@@ -175,14 +228,24 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
     });
     
     // Wrap with encryption (will encrypt with JWT token)
-    const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
+    const encryptedResult = await wrapWithEncryption(response, auth, request, env);
     return encryptedResult.response;
 }
 
 /**
  * Main request handler with API framework
  */
+// Track if migrations have been run (per worker instance)
+let migrationsRun = false;
+
 async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // Auto-run migrations on first request (idempotent, safe for production)
+    // Use ctx.waitUntil to run async without blocking the request
+    if (!migrationsRun) {
+        migrationsRun = true;
+        ctx.waitUntil(autoRunMigrations(env));
+    }
+    
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -308,7 +371,7 @@ export default {
 /**
  * Environment interface for TypeScript
  */
-interface Env {
+export interface Env {
     // KV Namespaces
     MODS_KV: KVNamespace;
     
@@ -317,6 +380,7 @@ interface Env {
     
     // Environment variables
     JWT_SECRET?: string; // REQUIRED: JWT signing secret (must match OTP auth service)
+    FILE_INTEGRITY_KEYPHRASE?: string; // OPTIONAL: Keyphrase for file integrity hashing
     // DEPRECATED: ALLOWED_EMAILS - Use Access Service instead (upload permissions managed via access.idling.app)
     // ALLOWED_EMAILS?: string;
     ALLOWED_ORIGINS?: string; // OPTIONAL: Comma-separated CORS origins (recommended for production)

@@ -7,6 +7,7 @@
 import { createError } from '../../utils/errors.js';
 import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
 import { getCustomerPermissionInfo } from '../../utils/admin.js';
+import type { Env } from '../../worker.js';
 
 /**
  * Handle get customer permissions

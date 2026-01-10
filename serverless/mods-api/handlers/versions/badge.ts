@@ -5,10 +5,10 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { verifyStrixunHash } from '../../utils/hash.js';
 import type { ModMetadata, ModVersion, VariantVersion } from '../../types/mod.js';
+import type { Env } from '../../worker.js';
 
 type VerificationStatus = 'verified' | 'unverified' | 'tampered';
 
@@ -128,7 +128,7 @@ export async function handleBadge(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
 
@@ -227,7 +227,7 @@ export async function handleBadge(
                     }
                 }
                 if (version) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
 
@@ -283,7 +283,7 @@ export async function handleBadge(
                         }
                     }
                     if (variantVersion) break;
-                    cursor = listResult.listComplete ? undefined : listResult.cursor;
+                    cursor = listResult.list_complete ? undefined : listResult.cursor;
                 } while (cursor);
             }
             
@@ -459,7 +459,7 @@ export async function handleBadge(
         });
         
         const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             credentials: true, // Allow credentials for authenticated badge requests
         });
         
@@ -481,12 +481,5 @@ export async function handleBadge(
         console.error('Badge generation error:', error);
         return new Response('Badge generation failed', { status: 500 });
     }
-}
-
-interface Env {
-    MODS_KV: KVNamespace;
-    MODS_R2: R2Bucket;
-    ENVIRONMENT?: string;
-    [key: string]: any;
 }
 

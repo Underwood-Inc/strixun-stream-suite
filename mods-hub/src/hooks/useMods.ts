@@ -178,6 +178,24 @@ export function useUpdateMod() {
             }
             
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });
+            
+            // Invalidate variant versions queries to refresh after variant file upload
+            // Use partial matching to invalidate all variant version queries for this mod
+            queryClient.invalidateQueries({ 
+                predicate: (query) => 
+                    query.queryKey[0] === 'mods' && 
+                    query.queryKey[1] === 'variant-versions' && 
+                    query.queryKey[2] === oldSlug
+            });
+            if (newSlug && newSlug !== oldSlug) {
+                queryClient.invalidateQueries({ 
+                    predicate: (query) => 
+                        query.queryKey[0] === 'mods' && 
+                        query.queryKey[1] === 'variant-versions' && 
+                        query.queryKey[2] === newSlug
+                });
+            }
+            
             addNotification({
                 message: 'Mod updated successfully!',
                 type: 'success',
@@ -209,6 +227,8 @@ export function useDeleteMod() {
                 message: 'Mod deleted successfully!',
                 type: 'success',
             });
+            // Navigate to browse page after successful deletion
+            navigate('/');
         },
         onError: (error: Error) => {
             addNotification({

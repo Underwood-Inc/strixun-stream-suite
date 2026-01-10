@@ -9,6 +9,7 @@ import { handleGetCustomerPermissions } from './permissions.js';
 // Mock dependencies
 vi.mock('../../utils/admin.js', () => ({
     hasUploadPermission: vi.fn(),
+    isSuperAdmin: vi.fn(),
 }));
 
 vi.mock('@strixun/api-framework/enhanced', () => ({
@@ -26,7 +27,7 @@ vi.mock('../../utils/errors.js', () => ({
     })),
 }));
 
-import { hasUploadPermission } from '../../utils/admin.js';
+import { hasUploadPermission, isSuperAdmin } from '../../utils/admin.js';
 
 describe('handleGetCustomerPermissions', () => {
     const mockEnv = {
@@ -43,7 +44,7 @@ describe('handleGetCustomerPermissions', () => {
 
     it('should return permissions without email field', async () => {
         vi.mocked(hasUploadPermission).mockResolvedValue(true);
-        vi.mocked(isSuperAdminEmail).mockResolvedValue(false);
+        vi.mocked(isSuperAdmin).mockResolvedValue(false);
 
         const auth = {
             customerId: 'cust_abc',
@@ -64,7 +65,7 @@ describe('handleGetCustomerPermissions', () => {
 
     it('should return permissions with displayName when available', async () => {
         vi.mocked(hasUploadPermission).mockResolvedValue(true);
-        vi.mocked(isSuperAdminEmail).mockResolvedValue(false);
+        vi.mocked(isSuperAdmin).mockResolvedValue(false);
 
         const auth = {
             customerId: 'cust_abc',
@@ -81,7 +82,7 @@ describe('handleGetCustomerPermissions', () => {
 
     it('should handle missing email in auth gracefully', async () => {
         vi.mocked(hasUploadPermission).mockResolvedValue(false);
-        vi.mocked(isSuperAdminEmail).mockResolvedValue(false);
+        vi.mocked(isSuperAdmin).mockResolvedValue(false);
 
         const auth = {
             customerId: 'cust_abc',
@@ -101,7 +102,7 @@ describe('handleGetCustomerPermissions', () => {
 
     it('should return 200 status on success', async () => {
         vi.mocked(hasUploadPermission).mockResolvedValue(true);
-        vi.mocked(isSuperAdminEmail).mockResolvedValue(false);
+        vi.mocked(isSuperAdmin).mockResolvedValue(false);
 
         const auth = {
             customerId: 'cust_abc',

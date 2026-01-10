@@ -68,7 +68,7 @@ export async function resolveSlugToModId(
             }
         }
         
-        cursor = listResult.listComplete ? undefined : listResult.cursor;
+        cursor = listResult.list_complete ? undefined : listResult.cursor;
     } while (cursor);
     
     console.log('[SlugResolver] Slug not found in any index:', { slug });

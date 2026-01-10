@@ -16,7 +16,7 @@ export async function handleThumbnail(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     // console.log('[Thumbnail] handleThumbnail called:', { modId, hasAuth: !!auth, customerId: auth?.customerId });
     try {
@@ -55,17 +55,14 @@ export async function handleThumbnail(
                     if (key.name.endsWith(`_mod_${normalizedModId}`)) {
                         mod = await env.MODS_KV.get(key.name, { type: 'json' }) as ModMetadata | null;
                         if (mod) {
-                            // Extract customerId from key name - match everything between "customer_" and "_mod_"
-                            const match = key.name.match(/^customer_(.+)_mod_/);
-                            const customerId = match ? match[1] : null;
-                            // console.log('[Thumbnail] Found mod by modId in customer scope:', { customerId, modId: mod.modId, key: key.name });
+                            // console.log('[Thumbnail] Found mod by modId in customer scope:', { modId: mod.modId, key: key.name });
                             found = true;
                             break;
                         }
                     }
                 }
                 if (found) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor && !found);
         }
         

@@ -273,8 +273,11 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
         setDownloadError(null);
 
         try {
+            // Generate fileName from variant name (actual fileName will come from backend response headers)
+            const fileName = `${variant.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-variant.zip`;
+            
             // PESSIMISTIC UPDATE: Wait for download to complete before updating UI
-            await downloadVariant(modSlug, variant.variantId, variant.fileName);
+            await downloadVariant(modSlug, variant.variantId, fileName);
             
             // Download successful - refetch mod data to get updated download counts
             console.log('[ModVersionList] Variant download completed, refetching mod data for updated counts');

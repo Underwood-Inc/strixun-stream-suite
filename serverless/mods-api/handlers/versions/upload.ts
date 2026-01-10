@@ -8,12 +8,13 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
-import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
+import { calculateStrixunHash } from '../../utils/hash.js';
 import { MAX_VERSION_FILE_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { checkUploadQuota, trackUpload } from '../../utils/upload-quota.js';
 import { isSuperAdmin } from '../../utils/admin.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion, VersionUploadRequest } from '../../types/mod.js';
+import type { Env } from '../../worker.js';
 
 /**
  * Generate unique version ID
@@ -498,16 +499,5 @@ export async function handleUploadVersion(
             },
         });
     }
-}
-
-interface Env {
-    MODS_KV: KVNamespace;
-    MODS_R2: R2Bucket;
-    MODS_PUBLIC_URL?: string;
-    MODS_ENCRYPTION_KEY?: string;
-    ALLOWED_EMAILS?: string;
-    ALLOWED_ORIGINS?: string;
-    ENVIRONMENT?: string;
-    [key: string]: any;
 }
 

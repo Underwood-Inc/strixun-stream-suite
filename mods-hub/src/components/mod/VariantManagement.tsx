@@ -11,7 +11,8 @@ import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
 import { VariantVersionList } from './VariantVersionList';
 import { VariantVersionUpload } from './VariantVersionUpload';
-import { useVariantVersions, useDeleteModVersion } from '../../hooks/useMods';
+import { useVariantVersions, useDeleteModVersion, useUpdateMod } from '../../hooks/useMods';
+import type { VariantVersionUploadRequest } from '../../types/mod';
 
 const Container = styled.div`
   ${getCardStyles('default')}
@@ -139,6 +140,7 @@ export function VariantManagement({ modSlug, modId, variants }: VariantManagemen
     const [uploadingVariant, setUploadingVariant] = useState<string | null>(null);
     
     const deleteVersion = useDeleteModVersion();
+    const updateMod = useUpdateMod();
 
     const toggleVariant = (variantId: string) => {
         setExpandedVariants(prev => {
@@ -154,11 +156,35 @@ export function VariantManagement({ modSlug, modId, variants }: VariantManagemen
 
     const handleUploadVersion = async (
         variantId: string, 
-        data: { file: File; metadata: any }
+        data: { file: File; metadata: VariantVersionUploadRequest }
     ) => {
-        // TODO: Implement variant file upload via updateMod endpoint
-        console.error('Variant file upload not yet implemented with unified system');
-        setUploadingVariant(null);
+        try {
+            // Find the variant to preserve its metadata
+            const variant = variants.find(v => v.variantId === variantId);
+            if (!variant) {
+                console.error('[VariantManagement] Variant not found:', variantId);
+                setUploadingVariant(null);
+                return;
+            }
+            
+            // Use updateMod to upload the variant file
+            // Pass the variant file in variantFiles object
+            await updateMod.mutateAsync({
+                slug: modSlug,
+                updates: {
+                    // No metadata changes, just uploading a new variant version
+                    variants: [variant], // Include existing variant metadata
+                },
+                variantFiles: {
+                    [variantId]: data.file, // New version file
+                },
+            });
+            
+            setUploadingVariant(null);
+        } catch (error) {
+            console.error('[VariantManagement] Upload failed:', error);
+            setUploadingVariant(null);
+        }
     };
 
     const handleDeleteVersion = async (variantId: string, version: VariantVersion) => {

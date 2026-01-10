@@ -27,7 +27,7 @@ export async function handleValidateVersion(
     env: Env,
     modId: string,
     versionId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     try {
         // Get mod metadata
@@ -65,7 +65,7 @@ export async function handleValidateVersion(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
 

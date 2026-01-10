@@ -7,7 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
-import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
+import type { ModMetadata, ModVersion, ModDetailResponse, VariantVersion } from '../../types/mod.js';
 
 /**
  * Handle get mod detail request

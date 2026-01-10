@@ -8,9 +8,8 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { hasAdminDashboardAccess } from '../../utils/admin.js';
 import { getCustomerR2Key, getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { fetchDisplayNameByCustomerId, fetchDisplayNamesByCustomerIds } from '@strixun/api-framework';
+import { fetchDisplayNamesByCustomerIds } from '@strixun/api-framework';
 import { getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
@@ -153,7 +152,7 @@ async function fetchModMetadata(
                     }
                 }
             }
-            customerCursor = listResult.listComplete ? undefined : listResult.cursor;
+            customerCursor = listResult.list_complete ? undefined : listResult.cursor;
         } while (customerCursor);
     }
     
@@ -165,7 +164,7 @@ async function fetchModMetadata(
  */
 async function fetchVersionMetadata(
     versionId: string,
-    modId: string,
+    _modId: string,
     customerId: string | null | undefined,
     env: Env
 ): Promise<ModVersion | null> {
@@ -205,7 +204,7 @@ async function fetchVersionMetadata(
                     }
                 }
             }
-            customerCursor = listResult.listComplete ? undefined : listResult.cursor;
+            customerCursor = listResult.list_complete ? undefined : listResult.cursor;
         } while (customerCursor);
     }
     
@@ -219,98 +218,6 @@ async function fetchVersionMetadata(
 function extractCustomerIdFromR2Key(r2Key: string): string | null {
     const match = r2Key.match(/^customer_([^/]+)\//);
     return match ? match[1] : null;
-}
-
-/**
- * Fetch all associated data for an R2 file
- * Returns human-readable mod, version, and customer information
- */
-async function fetchAssociatedData(
-    file: R2FileInfo,
-    env: Env
-): Promise<R2FileAssociatedData> {
-    const associatedData: R2FileAssociatedData = {};
-    
-    if (!file.customMetadata) {
-        return associatedData;
-    }
-    
-    const modId = file.customMetadata.modId;
-    const versionId = file.customMetadata.versionId;
-    const uploadedBy = file.customMetadata.uploadedBy;
-    const customerId = extractCustomerIdFromR2Key(file.key);
-    
-    // Determine file type
-    const isThumbnail = file.key.includes('/thumbnails/');
-    const isModFile = file.key.includes('/mods/');
-    associatedData.isThumbnail = isThumbnail;
-    associatedData.isModFile = isModFile;
-    
-    // Fetch mod metadata if modId is available
-    if (modId) {
-        const mod = await fetchModMetadata(modId, customerId, env);
-        if (mod) {
-            associatedData.mod = {
-                modId: mod.modId,
-                title: mod.title,
-                slug: mod.slug,
-                authorId: mod.authorId,
-                authorDisplayName: mod.authorDisplayName || null,
-                description: mod.description,
-                category: mod.category,
-                status: mod.status,
-                customerId: mod.customerId,
-                createdAt: mod.createdAt,
-                updatedAt: mod.updatedAt,
-                latestVersion: mod.latestVersion,
-                downloadCount: mod.downloadCount,
-                visibility: mod.visibility,
-                featured: mod.featured,
-            };
-        }
-    }
-    
-    // Fetch version metadata if versionId is available
-    if (versionId && modId) {
-        const version = await fetchVersionMetadata(versionId, modId, customerId, env);
-        if (version) {
-            associatedData.version = {
-                versionId: version.versionId,
-                modId: version.modId,
-                version: version.version,
-                changelog: version.changelog,
-                fileSize: version.fileSize,
-                fileName: version.fileName,
-                sha256: version.sha256,
-                createdAt: version.createdAt,
-                downloads: version.downloads,
-                gameVersions: version.gameVersions,
-                dependencies: version.dependencies,
-            };
-        }
-    }
-    
-    // Fetch customer display name if uploadedBy is available
-    // CRITICAL: Try to use customerId from mod metadata if available (customer is source of truth)
-    // TODO: Store customerId in R2 metadata to avoid needing mod lookup
-    if (uploadedBy) {
-        let displayName: string | null = null;
-        
-        // If we have mod metadata with customerId, use customer lookup
-        if (associatedData.mod?.customerId) {
-            displayName = await fetchDisplayNameByCustomerId(associatedData.mod.customerId, env);
-        }
-        
-        // Fallback: If no customerId or lookup failed, cannot determine customer
-        // For now, we'll leave this as null if customer lookup fails
-        // In the future, R2 metadata should store customerId directly
-        
-        associatedData.uploadedBy = { customerId: uploadedBy,
-            displayName: displayName || null,
-        };
-    }
-    
-    return associatedData;
 }
 
 /**
@@ -443,7 +350,7 @@ async function fetchAssociatedDataBatch(
 export async function handleListR2Files(
     request: Request,
     env: Env,
-    auth: { customerId: string }
+    _auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
@@ -543,7 +450,7 @@ export async function handleListR2Files(
 export async function handleDetectDuplicates(
     request: Request,
     env: Env,
-    auth: { customerId: string }
+    _auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
@@ -678,7 +585,7 @@ export async function handleDetectDuplicates(
                         }
                 }
             }
-            customerCursor = listResult.listComplete ? undefined : listResult.cursor;
+            customerCursor = listResult.list_complete ? undefined : listResult.cursor;
         } while (customerCursor);
 
         console.log('[R2Duplicates] Found', allR2Keys.size, 'R2 keys referenced in KV');
@@ -893,7 +800,7 @@ async function isThumbnailProtected(
 export async function handleDeleteR2File(
     request: Request,
     env: Env,
-    auth: { customerId: string },
+    _auth: { customerId: string },
     key?: string
 ): Promise<Response> {
     try {
@@ -1101,7 +1008,7 @@ export async function handleDeleteR2File(
 export async function handleSetDeletionTimestamp(
     request: Request,
     env: Env,
-    auth: { customerId: string },
+    _auth: { customerId: string },
     key: string
 ): Promise<Response> {
     try {

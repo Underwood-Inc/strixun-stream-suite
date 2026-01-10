@@ -83,16 +83,23 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         // Route: POST /admin/approvals/:userId - Approve user for uploads
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'approvals' && request.method === 'POST') {
             const userId = pathSegments[2];
-            const { handleApproveUser } = await import('../handlers/admin/approvals.js');
-            const response = await handleApproveUser(request, env, userId, auth);
+            const { handleApproveCustomer } = await import('../handlers/admin/approvals.js');
+            const response = await handleApproveCustomer(request, env, userId, auth);
             return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: DELETE /admin/approvals/:userId - Revoke user upload permission
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'approvals' && request.method === 'DELETE') {
             const userId = pathSegments[2];
-            const { handleRevokeUser } = await import('../handlers/admin/approvals.js');
-            const response = await handleRevokeUser(request, env, userId, auth);
+            const { handleRevokeCustomer } = await import('../handlers/admin/approvals.js');
+            const response = await handleRevokeCustomer(request, env, userId, auth);
+            return await wrapWithEncryption(response, auth, request, env);
+        }
+
+        // Route: GET /admin/approvals - List approved uploaders
+        if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'approvals' && request.method === 'GET') {
+            const { handleListApprovedUsers } = await import('../handlers/admin/approvals.js');
+            const response = await handleListApprovedUsers(request, env, auth);
             return await wrapWithEncryption(response, auth, request, env);
         }
 

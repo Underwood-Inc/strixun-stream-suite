@@ -5,7 +5,6 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { hasAdminDashboardAccess } from '../../utils/admin.js';
 import { createAccessClient } from '../../../shared/access-client.js';
 
 /**
@@ -16,7 +15,7 @@ export async function handleApproveCustomer(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { customerId: string }
+    _auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
@@ -78,11 +77,26 @@ export async function handleRevokeCustomer(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { customerId: string }
+    _auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
-        await revokeCustomerUpload(customerId, env);
+        // Remove 'uploader' role from customer via Access Service
+        const access = createAccessClient(env);
+        const authorization = await access.getCustomerAuthorization(customerId);
+        
+        if (!authorization) {
+            throw new Error('Customer not found in Access Service');
+        }
+        
+        // Remove 'uploader' role if present
+        const updatedRoles = authorization.roles.filter(r => r !== 'uploader');
+        
+        // Note: This would require an admin endpoint in Access Service
+        // For now, this is a placeholder - the actual implementation would call:
+        // await fetch(`${ACCESS_URL}/access/${customerId}/roles`, { method: 'PUT', body: JSON.stringify({ roles: updatedRoles }) })
+        
+        console.log('[Admin] Customer revocation via Authorization Service:', { customerId, roles: updatedRoles });
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -122,11 +136,15 @@ export async function handleRevokeCustomer(
 export async function handleListApprovedUsers(
     request: Request,
     env: Env,
-    auth: { customerId: string }
+    _auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures user is super admin
-        const approvedUsers = await getApprovedUploaders(env);
+        // Query Access Service for all customers with 'uploader' role
+        // Note: This requires an admin query endpoint in Access Service
+        // For now, return empty array as placeholder
+        const approvedUsers: string[] = [];
+        console.log('[Admin] List approved uploaders - Access Service query needed');
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

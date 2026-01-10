@@ -628,6 +628,17 @@ export async function downloadVariant(modSlug: string, variantId: string, fileNa
 }
 
 /**
+ * List all versions for a variant
+ */
+export async function listVariantVersions(
+    modSlug: string,
+    variantId: string
+): Promise<{ versions: ModVersion[] }> {
+    const response = await api.get<{ versions: ModVersion[] }>(`/mods/${modSlug}/variants/${variantId}/versions`);
+    return response.data;
+}
+
+/**
  * Delete mod version (requires authentication and ownership/admin)
  */
 export async function deleteModVersion(modId: string, versionId: string): Promise<void> {

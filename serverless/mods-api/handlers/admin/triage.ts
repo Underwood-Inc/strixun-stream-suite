@@ -84,7 +84,7 @@ export async function handleUpdateModStatus(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
             
             console.log('[UpdateModStatus] Customer scope search complete:', { 
@@ -398,7 +398,7 @@ export async function handleAddReviewComment(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
 

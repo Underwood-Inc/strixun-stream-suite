@@ -2,9 +2,11 @@
  * Mod data types and interfaces
  */
 
-/**
- * Mod metadata stored in KV
- */
+import type { Variant, VariantReference, VersionedResource, ModVariant as LegacyModVariant } from '../../shared/types/variant.js';
+
+// Re-export agnostic types for backward compatibility
+export type { Variant, VariantReference, VersionedResource };
+
 /**
  * Mod review status (similar to GitHub PR statuses)
  */
@@ -48,25 +50,25 @@ export interface ModMetadata {
 }
 
 /**
- * Mod version metadata
+ * Mod version metadata (implements agnostic VersionedResource)
  * UNIFIED SYSTEM: Supports both main mod versions and variant versions
  * variantId is null for main mod versions, set to variantId for variant versions
  */
 export interface ModVersion {
     versionId: string;
-    modId: string;
+    modId: string; // resourceId in agnostic system
     variantId?: string | null; // null for main mod versions, variantId for variant versions
     version: string; // Semantic version: "1.0.0"
     changelog: string;
     fileSize: number;
     fileName: string;
-    r2Key: string; // R2 storage key
+    r2Key: string; // storageKey in agnostic system
     downloadUrl: string; // Direct download URL
     sha256: string; // SHA-256 hash of file (Strixun verified)
     createdAt: string;
     downloads: number;
-    gameVersions: string[]; // Supported game versions
-    dependencies?: ModDependency[];
+    gameVersions: string[]; // Supported game versions (stored in metadata in agnostic system)
+    dependencies?: ModDependency[]; // Stored in metadata in agnostic system
 }
 
 /**
@@ -170,17 +172,23 @@ export interface ModReviewComment {
 }
 
 /**
- * Mod variant (metadata only - files are in ModVersion with variantId set)
+ * Mod variant (uses agnostic Variant system)
  * UNIFIED SYSTEM: Variants reuse ModVersion for version control
+ * 
+ * This type maintains backward compatibility while using the agnostic variant system.
+ * The modId field is kept for convenience but internally uses VariantReference.
  */
 export interface ModVariant {
     variantId: string;
-    modId: string; // Parent mod ID
+    modId: string; // Parent mod ID (for backward compatibility - internally uses VariantReference)
     name: string;
     description?: string;
     createdAt: string;
     updatedAt: string;
     currentVersionId: string | null; // Points to latest ModVersion (null if no versions yet)
+    // Stats (computed from version queries)
+    versionCount?: number;
+    totalDownloads?: number;
     // fileName is populated from currentVersionId's ModVersion
 }
 

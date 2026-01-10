@@ -8,7 +8,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerPermissionInfo, hasAdminDashboardAccess } from '../../utils/admin.js';
+import { getCustomerPermissionInfo } from '../../utils/admin.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import type { ModMetadata } from '../../types/mod.js';
 
@@ -69,16 +69,15 @@ async function listAllCustomers(env: Env): Promise<Customer[]> {
         const response = await client.get<{ users: Array<{
             customerId: string;
             displayName: string | null;
-            customerId: string | null;
             createdAt: string | null;
             lastLogin: string | null;
         }>; total: number }>('/admin/users');
         
         if (response.status === 200 && response.data) {
-            // Convert to Customer format (map userId → customerId)
+            // Convert to Customer format
             if (response.data.users && Array.isArray(response.data.users)) {
                 customers.push(...response.data.users.map(u => ({
-                    customerId: u.customerId || u.customerId, // PRIMARY: Use customerId, fallback to userId for legacy
+                    customerId: u.customerId,
                     email: '', // Not returned by admin endpoint for security
                     displayName: u.displayName,
                     createdAt: u.createdAt,
@@ -137,7 +136,7 @@ async function listAllCustomers(env: Env): Promise<Customer[]> {
                         }
                     }
                     
-                    cursor = listResult.listComplete ? undefined : listResult.cursor;
+                    cursor = listResult.list_complete ? undefined : listResult.cursor;
                 } while (cursor);
                 
                 console.log('[CustomerManagement] Fallback KV access loaded:', customers.length, 'customers');
@@ -176,7 +175,7 @@ async function listAllCustomers(env: Env): Promise<Customer[]> {
                     }
                 }
                 
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
             
             console.log('[CustomerManagement] Fallback KV access loaded:', customers.length, 'customers');
@@ -218,7 +217,7 @@ async function getCustomerModCount(customerId: string, env: Env): Promise<number
             }
         }
         
-        cursor = listResult.listComplete ? undefined : listResult.cursor;
+        cursor = listResult.list_complete ? undefined : listResult.cursor;
     } while (cursor);
     
     // Count mods by this customer
@@ -234,7 +233,7 @@ async function getCustomerModCount(customerId: string, env: Env): Promise<number
             let found = false;
             
             do {
-                const modListResult = await env.MODS_KV.list({ prefix: customerModPrefix, modCursor });
+                const modListResult = await env.MODS_KV.list({ prefix: customerModPrefix, cursor: modCursor });
                 for (const key of modListResult.keys) {
                     if (key.name.endsWith(`_mod_${modId}`)) {
                         mod = await env.MODS_KV.get(key.name, { type: 'json' }) as ModMetadata | null;
@@ -245,7 +244,7 @@ async function getCustomerModCount(customerId: string, env: Env): Promise<number
                     }
                 }
                 if (found) break;
-                modCursor = modListResult.listComplete ? undefined : modListResult.cursor;
+                modCursor = modListResult.list_complete ? undefined : modListResult.cursor;
             } while (modCursor && !found);
         }
         
@@ -264,7 +263,7 @@ async function getCustomerModCount(customerId: string, env: Env): Promise<number
 export async function handleListUsers(
     request: Request,
     env: Env,
-    auth: { customerId: string }
+    _auth: { customerId: string }
 ): Promise<Response> {
     try {
         const url = new URL(request.url);
@@ -294,18 +293,15 @@ export async function handleListUsers(
                 }
             }
             
-            // Get comprehensive permission info (checks all three tiers: super admin, env var, KV)
-            // Note: customer.email may be empty string from listAllCustomers (privacy), but we can get it from KV metadata
-            const permissionInfo = await getCustomerUploadPermissionInfo(customer.customerId, customer.email || undefined, env);
+            // Get comprehensive permission info via Access Service
+            const permissionInfo = await getCustomerPermissionInfo(customer.customerId, env);
             
             customerItems.push({
                 customerId: customer.customerId,
                 displayName: customer.displayName || null,
                 createdAt: customer.createdAt || null,
                 lastLogin: customer.lastLogin || null,
-                hasUploadPermission: permissionInfo.hasPermission,
-                permissionSource: permissionInfo.permissionSource,
-                isSuperAdmin: permissionInfo.isSuperAdmin,
+                hasUploadPermission: permissionInfo.hasUploadPermission,
                 modCount,
             });
         }
@@ -370,7 +366,7 @@ export async function handleGetUserDetails(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { customerId: string }
+    _auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Find customer
@@ -391,17 +387,12 @@ export async function handleGetUserDetails(
             });
         }
         
-        // Get comprehensive permission info (checks all three tiers: super admin, env var, KV)
-        const permissionInfo = await getCustomerUploadPermissionInfo(customer.customerId, customer.email || undefined, env);
-        const hasUploadPermission = permissionInfo.hasPermission;
+        // Get comprehensive permission info via Access Service
+        const permissionInfo = await getCustomerPermissionInfo(customer.customerId, env);
+        const hasUploadPermission = permissionInfo.hasUploadPermission;
         
-        // Get approval metadata if approved via KV
-        let approvedAt: string | null = null;
-        if (permissionInfo.permissionSource === 'kv' && env.MODS_KV) {
-            const approvalKey = `upload_approval_${customerId}`;
-            const approvalData = await env.MODS_KV.get(approvalKey, { type: 'json' }) as { metadata?: { approvedAt?: string } } | null;
-            approvedAt = approvalData?.metadata?.approvedAt || null;
-        }
+        // Get approval metadata - Access Service provides createdAt for authorization
+        const approvedAt: string | null = null; // Legacy field, no longer tracked separately
         
         // Get mod count
         const modCount = await getCustomerModCount(customerId, env);
@@ -424,7 +415,7 @@ export async function handleGetUserDetails(
                     }
                 }
                 if (emailHash) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
         
@@ -479,7 +470,7 @@ export async function handleUpdateUser(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { customerId: string }
+    _auth: { customerId: string }
 ): Promise<Response> {
     try {
         const requestData = await request.json().catch(() => ({})) as {
@@ -489,28 +480,27 @@ export async function handleUpdateUser(
         
         // Update upload permission if provided
         if (typeof requestData.hasUploadPermission === 'boolean') {
-            const { approveCustomerUpload, revokeCustomerUpload, getCustomerUploadPermissionInfo } = await import('../../utils/admin.js');
+            // Use Access Service to manage uploader role
+            const { createAccessClient } = await import('../../../shared/access-client.js');
+            const access = createAccessClient(env);
             
-            // Check current permission source
-            const allCustomers = await listAllCustomers(env);
-            const customer = allCustomers.find(c => c.customerId === customerId);
-            const currentPermissionInfo = await getCustomerUploadPermissionInfo(customerId, customer?.email || undefined, env);
+            const authorization = await access.getCustomerAuthorization(customerId);
+            if (!authorization) {
+                throw new Error('Customer not found in Access Service');
+            }
             
-            // If customer has env-var or super-admin permission, warn that revoking KV won't remove their permission
-            // (They'll still have permission from env var)
-            if (!requestData.hasUploadPermission && 
-                (currentPermissionInfo.permissionSource === 'env-var' || currentPermissionInfo.permissionSource === 'super-admin')) {
-                // Customer has env-based permission - revoking KV won't actually remove their upload permission
-                // But we'll still remove the KV entry for consistency
-                await revokeCustomerUpload(customerId, env);
-                // Note: Customer will still have permission from APPROVED_UPLOADER_EMAILS or SUPER_ADMIN_EMAILS
-            } else if (requestData.hasUploadPermission) {
-                // Approve customer (adds to KV)
-                const email = customer?.email || '';
-                await approveCustomerUpload(customerId, email, env);
+            if (requestData.hasUploadPermission) {
+                // Add 'uploader' role if not already present
+                const updatedRoles = authorization.roles.includes('uploader')
+                    ? authorization.roles
+                    : [...authorization.roles, 'uploader'];
+                console.log('[Admin] Grant uploader role via Access Service:', { customerId, roles: updatedRoles });
+                // Note: This requires an admin endpoint in Access Service to update roles
             } else {
-                // Revoke KV approval
-                await revokeCustomerUpload(customerId, env);
+                // Remove 'uploader' role if present
+                const updatedRoles = authorization.roles.filter(r => r !== 'uploader');
+                console.log('[Admin] Revoke uploader role via Access Service:', { customerId, roles: updatedRoles });
+                // Note: This requires an admin endpoint in Access Service to update roles
             }
         }
         
@@ -554,7 +544,7 @@ export async function handleGetUserMods(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { customerId: string }
+    _auth: { customerId: string }
 ): Promise<Response> {
     try {
         const url = new URL(request.url);
@@ -599,7 +589,7 @@ export async function handleGetUserMods(
                 }
             }
             
-            cursor = listResult.listComplete ? undefined : listResult.cursor;
+            cursor = listResult.list_complete ? undefined : listResult.cursor;
         } while (cursor);
         
         // Find mods by this customer

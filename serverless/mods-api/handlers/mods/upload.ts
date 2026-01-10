@@ -13,6 +13,7 @@ import { MAX_MOD_FILE_SIZE, MAX_THUMBNAIL_SIZE, validateFileSize } from '../../u
 import { checkUploadQuota, trackUpload } from '../../utils/upload-quota.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion, ModUploadRequest } from '../../types/mod.js';
+import type { Env } from '../../worker.js';
 
 /**
  * Generate URL-friendly slug from title
@@ -66,7 +67,7 @@ export async function slugExists(slug: string, env: Env, excludeModId?: string):
             }
         }
         
-        cursor = listResult.listComplete ? undefined : listResult.cursor;
+        cursor = listResult.list_complete ? undefined : listResult.cursor;
     } while (cursor);
     
     return false;
@@ -870,16 +871,5 @@ async function handleThumbnailUpload(
         console.error('Thumbnail upload error:', error);
         throw error;
     }
-}
-
-interface Env {
-    MODS_KV: KVNamespace;
-    MODS_R2: R2Bucket;
-    MODS_PUBLIC_URL?: string;
-    MODS_ENCRYPTION_KEY?: string;
-    ALLOWED_EMAILS?: string;
-    ALLOWED_ORIGINS?: string;
-    ENVIRONMENT?: string;
-    [key: string]: any;
 }
 

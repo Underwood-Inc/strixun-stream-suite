@@ -9,6 +9,7 @@
 
 import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
 import { getAllowedFileExtensions } from '../admin/settings.js';
+import type { Env } from '../../worker.js';
 
 const SETTINGS_KEY = 'admin_settings';
 
@@ -28,7 +29,7 @@ interface AdminSettings {
 export async function handleGetSettings(
     request: Request,
     env: Env,
-    auth: { customerId: string }
+    _auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Get settings from KV (uses defaults if not set)

@@ -11,9 +11,9 @@ import { generateSlug, slugExists } from './upload.js';
 import { MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { createModSnapshot } from '../../utils/snapshot.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
-import { handleThumbnailBinaryUpload } from './thumbnail.js';
 // handleThumbnailUpload is defined locally in this file
 import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
+import type { Env } from '../../worker.js';
 
 /**
  * Handle update mod request
@@ -735,15 +735,5 @@ async function handleThumbnailUpload(
         console.error('Thumbnail upload error:', error);
         throw error;
     }
-}
-
-interface Env {
-    MODS_KV: KVNamespace;
-    MODS_R2: R2Bucket;
-    MODS_PUBLIC_URL?: string;
-    ALLOWED_EMAILS?: string;
-    ALLOWED_ORIGINS?: string;
-    ENVIRONMENT?: string;
-    [key: string]: any;
 }
 
