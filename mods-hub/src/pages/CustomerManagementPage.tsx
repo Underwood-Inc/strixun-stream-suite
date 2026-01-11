@@ -38,11 +38,11 @@ import { getBadgeStyles } from '../utils/sharedStyles';
 const PageContainer = styled.div`
   max-width: 1800px;
   margin: 0 auto;
-  padding: ${spacing.xl};
+  padding: ${spacing.md};
   display: flex;
   flex-direction: column;
-  gap: ${spacing.xl};
-  height: calc(100vh - 120px);
+  gap: ${spacing.md};
+  height: calc(100vh - 80px);
   overflow: hidden;
 `;
 
@@ -115,10 +115,11 @@ const Toolbar = styled.div`
   gap: ${spacing.sm};
   align-items: center;
   flex-wrap: wrap;
-  padding: ${spacing.md};
+  padding: ${spacing.sm} ${spacing.md};
   background: ${colors.bgSecondary};
   border-radius: 8px;
   border: 1px solid ${colors.border};
+  flex-shrink: 0;
 `;
 
 const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
@@ -127,11 +128,11 @@ const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
   white-space: nowrap;
 `;
 
-const PermissionBadge = styled.span<{ hasPermission: boolean; source?: 'super-admin' | 'env-var' | 'kv' }>`
-  ${({ hasPermission, source }) => {
-    if (!hasPermission) return getBadgeStyles('default');
-    if (source === 'super-admin') return getBadgeStyles('accent');
-    if (source === 'env-var') return getBadgeStyles('info');
+const PermissionBadge = styled.span<{ $hasPermission: boolean; $source?: 'super-admin' | 'env-var' | 'kv' }>`
+  ${({ $hasPermission, $source }) => {
+    if (!$hasPermission) return getBadgeStyles('default');
+    if ($source === 'super-admin') return getBadgeStyles('accent');
+    if ($source === 'env-var') return getBadgeStyles('info');
     return getBadgeStyles('success'); // KV-based
   }}
 `;
@@ -172,10 +173,11 @@ const StatsContainer = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: ${spacing.md};
-  padding: ${spacing.md};
+  padding: ${spacing.sm} ${spacing.md};
   background: ${colors.bgSecondary};
   border-radius: 8px;
   border: 1px solid ${colors.border};
+  flex-shrink: 0;
 `;
 
 const StatItem = styled.div`
@@ -314,7 +316,7 @@ export function CustomerManagementPage() {
             cell: ({ row }) => {
                 if (!row.hasUploadPermission) {
                     return (
-                        <PermissionBadge hasPermission={false}>
+                        <PermissionBadge $hasPermission={false}>
                             Not Approved
                         </PermissionBadge>
                     );
@@ -330,7 +332,7 @@ export function CustomerManagementPage() {
                     : 'Approved';
                 
                 return (
-                    <PermissionBadge hasPermission={true} source={row.permissionSource === 'none' ? undefined : row.permissionSource}>
+                    <PermissionBadge $hasPermission={true} $source={row.permissionSource === 'none' ? undefined : row.permissionSource}>
                         {sourceLabel}
                     </PermissionBadge>
                 );
