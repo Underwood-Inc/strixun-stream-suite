@@ -275,11 +275,11 @@
           • scope: 'openid email profile'<br>
           • CSRF token in JWT payload<br><br>
           <strong>⚠ Not Yet Implemented:</strong><br>
-          • Authorization Code Flow endpoint<br>
-          • PKCE support<br>
-          • Customer info endpoint<br>
-          • Token introspection endpoint<br>
-          • Refresh tokens<br><br>
+          • <strong>Authorization Code Flow</strong> - Standard OAuth flow for web apps (<a href='https://datatracker.ietf.org/doc/html/rfc6749#section-4.1' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 6749</a>)<br>
+          • <strong>PKCE Support</strong> - Proof Key for Code Exchange, security for mobile apps (<a href='https://datatracker.ietf.org/doc/html/rfc7636' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 7636</a>)<br>
+          • <strong>Customer Info Endpoint</strong> - OIDC /userinfo endpoint for profile data (<a href='https://openid.net/specs/openid-connect-core-1_0.html#UserInfo' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>OIDC Spec</a>)<br>
+          • <strong>Token Introspection</strong> - Validate and inspect tokens (<a href='https://datatracker.ietf.org/doc/html/rfc7662' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 7662</a>)<br>
+          • <strong>Refresh Tokens</strong> - Long-lived tokens to renew access (<a href='https://datatracker.ietf.org/doc/html/rfc6749#section-6' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 6749</a>)<br><br>
           <strong>Note:</strong> We issue JWTs with OIDC-compatible claims and OAuth-style responses, but do not yet implement full OAuth 2.0/OIDC flows. Planned for future release."
           position="top"
           level="warning"

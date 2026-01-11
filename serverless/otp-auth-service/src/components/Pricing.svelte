@@ -130,27 +130,42 @@
     </Tooltip>
 
     <!-- Enterprise Tier -->
-    <div class="pricing-card">
-        <div class="pricing-header">
-          <h3>Enterprise</h3>
-          <div class="price">
-            <span class="amount">Custom</span>
+    <Tooltip 
+      component={InDevelopmentTooltip}
+      componentProps={{
+        featureName: "Enterprise Plan",
+        icon: "★",
+        description: "Custom enterprise contracts are currently in development. This tier will include custom SLAs, dedicated support, and flexible billing arrangements.",
+        additionalInfo: "Contact sales for early access: support@idling.app | Expected release: Q4 2026"
+      }}
+      level="warning"
+      position="top"
+    >
+      <StatusFlair status="wip">
+        <div class="pricing-card disabled">
+          <div class="badge badge-dev">Coming Soon</div>
+          <div class="pricing-header">
+            <h3>Enterprise</h3>
+            <div class="price">
+              <span class="amount">Custom</span>
+            </div>
+          </div>
+          <div class="pricing-body">
+            <ul class="features">
+              <li>✓ Unlimited OTP requests</li>
+              <li>✓ Unlimited customers</li>
+              <li>✓ All Pro features</li>
+              <li>✓ Dedicated support</li>
+              <li>✓ Custom SLA</li>
+              <li>✓ On-premise option</li>
+              <li>✓ Custom integrations</li>
+              <li>✓ SLA 99.99%</li>
+            </ul>
+            <button class="btn btn-secondary" disabled>Contact Sales</button>
           </div>
         </div>
-        <div class="pricing-body">
-          <ul class="features">
-            <li>✓ Unlimited OTP requests</li>
-            <li>✓ Unlimited customers</li>
-            <li>✓ All Pro features</li>
-            <li>✓ Dedicated support</li>
-            <li>✓ Custom SLA</li>
-            <li>✓ On-premise option</li>
-            <li>✓ Custom integrations</li>
-            <li>✓ SLA 99.99%</li>
-          </ul>
-        <a href="mailto:support@idling.app" class="btn btn-secondary">Contact Sales</a>
-      </div>
-    </div>
+      </StatusFlair>
+    </Tooltip>
   </div>
 
   <div class="pricing-note">
@@ -304,6 +319,7 @@
   }
 
   .pricing-header {
+    display: block;
     text-align: center;
     margin-bottom: var(--spacing-lg);
     padding-bottom: var(--spacing-lg);
@@ -311,6 +327,7 @@
   }
 
   .pricing-header h3 {
+    display: block;
     font-size: 1.5rem;
     margin-bottom: var(--spacing-md);
     color: var(--accent);
