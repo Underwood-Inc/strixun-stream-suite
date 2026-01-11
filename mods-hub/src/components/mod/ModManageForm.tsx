@@ -7,7 +7,6 @@ import { useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModMetadata, ModUpdateRequest, ModCategory, ModVisibility, ModStatus, ModVariant } from '../../types/mod';
-import { nowISO } from '@strixun/shared-config/date-utils';
 import { FileUploader } from './FileUploader';
 import { GamesPicker } from './GamesPicker';
 import { useModSettings } from '../../hooks/useMods';

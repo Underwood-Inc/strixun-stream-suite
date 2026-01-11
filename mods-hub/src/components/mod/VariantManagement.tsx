@@ -187,7 +187,7 @@ export function VariantManagement({ modSlug, modId, variants }: VariantManagemen
         }
     };
 
-    const handleDeleteVersion = async (variantId: string, version: VariantVersion) => {
+    const handleDeleteVersion = async (_variantId: string, version: VariantVersion) => {
         try {
             // UNIFIED SYSTEM: Use deleteModVersion for variant versions (they're stored as ModVersion with variantId)
             await deleteVersion.mutateAsync({

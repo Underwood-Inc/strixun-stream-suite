@@ -140,12 +140,6 @@ const AccountTypeBadge = styled.span<{ type: 'free' | 'subscription' }>`
   ${({ type }) => getBadgeStyles(type === 'subscription' ? 'accent' : 'default')}
 `;
 
-const ActionGroup = styled.div`
-  display: flex;
-  gap: ${spacing.xs};
-  flex-wrap: wrap;
-`;
-
 const SelectionInfo = styled.div`
   color: ${colors.textSecondary};
   font-size: 0.875rem;
@@ -380,6 +374,7 @@ export function CustomerManagementPage() {
                 
                 const menuItems: ActionMenuItem[] = [
                     {
+                        key: 'view',
                         label: 'View Details',
                         icon: '👁',
                         onClick: () => {
@@ -387,6 +382,7 @@ export function CustomerManagementPage() {
                         },
                     },
                     {
+                        key: 'permission',
                         label: canManagePermission 
                             ? (row.hasUploadPermission ? 'Revoke Permission' : 'Approve Upload')
                             : (row.hasUploadPermission ? 'Env Managed' : 'No Permission'),
@@ -400,6 +396,7 @@ export function CustomerManagementPage() {
                         variant: canManagePermission && row.hasUploadPermission ? 'danger' : 'primary',
                     },
                     {
+                        key: 'export',
                         label: 'Export Data (GDPR)',
                         icon: '📥',
                         onClick: () => {
@@ -601,7 +598,7 @@ export function CustomerManagementPage() {
                         <p style={{ margin: 0 }}><strong>Customer ID:</strong> {viewingCustomer.customerId}</p>
                         <p style={{ margin: 0 }}><strong>External ID:</strong> {viewingCustomer.customerIdExternal || 'N/A'}</p>
                         <p style={{ margin: 0 }}><strong>Display Name:</strong> {viewingCustomer.displayName || 'N/A'}</p>
-                        <p style={{ margin: 0 }}><strong>Account Type:</strong> {viewingCustomer.accountType}</p>
+                        <p style={{ margin: 0 }}><strong>Account Type:</strong> {viewingCustomer.customerIdExternal ? 'Subscription' : 'Free'}</p>
                         <p style={{ margin: 0 }}><strong>Upload Permission:</strong> {viewingCustomer.hasUploadPermission ? 'Yes' : 'No'}</p>
                         {viewingCustomer.hasUploadPermission && (
                             <p style={{ margin: 0 }}><strong>Permission Source:</strong> {viewingCustomer.permissionSource}</p>

@@ -63,7 +63,7 @@ const Empty = styled.div`
   color: ${colors.textMuted};
 `;
 
-export function PublicUserProfilePage() {
+export function PublicCustomerProfilePage() {
     const { username } = useParams<{ username: string }>();
     
     // TODO: Look up customer by displayName/customerName to get customerId

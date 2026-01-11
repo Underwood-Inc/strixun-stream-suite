@@ -88,9 +88,46 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
         
         if (!isOpen && triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
+            
+            // Menu dimensions (match styled values)
+            const menuWidth = 200;
+            const menuMaxHeight = 400;
+            const menuGap = 4;
+            
+            // Viewport dimensions
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            // Calculate initial position (below trigger, left-aligned)
+            let top = rect.bottom + menuGap;
+            let left = rect.left;
+            
+            // Check if menu would extend beyond right edge
+            if (left + menuWidth > viewportWidth) {
+                // Align to right edge of trigger or viewport
+                left = Math.max(8, Math.min(rect.right - menuWidth, viewportWidth - menuWidth - 8));
+            }
+            
+            // Check if menu would extend beyond bottom edge
+            const estimatedMenuHeight = Math.min(menuMaxHeight, items.length * 44); // ~44px per item
+            if (top + estimatedMenuHeight > viewportHeight) {
+                // Flip above trigger if there's more space
+                const spaceAbove = rect.top;
+                const spaceBelow = viewportHeight - rect.bottom;
+                
+                if (spaceAbove > spaceBelow) {
+                    // Position above trigger
+                    top = rect.top - estimatedMenuHeight - menuGap;
+                } else {
+                    // Keep below but constrain to viewport
+                    top = Math.max(8, viewportHeight - estimatedMenuHeight - 8);
+                }
+            }
+            
+            // Apply scroll offset for fixed positioning
             setPosition({
-                top: rect.bottom + window.scrollY + 4,
-                left: rect.left + window.scrollX,
+                top: top + window.scrollY,
+                left: left + window.scrollX,
             });
         }
         
@@ -149,7 +186,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
             }}
             onClick={(e) => e.stopPropagation()}
         >
-            {items.map((item, index) => {
+            {items.map((item) => {
                 const isFocused = enabledItems.indexOf(item) === focusedIndex;
                 const variantColor = item.variant === 'danger' 
                     ? '#dc3545' 

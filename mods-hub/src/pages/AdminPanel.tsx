@@ -132,13 +132,6 @@ const StatusBadge = styled.span<{ status: ModStatus }>`
   ${({ status }) => getBadgeStyles(getStatusBadgeType(status))}
 `;
 
-const ActionGroup = styled.div`
-  display: flex;
-  gap: ${spacing.xs};
-  flex-wrap: wrap;
-  align-items: center;
-`;
-
 const StyledLink = styled(Link)`
   color: ${colors.accent};
   text-decoration: none;
@@ -415,25 +408,28 @@ export function AdminPanel() {
             cell: ({ row }) => {
                 const menuItems: ActionMenuItem[] = [
                     {
+                        key: 'review',
                         label: 'Review',
                         icon: '👁',
                         onClick: () => window.open(`/${row.slug}/review`, '_blank'),
                     },
                     {
+                        key: 'approve',
                         label: 'Approve',
                         icon: '✓',
                         onClick: () => handleStatusChange(row.modId, 'approved'),
                         disabled: updateStatus.isPending || row.status === 'approved',
                         variant: 'primary',
-                        isDivider: false,
                     },
                     {
+                        key: 'changes',
                         label: 'Request Changes',
                         icon: '✎',
                         onClick: () => handleStatusChange(row.modId, 'changes_requested'),
                         disabled: updateStatus.isPending || row.status === 'changes_requested',
                     },
                     {
+                        key: 'deny',
                         label: 'Deny',
                         icon: '✗',
                         onClick: () => handleStatusChange(row.modId, 'denied'),
@@ -441,6 +437,7 @@ export function AdminPanel() {
                         variant: 'danger',
                     },
                     {
+                        key: 'delete',
                         label: 'Delete Permanently',
                         icon: '🗑',
                         onClick: () => handleDeleteClick(row.modId, row.title),

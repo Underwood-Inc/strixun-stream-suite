@@ -131,7 +131,7 @@ const EndOfListIndicator = styled.div`
 
 const VIEW_STORAGE_KEY = 'mods-dashboard-view';
 
-export function UserDashboardPage() {
+export function CustomerDashboardPage() {
     const navigate = useNavigate();
     const { customer, isAuthenticated } = useAuthStore();
     const [modToDelete, setModToDelete] = useState<ModMetadata | null>(null);

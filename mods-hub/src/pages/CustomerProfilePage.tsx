@@ -119,7 +119,7 @@ const Button = styled.button`
   }
 `;
 
-export function UserProfilePage() {
+export function CustomerProfilePage() {
     const { customer, isAuthenticated, isSuperAdmin } = useAuthStore();
     const navigate = useNavigate();
     

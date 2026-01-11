@@ -9,7 +9,6 @@ import type {
     ModUpdateRequest, 
     ModUploadRequest, 
     VersionUploadRequest,
-    VariantVersion,
     VariantVersionUploadRequest
 } from '../types/mod';
 import type { UpdateCustomerRequest } from '../types/customer';
@@ -654,8 +653,8 @@ export async function downloadVariant(modSlug: string, variantId: string): Promi
 export async function listVariantVersions(
     modSlug: string,
     variantId: string
-): Promise<{ versions: ModVersion[] }> {
-    const response = await api.get<{ versions: ModVersion[] }>(`/mods/${modSlug}/variants/${variantId}/versions`);
+): Promise<{ versions: any[] }> {
+    const response = await api.get<{ versions: any[] }>(`/mods/${modSlug}/variants/${variantId}/versions`);
     return response.data;
 }
 

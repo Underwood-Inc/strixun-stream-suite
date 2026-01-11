@@ -7,10 +7,10 @@ import { ModManagePage } from './pages/ModManagePage';
 import { ModReviewPage } from './pages/ModReviewPage';
 import { AdminPanel } from './pages/AdminPanel';
 import { R2ManagementPage } from './pages/R2ManagementPage';
-import { CustomerManagementPage } from './pages/UserManagementPage';
-import { UserDashboardPage } from './pages/UserDashboardPage';
-import { UserProfilePage } from './pages/UserProfilePage';
-import { PublicUserProfilePage } from './pages/PublicUserProfilePage';
+import { CustomerManagementPage } from './pages/CustomerManagementPage';
+import { CustomerDashboardPage } from './pages/CustomerDashboardPage';
+import { CustomerProfilePage } from './pages/CustomerProfilePage';
+import { PublicCustomerProfilePage } from './pages/PublicCustomerProfilePage';
 import { LoginPage } from './pages/LoginPage';
 import { DraftsPage } from './pages/DraftsPage';
 import { AdminSettingsPage } from './pages/AdminSettingsPage';
@@ -63,7 +63,7 @@ export function App() {
                         path="/dashboard" 
                         element={
                             <ProtectedRoute>
-                                <UserDashboardPage />
+                                <CustomerDashboardPage />
                             </ProtectedRoute>
                         } 
                     />
@@ -79,7 +79,7 @@ export function App() {
                         path="/profile" 
                         element={
                             <ProtectedRoute>
-                                <UserProfilePage />
+                                <CustomerProfilePage />
                             </ProtectedRoute>
                         } 
                     />
@@ -124,7 +124,7 @@ export function App() {
                         } 
                     />
                     {/* Support both /customers/:username and /:username for customer profiles (for subdomain and non-subdomain) */}
-                    <Route path="/customers/:username" element={<PublicUserProfilePage />} />
+                    <Route path="/customers/:username" element={<PublicCustomerProfilePage />} />
                     {/* Support both /mods/:slug (for non-subdomain deployments) and /:slug (for mods. subdomain) */}
                     <Route 
                         path="/mods/:slug/review" 

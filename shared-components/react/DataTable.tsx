@@ -189,20 +189,20 @@ export function DataTable<T extends Record<string, any>>({
   const bodyScrollRef = useRef<HTMLDivElement>(null);
   
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  // Convert selectedIds Set to rowSelection object
-  useEffect(() => {
-    if (enableSelection && selectedIds) {
-      const selectionObj: RowSelectionState = {};
-      data.forEach((row, index) => {
-        const id = getRowId(row);
-        if (selectedIds.has(id)) {
-          selectionObj[index] = true;
-        }
-      });
-      setRowSelection(selectionObj);
-    }
+  // Convert selectedIds Set to rowSelection object (derived state, not stored)
+  // This makes the component fully controlled by the parent
+  const rowSelection = useMemo<RowSelectionState>(() => {
+    if (!enableSelection) return {};
+    
+    const selectionObj: RowSelectionState = {};
+    data.forEach((row, index) => {
+      const id = getRowId(row);
+      if (selectedIds.has(id)) {
+        selectionObj[index] = true;
+      }
+    });
+    return selectionObj;
   }, [selectedIds, data, getRowId, enableSelection]);
 
   // Prepare columns with selection column if needed
@@ -217,7 +217,9 @@ export function DataTable<T extends Record<string, any>>({
           <Checkbox
             type="checkbox"
             checked={table.getIsAllRowsSelected()}
-            indeterminate={table.getIsSomeRowsSelected()}
+            ref={(el: HTMLInputElement | null) => {
+              if (el) el.indeterminate = table.getIsSomeRowsSelected();
+            }}
             onChange={table.getToggleAllRowsSelectedHandler()}
           />
         ),
@@ -232,17 +234,48 @@ export function DataTable<T extends Record<string, any>>({
     }
     
     // Convert DataTableColumn to TanStack ColumnDef
-    cols.push(...columns.map(col => ({
-      ...col,
-      cell: col.cell ? (info: any) => col.cell!({
-        row: info.row.original,
-        value: info.getValue(),
-        rowIndex: info.row.index
-      }) : undefined,
-    })));
+    cols.push(...columns.map(col => {
+      const colDef: any = { ...col };
+      if (col.cell) {
+        colDef.cell = (info: any) => col.cell!({
+          row: info.row.original,
+          value: info.getValue(),
+          rowIndex: info.row.index
+        });
+      }
+      // Ensure accessorKey is set if provided
+      if (!colDef.accessorFn && !colDef.accessorKey && col.id) {
+        colDef.accessorKey = col.id;
+      }
+      return colDef;
+    }));
     
     return cols;
   }, [columns, enableSelection, onSelectionChange]);
+
+  // Handle selection changes from TanStack Table
+  const handleRowSelectionChange = useCallback((updaterOrValue: any) => {
+    if (!enableSelection || !onSelectionChange) return;
+    
+    // Get new selection state
+    const newSelection = typeof updaterOrValue === 'function' 
+      ? updaterOrValue(rowSelection) 
+      : updaterOrValue;
+    
+    // Convert to Set of IDs
+    const selectedRowIds = new Set<string>();
+    Object.keys(newSelection).forEach(indexStr => {
+      if (newSelection[indexStr]) {
+        const row = data[parseInt(indexStr)];
+        if (row) {
+          selectedRowIds.add(getRowId(row));
+        }
+      }
+    });
+    
+    // Notify parent (parent will update selectedIds prop)
+    onSelectionChange(selectedRowIds);
+  }, [enableSelection, onSelectionChange, rowSelection, data, getRowId]);
 
   // TanStack Table instance
   const table = useReactTable({
@@ -255,27 +288,11 @@ export function DataTable<T extends Record<string, any>>({
     enableSorting,
     enableRowSelection: enableSelection,
     onSortingChange: setSorting,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: handleRowSelectionChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: enableSorting ? getSortedRowModel() : undefined,
-    getRowId: (row, index) => getRowId(row as T),
+    getRowId: (row) => getRowId(row as T),
   });
-
-  // Sync selection changes to parent
-  useEffect(() => {
-    if (enableSelection && onSelectionChange) {
-      const selectedRowIds = new Set<string>();
-      Object.keys(rowSelection).forEach(indexStr => {
-        if (rowSelection[indexStr]) {
-          const row = data[parseInt(indexStr)];
-          if (row) {
-            selectedRowIds.add(getRowId(row));
-          }
-        }
-      });
-      onSelectionChange(selectedRowIds);
-    }
-  }, [rowSelection, enableSelection, onSelectionChange, data, getRowId]);
 
   const rows = table.getRowModel().rows;
 
@@ -318,9 +335,9 @@ export function DataTable<T extends Record<string, any>>({
       {/* Header */}
       <TableHeaderContainer ref={headerScrollRef}>
         <TableHeader $colors={colors}>
-          {table.getHeaderGroups().map(headerGroup => (
+          {table.getHeaderGroups().map((headerGroup) => (
             <React.Fragment key={headerGroup.id}>
-              {headerGroup.headers.map(header => (
+              {headerGroup.headers.map((header) => (
                 <HeaderCell
                   key={header.id}
                   $sortable={enableSorting && header.column.getCanSort()}
@@ -342,7 +359,7 @@ export function DataTable<T extends Record<string, any>>({
       {/* Body */}
       <TableBodyContainer ref={bodyScrollRef} onScroll={handleBodyScroll}>
         <TableBody style={{ height: `${totalSize}px` }}>
-          {(enableVirtualization ? virtualRows : rows.map((row, index) => ({ index, size: rowHeight, start: index * rowHeight })))!.map((virtualRow: any) => {
+          {(enableVirtualization ? virtualRows : rows.map((_row, index) => ({ index, size: rowHeight, start: index * rowHeight })))!.map((virtualRow: any) => {
             const row = rows[virtualRow.index];
             return (
               <TableRow

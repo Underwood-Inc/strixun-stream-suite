@@ -242,7 +242,7 @@ export function VirtualizedTable<T extends Record<string, any>>({
   }, [columns, onSelectionChange]);
   
   // Sync horizontal scroll between header and body
-  const handleBodyScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+  const handleBodyScroll = useCallback(() => {
     if (headerScrollRef.current && bodyScrollRef.current) {
       headerScrollRef.current.scrollLeft = bodyScrollRef.current.scrollLeft;
     }
