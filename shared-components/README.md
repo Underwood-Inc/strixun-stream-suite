@@ -11,7 +11,9 @@ This directory contains shared UI components that can be used across multiple ap
 - ✓ **Storybook** - Interactive component documentation
 - ✓ **Reusable Components** - Shared across applications
 - ✓ **TypeScript** - Fully typed components
-- ✓ **Svelte** - Native Svelte components
+- ✓ **Svelte & React** - Identical components for both frameworks
+- ✓ **Syntax Highlighting** - CodeBlock with Prism.js support
+- ✓ **Multi-File Viewer** - IDE-like file browsing interface
 
 ## Development
 
@@ -31,10 +33,68 @@ pnpm build-storybook
 
 Components can be imported from this directory:
 
+### Svelte
+
 ```svelte
-<script>
-  import SomeComponent from '@shared-components/SomeComponent.svelte';
+<script lang="ts">
+  import CodeBlock from '@shared-components/svelte/CodeBlock.svelte';
+  import MultiFileViewer from '@shared-components/svelte/MultiFileViewer.svelte';
+  import type { FileViewerFile } from '@shared-components/svelte/MultiFileViewer.svelte';
 </script>
+```
+
+### React
+
+```typescript
+import { CodeBlock, MultiFileViewer } from '@shared-components/react';
+import type { FileViewerFile } from '@shared-components/react';
+```
+
+## Components
+
+### CodeBlock
+
+Syntax-highlighted code block with copy-to-clipboard functionality.
+
+**Supported Languages:**
+- TypeScript/JavaScript (tsx, ts, jsx, js)
+- HTML/Svelte (html, svelte)
+- CSS/SCSS (css, scss)
+- JSON, Bash, Python, HTTP
+
+**Example:**
+
+```typescript
+<CodeBlock 
+  code="const hello = 'world';" 
+  language="typescript" 
+/>
+```
+
+### MultiFileViewer
+
+IDE-like file browser with tabbed interface for displaying multiple code files.
+
+**Features:**
+- File sidebar with icons
+- Syntax highlighting for all files
+- File descriptions with HTML support
+- Responsive mobile layout
+
+**Example:**
+
+```typescript
+const files: FileViewerFile[] = [
+  {
+    name: 'App.tsx',
+    path: 'src/App.tsx',
+    language: 'tsx',
+    content: 'export function App() { ... }',
+    description: '<strong>Main Component:</strong> Entry point'
+  }
+];
+
+<MultiFileViewer files={files} />
 ```
 
 ## License

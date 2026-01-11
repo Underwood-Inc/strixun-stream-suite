@@ -1,5 +1,5 @@
 <script lang="ts">
-  import MultiFileViewer from '../lib/MultiFileViewer.svelte';
+  import MultiFileViewer from '@shared-components/svelte/MultiFileViewer.svelte';
   import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
   import { 
     reactMultiFileExample,

@@ -80,21 +80,21 @@
 <style>
   .code-block-wrapper {
     position: relative;
-    margin: var(--spacing-md) 0;
+    margin: var(--spacing-md, 1rem) 0;
   }
 
   .copy-button {
     position: absolute;
-    top: var(--spacing-sm);
-    right: var(--spacing-sm);
+    top: var(--spacing-sm, 0.5rem);
+    right: var(--spacing-sm, 0.5rem);
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--bg-dark);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
+    gap: var(--spacing-xs, 0.25rem);
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+    background: var(--bg-dark, #1a1611);
+    border: 1px solid var(--border, #3e3e3e);
+    border-radius: var(--radius-sm, 4px);
+    color: var(--text-secondary, #b0b0b0);
     font-size: 0.75rem;
     font-weight: 500;
     cursor: pointer;
@@ -104,9 +104,9 @@
   }
 
   .copy-button:hover {
-    background: var(--bg);
-    color: var(--text);
-    border-color: var(--border-light);
+    background: var(--bg, #252017);
+    color: var(--text, #f9f9f9);
+    border-color: var(--border-light, #5a5a5a);
   }
 
   .copy-button:active {
@@ -114,9 +114,9 @@
   }
 
   .copy-button.copied {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--bg-dark);
+    background: var(--accent, #edae49);
+    border-color: var(--accent, #edae49);
+    color: var(--bg-dark, #1a1611);
   }
 
   .copy-button svg {
@@ -130,10 +130,10 @@
   }
 
   pre {
-    background: var(--bg-dark);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-lg);
+    background: var(--bg-dark, #1a1611);
+    border: 1px solid var(--border, #3e3e3e);
+    border-radius: var(--radius-md, 8px);
+    padding: var(--spacing-lg, 1.5rem);
     overflow-x: auto;
     overflow-y: auto;
     max-height: 400px;
@@ -152,8 +152,7 @@
     }
 
     .copy-button {
-      padding: var(--spacing-xs);
+      padding: var(--spacing-xs, 0.25rem);
     }
   }
 </style>
-

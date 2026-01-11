@@ -1,13 +1,15 @@
 <script lang="ts">
   import CodeBlock from './CodeBlock.svelte';
 
-  export let files: Array<{
+  export interface FileViewerFile {
     name: string;
     path: string;
     language: string;
     content: string;
     description?: string;
-  }> = [];
+  }
+
+  export let files: FileViewerFile[] = [];
   
   let activeFile = 0;
   
@@ -77,9 +79,9 @@
 <style>
   .multi-file-viewer {
     display: flex;
-    background: var(--card);
-    border: 2px solid var(--border);
-    border-radius: var(--radius-md);
+    background: var(--card, #252017);
+    border: 2px solid var(--border, #3e3e3e);
+    border-radius: var(--radius-md, 8px);
     overflow: hidden;
     min-height: 500px;
     max-height: 700px;
@@ -87,21 +89,21 @@
 
   .file-sidebar {
     width: 250px;
-    background: var(--bg-dark);
-    border-right: 1px solid var(--border);
+    background: var(--bg-dark, #1a1611);
+    border-right: 1px solid var(--border, #3e3e3e);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
   }
 
   .sidebar-header {
-    padding: var(--spacing-md);
-    border-bottom: 1px solid var(--border);
+    padding: var(--spacing-md, 1rem);
+    border-bottom: 1px solid var(--border, #3e3e3e);
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: var(--spacing-xs, 0.25rem);
     font-weight: 600;
-    color: var(--text);
+    color: var(--text, #f9f9f9);
   }
 
   .folder-icon {
@@ -115,7 +117,7 @@
   }
 
   .file-list {
-    padding: var(--spacing-sm);
+    padding: var(--spacing-sm, 0.5rem);
     overflow-y: auto;
     flex: 1;
   }
@@ -124,12 +126,12 @@
     width: 100%;
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-xs) var(--spacing-sm);
+    gap: var(--spacing-sm, 0.5rem);
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
     background: transparent;
     border: none;
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
+    border-radius: var(--radius-sm, 4px);
+    color: var(--text-secondary, #b0b0b0);
     cursor: pointer;
     transition: all 0.2s;
     text-align: left;
@@ -137,12 +139,12 @@
   }
 
   .file-item:hover {
-    background: var(--border);
-    color: var(--text);
+    background: var(--border, #3e3e3e);
+    color: var(--text, #f9f9f9);
   }
 
   .file-item.active {
-    background: var(--accent);
+    background: var(--accent, #edae49);
     color: #000;
     font-weight: 600;
   }
@@ -170,28 +172,28 @@
 
   .file-tabs {
     display: flex;
-    background: var(--bg-dark);
-    border-bottom: 1px solid var(--border);
-    padding: 0 var(--spacing-sm);
+    background: var(--bg-dark, #1a1611);
+    border-bottom: 1px solid var(--border, #3e3e3e);
+    padding: 0 var(--spacing-sm, 0.5rem);
   }
 
   .tab {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--card);
-    border: 1px solid var(--border);
+    gap: var(--spacing-xs, 0.25rem);
+    padding: var(--spacing-sm, 0.5rem) var(--spacing-md, 1rem);
+    background: var(--card, #252017);
+    border: 1px solid var(--border, #3e3e3e);
     border-bottom: none;
-    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-    margin-top: var(--spacing-xs);
+    border-radius: var(--radius-sm, 4px) var(--radius-sm, 4px) 0 0;
+    margin-top: var(--spacing-xs, 0.25rem);
     font-size: 0.875rem;
-    color: var(--text);
+    color: var(--text, #f9f9f9);
   }
 
   .tab.active {
-    background: var(--card);
-    border-bottom-color: var(--card);
+    background: var(--card, #252017);
+    border-bottom-color: var(--card, #252017);
   }
 
   .tab-icon {
@@ -204,13 +206,13 @@
   }
 
   .tab-path {
-    color: var(--text-secondary);
+    color: var(--text-secondary, #b0b0b0);
     font-size: 0.75rem;
-    margin-left: var(--spacing-xs);
+    margin-left: var(--spacing-xs, 0.25rem);
   }
 
   .file-description {
-    padding: var(--spacing-md);
+    padding: var(--spacing-md, 1rem);
     background: #fff3cd;
     border-bottom: 1px solid #ffc107;
     color: #856404;
@@ -236,7 +238,7 @@
     .file-sidebar {
       width: 100%;
       border-right: none;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--border, #3e3e3e);
       max-height: 200px;
     }
 

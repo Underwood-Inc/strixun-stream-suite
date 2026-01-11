@@ -1,5 +1,5 @@
 <script lang="ts">
-  import CodeBlock from '../../lib/CodeBlock.svelte';
+  import CodeBlock from '@shared-components/svelte/CodeBlock.svelte';
   import MermaidDiagram from '../../lib/MermaidDiagram.svelte';
 
   const kvStorageDiagram = `graph TB

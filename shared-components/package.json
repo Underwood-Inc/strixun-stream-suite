@@ -32,6 +32,22 @@
     "./svelte/StatusFlair": {
       "types": "./svelte/StatusFlair.svelte",
       "default": "./svelte/StatusFlair.svelte"
+    },
+    "./svelte/CodeBlock": {
+      "types": "./svelte/CodeBlock.svelte",
+      "default": "./svelte/CodeBlock.svelte"
+    },
+    "./svelte/MultiFileViewer": {
+      "types": "./svelte/MultiFileViewer.svelte",
+      "default": "./svelte/MultiFileViewer.svelte"
+    },
+    "./react/CodeBlock": {
+      "types": "./react/CodeBlock.tsx",
+      "default": "./react/CodeBlock.tsx"
+    },
+    "./react/MultiFileViewer": {
+      "types": "./react/MultiFileViewer.tsx",
+      "default": "./react/MultiFileViewer.tsx"
     }
   },
   "scripts": {
@@ -41,7 +57,9 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
-  "dependencies": {},
+  "dependencies": {
+    "prismjs": "^1.29.0"
+  },
   "devDependencies": {
     "@chromatic-com/storybook": "^4.1.3",
     "@storybook/addon-a11y": "^8.6.15",
@@ -57,6 +75,7 @@
     "@testing-library/user-event": "^14.5.2",
     "@tsconfig/svelte": "^5.0.6",
     "@types/node": "^25.0.3",
+    "@types/prismjs": "^1.26.0",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "@types/react-window": "^1.8.8",
