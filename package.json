@@ -118,7 +118,9 @@
       "@react-three/drei": "^10.0.0-rc.1",
       "react-helmet-async": "^2.0.5",
       "react": "^19.0.0",
-      "react-dom": "^19.0.0"
+      "react-dom": "^19.0.0",
+      "@types/react": "^19.0.1",
+      "@types/react-dom": "^19.0.1"
     }
   }
 }
