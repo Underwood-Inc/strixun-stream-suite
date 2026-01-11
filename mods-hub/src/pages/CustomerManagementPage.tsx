@@ -275,12 +275,12 @@ export function CustomerManagementPage() {
             customerData: {
                 customerId: customer.customerId,
                 displayName: customer.displayName,
-                email: customer.email,
-                accountType: customer.accountType,
+                // NOTE: email and accountType removed for privacy/security
                 createdAt: customer.createdAt,
                 lastLogin: customer.lastLogin,
                 hasUploadPermission: customer.hasUploadPermission,
                 permissionSource: customer.permissionSource,
+                isSuperAdmin: customer.isSuperAdmin,
                 modCount: customer.modCount,
             },
             metadata: {

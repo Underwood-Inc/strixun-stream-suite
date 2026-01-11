@@ -11,7 +11,7 @@
  * - Sticky headers with synced horizontal scroll
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   flexRender,
   getCoreRowModel,
