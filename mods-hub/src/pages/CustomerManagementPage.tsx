@@ -266,6 +266,54 @@ export function CustomerManagementPage() {
         }
     }, [selectedIds, sortedCustomers, updateCustomer]);
 
+    // Handle GDPR data export for a customer
+    const handleExportCustomerData = useCallback((customer: CustomerListItem) => {
+        // Create GDPR-compliant data export
+        const gdprData = {
+            exportDate: new Date().toISOString(),
+            exportReason: 'GDPR Data Subject Access Request',
+            customerData: {
+                customerId: customer.customerId,
+                displayName: customer.displayName,
+                email: customer.email,
+                accountType: customer.accountType,
+                createdAt: customer.createdAt,
+                lastLogin: customer.lastLogin,
+                hasUploadPermission: customer.hasUploadPermission,
+                permissionSource: customer.permissionSource,
+                modCount: customer.modCount,
+            },
+            metadata: {
+                dataController: 'Strixun Platform',
+                exportFormat: 'JSON',
+                dataCategories: [
+                    'Identity Data',
+                    'Account Information',
+                    'Permission Settings',
+                    'Usage Statistics'
+                ],
+            },
+        };
+
+        // Convert to JSON with pretty formatting
+        const jsonString = JSON.stringify(gdprData, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        // Create download link
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `customer-data-${customer.customerId}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+
+        // Cleanup
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        console.log('[GDPR Export] Customer data exported:', customer.customerId);
+    }, []);
+
     // Table columns definition
     const columns: DataTableColumn<CustomerListItem>[] = useMemo(() => [
         {
@@ -401,9 +449,7 @@ export function CustomerManagementPage() {
                         key: 'export',
                         label: 'Export Data (GDPR)',
                         icon: '📥',
-                        onClick: () => {
-                            console.log('Export customer data:', row.customerId);
-                        },
+                        onClick: () => handleExportCustomerData(row),
                     },
                 ];
                 
