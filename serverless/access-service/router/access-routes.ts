@@ -42,10 +42,28 @@ export async function handleAccessRoutes(
         rateLimitConfig = RATE_LIMITS.write;
     }
     
-    // Check rate limit (SKIP in test environment to avoid flaky tests)
+    // Check if super admin (bypass rate limits for super admins and service calls)
+    let isSuperAdmin = false;
+    if (auth?.type === 'service') {
+        // Service calls always bypass rate limits
+        isSuperAdmin = true;
+    } else if (auth?.type === 'jwt' && auth.customerId) {
+        // Check if customer has super-admin role
+        try {
+            const rolesKey = `customer:${auth.customerId}:roles`;
+            const roles = await env.ACCESS_KV.get(rolesKey, { type: 'json' }) as string[] | null;
+            if (roles && roles.includes('super-admin')) {
+                isSuperAdmin = true;
+            }
+        } catch (error) {
+            console.error('[RateLimit] Error checking super-admin role:', error);
+        }
+    }
+    
+    // Check rate limit (SKIP for super admins and test environment)
     let rateLimitResult = await checkRateLimit(identifier, rateLimitConfig, env);
-    if (env.ENVIRONMENT === 'test') {
-        // In test mode, always allow requests (bypass rate limiting)
+    if (env.ENVIRONMENT === 'test' || isSuperAdmin) {
+        // Bypass rate limiting for test mode and super admins
         rateLimitResult = {
             allowed: true,
             remaining: rateLimitConfig.maxRequests,
