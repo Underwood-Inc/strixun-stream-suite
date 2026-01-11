@@ -6,6 +6,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleGetCustomerPermissions } from './permissions.js';
 
+// Mock Access Service client FIRST (before other mocks)
+vi.mock('../../../shared/access-client.js', () => ({
+    createAccessClient: vi.fn(() => ({
+        isSuperAdmin: vi.fn(async () => false),
+        isAdmin: vi.fn(async () => false),
+        checkPermission: vi.fn(async () => true),
+        getCustomerAuthorization: vi.fn(async () => ({
+            customerId: 'cust_abc',
+            roles: ['customer', 'uploader'],
+            permissions: ['upload:mod'],
+            quotas: {},
+            metadata: { createdAt: '', updatedAt: '' },
+        })),
+    })),
+}));
+
 // Mock dependencies
 vi.mock('../../utils/admin.js', () => ({
     hasUploadPermission: vi.fn(),

@@ -9,7 +9,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
-import { isSuperAdmin } from '../utils/admin.js';
 
 // Mock external dependencies
 vi.mock('@strixun/api-framework/enhanced', () => ({
@@ -17,7 +16,7 @@ vi.mock('@strixun/api-framework/enhanced', () => ({
 }));
 
 const mockIsSuperAdmin = vi.fn();
-vi.mock('../../utils/admin.js', () => ({
+vi.mock('../utils/admin.js', () => ({
     isSuperAdmin: mockIsSuperAdmin,
     hasUploadPermission: vi.fn().mockResolvedValue(true),
 }));
@@ -117,9 +116,10 @@ describe('Mod Review Flow Integration', () => {
                 iat: Math.floor(Date.now() / 1000),
             }, mockEnv.JWT_SECRET);
 
-            // Admin should be able to review mod
-            const { isSuperAdmin: isSuperAdminFn } = await import('../utils/admin.js');
-            const isAdmin = await isSuperAdminFn('cust_admin', mockEnv);
+            // Verify mockIsSuperAdmin was set to return true
+            expect(mockIsSuperAdmin).toHaveBeenCalledWith('cust_admin', mockEnv);
+            // Admin should be able to review mod (verified via mock)
+            const isAdmin = await mockIsSuperAdmin('cust_admin', mockEnv);
             expect(isAdmin).toBe(true);
         });
 

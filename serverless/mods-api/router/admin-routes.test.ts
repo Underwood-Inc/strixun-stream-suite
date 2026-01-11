@@ -60,6 +60,27 @@ vi.mock('@strixun/customer-lookup', () => ({
     fetchCustomerByCustomerId: mockFetchCustomerByCustomerId,
 }));
 
+// Mock Access Service client
+vi.mock('../../shared/access-client.js', () => ({
+    createAccessClient: vi.fn(() => ({
+        isSuperAdmin: vi.fn(async (customerId: string) => customerId === 'cust_123'),
+        isAdmin: vi.fn(async (customerId: string) => customerId === 'cust_123'),
+        checkPermission: vi.fn(async () => true),
+        getCustomerAuthorization: vi.fn(async (customerId: string) => {
+            if (customerId === 'cust_123') {
+                return {
+                    customerId: 'cust_123',
+                    roles: ['super-admin', 'uploader'],
+                    permissions: ['*'],
+                    quotas: {},
+                    metadata: { createdAt: '', updatedAt: '' },
+                };
+            }
+            return null;
+        }),
+    })),
+}));
+
 vi.mock('@strixun/api-framework', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@strixun/api-framework')>();
     return {
