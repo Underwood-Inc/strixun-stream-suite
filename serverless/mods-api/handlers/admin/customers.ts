@@ -101,83 +101,13 @@ async function listAllCustomers(env: Env): Promise<Customer[]> {
                 error: typeof response.data === 'object' ? JSON.stringify(response.data).substring(0, 500) : String(response.data).substring(0, 500),
                 authApiUrl
             });
-            // If service call fails, try direct KV access as fallback
-            if (env.OTP_AUTH_KV) {
-                console.log('[CustomerManagement] Falling back to direct KV access');
-                const customerPrefix = 'customer_';
-                let cursor: string | undefined;
-                
-                do {
-                    const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
-                    
-                    for (const key of listResult.keys) {
-                        // Look for legacy keys: customer_{id}_user_{emailHash} or customer_{id}_customer_{emailHash}
-                        if (key.name.includes('_user_') || key.name.includes('_customer_')) {
-                            try {
-                                const customerData = await env.OTP_AUTH_KV.get(key.name, { type: 'json' }) as any;
-                                if (customerData) {
-                                    // Extract customerId from key name (ALWAYS - this is the source of truth)
-                                    const match = key.name.match(/^customer_([^_/]+)[_/]user_/);
-                                    const customer: Customer = {
-                                        customerId: match ? match[1] : (customerData.customerId || customerData.customerId || ''),
-                                        email: customerData.email || '',
-                                        displayName: customerData.displayName,
-                                        createdAt: customerData.createdAt,
-                                        lastLogin: customerData.lastLogin,
-                                    };
-                                    customers.push(customer);
-                                }
-                            } catch (error) {
-                                console.warn('[CustomerManagement] Failed to parse customer:', key.name, error);
-                                continue;
-                            }
-                        }
-                    }
-                    
-                    cursor = listResult.list_complete ? undefined : listResult.cursor;
-                } while (cursor);
-                
-                console.log('[CustomerManagement] Fallback KV access loaded:', customers.length, 'customers');
-            }
+            // NO FALLBACK - throw error
+            throw new Error(`Failed to fetch customers from OTP auth service: ${response.status} ${response.statusText}`);
         }
     } catch (error) {
-        console.error('[UserManagement] Service-to-service call error:', error);
-        // If service call fails completely, try direct KV access as fallback
-        if (env.OTP_AUTH_KV) {
-            console.log('[CustomerManagement] Falling back to direct KV access due to error');
-            const customerPrefix = 'customer_';
-            let cursor: string | undefined;
-            
-            do {
-                const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
-                
-                for (const key of listResult.keys) {
-                    if (key.name.includes('_user_')) {
-                        try {
-                            const customerData = await env.OTP_AUTH_KV.get(key.name, { type: 'json' }) as any;
-                            if (customerData) {
-                                const match = key.name.match(/^customer_([^_/]+)[_/]user_/);
-                                const customer: Customer = {
-                                    customerId: match ? match[1] : (customerData.customerId || customerData.customerId || ''),
-                                    email: customerData.email || '',
-                                    displayName: customerData.displayName,
-                                    createdAt: customerData.createdAt,
-                                    lastLogin: customerData.lastLogin,
-                                };
-                                customers.push(customer);
-                            }
-                        } catch (error) {
-                            console.warn('[CustomerManagement] Failed to parse customer:', key.name, error);
-                            continue;
-                        }
-                    }
-                }
-                
-                cursor = listResult.list_complete ? undefined : listResult.cursor;
-            } while (cursor);
-            
-            console.log('[CustomerManagement] Fallback KV access loaded:', customers.length, 'customers');
-        }
+        console.error('[CustomerManagement] Service-to-service call error:', error);
+        // NO FALLBACK - throw error
+        throw error;
     }
     
     return customers;

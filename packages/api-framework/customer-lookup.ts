@@ -434,6 +434,54 @@ export async function fetchDisplayNamesByCustomerIds(
  * @param env - Environment with SUPER_ADMIN_EMAILS and customer lookup config
  * @returns true if customer email is in SUPER_ADMIN_EMAILS
  */
+/**
+ * Get customer roles from Access Service
+ * @param customerId - Customer ID
+ * @param env - Environment with ACCESS_SERVICE_URL and SERVICE_API_KEY
+ * @returns Array of role names
+ */
+export async function getCustomerRoles(
+    customerId: string | null,
+    env: CustomerLookupEnv & { ACCESS_SERVICE_URL?: string; SERVICE_API_KEY?: string }
+): Promise<string[]> {
+    if (!customerId) return [];
+    
+    try {
+        // Call Access Service directly to get customer roles
+        const accessServiceUrl = env.ACCESS_SERVICE_URL || 'http://localhost:8791';
+        const url = `${accessServiceUrl}/access/${customerId}`;
+        
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+        
+        // Use service API key for service-to-service calls
+        if (env.SERVICE_API_KEY) {
+            headers['X-Service-Key'] = env.SERVICE_API_KEY;
+        }
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers,
+        });
+        
+        if (!response.ok) {
+            // If 404, customer has no roles
+            if (response.status === 404) {
+                return [];
+            }
+            console.error('[CustomerLookup] Access Service error:', response.status, response.statusText);
+            return [];
+        }
+        
+        const data = await response.json() as { roles?: string[] };
+        return data.roles || [];
+    } catch (error) {
+        console.error('[CustomerLookup] Error getting customer roles:', error);
+        return [];
+    }
+}
+
 export async function isSuperAdminByCustomerId(
     customerId: string | null,
     env: CustomerLookupEnv & { ACCESS_SERVICE_URL?: string; SERVICE_API_KEY?: string }

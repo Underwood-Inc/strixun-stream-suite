@@ -130,6 +130,7 @@ export {
   getCustomerByEmailService,
   createCustomer,
   updateCustomer,
+  getCustomerRoles,
   isSuperAdminByCustomerId,
 } from './customer-lookup.js';
 

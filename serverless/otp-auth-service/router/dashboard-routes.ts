@@ -164,8 +164,85 @@ async function handleAdminRoute(
 }
 
 /**
+ * Helper to wrap admin route handlers with admin-level check (admin OR super-admin), customerId tracking and encryption
+ * Used for routes that require admin-level access (both admin and super-admin roles allowed)
+ * 
+ * CRITICAL SECURITY:
+ * - For USER requests: ALWAYS requires JWT + admin/super-admin role
+ * - For SERVICE-TO-SERVICE: Allows SUPER_ADMIN_API_KEY (internal servers only)
+ */
+async function handleAdminOrSuperAdminRoute(
+    handler: (request: Request, env: Env, customerId: string | null) => Promise<Response>,
+    request: Request,
+    env: Env,
+    auth: AuthResult
+): Promise<RouteResult> {
+    // Check if authenticated
+    if (!auth) {
+        // No JWT auth - check if it's a service-to-service call with SUPER_ADMIN_API_KEY
+        const { verifySuperAdmin } = await import('../utils/super-admin.js');
+        const authHeader = request.headers.get('Authorization');
+        let isSuperAdminKey = false;
+        
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            // CRITICAL: Trim token to ensure it matches the token used for encryption
+            const token = authHeader.substring(7).trim();
+            isSuperAdminKey = verifySuperAdmin(token, env);
+        } else {
+            const apiKey = request.headers.get('X-OTP-API-Key');
+            if (apiKey) {
+                isSuperAdminKey = verifySuperAdmin(apiKey, env);
+            }
+        }
+        
+        if (isSuperAdminKey) {
+            // SERVICE-TO-SERVICE call with SUPER_ADMIN_API_KEY - allow with null customerId
+            // This is for internal server-to-server communication only
+            const handlerResponse = await handler(request, env, null);
+            return { response: handlerResponse, customerId: null };
+        }
+        
+        // Not authenticated - reject
+        return { 
+            response: new Response(JSON.stringify({ 
+                error: 'Authentication required. You must be logged in to access admin endpoints.',
+                code: 'AUTHENTICATION_REQUIRED'
+            }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            }), 
+            customerId: null 
+        };
+    }
+    
+    // USER request with JWT - check if they have admin or super-admin role
+    const { isAdminOrSuperAdmin } = await import('../utils/super-admin.js');
+    const hasAdminAccess = await isAdminOrSuperAdmin(auth.customerId, env);
+    
+    if (!hasAdminAccess) {
+        return { 
+            response: new Response(JSON.stringify({ 
+                error: 'Admin access required. Your account does not have admin or super-admin role.',
+                code: 'ADMIN_ACCESS_REQUIRED',
+                hint: 'Contact a super-admin to be granted admin permissions.'
+            }), {
+                status: 403,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            }), 
+            customerId: auth.customerId 
+        };
+    }
+    
+    // Authenticated and authorized - execute handler
+    const handlerResponse = await handler(request, env, auth.customerId);
+    
+    // Use shared middleware for encryption and integrity headers
+    return await wrapWithEncryption(handlerResponse, auth, request, env);
+}
+
+/**
  * Helper to wrap super-admin route handlers with super-admin check, customerId tracking and encryption
- * Used only for routes that require super-admin authentication
+ * Used only for routes that require super-admin authentication (NOT regular admin)
  */
 async function handleSuperAdminRoute(
     handler: (request: Request, env: Env, customerId: string | null) => Promise<Response>,
@@ -404,10 +481,10 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
         return handleSuperAdminRoute(adminHandlers.handleTestOTP, request, env, auth);
     }
     
-    // Customer Management endpoints
+    // Customer Management endpoints (admin or super-admin, service-to-service enabled)
     if (path === '/admin/customers' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute(adminHandlers.handleListCustomers, request, env, auth);
+        return handleAdminOrSuperAdminRoute(adminHandlers.handleListCustomers, request, env, auth);
     }
     
     // GDPR endpoints

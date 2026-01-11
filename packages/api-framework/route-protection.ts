@@ -231,7 +231,7 @@ export async function protectAdminRoute(
             level: 'super-admin',
         };
     } else {
-        // Regular admin - check via Access Service (TODO: implement admin role check)
+        // Regular admin - check via Access Service for admin OR super-admin role
         if (!auth.customerId) {
             return {
                 allowed: false,
@@ -240,23 +240,36 @@ export async function protectAdminRoute(
             };
         }
         
-        // For now, check if super-admin (admins can be added later)
-        const { isSuperAdminByCustomerId } = await import('./customer-lookup.js');
-        const isSuperAdmin = await isSuperAdminByCustomerId(auth.customerId, env);
-        
-        if (!isSuperAdmin) {
+        // Check if customer has admin or super-admin role via Access Service
+        const { getCustomerRoles } = await import('./customer-lookup.js');
+        try {
+            const roles = await getCustomerRoles(auth.customerId, env);
+            const hasAdminAccess = roles.includes('admin') || roles.includes('super-admin');
+            
+            if (!hasAdminAccess) {
+                return {
+                    allowed: false,
+                    error: createForbiddenResponse(request, env, 'Admin access required', 'ADMIN_REQUIRED'),
+                    auth,
+                };
+            }
+            
+            // Determine actual level based on roles
+            const actualLevel = roles.includes('super-admin') ? 'super-admin' : 'admin';
+            
+            return {
+                allowed: true,
+                auth,
+                level: actualLevel,
+            };
+        } catch (error) {
+            console.error('[RouteProtection] Failed to check admin roles:', error);
             return {
                 allowed: false,
-                error: createForbiddenResponse(request, env, 'Admin access required', 'ADMIN_REQUIRED'),
+                error: createForbiddenResponse(request, env, 'Failed to verify admin access', 'AUTH_CHECK_FAILED'),
                 auth,
             };
         }
-        
-        return {
-            allowed: true,
-            auth,
-            level: 'super-admin', // Super admins have admin access too
-        };
     }
 }
 

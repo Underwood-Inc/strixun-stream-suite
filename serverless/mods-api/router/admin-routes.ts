@@ -18,12 +18,13 @@ import { createError } from '../utils/errors.js';
  */
 export async function handleAdminRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
     try {
-        // Protect route with super-admin requirement
+        // Protect route with admin-level requirement
         // This ensures API-level protection - no data is returned if unauthorized
+        // Admin-level allows both 'admin' and 'super-admin' roles
         const protection = await protectAdminRoute(
             request,
             env,
-            'super-admin', // All mods-api admin routes require super-admin
+            'admin', // All mods-api admin routes require admin or super-admin role
             verifyJWT
         );
 
@@ -100,6 +101,37 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'approvals' && request.method === 'GET') {
             const { handleListApprovedUsers } = await import('../handlers/admin/approvals.js');
             const response = await handleListApprovedUsers(request, env, auth);
+            return await wrapWithEncryption(response, auth, request, env);
+        }
+
+        // Route: GET /admin/customers - List all customers
+        if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && request.method === 'GET') {
+            const { handleListCustomers } = await import('../handlers/admin/customers.js');
+            const response = await handleListCustomers(request, env, auth);
+            return await wrapWithEncryption(response, auth, request, env);
+        }
+
+        // Route: GET /admin/customers/:customerId - Get customer details
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && request.method === 'GET') {
+            const customerId = pathSegments[2];
+            const { handleGetCustomerDetails } = await import('../handlers/admin/customers.js');
+            const response = await handleGetCustomerDetails(request, env, customerId, auth);
+            return await wrapWithEncryption(response, auth, request, env);
+        }
+
+        // Route: PUT /admin/customers/:customerId - Update customer
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && request.method === 'PUT') {
+            const customerId = pathSegments[2];
+            const { handleUpdateCustomer } = await import('../handlers/admin/customers.js');
+            const response = await handleUpdateCustomer(request, env, customerId, auth);
+            return await wrapWithEncryption(response, auth, request, env);
+        }
+
+        // Route: GET /admin/customers/:customerId/mods - Get customer's mods
+        if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && pathSegments[3] === 'mods' && request.method === 'GET') {
+            const customerId = pathSegments[2];
+            const { handleGetCustomerMods } = await import('../handlers/admin/customers.js');
+            const response = await handleGetCustomerMods(request, env, customerId, auth);
             return await wrapWithEncryption(response, auth, request, env);
         }
 

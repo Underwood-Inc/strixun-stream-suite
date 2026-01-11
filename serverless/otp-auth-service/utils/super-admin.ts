@@ -128,6 +128,38 @@ export async function authenticateSuperAdminJWT(request: Request, env: Env): Pro
 
 
 /**
+ * Check if a customer has admin or super-admin role (via Authorization Service)
+ * 
+ * @param customerId - Customer ID
+ * @param env - Environment
+ * @returns True if customer has admin or super-admin role
+ */
+export async function isAdminOrSuperAdmin(customerId: string, env: Env): Promise<boolean> {
+    if (!customerId) {
+        return false;
+    }
+
+    try {
+        const access = createAccessClient(env);
+        const roles = await access.getRoles(customerId);
+        
+        const hasAdminAccess = roles.includes('admin') || roles.includes('super-admin');
+        
+        console.log('[AdminAuth] Checking admin access:', {
+            customerId,
+            roles,
+            hasAdminAccess,
+            source: 'Authorization Service'
+        });
+        
+        return hasAdminAccess;
+    } catch (error) {
+        console.error('[AdminAuth] Failed to check admin status:', error);
+        return false; // Fail closed
+    }
+}
+
+/**
  * Require super-admin authentication (API key or JWT-based)
  * Returns 401 response if not authenticated
  * 
@@ -157,3 +189,4 @@ export async function requireSuperAdmin(request: Request, env: Env): Promise<Res
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
     });
 }
+
