@@ -18,7 +18,7 @@ const NETWORK_INTEGRITY_KEYPHRASE = 'test-integrity-keyphrase-for-integration-te
 const JWT_SECRET = 'test-jwt-secret-for-local-development-12345678901234567890123456789012';
 const SERVICE_API_KEY = 'test-service-key-12345';
 const SUPER_ADMIN_API_KEY = 'test-super-admin-key';
-const SUPER_ADMIN_EMAILS = 'm.seaward@pm.me,test-admin@example.com';
+const SUPER_ADMIN_EMAILS = 'm.seaward@pm.me';
 
 export interface MultiWorkerSetup {
   accessService: UnstableDevWorker;

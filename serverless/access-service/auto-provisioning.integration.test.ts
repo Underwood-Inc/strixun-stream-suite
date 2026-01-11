@@ -19,7 +19,7 @@ import { createMultiWorkerSetup } from './shared/test-helpers/miniflare-workers.
 import type { UnstableDevWorker } from 'wrangler';
 
 const SERVICE_API_KEY = 'test-service-key-12345';
-const SUPER_ADMIN_EMAILS = 'm.seaward@pm.me,test-admin@example.com';
+const SUPER_ADMIN_EMAILS = 'm.seaward@pm.me';
 
 describe('Customer Auto-Provisioning - Full Integration', () => {
   let accessService: UnstableDevWorker;
