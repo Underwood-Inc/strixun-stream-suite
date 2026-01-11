@@ -7,7 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { isSuperAdminEmail } from '../../utils/admin.js';
+import { isAdmin as checkIsAdmin } from '../../utils/admin.js';
 import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
 
 /**
@@ -17,7 +17,7 @@ export async function handleGetModReview(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     try {
         // Must be authenticated
@@ -70,7 +70,7 @@ export async function handleGetModReview(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
         
@@ -94,7 +94,7 @@ export async function handleGetModReview(
         }
         
         // Check access: only admin or uploader can access review page
-        const isAdmin = auth.email && await isSuperAdminEmail(auth.email, env);
+        const isAdmin = await checkIsAdmin(auth.customerId, env);
         const isUploader = mod.authorId === auth.customerId;
 
         if (!isAdmin && !isUploader) {
@@ -118,25 +118,24 @@ export async function handleGetModReview(
         
         // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
         const normalizedStoredModId = normalizeModId(mod.modId);
-        const modId = normalizedStoredModId;
 
         // Get all versions - try global scope first, then mod's customer scope
         // CRITICAL: Use mod.customerId (where mod was uploaded), not auth.customerId
         let versionIds: string[] = [];
         
         // Check global scope first
-        const globalVersionsKey = `mod_${modId}_versions`;
+        const globalVersionsKey = `mod_${normalizedStoredModId}_versions`;
         const globalVersionsData = await env.MODS_KV.get(globalVersionsKey, { type: 'json' }) as string[] | null;
         if (globalVersionsData) {
             versionIds = globalVersionsData;
         } else if (mod.customerId) {
             // Fall back to mod's customer scope (where it was uploaded)
-            const customerVersionsKey = getCustomerKey(mod.customerId, `mod_${modId}_versions`);
+            const customerVersionsKey = getCustomerKey(mod.customerId, `mod_${normalizedStoredModId}_versions`);
             const customerVersionsData = await env.MODS_KV.get(customerVersionsKey, { type: 'json' }) as string[] | null;
             versionIds = customerVersionsData || [];
         } else if (auth?.customerId) {
             // Last resort: try auth user's customer scope (for backward compatibility)
-            const customerVersionsKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
+            const customerVersionsKey = getCustomerKey(auth.customerId, `mod_${normalizedStoredModId}_versions`);
             const customerVersionsData = await env.MODS_KV.get(customerVersionsKey, { type: 'json' }) as string[] | null;
             versionIds = customerVersionsData || [];
         }

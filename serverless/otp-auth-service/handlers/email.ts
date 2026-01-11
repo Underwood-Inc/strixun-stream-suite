@@ -52,6 +52,35 @@ export async function sendOTPEmail(
         expiresAt?: string;
     }
 ): Promise<any> {
+    // LOCAL DEV MODE: Check if we're in local development without email configured
+    // This allows local testing without needing Resend API key
+    const isLocalDev = env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'local';
+    const hasResendKey = !!env.RESEND_API_KEY;
+    
+    if (isLocalDev && !hasResendKey) {
+        // Local dev bypass - just log OTP to console and return success
+        console.log('╔════════════════════════════════════════════════════════╗');
+        console.log('║                  LOCAL DEV MODE                        ║');
+        console.log('║              Email Service Bypassed                    ║');
+        console.log('╠════════════════════════════════════════════════════════╣');
+        console.log(`║  Email: ${email.padEnd(44)} ║`);
+        console.log(`║  OTP Code: ${otp.padEnd(40)} ║`);
+        console.log(`║  Expires: 10 minutes${' '.repeat(30)} ║`);
+        console.log('╠════════════════════════════════════════════════════════╣');
+        console.log('║  Use this OTP code to complete authentication         ║');
+        console.log('║  No email will be sent in local development           ║');
+        console.log('╚════════════════════════════════════════════════════════╝');
+        
+        return { 
+            id: `local_dev_${Date.now()}`, 
+            bypassed: true,
+            email,
+            otp,
+            message: 'Local dev mode - check console for OTP code'
+        };
+    }
+    
+    // Production mode requires RESEND_API_KEY
     if (!env.RESEND_API_KEY) {
         throw new Error('RESEND_API_KEY not configured');
     }

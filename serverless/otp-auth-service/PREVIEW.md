@@ -8,8 +8,8 @@ pnpm preview
 ```
 
 This will:
-1. ✓ Build the dashboard with Vite (`pnpm build` in dashboard/)
-2. ✓ Generate `dashboard-assets.js` with embedded files
+1. ✓ Build the dashboard with Vite (`pnpm build`)
+2. ✓ Generate `landing-page-assets.js` with embedded files (includes dashboard and landing page)
 3. ✓ Start wrangler dev in production mode
 4. ✓ Serve the built dashboard from the worker (not Vite dev server)
 
@@ -37,7 +37,7 @@ This will:
 
 ## What This Tests
 
-- ✓ Production build process (Vite  dist/  dashboard-assets.js)
+- ✓ Production build process (Vite → dist/ → landing-page-assets.js)
 - ✓ Worker serving embedded dashboard files
 - ✓ SPA routing (all `/dashboard/*` routes serve index.html)
 - ✓ Asset serving (JS, CSS, images, fonts)
@@ -58,19 +58,19 @@ This will:
 **Production Preview (`pnpm preview`):**
 - Landing page: Worker (localhost:8787)
 - Dashboard: Built files embedded in worker
-- Worker serves embedded files from `dashboard-assets.js`
+- Worker serves embedded files from `landing-page-assets.js`
 - No hot reload (static files)
 
 ## Troubleshooting
 
 **Dashboard not loading?**
 - Make sure `pnpm build` completed successfully
-- Check that `dashboard-assets.js` exists
+- Check that `landing-page-assets.js` exists
 - Verify worker logs for errors
 
 **Assets 404?**
 - Check that Vite build output includes all assets
-- Verify file paths in `dashboard-assets.js`
+- Verify file paths in `landing-page-assets.js`
 - Check browser console for failed requests
 
 **Build fails?**

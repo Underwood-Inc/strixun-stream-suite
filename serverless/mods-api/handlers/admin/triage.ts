@@ -6,7 +6,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
-import { isSuperAdminEmail } from '../../utils/admin.js';
+import { isAdmin as checkIsAdmin } from '../../utils/admin.js';
 import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
 import type { ModMetadata, ModStatus, ModStatusHistory, ModReviewComment, ModVersion } from '../../types/mod.js';
 
@@ -18,7 +18,7 @@ export async function handleUpdateModStatus(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
@@ -84,7 +84,7 @@ export async function handleUpdateModStatus(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
             
             console.log('[UpdateModStatus] Customer scope search complete:', { 
@@ -358,7 +358,7 @@ export async function handleAddReviewComment(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Get mod metadata
@@ -398,7 +398,7 @@ export async function handleAddReviewComment(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
 
@@ -417,7 +417,7 @@ export async function handleAddReviewComment(
         }
 
         // Check access: only admin or uploader can comment
-        const isAdmin = auth.email && await isSuperAdminEmail(auth.email, env);
+        const isAdmin = await checkIsAdmin(auth.customerId, env);
         const isUploader = mod.authorId === auth.customerId;
 
         if (!isAdmin && !isUploader) {
@@ -437,7 +437,6 @@ export async function handleAddReviewComment(
         // CRITICAL: For non-admin users (uploaders), customerId is required for display name lookup
         if (!isAdmin && !auth.customerId) {
             console.error('[Triage] CRITICAL: customerId is null for non-admin customer:', { customerId: auth.customerId,
-                email: auth.email,
                 isUploader,
                 note: 'Rejecting comment - customerId is required for display name lookups'
             });

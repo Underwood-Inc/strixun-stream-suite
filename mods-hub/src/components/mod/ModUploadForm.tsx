@@ -7,7 +7,7 @@ import { useState, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModUploadRequest, ModCategory, ModVisibility, ModVariant, ModStatus } from '../../types/mod';
-import { useAdminSettings } from '../../hooks/useMods';
+import { useModSettings } from '../../hooks/useMods';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
 
@@ -204,7 +204,7 @@ export function ModUploadForm({
     isLoading,
     initialData 
 }: ModUploadFormProps) {
-    const { data: settings } = useAdminSettings();
+    const { data: settings } = useModSettings();
     const [title, setTitle] = useState(initialData?.title || '');
     const [description, setDescription] = useState(initialData?.description || '');
     const [category, setCategory] = useState<ModCategory>(initialData?.category || 'script');

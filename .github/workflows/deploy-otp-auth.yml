@@ -136,24 +136,24 @@ jobs:
           echo "🔨 Building dashboard..."
           pnpm run build
           
-          # Verify dashboard-assets.js was created
-          echo "🔍 Verifying dashboard-assets.js..."
-          if [ ! -f "dashboard-assets.js" ]; then
-            echo "✗ ERROR: dashboard-assets.js was not created!"
-            echo "Build may have failed. Checking dashboard dist directory..."
-            ls -la dashboard/dist/ || echo "Dashboard dist directory not found"
+          # Verify landing-page-assets.js was created
+          echo "🔍 Verifying landing-page-assets.js..."
+          if [ ! -f "landing-page-assets.js" ]; then
+            echo "✗ ERROR: landing-page-assets.js was not created!"
+            echo "Build may have failed. Checking dist directory..."
+            ls -la dist/ || echo "Dist directory not found"
             exit 1
           fi
           
-          # Check that dashboard-assets.js has content (using ES module import)
-          echo "📊 Checking dashboard-assets.js content..."
-          ASSET_COUNT=$(node --input-type=module -e "import('./dashboard-assets.js').then(m => console.log(Object.keys(m.default || {}).length)).catch(() => console.log('0'))" 2>/dev/null || echo "0")
+          # Check that landing-page-assets.js has content (using ES module import)
+          echo "📊 Checking landing-page-assets.js content..."
+          ASSET_COUNT=$(node --input-type=module -e "import('./landing-page-assets.js').then(m => console.log(Object.keys(m.default || {}).length)).catch(() => console.log('0'))" 2>/dev/null || echo "0")
           if [ "$ASSET_COUNT" = "0" ]; then
-            echo "⚠  WARNING: dashboard-assets.js appears to be empty or invalid"
+            echo "⚠  WARNING: landing-page-assets.js appears to be empty or invalid"
             echo "This might cause styles to not load in production"
-            echo "File size: $(wc -c < dashboard-assets.js) bytes"
+            echo "File size: $(wc -c < landing-page-assets.js) bytes"
           else
-            echo "✓ dashboard-assets.js created with $ASSET_COUNT files"
+            echo "✓ landing-page-assets.js created with $ASSET_COUNT files"
           fi
           
           # Deploy to Cloudflare Workers (default worker, not production-specific)

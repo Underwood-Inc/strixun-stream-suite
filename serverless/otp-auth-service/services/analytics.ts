@@ -316,18 +316,9 @@ export async function checkQuota(
     email?: string
 ): Promise<QuotaResult> {
     // Super admins are ALWAYS exempt from quota limits
-    if (email) {
-        const { isSuperAdminEmail } = await import('../utils/super-admin.js');
-        // DIAGNOSTIC: Log what we're checking
-        const superAdminEmails = env.SUPER_ADMIN_EMAILS ? env.SUPER_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase()) : [];
-        console.log('[QUOTA_DEBUG] Checking super admin:', {
-            email: email.trim().toLowerCase(),
-            superAdminEmails: superAdminEmails,
-            hasEnvVar: !!env.SUPER_ADMIN_EMAILS,
-            envValue: env.SUPER_ADMIN_EMAILS
-        });
-        const isSuperAdmin = await isSuperAdminEmail(email, env);
-        console.log('[QUOTA_DEBUG] Super admin check result:', isSuperAdmin);
+    if (customerId) {
+        const { isSuperAdmin: checkSuperAdmin } = await import('../utils/super-admin.js');
+        const isSuperAdmin = await checkSuperAdmin(customerId, env);
         if (isSuperAdmin) {
             // Return unlimited quota for super admins
             return {

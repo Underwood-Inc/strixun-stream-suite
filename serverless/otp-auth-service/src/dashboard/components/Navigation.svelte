@@ -2,16 +2,24 @@
   import { createEventDispatcher } from 'svelte';
   import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
 
-  export let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' = 'dashboard';
+  export let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' | 'roles-permissions' = 'dashboard';
+  export let userRoles: string[] = [];
 
   const dispatch = createEventDispatcher();
 
-  const pages = [
-    { id: 'dashboard', label: 'Dashboard', status: null as 'wip' | 'in-testing' | null },
-    { id: 'api-keys', label: 'API Keys', status: null as 'wip' | 'in-testing' | null },
-    { id: 'audit-logs', label: 'Audit Logs', status: 'in-testing' as 'wip' | 'in-testing' | null },
-    { id: 'analytics', label: 'Analytics', status: 'in-testing' as 'wip' | 'in-testing' | null }
+  const allPages = [
+    { id: 'dashboard', label: 'Dashboard', status: null as 'wip' | 'in-testing' | null, requiresRole: null },
+    { id: 'api-keys', label: 'API Keys', status: null as 'wip' | 'in-testing' | null, requiresRole: null },
+    { id: 'audit-logs', label: 'Audit Logs', status: 'in-testing' as 'wip' | 'in-testing' | null, requiresRole: null },
+    { id: 'analytics', label: 'Analytics', status: 'in-testing' as 'wip' | 'in-testing' | null, requiresRole: null },
+    { id: 'roles-permissions', label: 'Roles & Permissions', status: null as 'wip' | 'in-testing' | null, requiresRole: 'super-admin' }
   ] as const;
+
+  // Filter pages based on user roles
+  $: pages = allPages.filter(page => {
+    if (!page.requiresRole) return true;
+    return userRoles.includes(page.requiresRole);
+  });
 
   function handleClick(page: typeof currentPage) {
     dispatch('navigate', page);

@@ -105,10 +105,6 @@ export type {
 export {
   protectAdminRoute,
   withAdminProtection,
-  isSuperAdminEmail,
-  isAdminEmail,
-  getSuperAdminEmails,
-  getAdminEmails,
   verifySuperAdminKey,
   createUnauthorizedResponse,
   createForbiddenResponse,
@@ -134,6 +130,7 @@ export {
   getCustomerByEmailService,
   createCustomer,
   updateCustomer,
+  getCustomerRoles,
   isSuperAdminByCustomerId,
 } from './customer-lookup.js';
 

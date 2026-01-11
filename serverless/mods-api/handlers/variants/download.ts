@@ -7,9 +7,8 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, normalizeModId, getCustomerR2Key } from '../../utils/customer.js';
-import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
-import type { ModMetadata, ModVariant, ModVersion } from '../../types/mod.js';
+import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
+import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 /**
  * Handle download variant request
@@ -21,7 +20,7 @@ export async function handleDownloadVariant(
     env: Env,
     modId: string,
     variantId: string,
-    auth: { customerId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     console.log('[VariantDownload] handleDownloadVariant called:', { modId, variantId, hasAuth: !!auth, customerId: auth?.customerId });
     try {
@@ -62,7 +61,7 @@ export async function handleDownloadVariant(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
 
@@ -80,9 +79,6 @@ export async function handleDownloadVariant(
             });
         }
 
-        // ✨ LAZY MIGRATION: Automatically migrate variants if needed
-        mod = await migrateModVariantsIfNeeded(mod, env);
-
         // Find the variant
         const variant = mod.variants?.find(v => v.variantId === variantId);
         if (!variant) {
@@ -99,41 +95,49 @@ export async function handleDownloadVariant(
             });
         }
 
-        // Extract R2 key - prioritize stored r2Key, then fileUrl, then construct from metadata
-        // fileUrl format: https://pub-xxx.r2.dev/mods/modId/variants/variantId.ext
-        // or: ${MODS_PUBLIC_URL}/mods/modId/variants/variantId.ext
-        let r2Key: string | null = null;
-        
-        // First priority: use stored r2Key if available (most reliable)
-        if (variant.r2Key) {
-            r2Key = variant.r2Key;
-            console.log('[VariantDownload] Using stored r2Key from variant metadata:', r2Key);
-        } else if (variant.fileUrl) {
-            // Second priority: extract from fileUrl
-            try {
-                const url = new URL(variant.fileUrl);
-                // Remove leading slash if present
-                r2Key = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
-                console.log('[VariantDownload] Extracted r2Key from fileUrl:', r2Key);
-            } catch {
-                // If fileUrl is not a valid URL, try to extract from the path
-                // Assume it's already an R2 key or path
-                r2Key = variant.fileUrl.includes('mods/') ? variant.fileUrl.split('mods/')[1] : null;
-                if (r2Key && !r2Key.startsWith('mods/')) {
-                    r2Key = `mods/${normalizedModId}/variants/${variantId}${r2Key}`;
-                }
-                console.log('[VariantDownload] Extracted r2Key from fileUrl path:', r2Key);
-            }
+        // ARCHITECTURAL IMPROVEMENT: Variants now use version control
+        // Get the current (latest) version of the variant
+        if (!variant.currentVersionId) {
+            const rfcError = createError(request, 404, 'No Version Available', 'This variant has no versions available');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
         }
 
-        // Fallback: construct R2 key from variant metadata if extraction failed
-        if (!r2Key) {
-            const fileExtension = variant.fileName?.includes('.') 
-                ? variant.fileName.substring(variant.fileName.lastIndexOf('.'))
-                : '.zip';
-            r2Key = getCustomerR2Key(mod.customerId, `mods/${normalizedModId}/variants/${variantId}${fileExtension}`);
-            console.log('[VariantDownload] Constructed r2Key from metadata fallback:', r2Key);
+        console.log('[VariantDownload] Fetching current version:', { variantId, currentVersionId: variant.currentVersionId });
+        
+        // UNIFIED SYSTEM: Variant versions are stored as ModVersion with variantId field
+        const versionKey = getCustomerKey(mod.customerId, `version_${variant.currentVersionId}`);
+        const variantVersion = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
+        
+        if (!variantVersion) {
+            const rfcError = createError(request, 404, 'Version Not Found', 'The current version of this variant was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
         }
+
+        // Get r2Key from the current variant version
+        const r2Key = variantVersion.r2Key;
+        console.log('[VariantDownload] Using r2Key from current variant version:', { 
+            versionId: variantVersion.versionId,
+            version: variantVersion.version,
+            r2Key 
+        });
 
         // Get encrypted file from R2
         const { getR2SourceInfo } = await import('../../utils/r2-source.js');
@@ -164,6 +168,12 @@ export async function handleDownloadVariant(
 
         // Check if file is encrypted
         const customMetadata = encryptedFile.customMetadata || {};
+        console.log('[VariantDownload] R2 customMetadata:', {
+            allMetadata: customMetadata,
+            originalFileName: customMetadata.originalFileName,
+            originalContentType: customMetadata.originalContentType,
+            r2Key
+        });
         const isEncrypted = customMetadata.encrypted === 'true';
         const encryptionFormat = customMetadata.encryptionFormat || 'binary-v4';
 
@@ -250,12 +260,28 @@ export async function handleDownloadVariant(
             console.log('[VariantDownload] File is not encrypted, returning as-is');
         }
 
-        // Determine content type and filename - NO FALLBACKS
+        // Determine content type and filename - use EXACTLY what was uploaded
         const originalContentType = customMetadata.originalContentType;
-        const originalFileName = customMetadata.originalFileName || variant.fileName;
+        const originalFileName = customMetadata.originalFileName;
+        
+        console.log('[VariantDownload] File metadata:', {
+            fromCustomMetadata: {
+                originalFileName: customMetadata.originalFileName,
+                originalContentType: customMetadata.originalContentType
+            },
+            fromVersion: {
+                fileName: variantVersion.fileName
+            },
+            allCustomMetadata: customMetadata
+        });
         
         if (!originalFileName || !originalContentType) {
-            const rfcError = createError(request, 500, 'Internal Server Error', 'File metadata not found');
+            console.error('[VariantDownload] Missing file metadata:', {
+                hasOriginalFileName: !!originalFileName,
+                hasOriginalContentType: !!originalContentType,
+                customMetadata
+            });
+            const rfcError = createError(request, 500, 'Internal Server Error', 'File metadata (originalFileName or originalContentType) not found in R2 customMetadata');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
@@ -268,104 +294,21 @@ export async function handleDownloadVariant(
             });
         }
 
-        // Increment download count for mod
+        // UNIFIED SYSTEM: Increment download counters
+        // Increment version download count (async, don't wait)
+        Promise.resolve().then(async () => {
+            const versionKey = getCustomerKey(mod.customerId, `version_${variantVersion.versionId}`);
+            const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
+            if (version) {
+                version.downloads += 1;
+                await env.MODS_KV.put(versionKey, JSON.stringify(version));
+            }
+        }).catch(error => {
+            console.error('[VariantDownload] Error incrementing download counter:', error);
+        });
+
+        // Increment mod download count
         mod.downloadCount = (mod.downloadCount || 0) + 1;
-        
-        // Increment variant-specific download count
-        // CRITICAL: variant is a reference to mod.variants array element, so updating it updates the mod
-        if (variant) {
-            variant.downloads = (variant.downloads || 0) + 1;
-            // Ensure the updated variant is in mod.variants (it should be since variant is a reference)
-            if (mod.variants) {
-                const variantIndex = mod.variants.findIndex(v => v.variantId === variantId);
-                if (variantIndex >= 0) {
-                    mod.variants[variantIndex] = variant; // Explicitly update in array (though reference should work)
-                }
-            }
-            console.log('[VariantDownload] Incremented download count for variant:', {
-                variantId: variant.variantId,
-                variantName: variant.name,
-                downloads: variant.downloads
-            });
-        }
-        
-        // Also increment download count for the latest version (same as version downloads)
-        let latestVersion: ModVersion | null = null;
-        if (mod.latestVersion) {
-            // Get version list to find the latest version
-            const versionsListKey = mod.customerId 
-                ? getCustomerKey(mod.customerId, `mod_${normalizedModId}_versions`)
-                : `mod_${normalizedModId}_versions`;
-            const versionIds = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
-            
-            if (versionIds && versionIds.length > 0) {
-                // Load all versions and find the one matching latestVersion semantic version
-                const versions: ModVersion[] = [];
-                for (const versionId of versionIds) {
-                    let version: ModVersion | null = null;
-                    
-                    // Try customer scope first
-                    if (mod.customerId) {
-                        const customerVersionKey = getCustomerKey(mod.customerId, `version_${versionId}`);
-                        version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
-                    }
-                    
-                    // Try global scope if not found
-                    if (!version) {
-                        const globalVersionKey = `version_${versionId}`;
-                        version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
-                    }
-                    
-                    if (version) {
-                        versions.push(version);
-                        // If this matches the latestVersion semantic version, use it
-                        if (version.version === mod.latestVersion) {
-                            latestVersion = version;
-                        }
-                    }
-                }
-                
-                // If no exact match found, use the newest version (sorted by semantic version)
-                if (!latestVersion && versions.length > 0) {
-                    versions.sort((a, b) => {
-                        const aParts = a.version.split('.').map(Number);
-                        const bParts = b.version.split('.').map(Number);
-                        for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-                            const aPart = aParts[i] || 0;
-                            const bPart = bParts[i] || 0;
-                            if (aPart !== bPart) {
-                                return bPart - aPart; // Newest first
-                            }
-                        }
-                        return 0;
-                    });
-                    latestVersion = versions[0]; // Use newest version
-                }
-            }
-        }
-        
-        // Increment version download count if latest version was found
-        if (latestVersion) {
-            latestVersion.downloads = (latestVersion.downloads || 0) + 1;
-            
-            // Save version back to the appropriate scope (same logic as version downloads)
-            if (mod.customerId) {
-                const modCustomerVersionKey = getCustomerKey(mod.customerId, `version_${latestVersion.versionId}`);
-                await env.MODS_KV.put(modCustomerVersionKey, JSON.stringify(latestVersion));
-            }
-            if (mod.visibility === 'public') {
-                const globalVersionKey = `version_${latestVersion.versionId}`;
-                await env.MODS_KV.put(globalVersionKey, JSON.stringify(latestVersion));
-            }
-            
-            console.log('[VariantDownload] Incremented download count for latest version:', {
-                versionId: latestVersion.versionId,
-                version: latestVersion.version,
-                downloads: latestVersion.downloads
-            });
-        } else {
-            console.log('[VariantDownload] Could not find latest version to increment download count');
-        }
         
         // Save mod back to the appropriate scope
         if (mod.customerId) {
@@ -376,12 +319,27 @@ export async function handleDownloadVariant(
             const globalModKey = `mod_${normalizedModId}`;
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
         }
+        
+        console.log('[VariantDownload] Successfully incremented download counters:', {
+            versionId: variantVersion.versionId,
+            variantId,
+            modDownloadCount: mod.downloadCount
+        });
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            exposedHeaders: ['Content-Disposition', 'Content-Type', 'Content-Length'],
         });
 
-        // Return decrypted file
+        console.log('[VariantDownload] Returning file with headers:', {
+            'Content-Type': originalContentType,
+            'Content-Disposition': `attachment; filename="${originalFileName}"`,
+            'Content-Length': decryptedData.length,
+            originalFileName,
+            originalContentType
+        });
+
+        // Return decrypted file - use EXACTLY what was uploaded
         return new Response(decryptedData, {
             status: 200,
             headers: {

@@ -17,7 +17,7 @@ export async function handleListModSnapshots(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     try {
         if (!auth) {
@@ -143,7 +143,7 @@ export async function handleLoadSnapshot(
     env: Env,
     modId: string,
     snapshotId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     try {
         if (!auth) {

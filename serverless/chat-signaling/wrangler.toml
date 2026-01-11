@@ -44,9 +44,9 @@ id = "78a1bd4cd5dc468780de442aacc9d1ee"
 
 # Custom domain configuration
 # Using idling.app domain
-routes = [
-  { pattern = "chat.idling.app/*", zone_name = "idling.app" }
-]
+[[routes]]
+pattern = "chat.idling.app/*"
+zone_name = "idling.app"
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard ΓåÆ Workers & Pages ΓåÆ strixun-chat-signaling

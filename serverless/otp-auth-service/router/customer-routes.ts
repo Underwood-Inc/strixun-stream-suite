@@ -230,5 +230,83 @@ export async function handleCustomerRoutes(
         );
     }
     
+    // Handle /customer/me - use standard fetchCustomerByCustomerId utility like everywhere else
+    if (path === '/customer/me' && request.method === 'GET') {
+        if (!auth?.customerId) {
+            return {
+                response: new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                    status: 401,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: null,
+            };
+        }
+
+        try {
+            const { fetchCustomerByCustomerId } = await import('@strixun/api-framework');
+            const customer = await fetchCustomerByCustomerId(auth.customerId, env);
+
+            if (!customer) {
+                return {
+                    response: new Response(JSON.stringify({ error: 'Customer not found' }), {
+                        status: 404,
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    }),
+                    customerId: auth.customerId,
+                };
+            }
+
+            // Return customer data with displayName (email already stripped by customer-api)
+            return {
+                response: new Response(JSON.stringify(customer), {
+                    status: 200,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: auth.customerId,
+            };
+        } catch (error) {
+            console.error('[CustomerRoutes] Failed to fetch customer data:', error);
+            return {
+                response: new Response(JSON.stringify({ error: 'Failed to fetch customer data' }), {
+                    status: 500,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: auth.customerId,
+            };
+        }
+    }
+    
+    // PROXY: Forward any other unhandled /customer/* routes to customer-api service
+    if (path.startsWith('/customer')) {
+        try {
+            const customerApiUrl = env.CUSTOMER_API_URL || 'https://customer-api.idling.app';
+            const targetUrl = new URL(path, customerApiUrl);
+            
+            // Forward the request with auth headers
+            const headers = new Headers(request.headers);
+            
+            const proxyResponse = await fetch(targetUrl.toString(), {
+                method: request.method,
+                headers: headers,
+                body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.clone().arrayBuffer() : undefined,
+            });
+            
+            // Return the proxied response
+            return {
+                response: proxyResponse,
+                customerId: auth?.customerId || null
+            };
+        } catch (error) {
+            console.error('[Customer Routes] Proxy to customer-api failed:', error);
+            return {
+                response: new Response(JSON.stringify({ error: 'Failed to reach customer API' }), {
+                    status: 503,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: null
+            };
+        }
+    }
+    
     return null; // Route not matched
 }

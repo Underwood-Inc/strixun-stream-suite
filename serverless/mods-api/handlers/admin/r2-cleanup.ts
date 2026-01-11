@@ -9,8 +9,6 @@
  */
 
 import { getR2SourceInfo } from '../../utils/r2-source.js';
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { createError } from '../../utils/errors.js';
 
 /**
  * Number of days to wait before permanently deleting marked files
@@ -27,7 +25,7 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  * Called by Cloudflare Workers cron trigger
  */
 export async function handleR2Cleanup(
-    event: ScheduledEvent,
+    _event: ScheduledEvent,
     env: Env,
     ctx: ExecutionContext
 ): Promise<void> {
@@ -40,7 +38,7 @@ export async function handleR2Cleanup(
  */
 export async function executeR2Cleanup(
     env: Env,
-    ctx?: ExecutionContext
+    _ctx?: ExecutionContext
 ): Promise<{ scanned: number; marked: number; deleted: number; errors: number }> {
     console.log('[R2Cleanup] Starting cleanup job...');
     const startTime = Date.now();
@@ -131,9 +129,50 @@ export async function executeR2Cleanup(
         if (totalErrors > 0) {
             console.error('[R2Cleanup] Errors encountered:', errors);
         }
+        
+        return {
+            scanned: totalScanned,
+            marked: totalMarked,
+            deleted: totalDeleted,
+            errors: totalErrors,
+        };
     } catch (error: any) {
         console.error('[R2Cleanup] Fatal error in cleanup job:', error);
         throw error; // Re-throw to mark cron job as failed
+    }
+}
+
+/**
+ * Handle manual cleanup request (admin endpoint)
+ * Returns cleanup statistics as JSON response
+ */
+export async function handleManualCleanup(
+    _request: Request,
+    env: Env,
+    _auth: { customerId: string }
+): Promise<Response> {
+    try {
+        const stats = await executeR2Cleanup(env);
+        
+        return new Response(JSON.stringify({
+            success: true,
+            ...stats
+        }), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+    } catch (error: any) {
+        return new Response(JSON.stringify({
+            success: false,
+            error: error.message || 'Unknown error'
+        }), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
     }
 }
 

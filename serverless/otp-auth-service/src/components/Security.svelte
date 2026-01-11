@@ -28,7 +28,7 @@
       </div>
       <div class="security-item">
         <h3>◈ Audit Logging</h3>
-        <p>Comprehensive security event logging with <ObfuscatedText text="90" length={2} />-day retention. Track all authentication attempts and failures.</p>
+        <p>Comprehensive security event logging with <ObfuscatedText text="30" length={2} />-day retention. Track all authentication attempts and failures.</p>
       </div>
       <div class="security-item">
         <h3>★ CORS Protection</h3>
@@ -37,6 +37,22 @@
       <div class="security-item">
         <h3>✓ GDPR Compliant</h3>
         <p>Data export and deletion endpoints. Complete user data portability and right to be forgotten.</p>
+      </div>
+      <div class="security-item">
+        <h3>⏲ Timing Attack Protection</h3>
+        <p>Constant-time comparison for OTP verification prevents timing-based side-channel attacks.</p>
+      </div>
+      <div class="security-item">
+        <h3>🔒 Email Enumeration Prevention</h3>
+        <p>Generic error messages prevent attackers from discovering valid email addresses in your system.</p>
+      </div>
+      <div class="security-item">
+        <h3>🛡 Dynamic Throttling</h3>
+        <p>Intelligent rate limiting adjusts based on suspicious patterns. Multi-layer protection with email and IP tracking.</p>
+      </div>
+      <div class="security-item">
+        <h3>🌐 OAuth 2.0 / OIDC Compliant</h3>
+        <p>Full OAuth 2.0 and OpenID Connect compliance. Standard JWT claims (sub, iss, aud, exp, iat, jti) with CSRF protection.</p>
       </div>
     </div>
   </div>

@@ -7,7 +7,7 @@ import { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { VariantVersionUploadRequest } from '../../types/mod';
-import { useAdminSettings } from '../../hooks/useMods';
+import { useModSettings } from '../../hooks/useMods';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
 
@@ -121,7 +121,7 @@ export function VariantVersionUpload({
     onCancel,
     isLoading 
 }: VariantVersionUploadProps) {
-    const { data: settings } = useAdminSettings();
+    const { data: settings } = useModSettings();
     const [version, setVersion] = useState('');
     const [changelog, setChangelog] = useState('');
     const [gameVersions, setGameVersions] = useState('');

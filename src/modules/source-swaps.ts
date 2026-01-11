@@ -760,46 +760,6 @@ export function addSwapConfig(
 }
 
 /**
- * Legacy function for DOM-based components
- * @deprecated Use addSwapConfig(configName, sourceA, sourceB, options) instead
- */
-export function addSwapConfigLegacy(): void {
-  const configName = (document.getElementById('swapConfigName') as HTMLInputElement)?.value.trim();
-  const sourceA = (document.getElementById('swapNewSourceA') as HTMLSelectElement)?.value;
-  const sourceB = (document.getElementById('swapNewSourceB') as HTMLSelectElement)?.value;
-  
-  if (!configName) { 
-    dependencies.log('Enter a config name', 'error'); 
-    return; 
-  }
-  if (!sourceA || !sourceB) { 
-    dependencies.log('Select both sources', 'error'); 
-    return; 
-  }
-  if (sourceA === sourceB) { 
-    dependencies.log('Select different sources', 'error'); 
-    return; 
-  }
-  
-  swapConfigs.push({ name: configName, sourceA, sourceB });
-  storage.set('swapConfigs', swapConfigs);
-  renderSavedSwaps();
-  
-  // Emit EventBus event (new architecture)
-  import('../core/events/EventBus').then(({ EventBus }) => {
-    EventBus.emitSync('source-swaps:configs-changed', { configs: swapConfigs });
-  });
-  
-  // Legacy window event (for backward compatibility)
-  window.dispatchEvent(new CustomEvent('swapConfigsChanged'));
-  
-  // Clear the form
-  const nameInput = document.getElementById('swapConfigName') as HTMLInputElement;
-  if (nameInput) nameInput.value = '';
-  dependencies.log(`Added config: ${configName}`, 'success');
-}
-
-/**
  * Delete a swap config
  */
 export function deleteSwapConfig(index: number): void {

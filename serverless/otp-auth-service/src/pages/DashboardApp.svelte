@@ -10,13 +10,15 @@
   import ApiKeys from '$dashboard/pages/ApiKeys.svelte';
   import AuditLogs from '$dashboard/pages/AuditLogs.svelte';
   import Dashboard from '$dashboard/pages/Dashboard.svelte';
+  import RolesPermissions from '$dashboard/pages/RolesPermissions.svelte';
   import TwitchAdCarousel from '@strixun/ad-carousel/TwitchAdCarousel.svelte';
 
   let customer: Customer | null = null;
   let isAuthenticated = false;
-  let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' = 'dashboard';
+  let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' | 'roles-permissions' = 'dashboard';
   let loading = true;
   let authView: 'login' | 'signup' = 'login';
+  let userRoles: string[] = [];
 
   onMount(async () => {
     // Setup event listeners first
@@ -60,6 +62,10 @@
   async function loadCustomer() {
     try {
       customer = await apiClient.getCustomer();
+      // Load user roles for permission checks
+      if (customer?.customerId) {
+        userRoles = await apiClient.getUserRoles(customer.customerId);
+      }
     } catch (error: any) {
       console.error('Failed to load customer:', error);
       
@@ -80,6 +86,7 @@
         // Log them out so they can sign up
         isAuthenticated = false;
         customer = null;
+        userRoles = [];
         apiClient.setToken(null);
       }
     }
@@ -120,6 +127,7 @@
   function handleLogout(_event: Event) {
     isAuthenticated = false;
     customer = null;
+    userRoles = [];
     currentPage = 'dashboard';
   }
 
@@ -148,7 +156,7 @@
   {:else}
     <DashboardHeader {customer} on:logout={handleLogoutClick} />
     <main class="app-main">
-      <Navigation {currentPage} on:navigate={e => navigateToPage(e.detail)} />
+      <Navigation {currentPage} {userRoles} on:navigate={e => navigateToPage(e.detail)} />
       <div class="page-container">
         {#if currentPage === 'dashboard'}
           <Dashboard {customer} />
@@ -158,6 +166,8 @@
           <AuditLogs {customer} />
         {:else if currentPage === 'analytics'}
           <Analytics {customer} />
+        {:else if currentPage === 'roles-permissions'}
+          <RolesPermissions {customer} {userRoles} />
         {/if}
       </div>
     </main>

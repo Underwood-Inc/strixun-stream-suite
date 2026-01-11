@@ -13,7 +13,7 @@ import { getCustomerCached, type GetCustomerFn } from '../../utils/cache.js';
 import { getCorsHeaders } from '../../utils/cors.js';
 import { getOtpCacheHeaders } from '../../utils/cache-headers.js';
 import { getJWTSecret, verifyJWT } from '../../utils/crypto.js';
-import { isSuperAdminEmail } from '../../utils/super-admin.js';
+import { isSuperAdmin } from '../../utils/super-admin.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -118,8 +118,8 @@ export async function handleSessionByIP(request: Request, env: Env): Promise<Res
         // If querying a specific IP, require admin authentication
         if (queryIP) {
             // Check if user is super admin
-            const isSuperAdmin = await isSuperAdminEmail(email, env);
-            if (!isSuperAdmin) {
+            const isSuper = await isSuperAdmin(customerId, env);
+            if (!isSuper) {
                 return new Response(JSON.stringify({ 
                     error: 'Forbidden',
                     detail: 'Admin privileges required to query sessions for a specific IP address'

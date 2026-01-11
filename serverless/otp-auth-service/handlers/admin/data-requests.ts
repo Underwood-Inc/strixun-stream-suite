@@ -6,7 +6,7 @@
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { requireSuperAdmin, authenticateSuperAdminEmail } from '../../utils/super-admin.js';
+import { requireSuperAdmin } from '../../utils/super-admin.js';
 import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomer } from '../../services/customer.js';
 import {
@@ -54,15 +54,10 @@ export async function handleCreateDataRequest(request: Request, env: Env): Promi
             }
         }
 
-        // If no JWT, try email-based super admin
-        if (!requesterEmail) {
-            requesterEmail = await authenticateSuperAdminEmail(request, env);
-        }
-
-        if (!requesterEmail) {
+        if (!requesterId || !requesterEmail) {
             return new Response(JSON.stringify({ 
                 error: 'Could not identify requester',
-                detail: 'Super admin email is required'
+                detail: 'Valid JWT token is required'
             }), {
                 status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },

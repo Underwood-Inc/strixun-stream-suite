@@ -42,11 +42,11 @@ vi.mock('../handlers/admin/r2-management.js', () => ({
     handleDeleteR2File: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
 }));
 
-vi.mock('../handlers/admin/users.js', () => ({
-    handleListUsers: vi.fn().mockResolvedValue(new Response(JSON.stringify({ users: [] }), { status: 200 })),
-    handleGetUserDetails: vi.fn().mockResolvedValue(new Response(JSON.stringify({ user: {} }), { status: 200 })),
-    handleUpdateUser: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
-    handleGetUserMods: vi.fn().mockResolvedValue(new Response(JSON.stringify({ mods: [] }), { status: 200 })),
+vi.mock('../handlers/admin/customers.js', () => ({
+    handleListCustomers: vi.fn().mockResolvedValue(new Response(JSON.stringify({ customers: [] }), { status: 200 })),
+    handleGetCustomerDetails: vi.fn().mockResolvedValue(new Response(JSON.stringify({ customer: {} }), { status: 200 })),
+    handleUpdateCustomer: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
+    handleGetCustomerMods: vi.fn().mockResolvedValue(new Response(JSON.stringify({ mods: [] }), { status: 200 })),
 }));
 
 vi.mock('../handlers/admin/settings.js', () => ({

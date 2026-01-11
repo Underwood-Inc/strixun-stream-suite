@@ -121,6 +121,19 @@ export class ApiClient {
     return response.data;
   }
 
+  async getUserRoles(customerId: string): Promise<string[]> {
+    try {
+      const response = await this.api.get<{ roles: string[] }>(`/access-api/access/${customerId}/roles`);
+      if (response.status !== 200 || !response.data) {
+        return [];
+      }
+      return response.data.roles || [];
+    } catch (error) {
+      console.error('Failed to get user roles:', error);
+      return [];
+    }
+  }
+
   async getApiKeys(customerId: string): Promise<{ apiKeys: ApiKey[] }> {
     const response = await this.api.get<{ apiKeys: ApiKey[] }>(`/admin/customers/${customerId}/api-keys`);
     if (response.status !== 200 || !response.data) {

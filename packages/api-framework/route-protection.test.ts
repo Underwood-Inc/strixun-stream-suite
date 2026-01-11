@@ -44,8 +44,6 @@ vi.mock('./customer-lookup.js', async () => {
 
 import {
     protectAdminRoute,
-    isSuperAdminEmail,
-    isAdminEmail,
     verifySuperAdminKey,
     createUnauthorizedResponse,
     createForbiddenResponse,
@@ -72,54 +70,7 @@ describe('Route Protection System', () => {
         mockFetchCustomerByCustomerId.mockClear();
     });
 
-    describe('isSuperAdminEmail', () => {
-        it('should return true for super admin email', async () => {
-            const result = await isSuperAdminEmail('superadmin@example.com', mockEnv);
-            expect(result).toBe(true);
-        });
-
-        it('should return false for non-super admin email', async () => {
-            const result = await isSuperAdminEmail('user@example.com', mockEnv);
-            expect(result).toBe(false);
-        });
-
-        it('should return false for undefined email', async () => {
-            const result = await isSuperAdminEmail(undefined, mockEnv);
-            expect(result).toBe(false);
-        });
-
-        it('should be case-insensitive', async () => {
-            const result = await isSuperAdminEmail('SUPERADMIN@EXAMPLE.COM', mockEnv);
-            expect(result).toBe(true);
-        });
-
-        it('should handle multiple super admin emails', async () => {
-            const result = await isSuperAdminEmail('admin2@example.com', mockEnv);
-            expect(result).toBe(true);
-        });
-    });
-
-    describe('isAdminEmail', () => {
-        it('should return true for super admin email', async () => {
-            const result = await isAdminEmail('superadmin@example.com', mockEnv);
-            expect(result).toBe(true);
-        });
-
-        it('should return true for regular admin email', async () => {
-            const result = await isAdminEmail('regularadmin@example.com', mockEnv);
-            expect(result).toBe(true);
-        });
-
-        it('should return false for non-admin email', async () => {
-            const result = await isAdminEmail('user@example.com', mockEnv);
-            expect(result).toBe(false);
-        });
-
-        it('should return false for undefined email', async () => {
-            const result = await isAdminEmail(undefined, mockEnv);
-            expect(result).toBe(false);
-        });
-    });
+    // Tests removed - functions deleted (now using Access Service instead of email-based checks)
 
     describe('verifySuperAdminKey', () => {
         it('should return true for valid super admin API key', () => {

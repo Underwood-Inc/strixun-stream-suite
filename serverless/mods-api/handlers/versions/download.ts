@@ -21,7 +21,7 @@ export async function handleDownloadVersion(
     env: Env,
     modId: string,
     versionId: string,
-    auth: { customerId: string; email?: string } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     console.log('[Download] handleDownloadVersion called:', { modId, versionId, hasAuth: !!auth, customerId: auth?.customerId });
     try {
@@ -84,7 +84,7 @@ export async function handleDownloadVersion(
                 }
                 
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
 
@@ -92,7 +92,7 @@ export async function handleDownloadVersion(
             console.error('[Download] Mod not found:', { modId, versionId });
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -109,15 +109,15 @@ export async function handleDownloadVersion(
         const modVisibility = mod.visibility || 'public';
         
         // Check if user is admin (for admin access to private mods)
-        const { isSuperAdminEmail } = await import('../../utils/admin.js');
-        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        const { isSuperAdmin } = await import('../../utils/admin.js');
+        const isAdmin = auth?.customerId ? await isSuperAdmin(auth.customerId, env) : false;
         const isAuthor = mod.authorId === auth?.customerId;
         
         // Private mods: only author or admin can download
         if (modVisibility === 'private' && !isAuthor && !isAdmin) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -134,7 +134,7 @@ export async function handleDownloadVersion(
         if (modStatus === 'draft' && !isAuthor && !isAdmin) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -212,7 +212,7 @@ export async function handleDownloadVersion(
                 }
                 
                 if (version) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
 
@@ -231,7 +231,7 @@ export async function handleDownloadVersion(
             });
             const rfcError = createError(request, 404, 'Version Not Found', 'The requested version was not found');
             const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -294,7 +294,7 @@ export async function handleDownloadVersion(
             console.error('[Download] File not found in R2:', { r2Key: version.r2Key });
             const rfcError = createError(request, 404, 'File Not Found', 'The requested file was not found in storage');
             const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -333,7 +333,7 @@ export async function handleDownloadVersion(
             if (!sharedKey || sharedKey.length < 32) {
                 const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
                 const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 500,
@@ -389,8 +389,8 @@ export async function handleDownloadVersion(
                     throw new Error('Legacy JSON encryption format is not supported. File must be re-uploaded with shared key encryption.');
                 }
                 
-                // Get original content type from metadata
-                originalContentType = encryptedFile.customMetadata?.originalContentType || 'application/zip';
+                // Get original content type from metadata - NO FALLBACK (file must have correct metadata)
+                originalContentType = encryptedFile.customMetadata?.originalContentType;
                 console.log('[Download] Original content type:', originalContentType);
             } catch (error) {
                 console.error('[Download] File decryption error:', error);
@@ -406,7 +406,7 @@ export async function handleDownloadVersion(
                 
                 const rfcError = createError(request, 500, 'Decryption Failed', detail);
                 const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 500,
@@ -434,7 +434,7 @@ export async function handleDownloadVersion(
             hasHash: !!version.sha256
         });
         const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         const headers = new Headers(Object.fromEntries(corsHeaders.entries()));
         headers.set('Content-Type', originalContentType);
@@ -462,7 +462,7 @@ export async function handleDownloadVersion(
         if (errorMessage.includes('not found') || errorMessage.includes('Not Found')) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod or version was not found');
             const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -480,7 +480,7 @@ export async function handleDownloadVersion(
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while downloading the version'
         );
         const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,
