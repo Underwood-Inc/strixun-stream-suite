@@ -15,5 +15,5 @@
 <p>For additional security, configure IP allowlists in customer settings.</p>
 
 <h4>Token Refresh</h4>
-<p>Implement automatic token refresh before expiration to maintain seamless user experience.</p>
+<p>Implement automatic token refresh before expiration to maintain seamless customer experience.</p>
 

@@ -508,7 +508,7 @@
           "email": {
             "type": "string",
             "format": "email",
-            "example": "user@example.com"
+            "example": "customer@example.com"
           }
         }
       },
@@ -542,7 +542,7 @@
           "email": {
             "type": "string",
             "format": "email",
-            "example": "user@example.com"
+            "example": "customer@example.com"
           },
           "otp": {
             "type": "string",
@@ -580,7 +580,7 @@
           "email": {
             "type": "string",
             "format": "email",
-            "example": "user@example.com"
+            "example": "customer@example.com"
           },
           "email_verified": {
             "type": "boolean",

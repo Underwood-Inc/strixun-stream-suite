@@ -1,6 +1,4 @@
 <script lang="ts">
-  import ObfuscatedText from '@shared-components/svelte/ObfuscatedText.svelte';
-
   export let title: string = 'Passwordless Authentication Made Simple';
   export let description: string = 'Secure, scalable OTP authentication API built for modern applications. No passwords, no complexity—just email verification that works.';
   export let dashboardLink: string = '/dashboard';
@@ -12,7 +10,7 @@
   <h1>{title}</h1>
   <p>
     {description}
-    <strong style="color: var(--accent);">Free tier available. Start with <ObfuscatedText text="1,000" length={5} /> OTP requests/month.</strong> 
+    <strong style="color: var(--accent);">Free tier available. Start with 1,000 OTP requests/month.</strong> 
   </p>
   <div class="hero-cta">
     <a href={dashboardLink} class="btn btn-primary">Get Started Free</a>
