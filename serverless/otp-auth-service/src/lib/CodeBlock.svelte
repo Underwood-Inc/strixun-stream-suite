@@ -4,7 +4,10 @@
   import 'prismjs/components/prism-javascript';
   import 'prismjs/components/prism-jsx';
   import 'prismjs/components/prism-typescript';
+  import 'prismjs/components/prism-tsx';
   import 'prismjs/components/prism-json';
+  import 'prismjs/components/prism-css';
+  import 'prismjs/components/prism-scss';
   import 'prismjs/components/prism-http';
   import 'prismjs/components/prism-bash';
   import 'prismjs/components/prism-python';
@@ -17,8 +20,14 @@
   let codeElement: HTMLElement;
   let copied = false;
 
-  // Map svelte to markup for syntax highlighting
-  $: prismLanguage = language === 'svelte' ? 'markup' : language;
+  // Map languages to Prism-supported languages
+  $: prismLanguage = (() => {
+    if (language === 'svelte') return 'markup';
+    if (language === 'html') return 'markup';
+    if (language === 'ts') return 'typescript';
+    if (language === 'js') return 'javascript';
+    return language;
+  })();
 
   async function copyToClipboard() {
     try {
@@ -30,6 +39,11 @@
     } catch (err) {
       console.error('Failed to copy:', err);
     }
+  }
+
+  // Re-highlight when code or language changes
+  $: if (codeElement && code && prismLanguage) {
+    Prism.highlightElement(codeElement);
   }
 
   onMount(() => {

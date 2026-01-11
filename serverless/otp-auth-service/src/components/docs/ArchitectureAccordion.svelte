@@ -1,6 +1,27 @@
 <script lang="ts">
   import MermaidDiagram from '../../lib/MermaidDiagram.svelte';
 
+  const otpLifecycleDiagram = `sequenceDiagram
+    participant C as Customer
+    participant API as OTP Auth API
+    participant KV as Cloudflare KV
+    participant Email as Email Service
+    
+    C->>API: 1. POST /auth/request-otp<br/>{email, API-Key}
+    API->>API: 2. Verify API key<br/>(get tenantId)
+    API->>KV: 3. Check rate limits<br/>(tenant + email + IP)
+    API->>API: 4. Generate 9-digit OTP<br/>(crypto.getRandomValues)
+    API->>KV: 5. Store OTP<br/>(cust_{tenantId}_otp_{hash})<br/>TTL: 600s
+    API->>Email: 6. Send email with OTP
+    API-->>C: 7. {success, expiresIn: 600}
+    
+    C->>API: 8. POST /auth/verify-otp<br/>{email, otp, API-Key}
+    API->>KV: 9. Retrieve OTP<br/>(timing-attack safe compare)
+    API->>KV: 10. Delete OTP<br/>(single-use)
+    API->>API: 11. Generate JWT<br/>(HMAC-SHA256, 7hr exp)
+    API->>KV: 12. Create session<br/>(cust_{tenantId}_session_{userId})<br/>TTL: 25200s
+    API-->>C: 13. {access_token, expires_in: 25200}`;
+
   const architectureDiagram = `graph TB
     Client["\`**Client Application**<br/>Web/Mobile App\`"] -->|"\`**1. Request OTP**\`"| API["\`**Cloudflare Worker**<br/>OTP Auth API\`"]
     API -->|"\`**2. Generate OTP**\`"| KV["\`**Cloudflare KV**<br/>Secure Storage\`"]
@@ -83,6 +104,9 @@
   <li>If valid, JWT token issued and OTP deleted</li>
   <li>Client uses JWT for authenticated requests</li>
 </ol>
+
+<h4>Detailed OTP Lifecycle (Sequence Diagram)</h4>
+<MermaidDiagram diagram={otpLifecycleDiagram} />
 
 <h4>Multi-Tenant Architecture</h4>
 <MermaidDiagram diagram={multiTenantDiagram} />

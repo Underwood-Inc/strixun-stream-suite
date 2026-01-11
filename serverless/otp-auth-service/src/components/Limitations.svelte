@@ -1,10 +1,14 @@
+<script lang="ts">
+  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
+</script>
+
 <section class="limitations">
   <h2>Limitations & Considerations</h2>
   <div class="limitations-list">
     <ul>
       <li>
         <strong>Rate Limits</strong>
-        <p>Plan-based OTP rate limits (Free: 3/hour, Pro: 10/hour, Enterprise: 100/hour) with intelligent dynamic adjustment based on usage patterns to prevent abuse and email spam.</p>
+        <p>Plan-based OTP rate limits (Free: 3/hour, <StatusFlair status="wip">Pro: 10/hour, Enterprise: 100/hour</StatusFlair>) with intelligent dynamic adjustment based on usage patterns to prevent abuse and email spam.</p>
       </li>
       <li>
         <strong>OTP Expiration</strong>
@@ -23,12 +27,14 @@
         <p>OTP delivery depends on email provider reliability. Check spam folders if code doesn't arrive.</p>
       </li>
       <li>
-        <strong>Multi-Tenancy</strong>
+        <StatusFlair status="in-testing">
+          <strong>Multi-Tenancy</strong>
+        </StatusFlair>
         <p>API key authentication required for multi-tenant features. Contact us for enterprise setup.</p>
       </li>
       <li>
         <strong>Exceeded Free Tier?</strong>
-        <p>No problem! This application is open-source and can be self-hosted. Subscription tiers with enhanced rate limits are coming soon.</p>
+        <p>No problem! This application is open-source and can be self-hosted. <StatusFlair status="wip">Subscription tiers with enhanced rate limits</StatusFlair> are coming soon.</p>
       </li>
     </ul>
   </div>

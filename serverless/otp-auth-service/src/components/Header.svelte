@@ -1,4 +1,6 @@
 <script lang="ts">
+  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
+  
   export let logo: string = ' ★ OTP Auth API';
   export let dashboardLink: string = '/dashboard';
   export let getStartedLink: string = '#code-examples';
@@ -9,7 +11,9 @@
   <div class="header-content">
     <a href="/" class="logo">{logo}</a>
     <div class="header-actions">
-      <a href={dashboardLink} class="btn btn-secondary">Developer Dashboard</a>
+      <StatusFlair status="in-testing">
+        <a href={dashboardLink} class="btn btn-secondary">Developer Dashboard</a>
+      </StatusFlair>
       <a href={getStartedLink} class="btn btn-secondary">Get Started</a>
       <a href={docsLink} class="btn btn-primary">Documentation</a>
     </div>

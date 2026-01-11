@@ -1,9 +1,13 @@
+<script lang="ts">
+  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
+</script>
+
 <section class="self-hosting" id="self-hosting">
   <div class="self-hosting-content">
-    <h2>Outgrown the Free Tier? We've Got You Covered </h2>
+    <h2>Outgrown the <StatusFlair status="in-testing">Free Tier</StatusFlair>? We've Got You Covered </h2>
     <p class="self-hosting-subtitle">
       Great news! This application is completely open-source on GitHub, so you can self-host with unlimited rate limits. 
-      Or sit tight—subscription tiers with enhanced limits are coming soon.
+      Or sit tight—<StatusFlair status="wip">subscription tiers with enhanced limits</StatusFlair> are coming soon.
     </p>
     
     <div class="self-hosting-grid">
@@ -28,9 +32,11 @@
       </div>
 
       <div class="self-hosting-card">
-        <h3>★ Subscription Tiers <span class="coming-soon-badge">Coming Soon</span></h3>
+        <StatusFlair status="wip">
+          <h3>★ Subscription Tiers <span class="coming-soon-badge">Coming Soon</span></h3>
+        </StatusFlair>
         <p>
-          Don't want to manage infrastructure? Subscription tiers with enhanced rate limits are on the way. 
+          Don't want to manage infrastructure? <StatusFlair status="wip">Subscription tiers with enhanced rate limits</StatusFlair> are on the way. 
           Get notified when they launch and keep using our managed service.
         </p>
         <ul>
@@ -75,9 +81,11 @@
         </svg>
         Star on GitHub
       </a>
-      <a href="#code-examples" class="btn btn-secondary">
-        Continue with Free Tier
-      </a>
+      <StatusFlair status="in-testing">
+        <a href="#code-examples" class="btn btn-secondary">
+          Continue with Free Tier
+        </a>
+      </StatusFlair>
     </div>
   </div>
 </section>
