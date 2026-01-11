@@ -810,6 +810,9 @@ importers:
 
   serverless/otp-auth-service:
     dependencies:
+      '@strixun/access-service':
+        specifier: workspace:*
+        version: link:../access-service
       '@strixun/ad-carousel':
         specifier: workspace:*
         version: link:../../packages/ad-carousel
