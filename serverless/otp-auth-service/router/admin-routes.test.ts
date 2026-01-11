@@ -18,6 +18,7 @@ import { handleDashboardRoutes } from './dashboard-routes.js';
 vi.mock('../utils/super-admin.js', () => ({
     requireSuperAdmin: vi.fn(),
     verifySuperAdmin: vi.fn(),
+    isAdminOrSuperAdmin: vi.fn().mockResolvedValue(true), // Added for admin/super-admin checks
 }));
 
 vi.mock('../utils/crypto.js', () => ({
@@ -293,7 +294,7 @@ describe('OTP Auth Service Admin Routes', () => {
             } as any);
 
             const request = new Request('https://api.example.com/admin/customers/customer-123/export', {
-                method: 'GET',
+                method: 'POST', // Fixed: Route expects POST, not GET
                 headers: {
                     'Authorization': 'Bearer admin-token',
                 },
