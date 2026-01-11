@@ -55,9 +55,9 @@ export async function createMultiWorkerSetup(): Promise<MultiWorkerSetup> {
 
   console.log('[MultiWorkerSetup] Starting OTP Auth Service worker...');
   
-  // OTP Auth Service (port 8789)
+  // OTP Auth Service (port 8789) - Use compiled JavaScript to avoid TypeScript parsing issues
   const otpAuthService = new Miniflare({
-    scriptPath: resolve(__dirname, '../../../otp-auth-service/worker.ts'),
+    scriptPath: resolve(__dirname, '../../../otp-auth-service/dist/worker.js'),
     modules: true,
     compatibilityDate: '2024-01-01',
     compatibilityFlags: ['nodejs_compat'],
@@ -76,9 +76,9 @@ export async function createMultiWorkerSetup(): Promise<MultiWorkerSetup> {
 
   console.log('[MultiWorkerSetup] Starting Customer API worker...');
   
-  // Customer API (port 8790)
+  // Customer API (port 8790) - Use compiled JavaScript to avoid TypeScript parsing issues
   const customerAPI = new Miniflare({
-    scriptPath: resolve(__dirname, '../../../customer-api/worker.ts'),
+    scriptPath: resolve(__dirname, '../../../customer-api/dist/worker.js'),
     modules: true,
     compatibilityDate: '2024-01-01',
     compatibilityFlags: ['nodejs_compat'],

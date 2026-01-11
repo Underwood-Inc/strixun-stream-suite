@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "wrangler dev --port 8790 --local",
     "deploy": "wrangler deploy",
+    "build:worker": "wrangler deploy --dry-run --outdir=dist",
+    "pretest": "pnpm run build:worker",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests"
