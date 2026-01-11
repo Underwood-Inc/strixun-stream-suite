@@ -41,6 +41,14 @@ const services = [
     framework: 'React',
   },
   {
+    name: 'Access Hub',
+    location: 'access-hub',
+    port: 5178,
+    type: 'Frontend',
+    url: 'http://localhost:5178',
+    framework: 'React',
+  },
+  {
     name: 'URL Shortener App',
     location: 'serverless/url-shortener/app',
     port: 5176,
@@ -84,7 +92,7 @@ const services = [
   {
     name: 'Game API',
     location: 'serverless/game-api',
-    port: 8791,
+    port: 8794,
     type: 'Backend (Worker)',
     url: null,
     framework: 'Cloudflare Worker',
@@ -101,6 +109,14 @@ const services = [
     name: 'URL Shortener Worker',
     location: 'serverless/url-shortener',
     port: 8793,
+    type: 'Backend (Worker)',
+    url: null,
+    framework: 'Cloudflare Worker',
+  },
+  {
+    name: 'Access Service API',
+    location: 'serverless/access-service',
+    port: 8795,
     type: 'Backend (Worker)',
     url: null,
     framework: 'Cloudflare Worker',

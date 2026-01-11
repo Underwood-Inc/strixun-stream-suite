@@ -14,5 +14,9 @@ RESEND_FROM_EMAIL=noreply@yourdomain.com
 ENVIRONMENT=development
 
 # Optional: Allowed CORS origins (comma-separated)
-# ALLOWED_ORIGINS=http://localhost:5175,http://localhost:8787
+# ALLOWED_ORIGINS=http://localhost:5175,http://localhost:5178,http://localhost:3001,http://localhost:8787
+
+# Optional: Local service URLs (for service-to-service calls)
+# CUSTOMER_API_URL=http://localhost:8790
+# ACCESS_SERVICE_URL=http://localhost:8795
 

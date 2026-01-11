@@ -246,7 +246,7 @@ pnpm run deploy
 
 ```typescript
 // In mods service handler
-const response = await fetch('https://access.idling.app/access/check-permission', {
+const response = await fetch('https://access-api.idling.app/access/check-permission', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -265,7 +265,7 @@ if (!result.allowed) {
 
 ```typescript
 // Before processing upload
-const response = await fetch('https://access.idling.app/access/check-quota', {
+const response = await fetch('https://access-api.idling.app/access/check-quota', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -283,7 +283,7 @@ if (!result.allowed) {
 // ... process upload ...
 
 // After successful upload, increment quota
-await fetch(`https://access.idling.app/access/cust_123/quotas/increment`, {
+await fetch(`https://access-api.idling.app/access/cust_123/quotas/increment`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -297,7 +297,7 @@ await fetch(`https://access.idling.app/access/cust_123/quotas/increment`, {
 
 ```typescript
 // Admin assigns uploader role to customer
-await fetch(`https://access.idling.app/access/cust_123/roles`, {
+await fetch(`https://access-api.idling.app/access/cust_123/roles`, {
   method: 'PUT',
   headers: { 
     'Content-Type': 'application/json',

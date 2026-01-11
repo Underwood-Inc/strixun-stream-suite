@@ -16,7 +16,7 @@ The frontend should call it DIRECTLY, not proxy through OTP Auth Service!
                 │ DIRECT CALL WITH JWT AUTH
                 ▼
 ┌──────────────────────────────────────────────┐
-│  Access Service (access.idling.app)          │
+│  Access Service (access-api.idling.app)      │
 │  GET /access/roles                           │
 │  GET /access/permissions                     │
 │  - Validates JWT token from frontend         │
@@ -46,7 +46,7 @@ Frontend → Access Service
 // Access Service URL - DIRECT CONNECTION
 const ACCESS_SERVICE_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:8791'      // Dev: Local Access Service
-  : 'https://access.idling.app'; // Prod: Production Access Service
+  : 'https://access-api.idling.app'; // Prod: Production Access Service
 
 export class AccessApiClient {
   // Calls Access Service DIRECTLY with JWT auth
@@ -102,7 +102,7 @@ export type { RoleDefinition, PermissionDefinition } from '@strixun/access-servi
 ## Backend Configuration
 
 ### Access Service Endpoints (ALREADY WORKING)
-- **Production:** `https://access.idling.app`
+- **Production:** `https://access-api.idling.app`
 - **Development:** `http://localhost:8791`
 
 ### Authentication

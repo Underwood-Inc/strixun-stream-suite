@@ -9,7 +9,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Access Service (access.idling.app:8791)                    │
+│  Access Service (access-api.idling.app:8795)                │
 │  - Owns: Roles, Permissions, Quotas                         │
 │  - Provides: REST API                                        │
 │  - Authentication: JWT + Service Keys                        │
@@ -57,8 +57,8 @@ const customerRoles = await accessApiClient.getCustomerRoles(customerId);
 - `GET /access/:customerId/permissions` - Get customer's permissions
 
 **Environment:**
-- **Dev:** Calls through Vite proxy → `localhost:8791`
-- **Prod:** Calls directly → `https://access.idling.app`
+- **Dev:** Calls through Vite proxy → `localhost:8795`
+- **Prod:** Calls directly → `https://access-api.idling.app`
 
 ---
 
@@ -96,7 +96,7 @@ await accessClient.ensureCustomer(customerId, ['customer']);
 - `PUT /access/:customerId/roles` - Assign roles
 
 **Environment:**
-- Uses `env.ACCESS_SERVICE_URL` or defaults to `https://access.idling.app`
+- Uses `env.ACCESS_SERVICE_URL` or defaults to `https://access-api.idling.app`
 
 ---
 
@@ -210,7 +210,7 @@ const allowed = await access.checkPermission(customerId, 'upload:mod');
 - Dashboard (Vite): `http://localhost:5174`
 
 **Production:**
-- Access Service: `https://access.idling.app`
+- Access Service: `https://access-api.idling.app`
 - OTP Auth Service: `https://otp.idling.app`
 
 ### Vite Proxy Configuration
@@ -258,7 +258,7 @@ server: {
 **Test 2: Backend Service Calls**
 1. Check OTP Auth logs
 2. Look for Access Service calls
-3. **Expected:** Direct fetch to `access.idling.app` or `localhost:8791`
+3. **Expected:** Direct fetch to `access-api.idling.app` or `localhost:8795`
 4. **NOT:** Internal route handling
 
 ### Network Request Examples

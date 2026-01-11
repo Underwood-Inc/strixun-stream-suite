@@ -8,9 +8,9 @@ import type { RoleDefinition, PermissionDefinition } from './types.js';
 
 // Access Service URL - direct connection
 // In dev mode, Vite proxy handles /access → localhost:8791
-// In production, we call access.idling.app directly
+// In production, we call access-api.idling.app directly
 const ACCESS_SERVICE_URL = typeof window !== 'undefined' 
-  ? (window.location.hostname === 'localhost' ? window.location.origin : 'https://access.idling.app')
+  ? (window.location.hostname === 'localhost' ? window.location.origin : 'https://access-api.idling.app')
   : '';
 
 // Create Access Service API client with JWT auth

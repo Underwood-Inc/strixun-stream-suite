@@ -19,7 +19,7 @@ compatibility_flags = ["nodejs_compat"]
 #
 # IMPORTANT: 
 #   - JWT_SECRET must match the OTP auth service secret for authentication to work
-#   - Upload permissions are managed via Access Service (access.idling.app) - NOT environment variables
+#   - Upload permissions are managed via Access Service (access-api.idling.app) - NOT environment variables
 
 # Development environment (only used with --env development)
 [env.development]
@@ -43,7 +43,7 @@ bucket_name = "mods-storage"
 # We use default deployment (wrangler deploy) NOT --env production
 [vars]
 ENVIRONMENT = "production"
-ACCESS_SERVICE_URL = "https://access.idling.app"
+ACCESS_SERVICE_URL = "https://access-api.idling.app"
 ROUTES = '[{"pattern":"mods-api.idling.app/mods/*","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/health","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/api/*","zone_name":"idling.app"}]'
 
 # Default KV Namespaces
@@ -62,9 +62,8 @@ bucket_name = "mods-storage"
 
 # Default routes (production) - this is the ONLY route configuration
 [[routes]]
-pattern = "mods-api.idling.app"
+pattern = "mods-api.idling.app/*"
 zone_name = "idling.app"
-custom_domain = true
 
 # Note: The remote also has specific routes in vars.routes (dashboard-managed):
 # - mods-api.idling.app/mods/*

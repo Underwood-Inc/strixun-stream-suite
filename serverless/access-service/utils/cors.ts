@@ -3,22 +3,13 @@
  * Provides consistent CORS configuration across all handlers
  */
 
-import { createCORSHeaders as frameworkCreateCORSHeaders, type CORSOptions } from '@strixun/api-framework/enhanced';
-
-/**
- * Default CORS options for Access Service
- * Includes x-service-key header for service-to-service communication
- */
-const DEFAULT_ACCESS_SERVICE_CORS_OPTIONS: CORSOptions = {
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-service-key'],
-};
+import { getCorsHeaders } from '@strixun/api-framework/enhanced';
+import type { Env } from '../types/authorization.js';
 
 /**
  * Create CORS headers with Access Service defaults
+ * Automatically reads ALLOWED_ORIGINS from env and supports localhost in dev
  */
-export function createCORSHeaders(request: Request, additionalOptions: CORSOptions = {}): Headers {
-    return frameworkCreateCORSHeaders(request, {
-        ...DEFAULT_ACCESS_SERVICE_CORS_OPTIONS,
-        ...additionalOptions,
-    });
+export function createCORSHeaders(request: Request, env: Env): Headers {
+    return getCorsHeaders(env, request);
 }

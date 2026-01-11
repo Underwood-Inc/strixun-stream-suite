@@ -181,7 +181,7 @@ jobs:
         run: |
           echo "Seeding default roles and permissions..."
           # Get the worker URL from deployment
-          WORKER_URL="https://access.idling.app"
+          WORKER_URL="https://access-api.idling.app"
           
           # Seed defaults with service key authentication
           curl -X POST "$WORKER_URL/access/seed" \

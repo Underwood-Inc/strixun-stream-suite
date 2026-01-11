@@ -54,6 +54,10 @@ on:
         description: 'Deploy Mods Hub (Pages) - Production only'
         type: boolean
         default: true
+      deploy_access_hub:
+        description: 'Deploy Access Hub (Pages) - Production only'
+        type: boolean
+        default: true
       deploy_storybook:
         description: 'Deploy Storybook (Pages) - Production only'
         type: boolean
@@ -569,9 +573,9 @@ jobs:
           else
             echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
             if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             else
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             fi
           fi
           if [ -n "${{ secrets.MODS_PUBLIC_URL }}" ]; then
@@ -667,9 +671,9 @@ jobs:
           else
             echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
             if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             else
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             fi
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
@@ -760,9 +764,9 @@ jobs:
           else
             echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
             if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             else
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             fi
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
@@ -906,9 +910,9 @@ jobs:
           else
             echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
             if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             else
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             fi
           fi
         continue-on-error: true
@@ -991,9 +995,9 @@ jobs:
           else
             echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
             if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             else
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             fi
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
@@ -1013,7 +1017,7 @@ jobs:
         run: |
           echo "Seeding default roles and permissions..."
           # Get the worker URL from deployment
-          WORKER_URL="https://access.idling.app"
+          WORKER_URL="https://access-api.idling.app"
           
           # Seed defaults with service key authentication
           curl -X POST "$WORKER_URL/access/seed" \
@@ -1090,6 +1094,56 @@ jobs:
           pnpm exec wrangler pages project create mods-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
           # Build outputs to ../dist/mods-hub (relative to mods-hub directory)
           pnpm exec wrangler pages deploy ../dist/mods-hub --project-name=mods-hub --branch=main
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "✗ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
+
+  # Access Hub Deployment (Cloudflare Pages) - Production only
+  deploy_access_hub:
+    needs: [setup, test_root]
+    if: ${{ inputs.deploy_access_hub && inputs.environment == 'production' && needs.test_root.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build Access Hub
+        working-directory: access-hub
+        env:
+          VITE_ACCESS_API_URL: https://access-api.idling.app
+        run: pnpm run build
+      
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        working-directory: access-hub
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          # Create project if it doesn't exist (suppress error if already exists)
+          pnpm exec wrangler pages project create access-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
+          # Build outputs to ../dist/access-hub (relative to access-hub directory)
+          pnpm exec wrangler pages deploy ../dist/access-hub --project-name=access-hub --branch=main
       
       - name: Rollback on Failure
         if: failure()
@@ -1316,7 +1370,7 @@ jobs:
 
   # Deployment Summary
   summary:
-    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, test_access_service, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_access_service, deploy_mods_hub, deploy_storybook, deploy_pages]
+    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, test_access_service, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_access_service, deploy_mods_hub, deploy_access_hub, deploy_storybook, deploy_pages]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1482,6 +1536,14 @@ jobs:
               echo "✓ **Mods Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
             else
               echo "✗ **Mods Hub** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_access_hub }}" == "true" ]; then
+            if [ "${{ needs.deploy_access_hub.result }}" == "success" ]; then
+              echo "✓ **Access Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✗ **Access Hub** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           

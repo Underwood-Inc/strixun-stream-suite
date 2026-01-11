@@ -71,7 +71,7 @@ describe.skip('Customer Auto-Provisioning - Full Integration', () => {
 
     // Step 3: Check if customer was auto-provisioned in Access Service
     const accessCheckResponse = await fetch(
-      `http://localhost:8791/access/${customer.customerId}`,
+      `http://localhost:8795/access/${customer.customerId}`,
       {
         headers: {
           'X-Service-Key': SERVICE_API_KEY,
@@ -108,7 +108,7 @@ describe.skip('Customer Auto-Provisioning - Full Integration', () => {
 
     // Check Access Service provisioning
     const accessCheckResponse = await fetch(
-      `http://localhost:8791/access/${customer.customerId}`,
+      `http://localhost:8795/access/${customer.customerId}`,
       {
         headers: {
           'X-Service-Key': SERVICE_API_KEY,
@@ -144,7 +144,7 @@ describe.skip('Customer Auto-Provisioning - Full Integration', () => {
 
     // Get initial access state
     const firstAccessResponse = await fetch(
-      `http://localhost:8791/access/${customerId}`,
+      `http://localhost:8795/access/${customerId}`,
       {
         headers: {
           'X-Service-Key': SERVICE_API_KEY,
@@ -167,7 +167,7 @@ describe.skip('Customer Auto-Provisioning - Full Integration', () => {
 
     // Check access state again
     const secondAccessResponse = await fetch(
-      `http://localhost:8791/access/${customerId}`,
+      `http://localhost:8795/access/${customerId}`,
       {
         headers: {
           'X-Service-Key': SERVICE_API_KEY,
@@ -200,7 +200,7 @@ describe.skip('Customer Auto-Provisioning - Full Integration', () => {
 
     // Check upload permission via Access Service
     const permissionCheckResponse = await fetch(
-      'http://localhost:8791/access/check-permission',
+      'http://localhost:8795/access/check-permission',
       {
         method: 'POST',
         headers: {

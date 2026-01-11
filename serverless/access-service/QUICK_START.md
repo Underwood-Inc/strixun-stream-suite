@@ -83,13 +83,13 @@ No manual seeding required!
 
 ```bash
 # Health check (PowerShell)
-Invoke-RestMethod -Uri "https://access.idling.app/health"
+Invoke-RestMethod -Uri "https://access-api.idling.app/health"
 
 # List roles (PowerShell)
-Invoke-RestMethod -Uri "https://access.idling.app/access/roles"
+Invoke-RestMethod -Uri "https://access-api.idling.app/access/roles"
 
 # List permissions (PowerShell)
-Invoke-RestMethod -Uri "https://access.idling.app/access/permissions"
+Invoke-RestMethod -Uri "https://access-api.idling.app/access/permissions"
 ```
 
 ---
@@ -132,7 +132,7 @@ wrangler kv namespace create AUTHORIZATION_KV --preview
 - [ ] Run `wrangler secret put SUPER_ADMIN_API_KEY`
 - [ ] Run `wrangler secret put ALLOWED_ORIGINS`
 - [ ] Run `pnpm run deploy`
-- [ ] Run `curl https://access.idling.app/health` (verify working)
+- [ ] Run `curl https://access-api.idling.app/health` (verify working)
 - [ ] **Auto-initializes on first request** (migrations + seeding automatic)
 
 ---
@@ -154,7 +154,8 @@ Invoke-RestMethod -Uri "http://localhost:8791/health"
 
 **What is "access"?**
 "access" = the Access Service handles authorization (roles, permissions, quotas)
-- It's available at access.idling.app
+- API is available at access-api.idling.app
+- Frontend UI is available at access.idling.app
 - It's just the service name / URL path prefix
 
 **Local Dev Ports:**

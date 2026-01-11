@@ -79,7 +79,7 @@ export class AccessClient {
     // Default to production URL, override with env var or option
     this.accessUrl = options.accessUrl 
       || env.ACCESS_SERVICE_URL 
-      || 'https://access.idling.app';
+      || 'https://access-api.idling.app';
     
     this.serviceApiKey = options.serviceApiKey || env.SERVICE_API_KEY || '';
     this.timeout = options.timeout || 5000; // 5 second timeout

@@ -294,7 +294,7 @@ wrangler secret put SERVICE_API_KEY --env development
 - [ ] Set SERVICE_API_KEY secret: `wrangler secret put SERVICE_API_KEY`
 - [ ] Deploy to staging: `pnpm deploy:dev`
 - [ ] Run integration tests against staging
-- [ ] Verify health check: `https://access.idling.app/health`
+- [ ] Verify health check: `https://access-api.idling.app/health`
 - [ ] Monitor rate limiting metrics
 - [ ] Deploy to production: `pnpm deploy`
 

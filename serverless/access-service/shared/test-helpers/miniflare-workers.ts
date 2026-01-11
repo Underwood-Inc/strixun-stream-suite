@@ -56,13 +56,13 @@ export async function createMultiWorkerSetup(): Promise<MultiWorkerSetup> {
   console.log('[MultiWorkerSetup] OTP Auth Service worker:', otpAuthServiceWorker);
   console.log('[MultiWorkerSetup] Customer API worker:', customerAPIWorker);
   
-  // Access Service (port 8791) - Use compiled JavaScript
+  // Access Service (port 8795) - Use compiled JavaScript
   const accessService = new Miniflare({
     scriptPath: accessServiceWorker,
     modules: true,
     compatibilityDate: '2024-01-01',
     compatibilityFlags: ['nodejs_compat'],
-    port: 8791,
+    port: 8795,
     kvNamespaces: ['ACCESS_KV'],
     bindings: {
       SERVICE_API_KEY,
@@ -85,7 +85,7 @@ export async function createMultiWorkerSetup(): Promise<MultiWorkerSetup> {
       JWT_SECRET,
       ENVIRONMENT: 'development', // Local dev mode for email bypass
       CUSTOMER_API_URL: 'http://localhost:8790',
-      ACCESS_SERVICE_URL: 'http://localhost:8791',
+      ACCESS_SERVICE_URL: 'http://localhost:8795',
       NETWORK_INTEGRITY_KEYPHRASE,
       SUPER_ADMIN_EMAILS,
       SUPER_ADMIN_API_KEY,

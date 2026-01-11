@@ -20,7 +20,7 @@ describe('Access Service Authentication', () => {
             SERVICE_API_KEY: 'test-service-key-12345',
             JWT_SECRET: 'test-jwt-secret',
             ACCESS_KV: {} as any,
-            ACCESS_SERVICE_URL: 'http://localhost:8791',
+            ACCESS_SERVICE_URL: 'http://localhost:8795',
         };
     });
 

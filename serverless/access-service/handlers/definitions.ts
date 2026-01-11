@@ -29,7 +29,7 @@ export async function handleListRoles(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     } catch (error) {
@@ -42,7 +42,7 @@ export async function handleListRoles(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     }
@@ -69,7 +69,7 @@ export async function handleGetRole(
                 status: 404,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
                 },
             });
         }
@@ -78,7 +78,7 @@ export async function handleGetRole(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     } catch (error) {
@@ -91,7 +91,7 @@ export async function handleGetRole(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     }
@@ -118,7 +118,7 @@ export async function handleSaveRole(
                 status: 400,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
                 },
             });
         }
@@ -138,7 +138,7 @@ export async function handleSaveRole(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     } catch (error) {
@@ -151,7 +151,7 @@ export async function handleSaveRole(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     }
@@ -172,7 +172,7 @@ export async function handleListPermissions(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     } catch (error) {
@@ -185,7 +185,7 @@ export async function handleListPermissions(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     }

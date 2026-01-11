@@ -22,7 +22,7 @@ describe('Access Service Auto-Initialization', () => {
     worker = await unstable_dev(resolve(__dirname, './worker.ts'), {
       config: resolve(__dirname, './wrangler.toml'),
       experimental: { disableExperimentalWarning: true },
-      port: 8791,
+      port: 8795,
       local: true,
       vars: {
         SERVICE_API_KEY,
@@ -30,7 +30,7 @@ describe('Access Service Auto-Initialization', () => {
       },
     });
 
-    accessServiceUrl = 'http://localhost:8791';
+    accessServiceUrl = 'http://localhost:8795';
   }, 180000); // 3 minutes for worker startup
 
   afterAll(async () => {

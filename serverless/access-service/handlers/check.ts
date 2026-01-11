@@ -81,7 +81,7 @@ export async function handleCheckPermission(
                 status: 400,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
                 },
             });
         }
@@ -92,7 +92,7 @@ export async function handleCheckPermission(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     } catch (error) {
@@ -105,7 +105,7 @@ export async function handleCheckPermission(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     }
@@ -131,7 +131,7 @@ export async function handleCheckQuota(
                 status: 400,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
                 },
             });
         }
@@ -151,7 +151,7 @@ export async function handleCheckQuota(
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
                 },
             });
         }
@@ -172,7 +172,7 @@ export async function handleCheckQuota(
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
                 },
             });
         }
@@ -193,7 +193,7 @@ export async function handleCheckQuota(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     } catch (error) {
@@ -206,7 +206,7 @@ export async function handleCheckQuota(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     }

@@ -45,7 +45,7 @@ describe('Rate Limiting', () => {
             } as any,
             SERVICE_API_KEY: 'test-key',
             JWT_SECRET: 'test-secret',
-            ACCESS_SERVICE_URL: 'http://localhost:8791',
+            ACCESS_SERVICE_URL: 'http://localhost:8795',
         };
     });
 

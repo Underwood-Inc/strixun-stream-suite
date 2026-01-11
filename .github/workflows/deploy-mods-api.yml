@@ -135,7 +135,7 @@ jobs:
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
           else
             echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
-            echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
+            echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
           fi
           if [ -n "${{ secrets.MODS_PUBLIC_URL }}" ]; then
             echo "${{ secrets.MODS_PUBLIC_URL }}" | pnpm exec wrangler secret put MODS_PUBLIC_URL || true

@@ -5,6 +5,7 @@
 
 import { verifyJWT as verifyJWTShared, getJWTSecret as getJWTSecretShared } from '@strixun/api-framework/jwt';
 import type { Env } from '../types/authorization.js';
+import { createCORSHeaders } from './cors.js';
 
 export interface AuthResult {
     customerId: string | null;
@@ -101,6 +102,7 @@ export function requireAuth(auth: AuthResult | null, request: Request, env: Env)
             status: 401,
             headers: {
                 'Content-Type': 'application/json',
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     }
@@ -149,6 +151,7 @@ export async function requireSuperAdmin(auth: AuthResult | null, request: Reques
         status: 403,
         headers: {
             'Content-Type': 'application/json',
+            ...Object.fromEntries(createCORSHeaders(request, env).entries()),
         },
     });
 }

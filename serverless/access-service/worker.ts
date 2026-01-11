@@ -223,7 +223,7 @@ export default {
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
                 },
             });
         }
@@ -232,7 +232,7 @@ export default {
         if (request.method === 'OPTIONS') {
             return new Response(null, {
                 status: 204,
-                headers: Object.fromEntries(createCORSHeaders(request).entries()),
+                headers: Object.fromEntries(createCORSHeaders(request, env).entries()),
             });
         }
 
@@ -253,7 +253,7 @@ export default {
                 status: 404,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
                 },
             });
         } catch (error) {
@@ -267,7 +267,7 @@ export default {
                 status: 500,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
                 },
             });
         }

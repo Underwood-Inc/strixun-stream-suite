@@ -23,6 +23,7 @@ packages:
   - 'dice-board-game'
   - 'control-panel'
   - 'mods-hub'
+  - 'access-hub'
   - 'shared-components'
   - 'shared-config'
 

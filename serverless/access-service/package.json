@@ -9,7 +9,7 @@
     "./types": "./types/authorization.ts"
   },
   "scripts": {
-    "dev": "wrangler dev --port 8791 --local",
+    "dev": "wrangler dev --port 8795 --local",
     "deploy": "wrangler deploy",
     "deploy:dev": "wrangler deploy --env development",
     "tail": "wrangler tail",

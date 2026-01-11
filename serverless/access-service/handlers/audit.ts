@@ -30,7 +30,7 @@ export async function handleGetAuditLog(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     } catch (error) {
@@ -43,7 +43,7 @@ export async function handleGetAuditLog(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request).entries()),
+                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
             },
         });
     }

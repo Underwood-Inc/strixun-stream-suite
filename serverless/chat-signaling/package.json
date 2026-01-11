@@ -17,7 +17,8 @@
   "dependencies": {
     "@strixun/api-framework": "workspace:*",
     "@strixun/types": "workspace:*",
-    "@strixun/e2e-helpers": "workspace:*"
+    "@strixun/e2e-helpers": "workspace:*",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
