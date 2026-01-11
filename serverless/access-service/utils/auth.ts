@@ -10,6 +10,7 @@ export interface AuthResult {
     customerId: string | null;
     jwtToken?: string;
     isServiceCall: boolean;
+    type: 'jwt' | 'service';
 }
 
 /**
@@ -56,6 +57,7 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
         return {
             customerId: null,
             isServiceCall: true,
+            type: 'service',
         };
     }
     
@@ -74,6 +76,7 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
                     customerId: payload.sub,
                     jwtToken: token,
                     isServiceCall: false,
+                    type: 'jwt',
                 };
             }
         } catch (error) {
@@ -103,4 +106,49 @@ export function requireAuth(auth: AuthResult | null, request: Request, env: Env)
     }
     
     return null;
+}
+
+/**
+ * Require super-admin authentication
+ * CRITICAL SECURITY: Returns error response if not authenticated OR not a super-admin
+ */
+export async function requireSuperAdmin(auth: AuthResult | null, request: Request, env: Env): Promise<Response | null> {
+    // First check basic auth
+    const authError = requireAuth(auth, request, env);
+    if (authError) {
+        return authError;
+    }
+    
+    // Service keys are always allowed (for service-to-service calls)
+    if (auth!.type === 'service') {
+        return null;
+    }
+    
+    // For JWT auth, check if customer has super-admin role
+    if (auth!.type === 'jwt' && auth!.customerId) {
+        try {
+            // Get customer's roles from KV
+            const rolesKey = `customer:${auth!.customerId}:roles`;
+            const roles = await env.ACCESS_KV.get(rolesKey, { type: 'json' }) as string[] | null;
+            
+            // Check if customer has super-admin role
+            if (roles && roles.includes('super-admin')) {
+                return null;
+            }
+        } catch (error) {
+            console.error('[Auth] Error checking super-admin role:', error);
+        }
+    }
+    
+    // Not a super-admin
+    return new Response(JSON.stringify({
+        error: 'Forbidden',
+        message: 'Super admin access required',
+        code: 'SUPER_ADMIN_REQUIRED',
+    }), {
+        status: 403,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
 }

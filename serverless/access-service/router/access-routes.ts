@@ -10,8 +10,8 @@ import { handleCheckPermission, handleCheckQuota } from '../handlers/check.js';
 import { handleAssignRoles, handleGrantPermissions, handleSetQuotas, handleResetQuotas, handleIncrementQuota } from '../handlers/manage.js';
 import { handleListRoles, handleGetRole, handleSaveRole, handleListPermissions } from '../handlers/definitions.js';
 import { handleGetAuditLog } from '../handlers/audit.js';
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { authenticateRequest, requireAuth } from '../utils/auth.js';
+import { createCORSHeaders } from '../utils/cors.js';
+import { authenticateRequest, requireAuth, requireSuperAdmin } from '../utils/auth.js';
 import { checkRateLimit, getRateLimitIdentifier, createRateLimitError, addRateLimitHeaders, RATE_LIMITS } from '../utils/rate-limit.js';
 
 export interface RouteResult {
@@ -63,34 +63,34 @@ export async function handleAccessRoutes(
     // Migrations run AUTOMATICALLY on first request (see worker.ts autoRunMigrations)
     // This ensures database schema is always up-to-date on every deploy
 
-    // Role & permission definitions (CHECK THESE FIRST before :customerId pattern)
+    // Role & permission definitions (SUPER ADMIN ONLY - CRITICAL SECURITY)
     if (path.startsWith('/access/roles') || path.startsWith('/access/permissions')) {
-        // GET /access/roles (service calls OK)
+        // GET /access/roles (super-admin or service calls only)
         if (request.method === 'GET' && path === '/access/roles') {
-            const authError = requireAuth(auth, request, env);
+            const authError = await requireSuperAdmin(auth, request, env);
             if (authError) return { response: authError };
             return { response: await handleListRoles(request, env) };
         }
         
-        // GET /access/roles/:roleName (service calls OK)
+        // GET /access/roles/:roleName (super-admin or service calls only)
         if (request.method === 'GET' && path.startsWith('/access/roles/')) {
-            const authError = requireAuth(auth, request, env);
+            const authError = await requireSuperAdmin(auth, request, env);
             if (authError) return { response: authError };
             const roleName = path.split('/')[3];
             return { response: await handleGetRole(request, env, roleName) };
         }
         
-        // PUT /access/roles/:roleName (admin only)
+        // PUT /access/roles/:roleName (super-admin or service calls only)
         if (request.method === 'PUT' && path.startsWith('/access/roles/')) {
-            const authError = requireAuth(auth, request, env);
+            const authError = await requireSuperAdmin(auth, request, env);
             if (authError) return { response: authError };
             const roleName = path.split('/')[3];
             return { response: await handleSaveRole(request, env, roleName) };
         }
         
-        // GET /access/permissions (service calls OK)
+        // GET /access/permissions (super-admin or service calls only)
         if (request.method === 'GET' && path === '/access/permissions') {
-            const authError = requireAuth(auth, request, env);
+            const authError = await requireSuperAdmin(auth, request, env);
             if (authError) return { response: authError };
             return { response: await handleListPermissions(request, env) };
         }
@@ -204,26 +204,26 @@ export async function handleAccessRoutes(
         }
     }
 
-    // Role & permission definitions
+    // Role & permission definitions (SUPER ADMIN ONLY - CRITICAL SECURITY)
     if (path.startsWith('/access/roles')) {
-        // GET /access/roles (service calls OK)
+        // GET /access/roles (super-admin or service calls only)
         if (request.method === 'GET' && path === '/access/roles') {
-            const authError = requireAuth(auth, request, env);
+            const authError = await requireSuperAdmin(auth, request, env);
             if (authError) return { response: authError };
             return { response: await handleListRoles(request, env) };
         }
         
-        // GET /access/roles/:roleName (service calls OK)
+        // GET /access/roles/:roleName (super-admin or service calls only)
         if (request.method === 'GET' && path.split('/').length === 4) {
-            const authError = requireAuth(auth, request, env);
+            const authError = await requireSuperAdmin(auth, request, env);
             if (authError) return { response: authError };
             const roleName = path.split('/')[3];
             return { response: await handleGetRole(request, env, roleName) };
         }
         
-        // PUT /access/roles/:roleName (WRITE - require auth)
+        // PUT /access/roles/:roleName (super-admin or service calls only)
         if (request.method === 'PUT' && path.split('/').length === 4) {
-            const authError = requireAuth(auth, request, env);
+            const authError = await requireSuperAdmin(auth, request, env);
             if (authError) return { response: authError };
             const roleName = path.split('/')[3];
             return { response: await handleSaveRole(request, env, roleName) };
@@ -231,9 +231,9 @@ export async function handleAccessRoutes(
     }
 
     if (path.startsWith('/access/permissions')) {
-        // GET /access/permissions (service calls OK)
+        // GET /access/permissions (super-admin or service calls only)
         if (request.method === 'GET' && path === '/access/permissions') {
-            const authError = requireAuth(auth, request, env);
+            const authError = await requireSuperAdmin(auth, request, env);
             if (authError) return { response: authError };
             return { response: await handleListPermissions(request, env) };
         }

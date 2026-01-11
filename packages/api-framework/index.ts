@@ -105,10 +105,6 @@ export type {
 export {
   protectAdminRoute,
   withAdminProtection,
-  isSuperAdminEmail,
-  isAdminEmail,
-  getSuperAdminEmails,
-  getAdminEmails,
   verifySuperAdminKey,
   createUnauthorizedResponse,
   createForbiddenResponse,

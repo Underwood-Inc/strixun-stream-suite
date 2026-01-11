@@ -7,7 +7,7 @@
 
 import type { Env, CheckPermissionRequest, CheckQuotaRequest } from '../types/authorization.js';
 import { getCustomerAccess, listRoleDefinitions } from '../utils/access-kv.js';
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createCORSHeaders } from '../utils/cors.js';
 
 /**
  * Check if customer has a specific permission
@@ -81,7 +81,7 @@ export async function handleCheckPermission(
                 status: 400,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -92,7 +92,7 @@ export async function handleCheckPermission(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     } catch (error) {
@@ -105,7 +105,7 @@ export async function handleCheckPermission(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     }
@@ -131,7 +131,7 @@ export async function handleCheckQuota(
                 status: 400,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -151,7 +151,7 @@ export async function handleCheckQuota(
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -172,7 +172,7 @@ export async function handleCheckQuota(
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -193,7 +193,7 @@ export async function handleCheckQuota(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     } catch (error) {
@@ -206,7 +206,7 @@ export async function handleCheckQuota(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     }

@@ -6,7 +6,7 @@
 
 import type { Env } from '../types/authorization.js';
 import { getAuditLogs } from '../utils/access-kv.js';
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createCORSHeaders } from '../utils/cors.js';
 
 /**
  * GET /access/:customerId/audit-log
@@ -30,7 +30,7 @@ export async function handleGetAuditLog(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     } catch (error) {
@@ -43,7 +43,7 @@ export async function handleGetAuditLog(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     }

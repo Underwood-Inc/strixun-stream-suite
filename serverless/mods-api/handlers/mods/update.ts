@@ -320,7 +320,7 @@ export async function handleUpdateMod(
                     
                     // Extract version ID from upload response and update variant's currentVersionId
                     try {
-                        const uploadResult = await uploadResponse.json();
+                        const uploadResult = await uploadResponse.json() as { version?: { versionId?: string } };
                         if (uploadResult.version?.versionId) {
                             // Find the variant in updateData and update its currentVersionId
                             const variantIndex = updateData.variants.findIndex(v => v.variantId === variant.variantId);

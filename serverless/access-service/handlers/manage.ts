@@ -7,7 +7,7 @@
 
 import type { Env, CustomerAuthorization, QuotaInfo } from '../types/authorization.js';
 import { getCustomerAccess, saveCustomerAccess, listRoleDefinitions, addAuditLog } from '../utils/access-kv.js';
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createCORSHeaders } from '../utils/cors.js';
 
 /**
  * Calculate reset timestamp for a quota period
@@ -54,7 +54,7 @@ export async function handleAssignRoles(
                 status: 400,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -130,7 +130,7 @@ export async function handleAssignRoles(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     } catch (error) {
@@ -143,7 +143,7 @@ export async function handleAssignRoles(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     }
@@ -170,7 +170,7 @@ export async function handleGrantPermissions(
                 status: 400,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -212,7 +212,7 @@ export async function handleGrantPermissions(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     } catch (error) {
@@ -225,7 +225,7 @@ export async function handleGrantPermissions(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     }
@@ -255,7 +255,7 @@ export async function handleSetQuotas(
                 status: 400,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -305,7 +305,7 @@ export async function handleSetQuotas(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     } catch (error) {
@@ -318,7 +318,7 @@ export async function handleSetQuotas(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     }
@@ -347,7 +347,7 @@ export async function handleResetQuotas(
                 status: 404,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -377,7 +377,7 @@ export async function handleResetQuotas(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     } catch (error) {
@@ -390,7 +390,7 @@ export async function handleResetQuotas(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     }
@@ -417,7 +417,7 @@ export async function handleIncrementQuota(
                 status: 400,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -433,7 +433,7 @@ export async function handleIncrementQuota(
                 status: 404,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -453,7 +453,7 @@ export async function handleIncrementQuota(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     } catch (error) {
@@ -466,7 +466,7 @@ export async function handleIncrementQuota(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     }

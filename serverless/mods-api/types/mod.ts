@@ -190,12 +190,11 @@ export interface ModVariant {
     versionCount?: number;
     totalDownloads?: number;
     // fileName is populated from currentVersionId's ModVersion
+    fileName?: string;
 }
 
 /**
- * @deprecated Use ModVersion with variantId field instead
- * Variant version metadata - REPLACED BY UNIFIED ModVersion
- * This type is kept for backward compatibility during migration
+ * Variant version metadata
  */
 export interface VariantVersion {
     variantVersionId: string;

@@ -174,14 +174,12 @@ export interface VariantWithContext extends Variant {
 }
 
 /**
- * MIGRATION PATH from ModVariant to Variant
+ * ModVariant - Extended Variant for Mods API
  * 
  * This type adapter allows existing code to work during migration.
- * 
- * @deprecated Use Variant + VariantReference instead
  */
 export interface ModVariant extends Variant {
-    /** @deprecated Use parentId via VariantReference instead */
+    /** Parent mod ID */
     modId: string;
     
     /** Included for backward compatibility with existing queries */

@@ -278,18 +278,9 @@ export async function checkOTPRateLimit(
 ): Promise<RateLimitResult> {
     try {
         // Super admins are ALWAYS exempt from rate limits
-        if (email) {
-            const { isSuperAdminEmail } = await import('../utils/super-admin.js');
-            // DIAGNOSTIC: Log what we're checking
-            const superAdminEmails = env.SUPER_ADMIN_EMAILS ? env.SUPER_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase()) : [];
-            console.log('[RATE_LIMIT_DEBUG] Checking super admin:', {
-                email: email.trim().toLowerCase(),
-                superAdminEmails: superAdminEmails,
-                hasEnvVar: !!env.SUPER_ADMIN_EMAILS,
-                envValue: env.SUPER_ADMIN_EMAILS
-            });
-            const isSuperAdmin = await isSuperAdminEmail(email, env);
-            console.log('[RATE_LIMIT_DEBUG] Super admin check result:', isSuperAdmin);
+        if (customerId) {
+            const { isSuperAdmin: checkSuperAdmin } = await import('../utils/super-admin.js');
+            const isSuperAdmin = await checkSuperAdmin(customerId, env);
             if (isSuperAdmin) {
                 // Return unlimited access for super admins
                 const now = Date.now();
@@ -530,9 +521,9 @@ export async function checkIPRateLimit(
 ): Promise<RateLimitResult> {
     try {
         // Super admins are ALWAYS exempt from rate limits
-        if (email) {
-            const { isSuperAdminEmail } = await import('../utils/super-admin.js');
-            const isSuperAdmin = await isSuperAdminEmail(email, env);
+        if (customerId) {
+            const { isSuperAdmin: checkSuperAdmin } = await import('../utils/super-admin.js');
+            const isSuperAdmin = await checkSuperAdmin(customerId, env);
             if (isSuperAdmin) {
                 const now = Date.now();
                 const oneHour = 60 * 60 * 1000;

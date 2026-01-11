@@ -89,7 +89,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
                               env.ENVIRONMENT === 'dev' || 
                               !env.ENVIRONMENT;
             if (isLocalDev) {
-                console.log('[Restore Session] Local dev environment: Unable to determine IP address, returning no session found');
+                // console.log('[Restore Session] Local dev environment: Unable to determine IP address, returning no session found');
                 return new Response(JSON.stringify({
                     restored: false,
                     message: 'No active session found for this IP address'
@@ -160,7 +160,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
             // Record successful request (no session found is still a valid response)
             await recordIPRequest(requestIP, null, env, true);
             
-            console.log(`[Restore Session] No active sessions found for IP: ${requestIP}`);
+            // console.log(`[Restore Session] No active sessions found for IP: ${requestIP}`);
             
             return new Response(JSON.stringify({
                 restored: false,
@@ -178,7 +178,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
             });
         }
         
-        console.log(`[Restore Session] Found ${sessions.length} active session(s) for IP: ${requestIP}`);
+        // console.log(`[Restore Session] Found ${sessions.length} active session(s) for IP: ${requestIP}`);
 
         // CRITICAL: Validate all sessions exist before using them
         // Filter out sessions that have been deleted (e.g., after logout)
@@ -208,7 +208,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
             
             await recordIPRequest(requestIP, null, env, true);
             
-            console.log(`[Restore Session] All sessions for IP ${requestIP} were deleted or expired`);
+            // console.log(`[Restore Session] All sessions for IP ${requestIP} were deleted or expired`);
             
             return new Response(JSON.stringify({
                 restored: false,
@@ -424,7 +424,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
         // This is more secure than returning the stored token hash
         // NOTE: This will create a new session and update the IP mapping
         // CRITICAL: Do NOT log or return OTP email - it's sensitive data
-        console.log(`[Restore Session] Creating new token for customer: ${customerId}`);
+        // console.log(`[Restore Session] Creating new token for customer: ${customerId}`);
         const tokenResponse = await createAuthToken(
             {
                 customerId: customerId, // MANDATORY - the ONLY identifier
@@ -442,7 +442,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
         await recordIPRequest(requestIP, customerId, env, true);
 
         // CRITICAL: Do NOT log OTP email - it's sensitive data
-        console.log(`[Restore Session] Successfully restored session for customer: ${customerData.customerId} from IP: ${requestIP}`);
+        // console.log(`[Restore Session] Successfully restored session for customer: ${customerData.customerId} from IP: ${requestIP}`);
 
         // Return token response
         return new Response(JSON.stringify({

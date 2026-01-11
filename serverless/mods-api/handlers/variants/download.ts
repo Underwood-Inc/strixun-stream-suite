@@ -134,7 +134,7 @@ export async function handleDownloadVariant(
         // Get r2Key from the current variant version
         const r2Key = variantVersion.r2Key;
         console.log('[VariantDownload] Using r2Key from current variant version:', { 
-            variantVersionId: variantVersion.variantVersionId,
+            versionId: variantVersion.versionId,
             version: variantVersion.version,
             r2Key 
         });
@@ -321,7 +321,7 @@ export async function handleDownloadVariant(
         }
         
         console.log('[VariantDownload] Successfully incremented download counters:', {
-            variantVersionId: variantVersion.variantVersionId,
+            versionId: variantVersion.versionId,
             variantId,
             modDownloadCount: mod.downloadCount
         });

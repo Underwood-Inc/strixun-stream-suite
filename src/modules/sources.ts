@@ -491,54 +491,9 @@ export function loadSourceOpacity(sourceName: string | null): number {
 }
 
 /**
- * Legacy function for DOM-based components
- * @deprecated Use loadSourceOpacity(sourceName) instead
- */
-export function loadSourceOpacityLegacy(): void {
-  const select = document.getElementById('opacitySourceSelect') as HTMLSelectElement | null;
-  const slider = document.getElementById('opacitySlider') as HTMLInputElement | null;
-  const display = document.getElementById('opacityValue');
-  
-  if (!select || !slider || !display) return;
-  
-  const sourceName = select.value;
-  if (!sourceName) {
-    slider.value = '100';
-    display.textContent = '100%';
-    return;
-  }
-  
-  const savedOpacity = getSourceOpacityConfig(sourceName);
-  const opacity = savedOpacity !== null ? savedOpacity : 100;
-  slider.value = opacity.toString();
-  display.textContent = opacity + '%';
-}
-
-/**
  * Apply source opacity (for reactive components)
  */
 export async function applySourceOpacity(sourceName: string, opacity: number): Promise<void> {
-  if (!sourceName) {
-    log('Select a source first!', 'error');
-    return;
-  }
-  
-  await setSourceOpacity(sourceName, opacity);
-}
-
-/**
- * Legacy function for DOM-based components
- * @deprecated Use applySourceOpacity(sourceName, opacity) instead
- */
-export async function applySourceOpacityLegacy(): Promise<void> {
-  const select = document.getElementById('opacitySourceSelect') as HTMLSelectElement | null;
-  const slider = document.getElementById('opacitySlider') as HTMLInputElement | null;
-  
-  if (!select || !slider) return;
-  
-  const sourceName = select.value;
-  const opacity = parseInt(slider.value);
-  
   if (!sourceName) {
     log('Select a source first!', 'error');
     return;
@@ -559,26 +514,6 @@ export async function resetSourceOpacity(sourceName: string): Promise<void> {
   await setSourceOpacity(sourceName, 100);
 }
 
-/**
- * Legacy function for DOM-based components
- * @deprecated Use resetSourceOpacity(sourceName) instead
- */
-export async function resetSourceOpacityLegacy(): Promise<void> {
-  const select = document.getElementById('opacitySourceSelect') as HTMLSelectElement | null;
-  if (!select || !select.value) {
-    log('Select a source first!', 'error');
-    return;
-  }
-  
-  const sourceName = select.value;
-  await setSourceOpacity(sourceName, 100);
-  
-  // Update UI
-  const slider = document.getElementById('opacitySlider') as HTMLInputElement | null;
-  const display = document.getElementById('opacityValue');
-  if (slider) slider.value = '100';
-  if (display) display.textContent = '100%';
-}
 
 export async function quickSetOpacity(sourceName: string, opacity: number): Promise<void> {
   await setSourceOpacity(sourceName, opacity);

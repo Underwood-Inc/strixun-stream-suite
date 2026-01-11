@@ -381,8 +381,6 @@ export interface Env {
     // Environment variables
     JWT_SECRET?: string; // REQUIRED: JWT signing secret (must match OTP auth service)
     FILE_INTEGRITY_KEYPHRASE?: string; // OPTIONAL: Keyphrase for file integrity hashing
-    // DEPRECATED: ALLOWED_EMAILS - Use Access Service instead (upload permissions managed via access.idling.app)
-    // ALLOWED_EMAILS?: string;
     ALLOWED_ORIGINS?: string; // OPTIONAL: Comma-separated CORS origins (recommended for production)
     ENVIRONMENT?: string;
     MODS_PUBLIC_URL?: string; // OPTIONAL: Public URL for R2 bucket (if using custom domain)

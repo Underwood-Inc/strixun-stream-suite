@@ -82,7 +82,7 @@ async function upsertCustomerAccount(
         try {
             existingCustomer = await getCustomerService(customerId, env);
             if (existingCustomer) {
-                console.log(`[Customer Creation] Found existing customer by ID: ${customerId}`);
+                // console.log(`[Customer Creation] Found existing customer by ID: ${customerId}`);
             }
         } catch (error) {
             console.warn(`[Customer Creation] Error fetching customer by ID ${customerId}:`, error);
@@ -93,9 +93,9 @@ async function upsertCustomerAccount(
         try {
             existingCustomer = await getCustomerByEmailService(emailLower, env);
             if (existingCustomer) {
-                console.log(`[Customer Creation] Found existing customer by email: ${emailLower} (customerId: ${existingCustomer.customerId})`);
+                // console.log(`[Customer Creation] Found existing customer by email: ${emailLower} (customerId: ${existingCustomer.customerId})`);
             } else {
-                console.log(`[Customer Creation] No customer found by email: ${emailLower} - will create new customer`);
+                // console.log(`[Customer Creation] No customer found by email: ${emailLower} - will create new customer`);
             }
         } catch (error) {
             // If it's a 500 error, the customer API might be having issues
@@ -122,7 +122,7 @@ async function upsertCustomerAccount(
         
         // Ensure status is active (reactivate if suspended/cancelled)
         if (existingCustomer.status === 'suspended' || existingCustomer.status === 'cancelled') {
-            console.log(`[Customer Creation] Reactivating customer account: ${resolvedCustomerId}`);
+            // console.log(`[Customer Creation] Reactivating customer account: ${resolvedCustomerId}`);
             updates.status = 'active';
             needsUpdate = true;
         }
@@ -153,7 +153,7 @@ async function upsertCustomerAccount(
             await reserveDisplayName(customerDisplayName, resolvedCustomerId, null, env); // Global scope - ensures uniqueness
             updates.displayName = customerDisplayName;
             needsUpdate = true;
-            console.log(`[Customer Creation] Generated displayName "${customerDisplayName}" for customer ${resolvedCustomerId}`);
+            // console.log(`[Customer Creation] Generated displayName "${customerDisplayName}" for customer ${resolvedCustomerId}`);
         }
         
         // Ensure subscriptions exist
@@ -204,7 +204,7 @@ async function upsertCustomerAccount(
         // Update if needed
         if (needsUpdate) {
             updates.updatedAt = new Date().toISOString();
-            console.log(`[Customer Creation] Updating customer account: ${resolvedCustomerId}`);
+            // console.log(`[Customer Creation] Updating customer account: ${resolvedCustomerId}`);
             await retryWithBackoff(async () => {
                 await updateCustomer(resolvedCustomerId, { ...existingCustomer, ...updates }, env);
             });
@@ -214,7 +214,7 @@ async function upsertCustomerAccount(
     }
     
     // Create new customer account
-    console.log(`[Customer Creation] Creating new customer account for: ${emailLower}`);
+    // console.log(`[Customer Creation] Creating new customer account for: ${emailLower}`);
     const resolvedCustomerId = generateCustomerId();
     
     // FAIL-FAST: Generate globally unique display name for customer account - MANDATORY
@@ -294,7 +294,7 @@ async function upsertCustomerAccount(
     await retryWithBackoff(async () => {
         await createCustomer(customerData, env);
     });
-    console.log(`[Customer Creation] Customer account created via customer-api: ${resolvedCustomerId} for ${emailLower}`);
+    // console.log(`[Customer Creation] Customer account created via customer-api: ${resolvedCustomerId} for ${emailLower}`);
     
     // Verify the customer was stored correctly (with retry for eventual consistency)
     let verifyCustomer = await retryWithBackoff(async () => {
@@ -390,7 +390,7 @@ export async function cleanupOTPAuthKV(
             
             // Update session with cleaned data
             await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(cleanSession), { expirationTtl: 31536000 });
-            console.log(`[Cleanup] Removed customer data from OTP_AUTH_KV session for customer ${customerId}`);
+            // console.log(`[Cleanup] Removed customer data from OTP_AUTH_KV session for customer ${customerId}`);
         }
         
         // Remove preferences from OTP_AUTH_KV (now in CUSTOMER_KV)
@@ -398,10 +398,10 @@ export async function cleanupOTPAuthKV(
         const oldPrefs = await env.OTP_AUTH_KV.get(prefsKey);
         if (oldPrefs) {
             await env.OTP_AUTH_KV.delete(prefsKey);
-            console.log(`[Cleanup] Removed preferences from OTP_AUTH_KV for customer ${customerId}`);
+            // console.log(`[Cleanup] Removed preferences from OTP_AUTH_KV for customer ${customerId}`);
         }
         
-        console.log(`[Cleanup] Successfully cleaned OTP_AUTH_KV for customer ${customerId}`);
+        // console.log(`[Cleanup] Successfully cleaned OTP_AUTH_KV for customer ${customerId}`);
     } catch (error) {
         // Don't fail login if cleanup fails - just log the error
         console.error(`[Cleanup] Error cleaning OTP_AUTH_KV for customer ${customerId}:`, error);

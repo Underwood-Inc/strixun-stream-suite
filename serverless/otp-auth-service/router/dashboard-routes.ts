@@ -266,8 +266,6 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
     }
     
     // All other admin endpoints require super-admin + regular auth
-    // DEPRECATED: Customer admin endpoints - use /customer/me from customer-api instead
-    // These endpoints were consolidated into customer-api for proper separation of concerns
     if (path === '/admin/customers/me') {
         const corsHeaders = getCorsHeaders(env, request);
         const errorResponse = new Response(JSON.stringify({

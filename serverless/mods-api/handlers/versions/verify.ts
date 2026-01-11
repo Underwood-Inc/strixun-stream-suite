@@ -178,7 +178,7 @@ export async function handleVerifyVersion(
                     const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
                     const encryptedBinary = await encryptedFile.arrayBuffer();
                     const decryptedBytes = await decryptBinaryWithJWT(new Uint8Array(encryptedBinary), jwtToken);
-                    decryptedFileData = decryptedBytes.buffer;
+                    decryptedFileData = decryptedBytes.buffer as ArrayBuffer;
                 } else {
                     // Legacy JSON encrypted format
                     const { decryptWithJWT } = await import('@strixun/api-framework');

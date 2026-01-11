@@ -45,15 +45,6 @@ export interface CustomerLookupEnv {
     [key: string]: any;
 }
 
-/**
- * Get the customer API base URL
- * Uses centralized service URL resolution utility
- * 
- * @deprecated Use getCustomerApiUrl from '@strixun/api-framework' directly
- */
-function getCustomerApiUrl(env: CustomerLookupEnv): string {
-    return getCustomerApiUrlFromUtils(env);
-}
 
 /**
  * Create service client for customer API (service-to-service)
@@ -63,7 +54,7 @@ function getCustomerApiUrl(env: CustomerLookupEnv): string {
  * because local workers may not have integrity headers configured
  */
 function createCustomerApiServiceClient(env: CustomerLookupEnv): ServiceClient {
-    const customerApiUrl = getCustomerApiUrl(env);
+    const customerApiUrl = getCustomerApiUrlFromUtils(env);
     
     // Disable integrity verification in test/development environments
     // Local workers may not have integrity headers configured
@@ -97,9 +88,9 @@ function createCustomerApiServiceClient(env: CustomerLookupEnv): ServiceClient {
  * Create API client for customer API (JWT-authenticated customer requests)
  * Uses the API framework's createAPIClient
  */
-function createCustomerApiJWTClient(jwtToken: string, env?: CustomerLookupEnv) {
+function createCustomerApiJWTClient(jwtToken: string, env: CustomerLookupEnv) {
     return createAPIClient({
-        baseURL: getCustomerApiUrl(env || {}),
+        baseURL: getCustomerApiUrlFromUtils(env),
         defaultHeaders: {
             'Content-Type': 'application/json',
         },
@@ -183,7 +174,7 @@ export async function fetchCustomerByCustomerId(
 export async function getCustomer(
     customerId: string,
     jwtToken: string,
-    env?: CustomerLookupEnv
+    env: CustomerLookupEnv
 ): Promise<CustomerData | null> {
     try {
         const api = createCustomerApiJWTClient(jwtToken, env);
@@ -213,7 +204,7 @@ export async function getCustomer(
 export async function getCustomerByEmail(
     email: string,
     jwtToken: string,
-    env?: CustomerLookupEnv
+    env: CustomerLookupEnv
 ): Promise<CustomerData | null> {
     try {
         const api = createCustomerApiJWTClient(jwtToken, env);
@@ -243,7 +234,7 @@ export async function getCustomerByEmail(
  */
 export async function getCurrentCustomer(
     jwtToken: string,
-    env?: CustomerLookupEnv
+    env: CustomerLookupEnv
 ): Promise<CustomerData | null> {
     try {
         const api = createCustomerApiJWTClient(jwtToken, env);
@@ -445,27 +436,40 @@ export async function fetchDisplayNamesByCustomerIds(
  */
 export async function isSuperAdminByCustomerId(
     customerId: string | null,
-    env: CustomerLookupEnv & { SUPER_ADMIN_EMAILS?: string }
+    env: CustomerLookupEnv & { ACCESS_SERVICE_URL?: string; SERVICE_API_KEY?: string }
 ): Promise<boolean> {
     if (!customerId) return false;
     
     try {
-        // Look up customer by customerId
-        const customer = await fetchCustomerByCustomerId(customerId, env);
+        // Call Access Service directly to check for super-admin role
+        const accessServiceUrl = env.ACCESS_SERVICE_URL || 'http://localhost:8791';
+        const url = `${accessServiceUrl}/access/${customerId}`;
         
-        if (!customer || !customer.email) {
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+        
+        // Use service API key for service-to-service calls
+        if (env.SERVICE_API_KEY) {
+            headers['X-Service-Key'] = env.SERVICE_API_KEY;
+        }
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers,
+        });
+        
+        if (!response.ok) {
+            // If 404, customer has no roles (not super-admin)
+            if (response.status === 404) {
+                return false;
+            }
+            console.error('[CustomerLookup] Access Service error:', response.status, response.statusText);
             return false;
         }
         
-        // Check if customer's email is in SUPER_ADMIN_EMAILS
-        if (!env.SUPER_ADMIN_EMAILS) {
-            return false;
-        }
-        
-        const superAdminEmails = env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
-        const normalizedEmail = customer.email.trim().toLowerCase();
-        
-        return superAdminEmails.includes(normalizedEmail);
+        const data = await response.json() as { roles?: string[] };
+        return data.roles?.includes('super-admin') || false;
     } catch (error) {
         console.error('[CustomerLookup] Error checking super admin by customerId:', error);
         return false;

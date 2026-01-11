@@ -4,6 +4,10 @@
   import type { Customer } from '$dashboard/lib/types';
 
   export let customer: Customer;
+  export let userRoles: string[] = [];
+
+  // Check if user has super-admin role
+  $: hasSuperAdmin = userRoles.includes('super-admin');
 
   interface Role {
     name: string;
@@ -149,7 +153,16 @@
     </p>
   </header>
 
-  {#if loading}
+  {#if !hasSuperAdmin}
+    <div class="access-denied">
+      <div class="access-denied__icon">🔒</div>
+      <h2>Access Denied</h2>
+      <p>You need super-admin privileges to access this page.</p>
+      <p class="access-denied__help">
+        Contact your system administrator to request super-admin access.
+      </p>
+    </div>
+  {:else if loading}
     <div class="loading">
       <div class="loading__spinner"></div>
       <p>Loading...</p>
@@ -301,6 +314,40 @@
   .page-description {
     color: var(--text-muted);
     font-size: var(--font-size-md);
+  }
+
+  .access-denied {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xxl);
+    text-align: center;
+    max-width: 500px;
+    margin: var(--spacing-xxl) auto;
+  }
+
+  .access-denied .access-denied__icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .access-denied h2 {
+    color: var(--text);
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .access-denied p {
+    color: var(--text-secondary);
+    font-size: var(--font-size-md);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .access-denied .access-denied__help {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    font-style: italic;
+    margin-top: var(--spacing-lg);
   }
 
   .loading {

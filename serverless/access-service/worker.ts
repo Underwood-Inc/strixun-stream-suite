@@ -14,7 +14,7 @@
 import type { Env } from './types/authorization.js';
 import { DEFAULT_ROLES, DEFAULT_PERMISSIONS } from './types/authorization.js';
 import { handleAccessRoutes } from './router/access-routes.js';
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createCORSHeaders } from './utils/cors.js';
 import { isSeeded, markSeeded, saveRoleDefinition, savePermissionDefinition } from './utils/access-kv.js';
 import { MigrationRunner } from '../shared/migration-runner.js';
 import { migrations } from './migrations/index.js';
@@ -104,6 +104,86 @@ async function autoRunMigrations(env: Env): Promise<void> {
     }
 }
 
+/**
+ * Bootstrap super-admin access for initial setup
+ * Looks up customer by email and grants super-admin role
+ * CRITICAL SECURITY: Only uses explicitly configured emails from environment
+ */
+async function bootstrapSuperAdmin(env: Env): Promise<void> {
+    try {
+        // SECURITY: Only bootstrap if explicitly configured
+        const bootstrapEmails = env.SUPER_ADMIN_EMAILS?.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+        
+        if (!bootstrapEmails || bootstrapEmails.length === 0) {
+            console.warn('\n========================================');
+            console.warn('⚠ ACCESS SERVICE: SUPER_ADMIN_EMAILS NOT SET');
+            console.warn('========================================\n');
+            return;
+        }
+        
+        console.log('\n========================================');
+        console.log(`★ BOOTSTRAPPING ${bootstrapEmails.length} SUPER-ADMIN(S) ★`);
+        console.log('========================================');
+        console.log(`Emails: ${bootstrapEmails.join(', ')}`);
+        
+                for (const email of bootstrapEmails) {
+                    try {
+                        // Use Customer API to look up customer by email
+                        if (!env.CUSTOMER_API_URL) {
+                            console.error(`[AccessWorker] CUSTOMER_API_URL not configured`);
+                            continue;
+                        }
+                        
+                        const lookupUrl = `${env.CUSTOMER_API_URL}/customer/by-email/${encodeURIComponent(email)}`;
+                        
+                        const response = await fetch(lookupUrl, {
+                            headers: {
+                                'X-Service-Key': env.SERVICE_API_KEY!,
+                                'Content-Type': 'application/json',
+                            },
+                        });
+                        
+                        if (!response.ok) {
+                            console.warn(`▲ [WARNING] [AccessWorker] ⚠ Customer not found for email: ${email} (${response.status})`);
+                            console.warn('');
+                            continue;
+                        }
+                        
+                        const customerData = await response.json() as { customerId?: string };
+                        const customerId = customerData.customerId;
+                
+                if (!customerId) {
+                    console.warn(`[AccessWorker] ⚠ Customer not found for email: ${email} (never logged in)`);
+                    continue;
+                }
+                
+                // Check if customer already has super-admin role
+                const rolesKey = `customer:${customerId}:roles`;
+                const existingRoles = await env.ACCESS_KV.get(rolesKey, { type: 'json' }) as string[] | null;
+                
+                if (existingRoles && existingRoles.includes('super-admin')) {
+                    // Already has super-admin, skip
+                    continue;
+                }
+                
+                // Grant super-admin role
+                const roles = existingRoles || [];
+                if (!roles.includes('super-admin')) {
+                    roles.push('super-admin');
+                }
+                
+                await env.ACCESS_KV.put(rolesKey, JSON.stringify(roles));
+                console.log(`\n★★★ GRANTED SUPER-ADMIN TO: ${email} (${customerId}) ★★★\n`);
+            } catch (emailError) {
+                console.error(`[AccessWorker] ❌ Failed to bootstrap super-admin for ${email}:`, emailError);
+            }
+        }
+    } catch (error) {
+        console.error(`[AccessWorker] ❌ Failed to bootstrap super-admin:`, error);
+        // Don't throw - bootstrap failure shouldn't break the service
+    }
+}
+
 // Track if we've attempted initialization in this worker instance
 let hasAttemptedInit = false;
 
@@ -113,11 +193,18 @@ let hasAttemptedInit = false;
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         // Auto-initialize on first request (all environments)
-        // Runs migrations first, then seeds defaults
+        // Runs migrations first, then seeds defaults, then bootstraps super-admin
         if (!hasAttemptedInit) {
+            console.log('[AccessWorker] 🚀 First request received - initializing service...');
             ctx.waitUntil((async () => {
-                await autoRunMigrations(env);
-                await autoSeedDefaults(env);
+                try {
+                    await autoRunMigrations(env);
+                    await autoSeedDefaults(env);
+                    await bootstrapSuperAdmin(env);
+                    console.log('[AccessWorker] ✓ Service initialization complete!');
+                } catch (initError) {
+                    console.error('[AccessWorker] ❌ Service initialization failed:', initError);
+                }
             })());
             hasAttemptedInit = true;
         }
@@ -136,7 +223,7 @@ export default {
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -145,7 +232,7 @@ export default {
         if (request.method === 'OPTIONS') {
             return new Response(null, {
                 status: 204,
-                headers: Object.fromEntries(createCORSHeaders(request, env).entries()),
+                headers: Object.fromEntries(createCORSHeaders(request).entries()),
             });
         }
 
@@ -166,7 +253,7 @@ export default {
                 status: 404,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         } catch (error) {
@@ -180,7 +267,7 @@ export default {
                 status: 500,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }

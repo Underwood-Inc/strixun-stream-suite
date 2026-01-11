@@ -51,53 +51,6 @@ export interface RouteProtectionResult {
     level?: AdminLevel;
 }
 
-/**
- * Get list of super admin emails from environment
- */
-export async function getSuperAdminEmails(env: RouteProtectionEnv): Promise<string[]> {
-    if (env.SUPER_ADMIN_EMAILS) {
-        return env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
-    }
-    return [];
-}
-
-/**
- * Get list of regular admin emails from environment
- */
-export async function getAdminEmails(env: RouteProtectionEnv): Promise<string[]> {
-    if (env.ADMIN_EMAILS) {
-        return env.ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
-    }
-    return [];
-}
-
-/**
- * Check if an email is a super admin
- */
-export async function isSuperAdminEmail(email: string | undefined, env: RouteProtectionEnv): Promise<boolean> {
-    if (!email) return false;
-    
-    // Normalize email (trim and lowercase) to match how super admin emails are stored
-    const normalizedEmail = email.trim().toLowerCase();
-    const adminEmails = await getSuperAdminEmails(env);
-    return adminEmails.includes(normalizedEmail);
-}
-
-
-/**
- * Check if an email is a regular admin (or super admin)
- */
-export async function isAdminEmail(email: string | undefined, env: RouteProtectionEnv): Promise<boolean> {
-    if (!email) return false;
-    
-    // Super admins are also admins
-    if (await isSuperAdminEmail(email, env)) {
-        return true;
-    }
-    
-    const adminEmails = await getAdminEmails(env);
-    return adminEmails.includes(email.toLowerCase());
-}
 
 /**
  * Verify super-admin API key
@@ -250,53 +203,36 @@ export async function protectAdminRoute(
         };
     }
     
-    // Check admin level
+    // Check admin level using Access Service
     if (level === 'super-admin') {
-        // If email is in JWT, use it directly
-        if (auth.email) {
-            const isSuperAdmin = await isSuperAdminEmail(auth.email, env);
-            if (!isSuperAdmin) {
-                return {
-                    allowed: false,
-                    error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
-                    auth,
-                };
-            }
+        // Use customerId to check super-admin role via Access Service
+        if (!auth.customerId) {
             return {
-                allowed: true,
+                allowed: false,
+                error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
                 auth,
-                level: 'super-admin',
             };
         }
         
-        // If no email but we have customerId, look up customer to get email
-        if (auth.customerId) {
-            const { isSuperAdminByCustomerId } = await import('./customer-lookup.js');
-            const isSuperAdmin = await isSuperAdminByCustomerId(auth.customerId, env);
-            
-            if (!isSuperAdmin) {
-                return {
-                    allowed: false,
-                    error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
-                    auth,
-                };
-            }
+        const { isSuperAdminByCustomerId } = await import('./customer-lookup.js');
+        const isSuperAdmin = await isSuperAdminByCustomerId(auth.customerId, env);
+        
+        if (!isSuperAdmin) {
             return {
-                allowed: true,
+                allowed: false,
+                error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
                 auth,
-                level: 'super-admin',
             };
         }
         
-        // No email and no customerId - cannot verify
         return {
-            allowed: false,
-            error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
+            allowed: true,
             auth,
+            level: 'super-admin',
         };
     } else {
-        // Regular admin
-        if (!auth.email || !(await isAdminEmail(auth.email, env))) {
+        // Regular admin - check via Access Service (TODO: implement admin role check)
+        if (!auth.customerId) {
             return {
                 allowed: false,
                 error: createForbiddenResponse(request, env, 'Admin access required', 'ADMIN_REQUIRED'),
@@ -304,12 +240,22 @@ export async function protectAdminRoute(
             };
         }
         
-        // Determine actual level (could be super-admin or regular admin)
-        const isSuper = await isSuperAdminEmail(auth.email, env);
+        // For now, check if super-admin (admins can be added later)
+        const { isSuperAdminByCustomerId } = await import('./customer-lookup.js');
+        const isSuperAdmin = await isSuperAdminByCustomerId(auth.customerId, env);
+        
+        if (!isSuperAdmin) {
+            return {
+                allowed: false,
+                error: createForbiddenResponse(request, env, 'Admin access required', 'ADMIN_REQUIRED'),
+                auth,
+            };
+        }
+        
         return {
             allowed: true,
             auth,
-            level: isSuper ? 'super-admin' : 'admin',
+            level: 'super-admin', // Super admins have admin access too
         };
     }
 }

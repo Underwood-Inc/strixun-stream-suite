@@ -34,7 +34,7 @@ async function migrateExistingCustomers(options: MigrationOptions = {}) {
     dryRun = false, 
     verbose = false,
     accessUrl = process.env.ACCESS_SERVICE_URL || 'https://access.idling.app',
-    serviceApiKey = process.env.SERVICE_API_KEY || ''
+    serviceApiKey = process.env.SERVICE_API_KEY
   } = options;
 
   console.log('═══════════════════════════════════════════════════════════');

@@ -3,7 +3,6 @@
  * Handles customer listing, details, updates, and customer mods
  * 
  * CRITICAL: We ONLY have Customer entities - NO "User" entity exists
- * Legacy endpoint URLs (/admin/users) maintained for compatibility
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
@@ -14,10 +13,10 @@ import type { ModMetadata } from '../../types/mod.js';
 
 interface Customer {
     customerId: string; // PRIMARY IDENTITY - REQUIRED
-    email: string; // Internal only - never returned to frontend
+    email?: string; // Internal only - never returned to frontend, not always available from admin endpoints
     displayName?: string | null;
-    createdAt?: string;
-    lastLogin?: string;
+    createdAt?: string | null;
+    lastLogin?: string | null;
     [key: string]: any;
 }
 
@@ -66,38 +65,37 @@ async function listAllCustomers(env: Env): Promise<Customer[]> {
         // This is correct for admin operations
         const client = createServiceClient(authApiUrl, env);
         
-        const response = await client.get<{ users: Array<{
+        const response = await client.get<{ customers: Array<{
             customerId: string;
             displayName: string | null;
             createdAt: string | null;
             lastLogin: string | null;
-        }>; total: number }>('/admin/users');
+        }>; total: number }>('/admin/customers');
         
         if (response.status === 200 && response.data) {
             // Convert to Customer format
-            if (response.data.users && Array.isArray(response.data.users)) {
-                customers.push(...response.data.users.map(u => ({
-                    customerId: u.customerId,
-                    email: '', // Not returned by admin endpoint for security
-                    displayName: u.displayName,
-                    createdAt: u.createdAt,
-                    lastLogin: u.lastLogin,
+            if (response.data.customers && Array.isArray(response.data.customers)) {
+                customers.push(...response.data.customers.map(c => ({
+                    customerId: c.customerId,
+                    displayName: c.displayName,
+                    createdAt: c.createdAt,
+                    lastLogin: c.lastLogin,
                 })));
                 console.log('[CustomerManagement] Loaded all customers via service call:', {
                     total: customers.length,
                     authApiUrl,
-                    responseUserCount: response.data.users.length,
+                    responseCustomerCount: response.data.customers.length,
                     responseTotal: response.data.total
                 });
             } else {
-                console.warn('[CustomerManagement] Service response missing users array:', {
+                console.warn('[CustomerManagement] Service response missing customers array:', {
                     dataKeys: response.data ? Object.keys(response.data) : null,
-                    hasUsers: 'users' in (response.data || {}),
-                    usersIsArray: response.data?.users ? Array.isArray(response.data.users) : false
+                    hasCustomers: 'customers' in (response.data || {}),
+                    customersIsArray: response.data?.customers ? Array.isArray(response.data.customers) : false
                 });
             }
         } else {
-            console.error('[UserManagement] Service call failed:', {
+            console.error('[CustomerManagement] Service call failed:', {
                 status: response.status,
                 statusText: response.statusText,
                 error: typeof response.data === 'object' ? JSON.stringify(response.data).substring(0, 500) : String(response.data).substring(0, 500),
@@ -258,9 +256,9 @@ async function getCustomerModCount(customerId: string, env: Env): Promise<number
 
 /**
  * Handle list all customers request (admin only)
- * GET /admin/users (legacy endpoint)
+ * GET /admin/customers
  */
-export async function handleListUsers(
+export async function handleListCustomers(
     request: Request,
     env: Env,
     _auth: { customerId: string }
@@ -360,9 +358,9 @@ export async function handleListUsers(
 
 /**
  * Handle get customer details request (admin only)
- * GET /admin/users/:customerId (legacy endpoint)
+ * GET /admin/customers/:customerId
  */
-export async function handleGetUserDetails(
+export async function handleGetCustomerDetails(
     request: Request,
     env: Env,
     customerId: string,
@@ -464,9 +462,9 @@ export async function handleGetUserDetails(
 
 /**
  * Handle update customer request (admin only)
- * PUT /admin/users/:customerId (legacy endpoint)
+ * PUT /admin/customers/:customerId
  */
-export async function handleUpdateUser(
+export async function handleUpdateCustomer(
     request: Request,
     env: Env,
     customerId: string,
@@ -538,9 +536,9 @@ export async function handleUpdateUser(
 
 /**
  * Handle get customer's mods request (admin only)
- * GET /admin/users/:customerId/mods (legacy endpoint)
+ * GET /admin/customers/:customerId/mods
  */
-export async function handleGetUserMods(
+export async function handleGetCustomerMods(
     request: Request,
     env: Env,
     customerId: string,

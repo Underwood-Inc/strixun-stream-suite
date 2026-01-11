@@ -23,6 +23,10 @@ ENVIRONMENT = "production"
 binding = "ACCESS_KV"
 id = "ee3fee37d3d74ffdb7ebeeae4b0d86ff"
 
+[[kv_namespaces]]
+binding = "OTP_AUTH_KV"
+id = "680c9dbe86854c369dd23e278abb41f9"
+
 # Production routes - Custom domain for service-to-service calls
 [[routes]]
 pattern = "access.idling.app"
@@ -40,6 +44,10 @@ ACCESS_SERVICE_URL = "http://localhost:8791"
 [[env.development.kv_namespaces]]
 binding = "ACCESS_KV"
 id = "ee3fee37d3d74ffdb7ebeeae4b0d86ff"
+
+[[env.development.kv_namespaces]]
+binding = "OTP_AUTH_KV"
+id = "680c9dbe86854c369dd23e278abb41f9"
 
 # Observability Configuration
 [observability]

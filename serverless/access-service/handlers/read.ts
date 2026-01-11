@@ -7,7 +7,7 @@
 
 import type { Env } from '../types/authorization.js';
 import { getCustomerAccess } from '../utils/access-kv.js';
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createCORSHeaders } from '../utils/cors.js';
 
 /**
  * GET /access/:customerId
@@ -30,7 +30,7 @@ export async function handleGetAccess(
                 status: 404,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -39,7 +39,7 @@ export async function handleGetAccess(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     } catch (error) {
@@ -52,7 +52,7 @@ export async function handleGetAccess(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     }
@@ -77,7 +77,7 @@ export async function handleGetPermissions(
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -88,7 +88,7 @@ export async function handleGetPermissions(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     } catch (error) {
@@ -101,7 +101,7 @@ export async function handleGetPermissions(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     }
@@ -126,7 +126,7 @@ export async function handleGetRoles(
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -137,7 +137,7 @@ export async function handleGetRoles(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     } catch (error) {
@@ -150,7 +150,7 @@ export async function handleGetRoles(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     }
@@ -175,7 +175,7 @@ export async function handleGetQuotas(
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    ...Object.fromEntries(createCORSHeaders(request).entries()),
                 },
             });
         }
@@ -186,7 +186,7 @@ export async function handleGetQuotas(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     } catch (error) {
@@ -199,7 +199,7 @@ export async function handleGetQuotas(
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                ...Object.fromEntries(createCORSHeaders(request).entries()),
             },
         });
     }

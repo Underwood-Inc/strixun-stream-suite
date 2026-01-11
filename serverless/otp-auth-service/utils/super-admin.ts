@@ -49,62 +49,6 @@ export async function isSuperAdmin(customerId: string, env: Env): Promise<boolea
     }
 }
 
-/**
- * DEPRECATED: Email-based super admin check
- * 
- * @deprecated Use isSuperAdmin(customerId, env) instead
- * 
- * This function is kept for backward compatibility during migration.
- * It now checks if the email is in SUPER_ADMIN_EMAILS env var (migration fallback only).
- */
-export async function isSuperAdminEmail(email: string, env: Env): Promise<boolean> {
-    if (!email) {
-        return false;
-    }
-
-    console.warn('[SuperAdmin] DEPRECATED: isSuperAdminEmail() called. Use isSuperAdmin(customerId, env) instead.');
-
-    // Fallback: Check SUPER_ADMIN_EMAILS env var (for migration period only)
-    if (env.SUPER_ADMIN_EMAILS) {
-        const normalizedEmail = email.trim().toLowerCase();
-        const superAdminEmails = env.SUPER_ADMIN_EMAILS
-            .split(',')
-            .map((e: string) => e.trim().toLowerCase());
-        
-        return superAdminEmails.includes(normalizedEmail);
-    }
-
-    return false;
-}
-
-/**
- * Get list of super admin emails from environment
- * 
- * DEPRECATED: This is only used during migration to seed the Authorization Service.
- * 
- * @deprecated Use Authorization Service to manage roles
- */
-async function getSuperAdminEmails(env: Env): Promise<string[]> {
-    console.warn('[SuperAdmin] DEPRECATED: getSuperAdminEmails() called. Use Authorization Service instead.');
-
-    if (env.SUPER_ADMIN_EMAILS) {
-        const emails = env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
-        return emails;
-    }
-
-    if (env.OTP_AUTH_KV) {
-        try {
-            const kvEmails = await env.OTP_AUTH_KV.get('super_admin_emails');
-            if (kvEmails) {
-                return kvEmails.split(',').map(email => email.trim().toLowerCase());
-            }
-        } catch (e) {
-            console.warn('[SuperAdmin] KV read failed:', e);
-        }
-    }
-
-    return [];
-}
 
 /**
  * Verify super-admin API key
@@ -182,36 +126,6 @@ export async function authenticateSuperAdminJWT(request: Request, env: Env): Pro
     }
 }
 
-/**
- * DEPRECATED: Email-based authentication
- * @deprecated Use authenticateSuperAdminJWT() instead
- */
-export async function authenticateSuperAdminEmail(request: Request, env: Env): Promise<string | null> {
-    console.warn('[SuperAdmin] DEPRECATED: authenticateSuperAdminEmail() called. Use authenticateSuperAdminJWT() instead.');
-    
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null;
-    }
-    
-    const token = authHeader.substring(7).trim();
-    
-    try {
-        const { verifyJWT, getJWTSecret } = await import('./crypto.js');
-        const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-        
-        if (!payload || !payload.email) {
-            return null;
-        }
-        
-        // Fallback: Check email against SUPER_ADMIN_EMAILS env var
-        const isSuperAdminCheck = await isSuperAdminEmail(payload.email, env);
-        return isSuperAdminCheck ? payload.email : null;
-    } catch (e) {
-        return null;
-    }
-}
 
 /**
  * Require super-admin authentication (API key or JWT-based)

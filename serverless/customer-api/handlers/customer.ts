@@ -125,11 +125,11 @@ export async function handleGetCustomer(
         const targetCustomerId = customerId || auth.customerId;
         
         // Debug logging
-        console.log(`[Customer API] GET /customer/me - Auth: {
-  userId: '${auth.userId}',
-  customerId: '${auth.customerId}',
-  hasJWT: ${!!auth.jwtToken}
-}, targetCustomerId: '${targetCustomerId}'`);
+        // console.log(`[Customer API] GET /customer/me - Auth: {
+        //   userId: '${auth.userId}',
+        //   customerId: '${auth.customerId}',
+        //   hasJWT: ${!!auth.jwtToken}
+        // }, targetCustomerId: '${targetCustomerId}'`);
 
         if (!targetCustomerId) {
             const rfcError = createError(request, 404, 'Not Found', 'Customer not found. Customer ID is required.');
@@ -202,7 +202,7 @@ export async function handleGetCustomer(
                 customer.updatedAt = new Date().toISOString();
                 await storeCustomer(customer.customerId, customer, env);
                 
-                console.log(`[Customer API] Generated and set displayName "${customerDisplayName}" for customer ${customer.customerId}`);
+                // console.log(`[Customer API] Generated and set displayName "${customerDisplayName}" for customer ${customer.customerId}`);
             } catch (error) {
                 console.error(`[Customer API] Failed to generate displayName for customer ${customer.customerId}:`, error);
                 // Don't throw - return customer without displayName rather than failing the request

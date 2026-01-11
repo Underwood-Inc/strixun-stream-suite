@@ -356,7 +356,7 @@ export async function handleSubmitModRating(
                 // Customer has already rated - update existing rating
                 // Allow comment to be cleared (empty string) or updated
                 const updatedComment = body.comment !== undefined 
-                    ? (body.comment || null) // Allow empty string to clear comment
+                    ? (body.comment || undefined) // Allow empty string to clear comment
                     : existingRating.comment; // Keep existing if not provided
                 
                 const updatedRating: ModRating = {

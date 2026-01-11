@@ -57,11 +57,6 @@ vi.mock('../core', () => {
   };
 });
 
-// Mock getOtpEncryptionKey
-vi.mock('../../../shared-config/otp-encryption', () => ({
-  getOtpEncryptionKey: mockGetOtpEncryptionKey,
-}));
-
 // Import component AFTER mocks are set up
 import OtpLogin from './OtpLogin.svelte';
 

@@ -125,8 +125,8 @@ export async function handleDeleteVariant(
             await env.MODS_KV.delete(variantVersionListKey);
         }
 
-        const corsHeaders = createCORSHeaders(request, env, {
-            methods: ['DELETE', 'OPTIONS'],
+        const corsHeaders = createCORSHeaders(request, {
+            allowedMethods: ['DELETE', 'OPTIONS'],
         });
 
         return new Response(JSON.stringify({ 

@@ -56,13 +56,13 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
         }
 
         // Debug logging
-        console.log(`[Customer API Auth] JWT payload extracted: {
-  sub: '${payload.sub}',
-  email: '${payload.email}',
-  customerId: '${payload.customerId || 'null'}',
-  iss: '${payload.iss}',
-  aud: '${payload.aud}'
-}`);
+        // console.log(`[Customer API Auth] JWT payload extracted: {
+        //   sub: '${payload.sub}',
+        //   email: '${payload.email}',
+        //   customerId: '${payload.customerId || 'null'}',
+        //   iss: '${payload.iss}',
+        //   aud: '${payload.aud}'
+        // }`);
 
         // CRITICAL: payload.sub IS the customerId (not userId - we don't have users)
         const customerId = payload.customerId || payload.sub;
