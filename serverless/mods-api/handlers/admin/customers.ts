@@ -42,28 +42,24 @@ interface CustomerListResponse {
 }
 
 /**
- * List all customers from OTP auth service
+ * List all customers from Customer API
  * Always uses service-to-service call to ensure we get ALL customers system-wide
  * (not just customers scoped to mods hub)
- * 
- * NOTE: OTP auth service still returns userId in legacy responses, we map it to customerId
  */
 async function listAllCustomers(env: Env): Promise<Customer[]> {
     const customers: Customer[] = [];
     
-    // Always use service-to-service call to OTP auth service
-    // This ensures we get ALL customers across the entire system, not just mods-hub customers
-    // NOTE: Admin endpoints require SUPER_ADMIN_API_KEY
-    console.log('[CustomerManagement] Fetching all customers from OTP auth service (system-wide)');
+    // Call Customer API directly (not OTP auth service)
+    // Customer API has the authoritative customer data
+    console.log('[CustomerManagement] Fetching all customers from Customer API');
     try {
         const { createServiceClient } = await import('@strixun/service-client');
-        const { getAuthApiUrl } = await import('@strixun/api-framework');
-        const authApiUrl = getAuthApiUrl(env);
         
-        // For admin endpoints, we need SUPER_ADMIN_API_KEY
-        // createServiceClient requires SUPER_ADMIN_API_KEY
-        // This is correct for admin operations
-        const client = createServiceClient(authApiUrl, env);
+        // Use env var if set, otherwise fallback to appropriate Customer API URL
+        const customerApiUrl = env.CUSTOMER_API_URL || (env.ENVIRONMENT === 'development' ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+        
+        // For admin endpoints, we need SUPER_ADMIN_API_KEY or SERVICE_API_KEY
+        const client = createServiceClient(customerApiUrl, env);
         
         const response = await client.get<{ customers: Array<{
             customerId: string;
@@ -83,7 +79,7 @@ async function listAllCustomers(env: Env): Promise<Customer[]> {
                 })));
                 console.log('[CustomerManagement] Loaded all customers via service call:', {
                     total: customers.length,
-                    authApiUrl,
+                    customerApiUrl,
                     responseCustomerCount: response.data.customers.length,
                     responseTotal: response.data.total
                 });
@@ -99,10 +95,10 @@ async function listAllCustomers(env: Env): Promise<Customer[]> {
                 status: response.status,
                 statusText: response.statusText,
                 error: typeof response.data === 'object' ? JSON.stringify(response.data).substring(0, 500) : String(response.data).substring(0, 500),
-                authApiUrl
+                customerApiUrl
             });
             // NO FALLBACK - throw error
-            throw new Error(`Failed to fetch customers from OTP auth service: ${response.status} ${response.statusText}`);
+            throw new Error(`Failed to fetch customers from Customer API: ${response.status} ${response.statusText}`);
         }
     } catch (error) {
         console.error('[CustomerManagement] Service-to-service call error:', error);
@@ -622,6 +618,7 @@ interface Env {
     MODS_KV: KVNamespace;
     OTP_AUTH_KV?: KVNamespace; // Optional - for direct access if available
     AUTH_API_URL?: string;
+    CUSTOMER_API_URL?: string; // Customer API URL for fetching customer data
     SUPER_ADMIN_API_KEY?: string;
     SUPER_ADMIN_EMAILS?: string;
     ENVIRONMENT?: string;

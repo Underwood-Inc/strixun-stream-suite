@@ -191,7 +191,7 @@ export async function handleUpdateDisplayName(request: Request, env: Env): Promi
 
         // Update display name via customer-api
         // This updates both customer record and preferences in CUSTOMER_KV
-        const customerApiUrl = env.CUSTOMER_API_URL || 'http://localhost:8790';
+        const customerApiUrl = env.CUSTOMER_API_URL || (env.ENVIRONMENT === 'development' ? 'http://localhost:8790' : 'https://customer-api.idling.app');
         const updateResponse = await fetch(`${customerApiUrl}/customer/${auth.customerId}/display-name`, {
             method: 'PUT',
             headers: {

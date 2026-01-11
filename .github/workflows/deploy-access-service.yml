@@ -151,6 +151,12 @@ jobs:
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
             echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE
           fi
+          if [ -n "${{ secrets.CUSTOMER_API_URL }}" ]; then
+            echo "${{ secrets.CUSTOMER_API_URL }}" | pnpm exec wrangler secret put CUSTOMER_API_URL
+          fi
+          if [ -n "${{ secrets.SUPER_ADMIN_EMAILS }}" ]; then
+            echo "${{ secrets.SUPER_ADMIN_EMAILS }}" | pnpm exec wrangler secret put SUPER_ADMIN_EMAILS
+          fi
         continue-on-error: true
       
       - name: Get KV Namespace ID

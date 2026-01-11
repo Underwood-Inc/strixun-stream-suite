@@ -129,12 +129,14 @@ async function bootstrapSuperAdmin(env: Env): Promise<void> {
                 for (const email of bootstrapEmails) {
                     try {
                         // Use Customer API to look up customer by email
-                        if (!env.CUSTOMER_API_URL) {
-                            console.error(`[AccessWorker] CUSTOMER_API_URL not configured`);
+                        // Use env var if set, otherwise fallback to appropriate Customer API URL
+                        const customerApiUrl = env.CUSTOMER_API_URL || (env.ENVIRONMENT === 'development' ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+                        if (!customerApiUrl) {
+                            console.error(`[AccessWorker] CUSTOMER_API_URL not configured and no fallback available`);
                             continue;
                         }
                         
-                        const lookupUrl = `${env.CUSTOMER_API_URL}/customer/by-email/${encodeURIComponent(email)}`;
+                        const lookupUrl = `${customerApiUrl}/customer/by-email/${encodeURIComponent(email)}`;
                         
                         const response = await fetch(lookupUrl, {
                             headers: {

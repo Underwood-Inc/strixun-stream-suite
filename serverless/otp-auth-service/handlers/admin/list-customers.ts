@@ -54,9 +54,11 @@ export async function handleListCustomers(request: Request, env: Env, customerId
         
         const { createServiceClient } = await import('@strixun/service-client');
         
-        const customerApiUrl = env.CUSTOMER_API_URL;
+        // Use env var if set, otherwise fallback to appropriate Customer API URL
+        const customerApiUrl = env.CUSTOMER_API_URL || (env.ENVIRONMENT === 'development' ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+        
         if (!customerApiUrl) {
-            console.error('[Admin] CUSTOMER_API_URL not configured');
+            console.error('[Admin] CUSTOMER_API_URL not configured and no fallback available');
             return new Response(JSON.stringify({ 
                 error: 'Customer API URL not configured',
                 detail: 'CUSTOMER_API_URL environment variable is required'
