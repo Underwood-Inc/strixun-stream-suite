@@ -43,7 +43,7 @@ zone_name = "idling.app"
 
 [env.development.vars]
 ENVIRONMENT = "development"
-CUSTOMER_API_URL = "https://strixun-customer-api-dev.strixuns-script-suite.workers.dev"
+CUSTOMER_API_URL = "http://localhost:8790"
 ACCESS_SERVICE_URL = "http://localhost:8791"
 
 # Development KV Namespace (using same namespace for testing)

@@ -18,24 +18,24 @@ export async function handleThumbnail(
     modId: string,
     auth: { customerId: string } | null
 ): Promise<Response> {
-    // console.log('[Thumbnail] handleThumbnail called:', { modId, hasAuth: !!auth, customerId: auth?.customerId });
+    console.log('[Thumbnail] handleThumbnail called:', { modId, hasAuth: !!auth, customerId: auth?.customerId });
     try {
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
         let mod: ModMetadata | null = null;
         const normalizedModId = normalizeModId(modId);
-        // console.log('[Thumbnail] Looking up mod by modId:', { normalizedModId, original: modId });
+        console.log('[Thumbnail] Looking up mod by modId:', { normalizedModId, original: modId });
         
         // Check authenticated user's customer scope first
         if (auth?.customerId) {
             const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-            // console.log('[Thumbnail] Checking authenticated customer scope:', { customerModKey });
+            console.log('[Thumbnail] Checking authenticated customer scope:', { customerModKey });
             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
         }
         
         // Fall back to global scope if not found
         if (!mod) {
             const globalModKey = `mod_${normalizedModId}`;
-            // console.log('[Thumbnail] Checking global scope:', { globalModKey });
+            console.log('[Thumbnail] Checking global scope:', { globalModKey });
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
         }
         

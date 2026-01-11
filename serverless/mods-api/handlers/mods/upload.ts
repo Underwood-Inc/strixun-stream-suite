@@ -465,17 +465,21 @@ export async function handleUploadMod(
             
             // Binary file upload (optimized - no base64 overhead)
             thumbnailUrl = await handleThumbnailBinaryUpload(thumbnailFile, modId, slug, request, env, auth.customerId);
+            console.log('[Upload] Thumbnail uploaded successfully:', { thumbnailUrl, modId, slug });
             // CRITICAL FIX: Extract extension from file type for faster lookup
             const imageType = thumbnailFile.type.split('/')[1]?.toLowerCase();
             thumbnailExtension = imageType === 'jpeg' ? 'jpg' : imageType; // Normalize jpeg to jpg
+            console.log('[Upload] Thumbnail extension stored:', { extension: thumbnailExtension });
         } else if (metadata.thumbnail) {
             // Legacy base64 upload (backward compatibility)
             thumbnailUrl = await handleThumbnailUpload(metadata.thumbnail, modId, slug, request, env, auth.customerId);
+            console.log('[Upload] Thumbnail (base64) uploaded successfully:', { thumbnailUrl, modId, slug });
             // CRITICAL FIX: Extract extension from base64 data URL for faster lookup
             const matches = metadata.thumbnail.match(/^data:image\/(\w+);base64,/);
             if (matches) {
                 const imageType = matches[1]?.toLowerCase();
                 thumbnailExtension = imageType === 'jpeg' ? 'jpg' : imageType; // Normalize jpeg to jpg
+                console.log('[Upload] Thumbnail extension stored:', { extension: thumbnailExtension });
             }
         }
 
@@ -587,7 +591,9 @@ export async function handleUploadMod(
             versionsListKey,
             modsListKey,
             authorId: auth.customerId,
-            authorDisplayName
+            authorDisplayName,
+            thumbnailUrl: mod.thumbnailUrl,
+            thumbnailExtension: mod.thumbnailExtension
         });
 
         // Store mod and version in customer scope
@@ -777,10 +783,16 @@ async function handleThumbnailBinaryUpload(
         console.log('[Upload] Thumbnail uploaded with extension:', { modId, extension, r2Key });
         
         // Return API proxy URL using slug for consistency
+        // In dev, use localhost:8788 (mods-api worker port)
+        // In production, use MODS_PUBLIC_URL if set, otherwise derive from request
         const requestUrl = new URL(request.url);
-        const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
-            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8788'}`  // Local dev (mods-api runs on 8788)
-            : `https://mods-api.idling.app`;  // Production
+        let API_BASE_URL: string;
+        if (env.ENVIRONMENT === 'development') {
+            // Force localhost in dev - request.url has proxy target hostname
+            API_BASE_URL = 'http://localhost:8788';
+        } else {
+            API_BASE_URL = env.MODS_PUBLIC_URL || `${requestUrl.protocol}//${requestUrl.host}`;
+        }
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
         console.error('Thumbnail binary upload error:', error);
@@ -861,11 +873,16 @@ async function handleThumbnailUpload(
 
         // Return API proxy URL using slug for consistency (thumbnails should be served through API, not direct R2)
         // Slug is passed as parameter to avoid race condition (mod not stored yet)
-        // Use request URL to determine base URL dynamically
+        // In dev, use localhost:8788 (mods-api worker port)
+        // In production, use MODS_PUBLIC_URL if set, otherwise derive from request
         const requestUrl = new URL(request.url);
-        const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
-            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8788'}`  // Local dev (mods-api runs on 8788)
-            : `https://mods-api.idling.app`;  // Production
+        let API_BASE_URL: string;
+        if (env.ENVIRONMENT === 'development') {
+            // Force localhost in dev - request.url has proxy target hostname
+            API_BASE_URL = 'http://localhost:8788';
+        } else {
+            API_BASE_URL = env.MODS_PUBLIC_URL || `${requestUrl.protocol}//${requestUrl.host}`;
+        }
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
         console.error('Thumbnail upload error:', error);

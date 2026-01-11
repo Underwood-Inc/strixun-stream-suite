@@ -240,6 +240,12 @@ export async function handleUpdateMod(
         if (formData) {
             // Check for binary thumbnail file upload
             const thumbnailFile = formData.get('thumbnail') as File | null;
+            console.log('[UpdateMod] Checking for thumbnail in formData:', {
+                hasThumbnailFile: !!thumbnailFile,
+                thumbnailFileName: thumbnailFile?.name,
+                thumbnailSize: thumbnailFile?.size,
+                thumbnailType: thumbnailFile?.type
+            });
             if (thumbnailFile) {
                 try {
                     // CRITICAL: Verify thumbnail is NOT encrypted before processing
@@ -260,10 +266,44 @@ export async function handleUpdateMod(
                     }
                     
                     // Use current slug (may have been updated if title changed)
+                    console.log('[UpdateMod] Processing thumbnail upload:', {
+                        fileName: thumbnailFile.name,
+                        size: thumbnailFile.size,
+                        type: thumbnailFile.type,
+                        modId,
+                        slug: mod.slug
+                    });
                     mod.thumbnailUrl = await handleThumbnailBinaryUpload(thumbnailFile, modId, mod.slug, request, env, auth.customerId);
+                    console.log('[UpdateMod] Thumbnail uploaded successfully:', { thumbnailUrl: mod.thumbnailUrl });
+                    
+                    // Extract extension from file type for faster lookup
+                    const imageType = thumbnailFile.type.split('/')[1]?.toLowerCase();
+                    mod.thumbnailExtension = imageType === 'jpeg' ? 'jpg' : imageType;
+                    console.log('[UpdateMod] Thumbnail extension stored:', { extension: mod.thumbnailExtension });
                 } catch (error) {
-                    console.error('Thumbnail binary update error:', error);
-                    // Continue without thumbnail update
+                    console.error('[UpdateMod] Thumbnail upload FAILED:', {
+                        error: error instanceof Error ? error.message : String(error),
+                        stack: error instanceof Error ? error.stack : undefined,
+                        modId,
+                        slug: mod.slug
+                    });
+                    // FAIL THE REQUEST - do not allow silent errors
+                    const rfcError = createError(
+                        request, 
+                        500, 
+                        'Thumbnail Upload Failed', 
+                        `Failed to upload thumbnail: ${error instanceof Error ? error.message : String(error)}`
+                    );
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 500,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
                 }
             }
         }
@@ -795,10 +835,16 @@ async function handleThumbnailBinaryUpload(
         });
         
         // Return API proxy URL using slug for consistency
+        // In dev, use localhost:8788 (mods-api worker port)
+        // In production, use MODS_PUBLIC_URL if set, otherwise derive from request
         const requestUrl = new URL(request.url);
-        const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
-            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8788'}`  // Local dev (mods-api runs on 8788)
-            : `https://mods-api.idling.app`;  // Production
+        let API_BASE_URL: string;
+        if (env.ENVIRONMENT === 'development') {
+            // Force localhost in dev - request.url has proxy target hostname
+            API_BASE_URL = 'http://localhost:8788';
+        } else {
+            API_BASE_URL = env.MODS_PUBLIC_URL || `${requestUrl.protocol}//${requestUrl.host}`;
+        }
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
         console.error('Thumbnail binary upload error:', error);
@@ -880,11 +926,16 @@ async function handleThumbnailUpload(
 
         // Return API proxy URL using slug (thumbnails should be served through API, not direct R2)
         // Slug is passed as parameter to avoid race condition
-        // Use request URL to determine base URL dynamically
+        // In dev, use localhost:8788 (mods-api worker port)
+        // In production, use MODS_PUBLIC_URL if set, otherwise derive from request
         const requestUrl = new URL(request.url);
-        const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
-            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8788'}`  // Local dev (mods-api runs on 8788)
-            : `https://mods-api.idling.app`;  // Production
+        let API_BASE_URL: string;
+        if (env.ENVIRONMENT === 'development') {
+            // Force localhost in dev - request.url has proxy target hostname
+            API_BASE_URL = 'http://localhost:8788';
+        } else {
+            API_BASE_URL = env.MODS_PUBLIC_URL || `${requestUrl.protocol}//${requestUrl.host}`;
+        }
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
         console.error('Thumbnail upload error:', error);

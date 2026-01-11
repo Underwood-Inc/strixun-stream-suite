@@ -320,7 +320,21 @@ export async function handleBadge(
         const style = (url.searchParams.get('style') || 'flat') as 'flat' | 'flat-square' | 'plastic';
         
         // Extract domain from request URL (hostname)
-        const domain = url.hostname;
+        // CRITICAL: For local dev, always show "localhost" not the proxy hostname
+        let domain = url.hostname;
+        
+        // Check if we're in local dev environment
+        const isLocalDev = 
+            env.ENVIRONMENT === 'development' ||
+            env.ENVIRONMENT === 'dev' ||
+            domain === 'localhost' ||
+            domain === '127.0.0.1' ||
+            domain.startsWith('192.168.') ||
+            domain.endsWith('.local');
+        
+        if (isLocalDev) {
+            domain = 'localhost';
+        }
 
         // PUBLIC API: Badge endpoint is always public (no auth required)
         // Badge shows integrity status based on hash existence
