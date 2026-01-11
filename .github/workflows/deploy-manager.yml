@@ -12,7 +12,8 @@
 #   - TWITCH_CLIENT_ID: Your Twitch application client ID
 #   - TWITCH_CLIENT_SECRET: Your Twitch application client secret
 #   - ALLOWED_ORIGINS: Optional - Comma-separated list of allowed CORS origins
-#   - SERVICE_API_KEY: Optional - Service API key
+#   - SERVICE_API_KEY: Required for Access Service admin endpoints - Service-to-service authentication
+#   - NETWORK_INTEGRITY_KEYPHRASE: Optional - Network security keyphrase for all services
 #   - MODS_PUBLIC_URL: Optional - Mods public URL
 #   - VITE_MODS_API_URL: Optional - Mods API URL for frontend (defaults to https://mods-api.idling.app)
 #   - VITE_AUTH_API_URL: Optional - Auth API URL for frontend (defaults to https://auth.idling.app)
@@ -63,6 +64,10 @@ on:
         default: true
       deploy_url_shortener:
         description: 'Deploy URL Shortener'
+        type: boolean
+        default: true
+      deploy_access_service:
+        description: 'Deploy Access Service'
         type: boolean
         default: true
 
@@ -385,6 +390,56 @@ jobs:
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: echo "⚠ No test script found in URL Shortener - skipping tests"
+
+  test_access_service:
+    needs: setup
+    if: ${{ inputs.deploy_access_service }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/access-service
+        run: |
+          # Check for actual test files or vitest/jest config
+          if [ -f "vitest.config.ts" ] || [ -f "vitest.config.js" ] || [ -f "jest.config.js" ] || [ -f "jest.config.ts" ]; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          elif grep -q '"test"' package.json && ! grep -q 'Error: no test specified' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Access Service Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/access-service
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+          SERVICE_API_KEY: ${{ secrets.SERVICE_API_KEY }}
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠ No test script found in Access Service - skipping tests"
 
   # Twitch API Deployment
   deploy_twitch_api:
@@ -858,6 +913,113 @@ jobs:
           fi
         continue-on-error: true
 
+  # Access Service Deployment
+  deploy_access_service:
+    needs: [setup, test_access_service]
+    if: ${{ inputs.deploy_access_service && (needs.test_access_service.result == 'success' || needs.test_access_service.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Create KV Namespace (if needed)
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          # Create KV namespace if it doesn't exist
+          echo "Creating KV namespace ACCESS_KV (if it doesn't exist)..."
+          pnpm exec wrangler kv namespace create "ACCESS_KV" || true
+          
+          # List namespaces to verify creation and show ID
+          echo "Listing KV namespaces..."
+          pnpm exec wrangler kv namespace list || echo "Could not list namespaces"
+        continue-on-error: true
+      
+      - name: Deploy to Cloudflare Workers
+        id: deploy
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            pnpm exec wrangler deploy --env development
+          else
+            pnpm exec wrangler deploy
+          fi
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "✗ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
+      
+      - name: Set Worker Secrets
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          ENV_FLAG=""
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            ENV_FLAG="--env development"
+          fi
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
+          fi
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+          else
+            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
+            if [ "${{ inputs.environment }}" == "development" ]; then
+              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+            else
+              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+            fi
+          fi
+          if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
+            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true
+          fi
+          if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
+            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
+          fi
+        continue-on-error: true
+      
+      - name: Seed Default Roles & Permissions
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          SERVICE_API_KEY: ${{ secrets.SERVICE_API_KEY }}
+        run: |
+          echo "Seeding default roles and permissions..."
+          # Get the worker URL from deployment
+          WORKER_URL="https://access.idling.app"
+          
+          # Seed defaults with service key authentication
+          curl -X POST "$WORKER_URL/access/seed" \
+            -H "X-Service-Key: $SERVICE_API_KEY" || echo "⚠ Seed endpoint not responding - may need manual seeding"
+        continue-on-error: true
+
   # Mods Hub Deployment (Cloudflare Pages) - Production only
   deploy_mods_hub:
     needs: [setup, test_root]
@@ -1154,7 +1316,7 @@ jobs:
 
   # Deployment Summary
   summary:
-    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_mods_hub, deploy_storybook, deploy_pages]
+    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, test_access_service, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_access_service, deploy_mods_hub, deploy_storybook, deploy_pages]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1244,6 +1406,18 @@ jobs:
             fi
           fi
           
+          if [ "${{ inputs.deploy_access_service }}" == "true" ]; then
+            if [ "${{ needs.test_access_service.result }}" == "success" ]; then
+              echo "✓ **Access Service Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_access_service.result }}" == "failure" ]; then
+              echo "✗ **Access Service Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_access_service.result }}" == "skipped" ]; then
+              echo "⏭️ **Access Service Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Access Service Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Deployment Results" >> $GITHUB_STEP_SUMMARY
           
@@ -1292,6 +1466,14 @@ jobs:
               echo "✓ **URL Shortener** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
               echo "✗ **URL Shortener** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_access_service }}" == "true" ]; then
+            if [ "${{ needs.deploy_access_service.result }}" == "success" ]; then
+              echo "✓ **Access Service** - Deployed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✗ **Access Service** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
