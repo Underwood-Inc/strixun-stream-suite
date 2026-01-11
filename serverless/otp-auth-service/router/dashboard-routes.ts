@@ -28,7 +28,6 @@ import { authenticateRequest, handleAdminRoute, handleSuperAdminRoute, handleAdm
 // Import sub-routers
 import { handleAnalyticsRoutes } from './dashboard/analytics-routes.js';
 import { handleRolesRoutes } from './dashboard/roles-routes.js';
-import { handleRolesAdminRoutes } from './dashboard/roles-admin-routes.js';
 import { handleAuditRoutes } from './dashboard/audit-routes.js';
 import { handleConfigRoutes } from './dashboard/config-routes.js';
 
@@ -51,9 +50,6 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
 
     const rolesResult = await handleRolesRoutes(path, request, env);
     if (rolesResult) return rolesResult;
-
-    const rolesAdminResult = await handleRolesAdminRoutes(path, request, env);
-    if (rolesAdminResult) return rolesAdminResult;
 
     const auditResult = await handleAuditRoutes(path, request, env);
     if (auditResult) return auditResult;

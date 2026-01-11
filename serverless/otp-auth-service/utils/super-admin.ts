@@ -12,7 +12,7 @@ import { createAccessClient } from '../../shared/access-client.js';
 
 interface Env {
     SUPER_ADMIN_API_KEY?: string;
-    ACCESS_SERVICE_URL?: string;
+    ACCESS_SERVICE_URL?: string; // Used by access-client for service-to-service calls
     SERVICE_API_KEY?: string;
     OTP_AUTH_KV?: KVNamespace;
     [key: string]: any;
@@ -141,13 +141,17 @@ export async function isAdminOrSuperAdmin(customerId: string, env: Env): Promise
 
     try {
         const access = createAccessClient(env);
-        const roles = await access.getRoles(customerId);
+        const authorization = await access.getCustomerAuthorization(customerId);
         
-        const hasAdminAccess = roles.includes('admin') || roles.includes('super-admin');
+        if (!authorization) {
+            return false;
+        }
+        
+        const hasAdminAccess = authorization.roles.includes('admin') || authorization.roles.includes('super-admin');
         
         console.log('[AdminAuth] Checking admin access:', {
             customerId,
-            roles,
+            roles: authorization.roles,
             hasAdminAccess,
             source: 'Authorization Service'
         });

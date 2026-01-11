@@ -16,9 +16,7 @@
     "noEmit": true,
     "paths": {
       "@strixun/api-framework": ["../../packages/api-framework"],
-      "@strixun/api-framework/*": ["../../packages/api-framework/*"],
-      "@strixun/otp-auth-service": ["../otp-auth-service"],
-      "@strixun/otp-auth-service/*": ["../otp-auth-service/*"]
+      "@strixun/api-framework/*": ["../../packages/api-framework/*"]
     }
   },
   "include": [

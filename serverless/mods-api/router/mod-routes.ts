@@ -50,8 +50,9 @@ async function resolveSlugIfNeeded(
     env: Env,
     auth: { customerId: string; jwtToken: string } | null
 ): Promise<string | null> {
-    // Check if it looks like a slug (short, no mod_ prefix) vs modId (long with mod_ prefix or timestamp)
-    const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+    // Check if it looks like a slug vs modId
+    // ModIds always start with 'mod_' prefix, everything else is a slug
+    const looksLikeSlug = !slugOrModId.startsWith('mod_');
     if (looksLikeSlug) {
         const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
         const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
@@ -345,7 +346,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
@@ -392,7 +393,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             let modId = slugOrModId; // Assume it's already a modId first
             
             // Check if it looks like a slug (short, no mod_ prefix) vs modId (long with mod_ prefix or timestamp)
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
@@ -435,7 +436,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
             
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
@@ -472,7 +473,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
             
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
@@ -519,7 +520,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
@@ -543,7 +544,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
@@ -567,7 +568,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
@@ -602,7 +603,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {

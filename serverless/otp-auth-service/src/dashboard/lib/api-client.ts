@@ -121,8 +121,8 @@ export class ApiClient {
     return response.data;
   }
 
-  async getUserRoles(customerId: string): Promise<string[]> {
-    // Get current user's roles (customerId param kept for interface compatibility)
+  async getUserRoles(_customerId: string): Promise<string[]> {
+    // Get current user's roles (customerId param kept for interface compatibility but unused)
     const response = await this.api.get<{ roles: string[] }>('/admin/roles');
     if (response.status !== 200 || !response.data) {
       throw new Error(`Failed to get user roles: ${response.status}`);

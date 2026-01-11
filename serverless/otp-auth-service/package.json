@@ -50,6 +50,7 @@
     "tail:helper": "node scripts/tail-logs-helper.js"
   },
   "dependencies": {
+    "@strixun/access-service": "workspace:*",
     "@strixun/ad-carousel": "workspace:*",
     "@strixun/api-framework": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",

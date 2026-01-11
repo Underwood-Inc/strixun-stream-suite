@@ -97,6 +97,10 @@ export default defineConfig({
         target: 'http://localhost:8790',
         changeOrigin: true
       },
+      '/access': {
+        target: 'http://localhost:8791',  // Access Service - DIRECT!
+        changeOrigin: true
+      },
       '/openapi.json': {
         target: 'http://localhost:8787',
         changeOrigin: true

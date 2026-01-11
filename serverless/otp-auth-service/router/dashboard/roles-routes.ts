@@ -9,7 +9,6 @@ import { authenticateRequest, type RouteResult } from './auth.js';
 interface Env {
     OTP_AUTH_KV: KVNamespace;
     SERVICE_API_KEY?: string;
-    ACCESS_SERVICE_URL?: string;
     [key: string]: any;
 }
 

@@ -1,30 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { apiClient } from '$dashboard/lib/api-client';
-  import type { Customer } from '$dashboard/lib/types';
+  import { accessApiClient } from '$dashboard/lib/access-api-client';
+  import type { Customer, RoleDefinition, PermissionDefinition } from '$dashboard/lib/types';
 
   export let customer: Customer;
   export let userRoles: string[] = [];
 
   // Check if user has super-admin role
   $: hasSuperAdmin = userRoles.includes('super-admin');
-
-  interface Role {
-    name: string;
-    displayName: string;
-    description: string;
-    permissions: string[];
-    priority: number;
-  }
-
-  interface Permission {
-    name: string;
-    action: string;
-    resource: string;
-    displayName: string;
-    description: string;
-    category: string;
-  }
 
   interface CustomerAccess {
     customerId: string;
@@ -33,8 +16,8 @@
     quotas: Record<string, { used: number; limit: number; period: string; resetAt: string }>;
   }
 
-  let roles: Role[] = [];
-  let permissions: Permission[] = [];
+  let roles: RoleDefinition[] = [];
+  let permissions: PermissionDefinition[] = [];
   let customers: CustomerAccess[] = [];
   let loading = true;
   let error: string | null = null;
@@ -52,21 +35,13 @@
     error = null;
 
     try {
-      // Load roles via OTP Auth Service proxy (which calls Access Service with proper service auth)
-      const rolesResponse = await apiClient.api.get('/admin/roles/all');
-      if (rolesResponse.status === 200 && rolesResponse.data) {
-        roles = rolesResponse.data.roles || [];
-      } else {
-        console.error('Failed to load roles:', rolesResponse.status);
-      }
+      // Call Access Service DIRECTLY - no proxy needed!
+      const rolesData = await accessApiClient.getAllRoles();
+      roles = rolesData.roles || [];
 
-      // Load permissions via OTP Auth Service proxy
-      const permsResponse = await apiClient.api.get('/admin/permissions/all');
-      if (permsResponse.status === 200 && permsResponse.data) {
-        permissions = permsResponse.data.permissions || [];
-      } else {
-        console.error('Failed to load permissions:', permsResponse.status);
-      }
+      // Call Access Service DIRECTLY for permissions
+      const permsData = await accessApiClient.getAllPermissions();
+      permissions = permsData.permissions || [];
 
       // Note: Customer access list would require a new admin endpoint
       // For now, showing structure only
