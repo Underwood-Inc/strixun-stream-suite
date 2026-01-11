@@ -3,7 +3,7 @@
  * Handles admin-only operations like listing all customers
  */
 
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createCORSHeaders, createIntegrityResponse } from '@strixun/api-framework/enhanced';
 import { createError } from '../utils/errors.js';
 import { getCustomer, type CustomerData } from '../services/customer.js';
 
@@ -11,6 +11,7 @@ interface Env {
     CUSTOMER_KV: KVNamespace;
     ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
+    NETWORK_INTEGRITY_KEYPHRASE?: string;
     [key: string]: any;
 }
 
@@ -226,15 +227,14 @@ export async function handleListAllCustomers(
             customersWithIssues: customers.filter(c => c.validationIssues && c.validationIssues.length > 0).length
         });
         
-        return new Response(JSON.stringify({
-            customers,
-            total: customers.length
-        }), {
-            headers: {
-                'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        // Create response with integrity headers for service-to-service calls
+        return createIntegrityResponse(
+            request,
+            200,
+            { customers, total: customers.length },
+            env,
+            corsHeaders
+        );
     } catch (error: any) {
         console.error('[Admin] Failed to list all customers:', error);
         const rfcError = createError(
@@ -243,12 +243,13 @@ export async function handleListAllCustomers(
             'Internal Server Error',
             env.ENVIRONMENT === 'development' ? error.message : 'Failed to list customers'
         );
-        return new Response(JSON.stringify(rfcError), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        // Create error response with integrity headers
+        return createIntegrityResponse(
+            request,
+            500,
+            rfcError,
+            env,
+            corsHeaders
+        );
     }
 }
