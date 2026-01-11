@@ -10,8 +10,13 @@
  */
 
 import { Miniflare } from 'miniflare';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import type { UnstableDevWorker } from 'wrangler';
+
+// Get the directory of this file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Shared test secrets
 const NETWORK_INTEGRITY_KEYPHRASE = 'test-integrity-keyphrase-for-integration-tests';
@@ -38,9 +43,22 @@ export interface MultiWorkerSetup {
 export async function createMultiWorkerSetup(): Promise<MultiWorkerSetup> {
   console.log('[MultiWorkerSetup] Starting Access Service worker...');
   
+  // Get absolute paths to worker files (avoid relative paths that break workerd)
+  const accessServiceRoot = resolve(__dirname, '../..');
+  const otpAuthServiceRoot = resolve(accessServiceRoot, '../otp-auth-service');
+  const customerAPIRoot = resolve(accessServiceRoot, '../customer-api');
+  
+  const accessServiceWorker = resolve(accessServiceRoot, 'dist/worker.js');
+  const otpAuthServiceWorker = resolve(otpAuthServiceRoot, 'dist/worker.js');
+  const customerAPIWorker = resolve(customerAPIRoot, 'dist/worker.js');
+  
+  console.log('[MultiWorkerSetup] Access Service worker:', accessServiceWorker);
+  console.log('[MultiWorkerSetup] OTP Auth Service worker:', otpAuthServiceWorker);
+  console.log('[MultiWorkerSetup] Customer API worker:', customerAPIWorker);
+  
   // Access Service (port 8791) - Use compiled JavaScript
   const accessService = new Miniflare({
-    scriptPath: resolve(__dirname, '../../dist/worker.js'), // Use compiled JavaScript
+    scriptPath: accessServiceWorker,
     modules: true,
     compatibilityDate: '2024-01-01',
     compatibilityFlags: ['nodejs_compat'],
@@ -57,7 +75,7 @@ export async function createMultiWorkerSetup(): Promise<MultiWorkerSetup> {
   
   // OTP Auth Service (port 8789) - Use compiled JavaScript to avoid TypeScript parsing issues
   const otpAuthService = new Miniflare({
-    scriptPath: resolve(__dirname, '../../../otp-auth-service/dist/worker.js'),
+    scriptPath: otpAuthServiceWorker,
     modules: true,
     compatibilityDate: '2024-01-01',
     compatibilityFlags: ['nodejs_compat'],
@@ -78,7 +96,7 @@ export async function createMultiWorkerSetup(): Promise<MultiWorkerSetup> {
   
   // Customer API (port 8790) - Use compiled JavaScript to avoid TypeScript parsing issues
   const customerAPI = new Miniflare({
-    scriptPath: resolve(__dirname, '../../../customer-api/dist/worker.js'),
+    scriptPath: customerAPIWorker,
     modules: true,
     compatibilityDate: '2024-01-01',
     compatibilityFlags: ['nodejs_compat'],
