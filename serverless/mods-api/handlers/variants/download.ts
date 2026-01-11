@@ -307,6 +307,11 @@ export async function handleDownloadVariant(
             console.error('[VariantDownload] Error incrementing download counter:', error);
         });
 
+        // Increment variant totalDownloads count
+        if (variant) {
+            variant.totalDownloads = (variant.totalDownloads || 0) + 1;
+        }
+
         // Increment mod download count
         mod.downloadCount = (mod.downloadCount || 0) + 1;
         
@@ -323,6 +328,7 @@ export async function handleDownloadVariant(
         console.log('[VariantDownload] Successfully incremented download counters:', {
             versionId: variantVersion.versionId,
             variantId,
+            variantTotalDownloads: variant.totalDownloads,
             modDownloadCount: mod.downloadCount
         });
 

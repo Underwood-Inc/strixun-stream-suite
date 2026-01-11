@@ -220,6 +220,8 @@ export async function handleUpdateMod(
                         createdAt: updatedVariant.createdAt || new Date().toISOString(),
                         updatedAt: new Date().toISOString(),
                         currentVersionId: null, // Will be set when file is uploaded
+                        versionCount: 0, // Initialize to 0 for new variants
+                        totalDownloads: 0, // Initialize to 0 for new variants
                     };
                 }
             });
