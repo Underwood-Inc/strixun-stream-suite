@@ -1,23 +1,16 @@
 <script lang="ts">
   import Accordion from './Accordion.svelte';
+  import ApiEndpointsAccordion from './docs/ApiEndpointsAccordion.svelte';
   import ArchitectureAccordion from './docs/ArchitectureAccordion.svelte';
   import ErrorHandlingAccordion from './docs/ErrorHandlingAccordion.svelte';
   import MultiTenancyAccordion from './docs/MultiTenancyAccordion.svelte';
   import SecurityBestPracticesAccordion from './docs/SecurityBestPracticesAccordion.svelte';
 
   let activeAccordion: string | null = null;
-  let ApiEndpointsAccordion: any = null;
 
   function handleToggle(event: CustomEvent<{ id: string }>) {
     const { id } = event.detail;
     activeAccordion = activeAccordion === id ? null : id;
-    
-    // Lazy load SwaggerUI only when API Endpoints accordion is opened
-    if (id === 'api-endpoints' && !ApiEndpointsAccordion) {
-      import('./docs/ApiEndpointsAccordion.svelte').then(module => {
-        ApiEndpointsAccordion = module.default;
-      });
-    }
   }
 </script>
 
@@ -33,11 +26,7 @@
     isActive={activeAccordion === 'api-endpoints'}
     on:toggle={handleToggle}
   >
-    {#if ApiEndpointsAccordion}
-      <svelte:component this={ApiEndpointsAccordion} />
-    {:else if activeAccordion === 'api-endpoints'}
-      <div>Loading Swagger UI...</div>
-    {/if}
+    <ApiEndpointsAccordion />
   </Accordion>
 
   <Accordion

@@ -17,6 +17,7 @@ import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { AdvancedSearchInput } from '@strixun/search-query-parser/react';
 import { VirtualizedTable, type Column } from '@strixun/virtualized-table';
+import { ActionMenu, type ActionMenuItem } from '@strixun/shared-components/react/ActionMenu';
 import { AdminNavigation } from '../components/admin/AdminNavigation';
 import { AdminStats } from '../components/admin/AdminStats';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
@@ -43,8 +44,7 @@ const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${spacing.md};
-  min-height: calc(100vh - 120px);
-  height: 100%;
+  height: calc(100vh - 120px);
   overflow: hidden;
 `;
 
@@ -168,21 +168,11 @@ const Error = styled.div`
 `;
 
 const TableContainer = styled.div`
-  flex: 1 1 auto;
-  min-height: 400px;
+  flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  position: relative;
-  
-  /* Ensure table container takes available space */
-  @media (max-height: 800px) {
-    min-height: 300px;
-  }
-  
-  @media (max-height: 600px) {
-    min-height: 200px;
-  }
+  min-height: 0; /* Critical for flex child to shrink properly */
 `;
 
 const TestSection = styled.div`
@@ -234,7 +224,6 @@ export function AdminPanel() {
     const [bulkActionModalOpen, setBulkActionModalOpen] = useState(false);
     const [bulkAction, setBulkAction] = useState<ModStatus | 'delete' | null>(null);
     const [modToDelete, setModToDelete] = useState<{ modId: string; title: string } | null>(null);
-    const [tableHeight, setTableHeight] = useState<number>(600);
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const [testSectionOpen, setTestSectionOpen] = useState(false);
     const gameContainerRef = useRef<HTMLDivElement>(null);
@@ -440,107 +429,55 @@ export function AdminPanel() {
         {
             key: 'actions',
             label: 'Actions',
-            width: '400px',
-            render: (mod) => (
-                <ActionGroup>
-                    <Button
-                        $variant="primary"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleStatusChange(mod.modId, 'approved');
-                        }}
-                        disabled={updateStatus.isPending || mod.status === 'approved'}
-                    >
-                        Approve
-                    </Button>
-                    <Button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleStatusChange(mod.modId, 'changes_requested');
-                        }}
-                        disabled={updateStatus.isPending || mod.status === 'changes_requested'}
-                    >
-                        Request Changes
-                    </Button>
-                    <Button
-                        $variant="danger"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleStatusChange(mod.modId, 'denied');
-                        }}
-                        disabled={updateStatus.isPending || mod.status === 'denied'}
-                    >
-                        Deny
-                    </Button>
-                    <Button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(`/${mod.slug}/review`, '_blank');
-                        }}
-                    >
-                        Review
-                    </Button>
-                    <Button
-                        $variant="danger"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(mod.modId, mod.title);
-                        }}
-                        disabled={deleteMod.isPending}
-                    >
-                        Delete
-                    </Button>
-                </ActionGroup>
-            ),
+            width: '80px',
+            render: (mod) => {
+                const menuItems: ActionMenuItem[] = [
+                    {
+                        key: 'review',
+                        label: 'Review',
+                        icon: '👁',
+                        onClick: () => window.open(`/${mod.slug}/review`, '_blank'),
+                    },
+                    {
+                        key: 'approve',
+                        label: 'Approve',
+                        icon: '✓',
+                        onClick: () => handleStatusChange(mod.modId, 'approved'),
+                        disabled: updateStatus.isPending || mod.status === 'approved',
+                        variant: 'primary',
+                        divider: true,
+                    },
+                    {
+                        key: 'changes',
+                        label: 'Request Changes',
+                        icon: '✎',
+                        onClick: () => handleStatusChange(mod.modId, 'changes_requested'),
+                        disabled: updateStatus.isPending || mod.status === 'changes_requested',
+                    },
+                    {
+                        key: 'deny',
+                        label: 'Deny',
+                        icon: '✗',
+                        onClick: () => handleStatusChange(mod.modId, 'denied'),
+                        disabled: updateStatus.isPending || mod.status === 'denied',
+                        variant: 'danger',
+                        divider: true,
+                    },
+                    {
+                        key: 'delete',
+                        label: 'Delete Permanently',
+                        icon: '🗑',
+                        onClick: () => handleDeleteClick(mod.modId, mod.title),
+                        disabled: deleteMod.isPending,
+                        variant: 'danger',
+                    },
+                ];
+                
+                return <ActionMenu items={menuItems} />;
+            },
         },
     ], [handleStatusChange, handleDeleteClick, updateStatus, deleteMod]);
 
-    // Calculate table height based on available space
-    // CRITICAL: Use viewport height and measure actual rendered elements
-    useEffect(() => {
-        const updateTableHeight = () => {
-            const viewportHeight = window.innerHeight;
-            
-            // Use the table container ref to measure available space
-            // This is more accurate than estimating element heights
-            if (tableContainerRef.current) {
-                const containerRect = tableContainerRef.current.getBoundingClientRect();
-                const containerTop = containerRect.top;
-                const availableHeight = viewportHeight - containerTop - 40; // 40px bottom padding
-                
-                // Minimum height of 300px, ensure it doesn't exceed viewport
-                const calculatedHeight = Math.max(300, Math.min(availableHeight, viewportHeight - 100));
-                setTableHeight(calculatedHeight);
-            } else {
-                // Fallback: estimate based on typical layout
-                // Main nav: ~80px, Admin nav: ~50px, Page header: ~100px, Stats: ~120px, Toolbar: ~60px
-                const estimatedReserved = 410;
-                const calculatedHeight = Math.max(300, viewportHeight - estimatedReserved);
-                setTableHeight(calculatedHeight);
-            }
-        };
-
-        // Initial calculation after DOM is ready
-        const timeoutId = setTimeout(updateTableHeight, 100);
-        
-        // Listen for window resize
-        window.addEventListener('resize', updateTableHeight);
-        
-        // Use ResizeObserver to detect when container position changes
-        let resizeObserver: ResizeObserver | null = null;
-        if (tableContainerRef.current && typeof ResizeObserver !== 'undefined') {
-            resizeObserver = new ResizeObserver(updateTableHeight);
-            resizeObserver.observe(tableContainerRef.current);
-        }
-        
-        return () => {
-            clearTimeout(timeoutId);
-            window.removeEventListener('resize', updateTableHeight);
-            if (resizeObserver && tableContainerRef.current) {
-                resizeObserver.unobserve(tableContainerRef.current);
-            }
-        };
-    }, [data]); // Recalculate when data changes (affects layout)
 
     if (isLoading) return <Loading>Loading mods...</Loading>;
     if (error) return <Error>Failed to load mods: {(error as Error).message}</Error>;
@@ -553,8 +490,7 @@ export function AdminPanel() {
         statusFilter,
         searchQuery,
         sortedModsCount: sortedMods.length,
-        filteredModsCount: filteredMods.length,
-        tableHeight
+        filteredModsCount: filteredMods.length
     });
 
     const selectedCount = selectedIds.size;
@@ -640,7 +576,7 @@ export function AdminPanel() {
                     <VirtualizedTable
                         data={sortedMods}
                         columns={columns}
-                        height={tableHeight}
+                        height="100%"
                         rowHeight={56}
                         getItemId={(mod) => mod.modId}
                         sortConfig={sortConfig}

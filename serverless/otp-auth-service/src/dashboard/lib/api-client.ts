@@ -122,16 +122,12 @@ export class ApiClient {
   }
 
   async getUserRoles(customerId: string): Promise<string[]> {
-    try {
-      const response = await this.api.get<{ roles: string[] }>(`/access-api/access/${customerId}/roles`);
-      if (response.status !== 200 || !response.data) {
-        return [];
-      }
-      return response.data.roles || [];
-    } catch (error) {
-      console.error('Failed to get user roles:', error);
-      return [];
+    // Get current user's roles (customerId param kept for interface compatibility)
+    const response = await this.api.get<{ roles: string[] }>('/admin/roles');
+    if (response.status !== 200 || !response.data) {
+      throw new Error(`Failed to get user roles: ${response.status}`);
     }
+    return response.data.roles;
   }
 
   async getApiKeys(customerId: string): Promise<{ apiKeys: ApiKey[] }> {

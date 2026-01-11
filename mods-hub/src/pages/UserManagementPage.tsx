@@ -23,6 +23,8 @@ import { useCallback, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { AdvancedSearchInput } from '@strixun/search-query-parser/react';
 import { VirtualizedTable, type Column } from '@strixun/virtualized-table';
+import { ActionMenu, type ActionMenuItem } from '@strixun/shared-components/react/ActionMenu';
+import { InfoModal } from '@strixun/shared-components/react/InfoModal';
 import { AdminNavigation } from '../components/admin/AdminNavigation';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import { useUpdateCustomer, useCustomersList } from '../hooks/useCustomers';
@@ -207,6 +209,7 @@ export function CustomerManagementPage() {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkActionModalOpen, setBulkActionModalOpen] = useState(false);
     const [bulkAction, setBulkAction] = useState<'approve' | 'revoke' | null>(null);
+    const [viewingCustomer, setViewingCustomer] = useState<CustomerListItem | null>(null);
     
     const { data, isLoading, error } = useCustomersList({
         page: 1,
@@ -394,46 +397,47 @@ export function CustomerManagementPage() {
         {
             key: 'actions',
             label: 'Actions',
-            width: '300px',
+            width: '80px',
             render: (customer) => {
                 // Can't revoke permissions from env var or super admin (they're hardcoded)
                 const canManagePermission = customer.permissionSource === 'kv' || customer.permissionSource === 'none';
                 const isEnvBased = customer.permissionSource === 'env-var' || customer.permissionSource === 'super-admin';
                 
-                return (
-                    <ActionGroup>
-                        {canManagePermission ? (
-                            <Button
-                                $variant={customer.hasUploadPermission ? 'danger' : 'primary'}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleTogglePermission(customer.customerId, customer.hasUploadPermission);
-                                }}
-                                disabled={updateCustomer.isPending}
-                            >
-                                {customer.hasUploadPermission ? 'Revoke Permission' : 'Approve Upload'}
-                            </Button>
-                        ) : (
-                            <Button
-                                $variant="secondary"
-                                disabled
-                                title={isEnvBased ? 'Permission is set via environment variable and cannot be revoked via UI' : 'Cannot manage this permission'}
-                            >
-                                {customer.hasUploadPermission ? 'Env Managed' : 'No Permission'}
-                            </Button>
-                        )}
-                        <Button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                // Navigate to customer detail view (could be a modal or separate page)
-                                // For now, just log
-                                console.log('View customer details:', customer.customerId);
-                            }}
-                        >
-                            View Details
-                        </Button>
-                    </ActionGroup>
-                );
+                const menuItems: ActionMenuItem[] = [
+                    {
+                        key: 'view',
+                        label: 'View Details',
+                        icon: '👁',
+                        onClick: () => {
+                            setViewingCustomer(customer);
+                        },
+                    },
+                    {
+                        key: 'permission',
+                        label: canManagePermission 
+                            ? (customer.hasUploadPermission ? 'Revoke Permission' : 'Approve Upload')
+                            : (customer.hasUploadPermission ? 'Env Managed' : 'No Permission'),
+                        icon: canManagePermission ? (customer.hasUploadPermission ? '🚫' : '✓') : '🔒',
+                        onClick: () => {
+                            if (canManagePermission) {
+                                handleTogglePermission(customer.customerId, customer.hasUploadPermission);
+                            }
+                        },
+                        disabled: !canManagePermission || updateCustomer.isPending,
+                        variant: canManagePermission && customer.hasUploadPermission ? 'danger' : 'primary',
+                        divider: true,
+                    },
+                    {
+                        key: 'export',
+                        label: 'Export Data (GDPR)',
+                        icon: '📥',
+                        onClick: () => {
+                            console.log('Export customer data:', customer.customerId);
+                        },
+                    },
+                ];
+                
+                return <ActionMenu items={menuItems} />;
             },
         },
     ], [handleTogglePermission, updateCustomer]);
@@ -614,6 +618,28 @@ export function CustomerManagementPage() {
                 cancelText="Cancel"
                 isLoading={updateCustomer.isPending}
             />
+            
+            {viewingCustomer && (
+                <InfoModal
+                    isOpen={true}
+                    onClose={() => setViewingCustomer(null)}
+                    title={`Customer Details: ${viewingCustomer.displayName || 'N/A'}`}
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <p style={{ margin: 0 }}><strong>Customer ID:</strong> {viewingCustomer.customerId}</p>
+                        <p style={{ margin: 0 }}><strong>External ID:</strong> {viewingCustomer.customerIdExternal || 'N/A'}</p>
+                        <p style={{ margin: 0 }}><strong>Display Name:</strong> {viewingCustomer.displayName || 'N/A'}</p>
+                        <p style={{ margin: 0 }}><strong>Account Type:</strong> {viewingCustomer.accountType}</p>
+                        <p style={{ margin: 0 }}><strong>Upload Permission:</strong> {viewingCustomer.hasUploadPermission ? 'Yes' : 'No'}</p>
+                        {viewingCustomer.hasUploadPermission && (
+                            <p style={{ margin: 0 }}><strong>Permission Source:</strong> {viewingCustomer.permissionSource}</p>
+                        )}
+                        <p style={{ margin: 0 }}><strong>Total Mods:</strong> {viewingCustomer.modCount}</p>
+                        <p style={{ margin: 0 }}><strong>Created:</strong> {viewingCustomer.createdAt ? formatDate(viewingCustomer.createdAt) : 'N/A'}</p>
+                        <p style={{ margin: 0 }}><strong>Last Login:</strong> {viewingCustomer.lastLogin ? formatDate(viewingCustomer.lastLogin) : 'Never'}</p>
+                    </div>
+                </InfoModal>
+            )}
         </PageContainer>
     );
 }

@@ -29,6 +29,8 @@ const NO_JWT_REQUIRED_PATHS = [
     '/track/email-open',     // Email clients can't send headers
     '/assets/',              // Static assets (CSS, JS, images) - must be public
     '/dashboard',            // Dashboard SPA - assets served via /assets/ but dashboard itself is public
+    '/openapi.json',         // OpenAPI spec for Swagger UI - must be public
+    '/health',               // Health check endpoints - must be public
     '/',                     // Landing page for first-time visitors
     ''
 ];

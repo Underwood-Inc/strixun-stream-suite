@@ -5,7 +5,7 @@
  * Supports sorting, selection, and all table features
  */
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
@@ -21,7 +21,19 @@ const TableContainer = styled.div`
   min-height: 0;
 `;
 
-const ScrollContainer = styled.div`
+const HeaderScrollContainer = styled.div`
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+  
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+`;
+
+const BodyScrollContainer = styled.div`
   flex: 1;
   overflow-x: auto;
   overflow-y: hidden;
@@ -124,7 +136,7 @@ export interface VirtualizedTableProps<T> {
   data: T[];
   columns: Column<T>[];
   rowHeight?: number;
-  height: number;
+  height: number | string;
   onRowClick?: (item: T, index: number) => void;
   selectedIds?: Set<string>;
   onSelectionChange?: (selectedIds: Set<string>) => void;
@@ -146,7 +158,35 @@ export function VirtualizedTable<T extends Record<string, any>>({
   onSort
 }: VirtualizedTableProps<T>) {
   const listRef = useRef<List>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [calculatedHeight, setCalculatedHeight] = useState<number>(600);
+  
+  // Calculate actual height from container if height is "100%"
+  useEffect(() => {
+    if (typeof height === 'string' && containerRef.current) {
+      const updateHeight = () => {
+        if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          setCalculatedHeight(Math.max(300, rect.height));
+        }
+      };
+      
+      const timeoutId = setTimeout(updateHeight, 50);
+      window.addEventListener('resize', updateHeight);
+      
+      const resizeObserver = new ResizeObserver(updateHeight);
+      resizeObserver.observe(containerRef.current);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        window.removeEventListener('resize', updateHeight);
+        resizeObserver.disconnect();
+      };
+    }
+  }, [height]);
   
   // Generate grid template columns
   const gridTemplateColumns = useMemo(() => {
@@ -201,6 +241,13 @@ export function VirtualizedTable<T extends Record<string, any>>({
     return Math.max(total, 1000); // Minimum width to ensure scrolling works
   }, [columns, onSelectionChange]);
   
+  // Sync horizontal scroll between header and body
+  const handleBodyScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    if (headerScrollRef.current && bodyScrollRef.current) {
+      headerScrollRef.current.scrollLeft = bodyScrollRef.current.scrollLeft;
+    }
+  }, []);
+
   // Handle row selection
   const handleSelect = useCallback((item: T, checked: boolean) => {
     if (!onSelectionChange) return;
@@ -286,11 +333,13 @@ export function VirtualizedTable<T extends Record<string, any>>({
   }, [onSelectionChange, gridTemplateColumns]);
   
   const headerHeight = 50;
-  const bodyHeight = Math.max(100, height - headerHeight);
+  const effectiveHeight = typeof height === 'number' ? height : calculatedHeight;
+  const bodyHeight = Math.max(100, effectiveHeight - headerHeight);
+  const containerHeight = typeof height === 'number' ? `${height}px` : height;
 
   return (
-    <TableContainer style={{ height: `${height}px`, minHeight: `${height}px` }}>
-      <ScrollContainer>
+    <TableContainer ref={containerRef} style={{ height: containerHeight, minHeight: containerHeight }}>
+      <HeaderScrollContainer ref={headerScrollRef}>
         <TableHeader style={{ gridTemplateColumns: headerGridColumns, width: `${totalContentWidth}px`, minWidth: `${totalContentWidth}px` }}>
           {onSelectionChange && (
             <HeaderCell style={{ width: '50px', minWidth: '50px', justifyContent: 'center' }}>
@@ -320,6 +369,8 @@ export function VirtualizedTable<T extends Record<string, any>>({
             </HeaderCell>
           ))}
         </TableHeader>
+      </HeaderScrollContainer>
+      <BodyScrollContainer ref={bodyScrollRef} onScroll={handleBodyScroll}>
         <TableBody>
           <div style={{ width: `${totalContentWidth}px`, minWidth: `${totalContentWidth}px` }}>
             <List
@@ -333,7 +384,7 @@ export function VirtualizedTable<T extends Record<string, any>>({
             </List>
           </div>
         </TableBody>
-      </ScrollContainer>
+      </BodyScrollContainer>
     </TableContainer>
   );
 }

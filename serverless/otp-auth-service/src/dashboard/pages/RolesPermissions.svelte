@@ -52,28 +52,18 @@
     error = null;
 
     try {
-      // Load roles from Access Service
-      const rolesResponse = await fetch('http://localhost:8791/access/roles', {
-        headers: {
-          'X-Service-Key': apiClient.getToken(), // Use JWT as service key for admin access
-        },
-      });
-      if (rolesResponse.ok) {
-        const rolesData = await rolesResponse.json();
-        roles = rolesData.roles || [];
+      // Load roles via OTP Auth Service proxy (which calls Access Service with proper service auth)
+      const rolesResponse = await apiClient.api.get('/admin/roles/all');
+      if (rolesResponse.status === 200 && rolesResponse.data) {
+        roles = rolesResponse.data.roles || [];
       } else {
         console.error('Failed to load roles:', rolesResponse.status);
       }
 
-      // Load permissions from Access Service
-      const permsResponse = await fetch('http://localhost:8791/access/permissions', {
-        headers: {
-          'X-Service-Key': apiClient.getToken(),
-        },
-      });
-      if (permsResponse.ok) {
-        const permsData = await permsResponse.json();
-        permissions = permsData.permissions || [];
+      // Load permissions via OTP Auth Service proxy
+      const permsResponse = await apiClient.api.get('/admin/permissions/all');
+      if (permsResponse.status === 200 && permsResponse.data) {
+        permissions = permsResponse.data.permissions || [];
       } else {
         console.error('Failed to load permissions:', permsResponse.status);
       }
@@ -90,21 +80,10 @@
 
   async function updateCustomerRoles(customerId: string, newRoles: string[]) {
     try {
-      const response = await fetch(`http://localhost:8791/access/${customerId}/roles`, {
-        method: 'PUT',
-        headers: {
-          'X-Service-Key': apiClient.getToken(),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ roles: newRoles }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update roles');
-      }
-
+      // TODO: Create proxy endpoint for updating customer roles
+      // For now, this functionality is not available
+      error = 'Role update functionality not yet implemented';
       selectedCustomer = null;
-      await loadData();
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to update roles';
     }
