@@ -193,7 +193,45 @@ export async function handleUpdateMod(
         if (updateData.category !== undefined) mod.category = updateData.category;
         if (updateData.tags !== undefined) mod.tags = updateData.tags;
         if (updateData.visibility !== undefined) mod.visibility = updateData.visibility;
-        if (updateData.variants !== undefined) mod.variants = updateData.variants;
+        
+        // CRITICAL: Merge variants intelligently - preserve currentVersionId and other system fields
+        // Frontend only sends name and description, not currentVersionId (it doesn't know it)
+        // We must preserve currentVersionId from existing variants to avoid breaking downloads
+        if (updateData.variants !== undefined) {
+            const existingVariants = mod.variants || [];
+            const updatedVariants = updateData.variants.map(updatedVariant => {
+                // Find existing variant by variantId
+                const existing = existingVariants.find(v => v.variantId === updatedVariant.variantId);
+                
+                if (existing) {
+                    // Merge: keep system fields (currentVersionId, createdAt) from existing,
+                    // update user-editable fields (name, description) from update
+                    return {
+                        ...existing,
+                        name: updatedVariant.name,
+                        description: updatedVariant.description,
+                        updatedAt: new Date().toISOString(),
+                        // Preserve currentVersionId, versionCount, totalDownloads from existing
+                    };
+                } else {
+                    // New variant: use all fields from update (currentVersionId will be null until file uploaded)
+                    return {
+                        ...updatedVariant,
+                        createdAt: updatedVariant.createdAt || new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        currentVersionId: null, // Will be set when file is uploaded
+                    };
+                }
+            });
+            
+            mod.variants = updatedVariants;
+            // console.log('[UpdateMod] Merged variants:', {
+            //     existingCount: existingVariants.length,
+            //     updatedCount: updatedVariants.length,
+            //     preserved: updatedVariants.filter(v => v.currentVersionId).length
+            // });
+        }
+        
         if (updateData.gameId !== undefined) mod.gameId = updateData.gameId;
         mod.updatedAt = new Date().toISOString();
 
@@ -250,28 +288,39 @@ export async function handleUpdateMod(
             }
         }
         
-        // Handle variant file uploads
-        // UNIFIED SYSTEM: Reuse handleUploadVersion for variant files (with variantId parameter)
-        if (formData && updateData.variants) {
-            // Process each variant file from FormData
-            // UNIFIED SYSTEM: Reuse handleUploadVersion for variant uploads
+        // Handle variant file uploads with TWO-PHASE COMMIT pattern
+        // PHASE 1: Upload all files, collect results
+        // PHASE 2: Update mod metadata only if ALL uploads succeeded
+        // This prevents partial state where some variants are updated and others aren't
+        if (formData && mod.variants && mod.variants.length > 0) {
             const { handleUploadVersion } = await import('../versions/upload.js');
             
-            for (const variant of updateData.variants) {
-                // Check if there's a file for this variant
+            // Track upload results for rollback on error
+            interface UploadResult {
+                variantId: string;
+                versionId: string;
+                success: boolean;
+                error?: string;
+            }
+            const uploadResults: UploadResult[] = [];
+            
+            // PHASE 1: Process all variant file uploads
+            for (const variant of mod.variants) {
                 const variantFile = formData.get(`variant_${variant.variantId}`) as File | null;
-                if (variantFile) {
-                    console.log('[UpdateMod] Processing variant file upload:', {
-                        variantId: variant.variantId,
-                        fileName: variantFile.name,
-                        size: variantFile.size
-                    });
-                    
-                    // Create FormData for version upload (reuse existing handler)
+                if (!variantFile) continue; // No file for this variant, skip
+                
+                console.log('[UpdateMod] Processing variant file upload:', {
+                    variantId: variant.variantId,
+                    fileName: variantFile.name,
+                    size: variantFile.size
+                });
+                
+                try {
+                    // Create FormData for version upload
                     const variantFormData = new FormData();
                     variantFormData.append('file', variantFile);
                     
-                    // Generate version number based on existing versions
+                    // Generate version number
                     const variantVersionsListKey = getCustomerKey(auth.customerId, `variant_${variant.variantId}_versions`);
                     const existingVersions = await env.MODS_KV.get(variantVersionsListKey, { type: 'json' }) as string[] | null;
                     const versionCount = existingVersions ? existingVersions.length : 0;
@@ -285,14 +334,10 @@ export async function handleUpdateMod(
                     };
                     variantFormData.append('metadata', JSON.stringify(variantMetadata));
                     
-                    // Create mock request with FormData for version upload handler
-                    // CRITICAL: Don't copy Content-Type header - let Request set it automatically for FormData
+                    // Create request
                     const headers = new Headers();
-                    // Copy auth headers but not Content-Type
                     const authHeader = request.headers.get('Authorization');
-                    if (authHeader) {
-                        headers.set('Authorization', authHeader);
-                    }
+                    if (authHeader) headers.set('Authorization', authHeader);
                     
                     const variantUploadRequest = new Request(request.url, {
                         method: 'POST',
@@ -300,56 +345,135 @@ export async function handleUpdateMod(
                         body: variantFormData
                     });
                     
-                    // Call unified version upload handler with variantId
+                    // Upload file
                     const uploadResponse = await handleUploadVersion(
                         variantUploadRequest,
                         env,
                         modId,
                         auth,
-                        variant.variantId  // Pass variantId to indicate this is a variant version
+                        variant.variantId
                     );
                     
-                    // If upload failed, return error
+                    // Check if upload succeeded
                     if (uploadResponse.status !== 201) {
-                        console.error('[UpdateMod] Variant file upload failed:', {
-                            variantId: variant.variantId,
-                            status: uploadResponse.status
-                        });
-                        return uploadResponse;
+                        const errorText = await uploadResponse.text();
+                        throw new Error(`Upload failed with status ${uploadResponse.status}: ${errorText}`);
                     }
                     
-                    // Extract version ID from upload response and update variant's currentVersionId
-                    try {
-                        const uploadResult = await uploadResponse.json() as { version?: { versionId?: string } };
-                        if (uploadResult.version?.versionId) {
-                            // Find the variant in updateData and update its currentVersionId
-                            const variantIndex = updateData.variants.findIndex(v => v.variantId === variant.variantId);
-                            if (variantIndex !== -1) {
-                                updateData.variants[variantIndex].currentVersionId = uploadResult.version.versionId;
-                                console.log('[UpdateMod] Variant file uploaded successfully, updated currentVersionId:', {
-                                    variantId: variant.variantId,
-                                    version: newVersionNumber,
-                                    versionId: uploadResult.version.versionId
-                                });
-                            }
-                        } else {
-                            console.warn('[UpdateMod] Upload succeeded but no versionId in response:', {
-                                variantId: variant.variantId,
-                                hasVersion: !!uploadResult.version
-                            });
-                        }
-                    } catch (parseError) {
-                        console.error('[UpdateMod] Failed to parse upload response:', {
-                            variantId: variant.variantId,
-                            error: parseError
-                        });
-                        // Continue anyway - upload succeeded even if we couldn't parse response
+                    // Parse response to get versionId
+                    const uploadResult = await uploadResponse.json() as { version?: { versionId?: string } };
+                    if (!uploadResult.version?.versionId) {
+                        throw new Error('Upload response missing versionId');
                     }
+                    
+                    // Record successful upload
+                    uploadResults.push({
+                        variantId: variant.variantId,
+                        versionId: uploadResult.version.versionId,
+                        success: true
+                    });
+                    
+                    console.log('[UpdateMod] Variant file uploaded successfully:', {
+                        variantId: variant.variantId,
+                        versionId: uploadResult.version.versionId
+                    });
+                    
+                } catch (uploadError: any) {
+                    // Record failed upload
+                    uploadResults.push({
+                        variantId: variant.variantId,
+                        versionId: '',
+                        success: false,
+                        error: uploadError.message
+                    });
+                    
+                    console.error('[UpdateMod] Variant file upload failed:', {
+                        variantId: variant.variantId,
+                        error: uploadError.message
+                    });
+                    
+                    // ROLLBACK: Mark R2 files for deletion and clean up KV records
+                    console.warn('[UpdateMod] Rolling back previously successful uploads...');
+                    const rollbackErrors: string[] = [];
+                    const { markR2FileForDeletion } = await import('../../utils/r2-deletion.js');
+                    
+                    for (const successfulUpload of uploadResults.filter(r => r.success)) {
+                        try {
+                            // Get the version to find its R2 key
+                            const versionKey = getCustomerKey(auth.customerId, `version_${successfulUpload.versionId}`);
+                            const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as { r2Key?: string } | null;
+                            
+                            // Mark R2 file for deletion (will be cleaned up by cron after 5 days)
+                            if (version?.r2Key) {
+                                const marked = await markR2FileForDeletion(env.MODS_R2, version.r2Key);
+                                if (!marked) {
+                                    console.warn('[UpdateMod] Failed to mark R2 file for deletion:', version.r2Key);
+                                }
+                            }
+                            
+                            // Delete the version from KV
+                            await env.MODS_KV.delete(versionKey);
+                            
+                            // Remove from variant's version list
+                            const variantVersionsListKey = getCustomerKey(auth.customerId, `variant_${successfulUpload.variantId}_versions`);
+                            const versionsList = await env.MODS_KV.get(variantVersionsListKey, { type: 'json' }) as string[] | null;
+                            if (versionsList) {
+                                const updatedList = versionsList.filter(id => id !== successfulUpload.versionId);
+                                await env.MODS_KV.put(variantVersionsListKey, JSON.stringify(updatedList));
+                            }
+                            
+                            console.log('[UpdateMod] Rolled back upload:', {
+                                variantId: successfulUpload.variantId,
+                                versionId: successfulUpload.versionId,
+                                r2FileMarked: !!version?.r2Key
+                            });
+                        } catch (rollbackError: any) {
+                            rollbackErrors.push(`Failed to rollback ${successfulUpload.variantId}: ${rollbackError.message}`);
+                            console.error('[UpdateMod] Rollback error:', rollbackError);
+                        }
+                    }
+                    
+                    // Return error with rollback status
+                    const errorMessage = rollbackErrors.length > 0
+                        ? `Failed to upload variant ${variant.variantId}: ${uploadError.message}. Rollback partially failed: ${rollbackErrors.join(', ')}`
+                        : `Failed to upload variant ${variant.variantId}: ${uploadError.message}. All previous uploads rolled back successfully.`;
+                    
+                    const rfcError = createError(
+                        request,
+                        500,
+                        'Variant Upload Failed',
+                        errorMessage
+                    );
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 500,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
                 }
             }
             
-            // Update mod.variants with the updated variant metadata (now includes currentVersionId from uploads)
-            mod.variants = updateData.variants;
+            // PHASE 2: All uploads succeeded - update mod metadata
+            if (uploadResults.length > 0) {
+                for (const result of uploadResults) {
+                    if (result.success) {
+                        const variant = mod.variants.find(v => v.variantId === result.variantId);
+                        if (variant) {
+                            variant.currentVersionId = result.versionId;
+                            variant.updatedAt = new Date().toISOString();
+                        }
+                    }
+                }
+                
+                console.log('[UpdateMod] All variant uploads succeeded, metadata updated:', {
+                    uploadCount: uploadResults.length,
+                    successCount: uploadResults.filter(r => r.success).length
+                });
+            }
         }
         
         // Legacy base64 thumbnail support

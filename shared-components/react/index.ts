@@ -17,3 +17,6 @@ export type { ActionMenuProps, ActionMenuItem } from './ActionMenu';
 
 export { InfoModal } from './InfoModal';
 export type { InfoModalProps } from './InfoModal';
+
+export { DataTable } from './DataTable';
+export type { DataTableColumn, DataTableProps } from './DataTable';

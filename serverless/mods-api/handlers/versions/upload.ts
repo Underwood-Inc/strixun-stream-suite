@@ -417,16 +417,14 @@ export async function handleUploadVersion(
             const updatedVariantVersionsList = [...(variantVersionsList || []), versionId];
             await env.MODS_KV.put(variantVersionsListKey, JSON.stringify(updatedVariantVersionsList));
             
-            // Update variant's currentVersionId in mod.variants array
-            if (mod.variants) {
-                const variant = mod.variants.find(v => v.variantId === variantId);
-                if (variant) {
-                    variant.currentVersionId = versionId;
-                    variant.updatedAt = now;
-                }
-                mod.updatedAt = now;
-                await env.MODS_KV.put(modKey, JSON.stringify(mod));
-            }
+            // NOTE: We do NOT update variant's currentVersionId here
+            // This is handled by the calling code (update.ts) which manages mod metadata
+            // Separating concerns prevents race conditions and KV synchronization issues
+            console.log('[UploadVersion] Variant version created:', {
+                variantId,
+                versionId,
+                note: 'currentVersionId will be updated by caller'
+            });
         } else {
             // Main mod version: store in mod's version list
             const versionsListKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}_versions`);

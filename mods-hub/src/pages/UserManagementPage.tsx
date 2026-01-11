@@ -22,7 +22,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { AdvancedSearchInput } from '@strixun/search-query-parser/react';
-import { VirtualizedTable, type Column } from '@strixun/virtualized-table';
+import { DataTable, type DataTableColumn } from '@strixun/shared-components/react/DataTable';
 import { ActionMenu, type ActionMenuItem } from '@strixun/shared-components/react/ActionMenu';
 import { InfoModal } from '@strixun/shared-components/react/InfoModal';
 import { AdminNavigation } from '../components/admin/AdminNavigation';
@@ -205,7 +205,6 @@ const StatValue = styled.div`
 
 export function CustomerManagementPage() {
     const [searchQuery, setSearchQuery] = useState<string>('');
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkActionModalOpen, setBulkActionModalOpen] = useState(false);
     const [bulkAction, setBulkAction] = useState<'approve' | 'revoke' | null>(null);
@@ -229,39 +228,9 @@ export function CustomerManagementPage() {
             customers = filterCustomersBySearchQuery(customers, searchQuery);
         }
         
-        // Sort customers
-        const sorted = [...customers];
-        if (sortConfig) {
-            sorted.sort((a, b) => {
-                let aVal: any = a[sortConfig.key as keyof CustomerListItem];
-                let bVal: any = b[sortConfig.key as keyof CustomerListItem];
-                
-                // Handle computed accountType column
-                if (sortConfig.key === 'accountType') {
-                    aVal = a.customerIdExternal ? 'subscription' : 'free';
-                    bVal = b.customerIdExternal ? 'subscription' : 'free';
-                }
-                
-                // Handle null/undefined values
-                if (aVal == null && bVal == null) return 0;
-                if (aVal == null) return 1;
-                if (bVal == null) return -1;
-                
-                let comparison = 0;
-                if (aVal < bVal) comparison = -1;
-                if (aVal > bVal) comparison = 1;
-                
-                return sortConfig.direction === 'asc' ? comparison : -comparison;
-            });
-        }
-        
-        return sorted;
-    }, [data, searchQuery, sortConfig, isLoading, error]);
-
-    // Handle sort
-    const handleSort = useCallback((key: string, direction: 'asc' | 'desc') => {
-        setSortConfig({ key, direction });
-    }, []);
+        // Sorting is now handled by TanStack Table internally
+        return customers;
+    }, [data, searchQuery, isLoading, error]);
 
     // Handle permission toggle
     const handleTogglePermission = useCallback(async (customerId: string, hasPermission: boolean) => {
@@ -302,50 +271,54 @@ export function CustomerManagementPage() {
     }, [selectedIds, sortedCustomers, updateCustomer]);
 
     // Table columns definition
-    const columns: Column<CustomerListItem>[] = useMemo(() => [
+    const columns: DataTableColumn<CustomerListItem>[] = useMemo(() => [
         {
-            key: 'displayName',
-            label: 'Display Name',
-            width: '250px',
-            sortable: true,
-            render: (customer) => customer.displayName || 'Unknown Customer',
+            id: 'displayName',
+            accessorKey: 'displayName',
+            header: 'Display Name',
+            size: 250,
+            enableSorting: true,
+            cell: ({ row }) => row.displayName || 'Unknown Customer',
         },
         {
-            key: 'accountType',
-            label: 'Account Type',
-            width: '150px',
-            sortable: true,
-            render: (customer) => (
-                <AccountTypeBadge type={customer.customerIdExternal ? 'subscription' : 'free'}>
-                    {customer.customerIdExternal ? 'Subscription' : 'Free'}
+            id: 'accountType',
+            header: 'Account Type',
+            size: 150,
+            enableSorting: true,
+            cell: ({ row }) => (
+                <AccountTypeBadge type={row.customerIdExternal ? 'subscription' : 'free'}>
+                    {row.customerIdExternal ? 'Subscription' : 'Free'}
                 </AccountTypeBadge>
             ),
         },
         {
-            key: 'customerId',
-            label: 'Customer ID',
-            width: '300px',
-            sortable: true,
-            render: (customer) => (
+            id: 'customerId',
+            accessorKey: 'customerId',
+            header: 'Customer ID',
+            size: 300,
+            enableSorting: true,
+            cell: ({ row }) => (
                 <span style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                    {customer.customerId}
+                    {row.customerId}
                 </span>
             ),
         },
         {
-            key: 'customerIdExternal',
-            label: 'External ID',
-            width: '200px',
-            sortable: true,
-            render: (customer) => customer.customerIdExternal || 'N/A',
+            id: 'customerIdExternal',
+            accessorKey: 'customerIdExternal',
+            header: 'External ID',
+            size: 200,
+            enableSorting: true,
+            cell: ({ row }) => row.customerIdExternal || 'N/A',
         },
         {
-            key: 'hasUploadPermission',
-            label: 'Upload Permission',
-            width: '200px',
-            sortable: true,
-            render: (customer) => {
-                if (!customer.hasUploadPermission) {
+            id: 'hasUploadPermission',
+            accessorKey: 'hasUploadPermission',
+            header: 'Upload Permission',
+            size: 200,
+            enableSorting: true,
+            cell: ({ row }) => {
+                if (!row.hasUploadPermission) {
                     return (
                         <PermissionBadge hasPermission={false}>
                             Not Approved
@@ -354,85 +327,83 @@ export function CustomerManagementPage() {
                 }
                 
                 // Show permission source
-                const sourceLabel = customer.permissionSource === 'super-admin' 
+                const sourceLabel = row.permissionSource === 'super-admin' 
                     ? 'Super Admin' 
-                    : customer.permissionSource === 'env-var'
+                    : row.permissionSource === 'env-var'
                     ? 'Env Var'
-                    : customer.permissionSource === 'kv'
+                    : row.permissionSource === 'kv'
                     ? 'KV Approved'
                     : 'Approved';
                 
                 return (
-                    <PermissionBadge hasPermission={true} source={customer.permissionSource === 'none' ? undefined : customer.permissionSource}>
+                    <PermissionBadge hasPermission={true} source={row.permissionSource === 'none' ? undefined : row.permissionSource}>
                         {sourceLabel}
                     </PermissionBadge>
                 );
             },
         },
         {
-            key: 'modCount',
-            label: 'Mods',
-            width: '100px',
-            sortable: true,
-            render: (customer) => customer.modCount.toLocaleString(),
+            id: 'modCount',
+            accessorKey: 'modCount',
+            header: 'Mods',
+            size: 100,
+            enableSorting: true,
+            cell: ({ row }) => row.modCount.toLocaleString(),
         },
         {
-            key: 'createdAt',
-            label: 'Created',
-            width: '120px',
-            sortable: true,
-            render: (customer) => customer.createdAt 
-                ? formatDate(customer.createdAt)
+            id: 'createdAt',
+            accessorKey: 'createdAt',
+            header: 'Created',
+            size: 120,
+            enableSorting: true,
+            cell: ({ row }) => row.createdAt 
+                ? formatDate(row.createdAt)
                 : 'N/A',
         },
         {
-            key: 'lastLogin',
-            label: 'Last Login',
-            width: '120px',
-            sortable: true,
-            render: (customer) => customer.lastLogin 
-                ? formatDate(customer.lastLogin)
+            id: 'lastLogin',
+            accessorKey: 'lastLogin',
+            header: 'Last Login',
+            size: 120,
+            enableSorting: true,
+            cell: ({ row }) => row.lastLogin 
+                ? formatDate(row.lastLogin)
                 : 'Never',
         },
         {
-            key: 'actions',
-            label: 'Actions',
-            width: '80px',
-            render: (customer) => {
+            id: 'actions',
+            header: 'Actions',
+            size: 80,
+            cell: ({ row }) => {
                 // Can't revoke permissions from env var or super admin (they're hardcoded)
-                const canManagePermission = customer.permissionSource === 'kv' || customer.permissionSource === 'none';
-                const isEnvBased = customer.permissionSource === 'env-var' || customer.permissionSource === 'super-admin';
+                const canManagePermission = row.permissionSource === 'kv' || row.permissionSource === 'none';
                 
                 const menuItems: ActionMenuItem[] = [
                     {
-                        key: 'view',
                         label: 'View Details',
                         icon: '👁',
                         onClick: () => {
-                            setViewingCustomer(customer);
+                            setViewingCustomer(row);
                         },
                     },
                     {
-                        key: 'permission',
                         label: canManagePermission 
-                            ? (customer.hasUploadPermission ? 'Revoke Permission' : 'Approve Upload')
-                            : (customer.hasUploadPermission ? 'Env Managed' : 'No Permission'),
-                        icon: canManagePermission ? (customer.hasUploadPermission ? '🚫' : '✓') : '🔒',
+                            ? (row.hasUploadPermission ? 'Revoke Permission' : 'Approve Upload')
+                            : (row.hasUploadPermission ? 'Env Managed' : 'No Permission'),
+                        icon: canManagePermission ? (row.hasUploadPermission ? '🚫' : '✓') : '🔒',
                         onClick: () => {
                             if (canManagePermission) {
-                                handleTogglePermission(customer.customerId, customer.hasUploadPermission);
+                                handleTogglePermission(row.customerId, row.hasUploadPermission);
                             }
                         },
                         disabled: !canManagePermission || updateCustomer.isPending,
-                        variant: canManagePermission && customer.hasUploadPermission ? 'danger' : 'primary',
-                        divider: true,
+                        variant: canManagePermission && row.hasUploadPermission ? 'danger' : 'primary',
                     },
                     {
-                        key: 'export',
                         label: 'Export Data (GDPR)',
                         icon: '📥',
                         onClick: () => {
-                            console.log('Export customer data:', customer.customerId);
+                            console.log('Export customer data:', row.customerId);
                         },
                     },
                 ];
@@ -440,7 +411,7 @@ export function CustomerManagementPage() {
                 return <ActionMenu items={menuItems} />;
             },
         },
-    ], [handleTogglePermission, updateCustomer]);
+    ], [handleTogglePermission, updateCustomer, setViewingCustomer]);
 
     const selectedCount = selectedIds.size;
     const hasSelection = selectedCount > 0;
@@ -552,16 +523,17 @@ export function CustomerManagementPage() {
                         </div>
                     </EmptyState>
                 ) : sortedCustomers.length > 0 ? (
-                    <VirtualizedTable
+                    <DataTable
                         data={sortedCustomers}
                         columns={columns}
-                        height={600}
                         rowHeight={56}
-                        getItemId={(customer) => customer.customerId}
-                        sortConfig={sortConfig}
-                        onSort={handleSort}
+                        getRowId={(customer) => customer.customerId}
+                        enableSorting={true}
+                        enableSelection={true}
+                        enableVirtualization={true}
                         selectedIds={selectedIds}
                         onSelectionChange={setSelectedIds}
+                        emptyMessage="No customers found matching your search criteria"
                         colors={colors}
                     />
                 ) : (
