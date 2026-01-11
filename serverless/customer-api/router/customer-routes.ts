@@ -10,6 +10,7 @@ import { authenticateRequest } from '../utils/auth.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 import { handleGetCustomer, handleGetCustomerByEmail, handleCreateCustomer, handleUpdateCustomer } from '../handlers/customer.js';
 import { handleGetPreferences, handleUpdatePreferences, handleUpdateDisplayName } from '../handlers/preferences.js';
+import { handleListAllCustomers } from '../handlers/admin.js';
 
 interface Env {
     CUSTOMER_KV: KVNamespace;
@@ -54,6 +55,68 @@ async function handleCustomerRoute(
  * Uses reusable API architecture with automatic encryption
  */
 export async function handleCustomerRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
+    // Handle /admin/* routes first (more specific)
+    if (path.startsWith('/admin/')) {
+        // Admin routes require SUPER_ADMIN_API_KEY for service-to-service authentication
+        const authHeader = request.headers.get('Authorization');
+        const superAdminKey = env.SUPER_ADMIN_API_KEY;
+        
+        // Verify super-admin authentication
+        if (!authHeader || !authHeader.startsWith('Bearer ') || !superAdminKey) {
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+            });
+            return {
+                response: new Response(JSON.stringify({
+                    error: 'Super-admin authentication required',
+                    detail: 'Admin endpoints require SUPER_ADMIN_API_KEY authentication'
+                }), {
+                    status: 401,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                }),
+                customerId: null
+            };
+        }
+        
+        const providedKey = authHeader.substring(7).trim();
+        if (providedKey !== superAdminKey) {
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+            });
+            return {
+                response: new Response(JSON.stringify({
+                    error: 'Invalid super-admin key',
+                    detail: 'The provided SUPER_ADMIN_API_KEY is invalid'
+                }), {
+                    status: 403,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                }),
+                customerId: null
+            };
+        }
+        
+        // Create service auth object for admin calls
+        const auth = {
+            userId: 'super-admin',
+            customerId: null,
+            jwtToken: '', // No JWT for service calls
+        };
+        
+        // Route admin endpoints
+        if (path === '/admin/customers' && request.method === 'GET') {
+            return await handleCustomerRoute(handleListAllCustomers, request, env, auth);
+        }
+        
+        // Admin route not found
+        return null;
+    }
+    
     // Only handle /customer/* routes (or root if this is dedicated customer worker)
     // Allow /customer (without trailing slash) for POST requests
     if (!path.startsWith('/customer/') && path !== '/' && path !== '/customer') {

@@ -1,26 +1,22 @@
-<script lang="ts">
-  import ObfuscatedText from '@shared-components/svelte/ObfuscatedText.svelte';
-</script>
-
 <section class="limitations">
   <h2>Limitations & Considerations</h2>
   <div class="limitations-list">
     <ul>
       <li>
         <strong>Rate Limits</strong>
-        <p><ObfuscatedText text="3" length={1} /> OTP requests per email address per hour to prevent abuse and email spam.</p>
+        <p>Plan-based OTP rate limits (Free: 3/hour, Pro: 10/hour, Enterprise: 100/hour) with intelligent dynamic adjustment based on usage patterns to prevent abuse and email spam.</p>
       </li>
       <li>
         <strong>OTP Expiration</strong>
-        <p>OTP codes expire after <ObfuscatedText text="10" length={2} /> minutes. Users must request a new code if expired.</p>
+        <p>OTP codes expire after 10 minutes. Customers must request a new code if expired.</p>
       </li>
       <li>
         <strong>Verification Attempts</strong>
-        <p>Maximum <ObfuscatedText text="5" length={1} /> verification attempts per OTP code. After that, a new code must be requested.</p>
+        <p>Maximum 5 verification attempts per OTP code. After that, a new code must be requested.</p>
       </li>
       <li>
         <strong>Token Expiration</strong>
-        <p>JWT tokens expire after <ObfuscatedText text="7" length={1} /> hours. Use the refresh endpoint to extend sessions.</p>
+        <p>JWT tokens expire after 7 hours. Session restoration available via IP-based mapping (no refresh tokens yet).</p>
       </li>
       <li>
         <strong>Email Delivery</strong>
@@ -32,7 +28,7 @@
       </li>
       <li>
         <strong>Exceeded Free Tier?</strong>
-        <p>No problem! This application is open-source and can be self-hosted. Subscription tiers with enhanced rate limits are coming soon. </p>
+        <p>No problem! This application is open-source and can be self-hosted. Subscription tiers with enhanced rate limits are coming soon.</p>
       </li>
     </ul>
   </div>

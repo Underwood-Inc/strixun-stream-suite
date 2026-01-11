@@ -398,13 +398,37 @@ export async function handleUpdateCustomer(
     request: Request,
     env: Env,
     customerId: string,
-    _auth: { customerId: string }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         const requestData = await request.json().catch(() => ({})) as {
             hasUploadPermission?: boolean;
+            revokeAdminAccess?: boolean; // NEW: Allow revoking admin/super-admin roles
             [key: string]: any;
         };
+        
+        // SECURITY: Prevent self-privilege-escalation/de-escalation
+        // Admin/super-admin cannot remove their own admin/super-admin role
+        const isSelfUpdate = auth.customerId === customerId;
+        
+        if (isSelfUpdate && requestData.revokeAdminAccess) {
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            const rfcError = createError(
+                request,
+                403,
+                'Security Violation',
+                'You cannot revoke your own admin/super-admin access. Ask another super-admin to do this.'
+            );
+            return new Response(JSON.stringify(rfcError), {
+                status: 403,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
         
         // Update upload permission if provided
         if (typeof requestData.hasUploadPermission === 'boolean') {

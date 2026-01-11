@@ -30,7 +30,7 @@
 <ul>
   <li><strong>POST /auth/request-otp</strong> - Request OTP code via email</li>
   <li><strong>POST /auth/verify-otp</strong> - Verify OTP and receive JWT token</li>
-  <li><strong>GET /auth/me</strong> - Get current user info (requires Bearer token)</li>
+  <li><strong>GET /auth/me</strong> - Get current customer info (requires Bearer token)</li>
   <li><strong>POST /auth/logout</strong> - Logout and revoke token</li>
   <li><strong>POST /auth/refresh</strong> - Refresh expiring JWT token</li>
 </ul>
