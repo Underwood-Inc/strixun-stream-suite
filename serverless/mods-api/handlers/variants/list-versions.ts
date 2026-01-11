@@ -8,17 +8,12 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import type { ModVersion } from '../../types/mod.js';
-
-interface Env {
-    MODS_KV: KVNamespace;
-    ALLOWED_ORIGINS?: string;
-    [key: string]: any;
-}
+import type { Env } from '../../worker.js';
 
 export async function handleListVariantVersions(
     request: Request,
     env: Env,
-    modId: string,
+    _modId: string,
     variantId: string,
     auth: { customerId: string } | null
 ): Promise<Response> {

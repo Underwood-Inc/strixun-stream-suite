@@ -424,6 +424,41 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             };
         }
 
+        // Route: GET /mods/:slug/variants/:variantId/versions or GET /:slug/variants/:variantId/versions - List variant versions
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // Normalized pathSegments = [slug, 'variants', variantId, 'versions']
+        if (pathSegments.length === 4 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && request.method === 'GET') {
+            const slugOrModId = pathSegments[0];
+            const variantId = pathSegments[2];
+            
+            // Resolve slug to modId
+            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
+            let modId = slugOrModId;
+            
+            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            if (looksLikeSlug) {
+                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
+                if (resolvedModId) {
+                    modId = resolvedModId;
+                } else {
+                    console.error('[Router] Failed to resolve slug to modId for variant versions:', { slug: slugOrModId });
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                }
+            }
+            
+            const { handleListVariantVersions } = await import('../handlers/variants/list-versions.js');
+            const response = await handleListVariantVersions(request, env, modId, variantId, auth);
+            
+            return {
+                response: new Response(response.body, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: response.headers,
+                }),
+                customerId: auth?.customerId || null,
+            };
+        }
+
         // Route: GET /mods/:slug/variants/:variantId/download or GET /:slug/variants/:variantId/download - Download variant
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         // Variants use shared key encryption (not JWT), so JWT is not required

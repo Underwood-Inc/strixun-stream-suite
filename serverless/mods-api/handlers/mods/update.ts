@@ -286,9 +286,17 @@ export async function handleUpdateMod(
                     variantFormData.append('metadata', JSON.stringify(variantMetadata));
                     
                     // Create mock request with FormData for version upload handler
+                    // CRITICAL: Don't copy Content-Type header - let Request set it automatically for FormData
+                    const headers = new Headers();
+                    // Copy auth headers but not Content-Type
+                    const authHeader = request.headers.get('Authorization');
+                    if (authHeader) {
+                        headers.set('Authorization', authHeader);
+                    }
+                    
                     const variantUploadRequest = new Request(request.url, {
                         method: 'POST',
-                        headers: request.headers,
+                        headers: headers,
                         body: variantFormData
                     });
                     
@@ -310,14 +318,37 @@ export async function handleUpdateMod(
                         return uploadResponse;
                     }
                     
-                    console.log('[UpdateMod] Variant file uploaded successfully:', {
-                        variantId: variant.variantId,
-                        version: newVersionNumber
-                    });
+                    // Extract version ID from upload response and update variant's currentVersionId
+                    try {
+                        const uploadResult = await uploadResponse.json();
+                        if (uploadResult.version?.versionId) {
+                            // Find the variant in updateData and update its currentVersionId
+                            const variantIndex = updateData.variants.findIndex(v => v.variantId === variant.variantId);
+                            if (variantIndex !== -1) {
+                                updateData.variants[variantIndex].currentVersionId = uploadResult.version.versionId;
+                                console.log('[UpdateMod] Variant file uploaded successfully, updated currentVersionId:', {
+                                    variantId: variant.variantId,
+                                    version: newVersionNumber,
+                                    versionId: uploadResult.version.versionId
+                                });
+                            }
+                        } else {
+                            console.warn('[UpdateMod] Upload succeeded but no versionId in response:', {
+                                variantId: variant.variantId,
+                                hasVersion: !!uploadResult.version
+                            });
+                        }
+                    } catch (parseError) {
+                        console.error('[UpdateMod] Failed to parse upload response:', {
+                            variantId: variant.variantId,
+                            error: parseError
+                        });
+                        // Continue anyway - upload succeeded even if we couldn't parse response
+                    }
                 }
             }
             
-            // Update mod.variants with the updated variant metadata
+            // Update mod.variants with the updated variant metadata (now includes currentVersionId from uploads)
             mod.variants = updateData.variants;
         }
         

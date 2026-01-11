@@ -168,6 +168,12 @@ export async function handleDownloadVariant(
 
         // Check if file is encrypted
         const customMetadata = encryptedFile.customMetadata || {};
+        console.log('[VariantDownload] R2 customMetadata:', {
+            allMetadata: customMetadata,
+            originalFileName: customMetadata.originalFileName,
+            originalContentType: customMetadata.originalContentType,
+            r2Key
+        });
         const isEncrypted = customMetadata.encrypted === 'true';
         const encryptionFormat = customMetadata.encryptionFormat || 'binary-v4';
 
@@ -254,12 +260,28 @@ export async function handleDownloadVariant(
             console.log('[VariantDownload] File is not encrypted, returning as-is');
         }
 
-        // Determine content type and filename - NO FALLBACKS
+        // Determine content type and filename - use EXACTLY what was uploaded
         const originalContentType = customMetadata.originalContentType;
-        const originalFileName = customMetadata.originalFileName || variantVersion.fileName;
+        const originalFileName = customMetadata.originalFileName;
+        
+        console.log('[VariantDownload] File metadata:', {
+            fromCustomMetadata: {
+                originalFileName: customMetadata.originalFileName,
+                originalContentType: customMetadata.originalContentType
+            },
+            fromVersion: {
+                fileName: variantVersion.fileName
+            },
+            allCustomMetadata: customMetadata
+        });
         
         if (!originalFileName || !originalContentType) {
-            const rfcError = createError(request, 500, 'Internal Server Error', 'File metadata not found');
+            console.error('[VariantDownload] Missing file metadata:', {
+                hasOriginalFileName: !!originalFileName,
+                hasOriginalContentType: !!originalContentType,
+                customMetadata
+            });
+            const rfcError = createError(request, 500, 'Internal Server Error', 'File metadata (originalFileName or originalContentType) not found in R2 customMetadata');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
@@ -309,7 +331,15 @@ export async function handleDownloadVariant(
             exposedHeaders: ['Content-Disposition', 'Content-Type', 'Content-Length'],
         });
 
-        // Return decrypted file
+        console.log('[VariantDownload] Returning file with headers:', {
+            'Content-Type': originalContentType,
+            'Content-Disposition': `attachment; filename="${originalFileName}"`,
+            'Content-Length': decryptedData.length,
+            originalFileName,
+            originalContentType
+        });
+
+        // Return decrypted file - use EXACTLY what was uploaded
         return new Response(decryptedData, {
             status: 200,
             headers: {

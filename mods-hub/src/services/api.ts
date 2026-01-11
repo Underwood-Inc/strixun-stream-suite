@@ -611,20 +611,41 @@ export async function downloadVersion(modSlug: string, versionId: string, fileNa
 
 /**
  * Download mod variant (latest version)
- * Uses API framework for authentication and proper error handling
- * The response handler automatically converts binary responses to ArrayBuffer
+ * Uses raw fetch to properly access Content-Disposition headers
  * Files are decrypted server-side before being sent to the client
+ * Filename is extracted from Content-Disposition header to preserve the original uploaded filename
  */
-export async function downloadVariant(modSlug: string, variantId: string, fileName: string): Promise<void> {
-    // Use API framework's get method - response handler converts binary to ArrayBuffer
-    const response = await api.get<ArrayBuffer>(`/mods/${modSlug}/variants/${variantId}/download`);
+export async function downloadVariant(modSlug: string, variantId: string): Promise<void> {
+    // Get auth token
+    const token = await getAuthToken();
+    
+    // Use raw fetch to get headers properly
+    const url = `${API_BASE_URL}/mods/${modSlug}/variants/${variantId}/download`;
+    const response = await fetch(url, {
+        headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+    });
 
-    if (response.status < 200 || response.status >= 300) {
+    if (!response.ok) {
         throw new Error(`Failed to download variant: ${response.statusText || 'Unknown error'}`);
     }
 
+    // Extract filename from Content-Disposition header (preserves original uploaded filename)
+    const contentDisposition = response.headers.get('content-disposition') || '';
+    const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+    
+    if (!fileNameMatch || !fileNameMatch[1]) {
+        throw new Error(`Failed to extract filename from Content-Disposition header: ${contentDisposition}`);
+    }
+    
+    const fileName = fileNameMatch[1];
+
+    // Convert response to ArrayBuffer
+    const arrayBuffer = await response.arrayBuffer();
+
     // Use shared utility to handle download (files are already decrypted server-side)
-    downloadFileFromArrayBuffer(response.data as ArrayBuffer, fileName);
+    downloadFileFromArrayBuffer(arrayBuffer, fileName);
 }
 
 /**
