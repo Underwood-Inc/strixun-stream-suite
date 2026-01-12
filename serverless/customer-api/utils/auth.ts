@@ -13,7 +13,7 @@ interface Env {
 }
 
 interface AuthResult {
-    customerId: string; // PRIMARY IDENTITY - we ONLY use customerId
+    customerId: string | null; // PRIMARY IDENTITY - we ONLY use customerId (null for service calls)
     jwtToken: string;
     // SECURITY: Email is NEVER included - use getCustomerEmail() utility when needed
 }

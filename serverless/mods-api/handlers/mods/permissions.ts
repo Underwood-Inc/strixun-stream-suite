@@ -8,6 +8,7 @@ import { createError } from '../../utils/errors.js';
 import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
 import { getCustomerPermissionInfo } from '../../utils/admin.js';
 import type { Env } from '../../worker.js';
+import type { AuthResult } from '../../utils/auth.js';
 
 /**
  * Handle get customer permissions
@@ -16,11 +17,11 @@ import type { Env } from '../../worker.js';
 export async function handleGetCustomerPermissions(
     request: Request,
     env: Env,
-    auth: { customerId: string }
+    auth: AuthResult
 ): Promise<Response> {
     try {
         // Get full permission info from Authorization Service
-        const permissionInfo = await getCustomerPermissionInfo(auth.customerId, env);
+        const permissionInfo = await getCustomerPermissionInfo(auth.customerId, auth.jwtToken, env);
         
         console.log('[Permissions] Customer permission check:', {
             customerId: auth.customerId,

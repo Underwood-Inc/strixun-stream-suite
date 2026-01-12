@@ -15,9 +15,8 @@ interface Env {
 }
 
 interface AuthResult {
-    userId: string;
     customerId: string | null;
-    jwtToken?: string;
+    jwtToken: string;
 }
 
 export interface ValidationIssue {

@@ -21,7 +21,6 @@ interface Env {
 }
 
 interface AuthResult {
-    userId: string;
     customerId: string | null;
     jwtToken: string;
     // SECURITY: Email is NEVER included - use getCustomerEmail() utility when needed

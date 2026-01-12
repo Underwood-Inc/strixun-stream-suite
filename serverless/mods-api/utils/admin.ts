@@ -21,12 +21,13 @@ interface Env {
  * Uses Authorization Service to check for 'super-admin' role
  * 
  * @param customerId - Customer ID
+ * @param jwtToken - JWT token (REQUIRED for authentication)
  * @param env - Environment
  * @returns True if customer has super-admin role
  */
-export async function isSuperAdmin(customerId: string, env: Env): Promise<boolean> {
+export async function isSuperAdmin(customerId: string, jwtToken: string, env: Env): Promise<boolean> {
     try {
-        const access = createAccessClient(env);
+        const access = createAccessClient(env, { jwtToken });
         return await access.isSuperAdmin(customerId);
     } catch (error) {
         console.error('[Admin] Failed to check super admin status:', error);
@@ -39,12 +40,13 @@ export async function isSuperAdmin(customerId: string, env: Env): Promise<boolea
  * Uses Authorization Service to check for 'admin' or 'super-admin' role
  * 
  * @param customerId - Customer ID
+ * @param jwtToken - JWT token (REQUIRED for authentication)
  * @param env - Environment
  * @returns True if customer has admin or super-admin role
  */
-export async function isAdmin(customerId: string, env: Env): Promise<boolean> {
+export async function isAdmin(customerId: string, jwtToken: string, env: Env): Promise<boolean> {
     try {
-        const access = createAccessClient(env);
+        const access = createAccessClient(env, { jwtToken });
         return await access.isAdmin(customerId);
     } catch (error) {
         console.error('[Admin] Failed to check admin status:', error);
@@ -59,17 +61,18 @@ export async function isAdmin(customerId: string, env: Env): Promise<boolean> {
  * ALL authenticated customers have this permission by default via 'customer' role
  * 
  * @param customerId - Customer ID
+ * @param jwtToken - JWT token (REQUIRED for authentication)
  * @param env - Environment
  * @returns True if customer has upload permission
  */
-export async function hasUploadPermission(customerId: string, env: Env): Promise<boolean> {
+export async function hasUploadPermission(customerId: string, jwtToken: string, env: Env): Promise<boolean> {
     if (!customerId) {
         console.log('[Admin] No customerId provided - not authenticated');
         return false;
     }
 
     try {
-        const access = createAccessClient(env);
+        const access = createAccessClient(env, { jwtToken });
         const hasPermission = await access.checkPermission(customerId, 'upload:mod');
         
         console.log('[Admin] Upload permission check:', { customerId, hasPermission });
@@ -90,12 +93,14 @@ export async function hasUploadPermission(customerId: string, env: Env): Promise
  * 
  * @param customerId - Customer ID making the request
  * @param modAuthorId - Author ID of the mod
+ * @param jwtToken - JWT token (REQUIRED for authentication)
  * @param env - Environment
  * @returns True if customer can manage the mod
  */
 export async function canManageMod(
     customerId: string,
     modAuthorId: string,
+    jwtToken: string,
     env: Env
 ): Promise<boolean> {
     // Mod author can always manage their own mods
@@ -105,7 +110,7 @@ export async function canManageMod(
 
     // Check if user has admin permissions (can manage any mod)
     try {
-        const access = createAccessClient(env);
+        const access = createAccessClient(env, { jwtToken });
         const hasAdminPerm = await access.checkPermission(customerId, 'edit:mod-any');
         return hasAdminPerm;
     } catch (error) {
@@ -119,12 +124,13 @@ export async function canManageMod(
  * Only super admins and admins with 'delete:mod-any' permission
  * 
  * @param customerId - Customer ID
+ * @param jwtToken - JWT token (REQUIRED for authentication)
  * @param env - Environment
  * @returns True if customer can delete any mod
  */
-export async function canDeleteAnyMod(customerId: string, env: Env): Promise<boolean> {
+export async function canDeleteAnyMod(customerId: string, jwtToken: string, env: Env): Promise<boolean> {
     try {
-        const access = createAccessClient(env);
+        const access = createAccessClient(env, { jwtToken });
         return await access.checkPermission(customerId, 'delete:mod-any');
     } catch (error) {
         console.error('[Admin] Failed to check delete permission:', error);
@@ -137,12 +143,13 @@ export async function canDeleteAnyMod(customerId: string, env: Env): Promise<boo
  * Requires 'review:mod' permission (moderator, admin, super-admin)
  * 
  * @param customerId - Customer ID
+ * @param jwtToken - JWT token (REQUIRED for authentication)
  * @param env - Environment
  * @returns True if customer can review mods
  */
-export async function canReviewMods(customerId: string, env: Env): Promise<boolean> {
+export async function canReviewMods(customerId: string, jwtToken: string, env: Env): Promise<boolean> {
     try {
-        const access = createAccessClient(env);
+        const access = createAccessClient(env, { jwtToken });
         return await access.checkPermission(customerId, 'review:mod');
     } catch (error) {
         console.error('[Admin] Failed to check review permission:', error);
@@ -155,12 +162,13 @@ export async function canReviewMods(customerId: string, env: Env): Promise<boole
  * Requires 'admin:dashboard' permission (admin, super-admin)
  * 
  * @param customerId - Customer ID
+ * @param jwtToken - JWT token (REQUIRED for authentication)
  * @param env - Environment
  * @returns True if customer can access admin dashboard
  */
-export async function hasAdminDashboardAccess(customerId: string, env: Env): Promise<boolean> {
+export async function hasAdminDashboardAccess(customerId: string, jwtToken: string, env: Env): Promise<boolean> {
     try {
-        const access = createAccessClient(env);
+        const access = createAccessClient(env, { jwtToken });
         return await access.checkPermission(customerId, 'admin:dashboard');
     } catch (error) {
         console.error('[Admin] Failed to check dashboard access:', error);
@@ -173,12 +181,13 @@ export async function hasAdminDashboardAccess(customerId: string, env: Env): Pro
  * Returns all roles, permissions, and quotas from Authorization Service
  * 
  * @param customerId - Customer ID
+ * @param jwtToken - JWT token (REQUIRED for authentication)
  * @param env - Environment
  * @returns Customer authorization data or null
  */
-export async function getCustomerPermissionInfo(customerId: string, env: Env) {
+export async function getCustomerPermissionInfo(customerId: string, jwtToken: string, env: Env) {
     try {
-        const access = createAccessClient(env);
+        const access = createAccessClient(env, { jwtToken });
         const authorization = await access.getCustomerAuthorization(customerId);
         
         if (!authorization) {

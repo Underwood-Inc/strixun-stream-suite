@@ -8,8 +8,8 @@ const __dirname = dirname(__filename);
 
 console.log('📦 Processing built files for embedding...');
 
-const rootDir = path.join(__dirname, '..');
-const distDir = path.join(rootDir, 'dist');
+const rootDir = path.join(__dirname, '../../..');
+const distDir = path.join(rootDir, 'dist/otp-auth-service-dashboard');
 
 // Verify dist directory exists
 if (!fs.existsSync(distDir)) {

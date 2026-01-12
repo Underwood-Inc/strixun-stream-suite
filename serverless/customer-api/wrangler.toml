@@ -18,7 +18,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # Production environment
 [env.production]
-vars = { ENVIRONMENT = "production" }
+vars = { ENVIRONMENT = "production", ACCESS_SERVICE_URL = "https://access-api.idling.app" }
 
 # Production KV Namespace
 [[env.production.kv_namespaces]]
@@ -32,7 +32,7 @@ zone_name = "idling.app"
 
 # Development environment
 [env.development]
-vars = { ENVIRONMENT = "development" }
+vars = { ENVIRONMENT = "development", ACCESS_SERVICE_URL = "http://localhost:8795" }
 
 # Development KV Namespace (using same namespace for testing)
 [[env.development.kv_namespaces]]

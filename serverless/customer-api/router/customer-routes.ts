@@ -57,19 +57,17 @@ async function handleCustomerRoute(
 export async function handleCustomerRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
     // Handle /admin/* routes first (more specific)
     if (path.startsWith('/admin/')) {
-        // Admin routes require SUPER_ADMIN_API_KEY for service-to-service authentication
-        const authHeader = request.headers.get('Authorization');
-        const superAdminKey = env.SUPER_ADMIN_API_KEY;
+        // Admin routes require JWT authentication + super-admin role check via access-service
+        const auth = await authenticateRequest(request, env);
         
-        // Verify super-admin authentication
-        if (!authHeader || !authHeader.startsWith('Bearer ') || !superAdminKey) {
+        if (!auth || !auth.customerId) {
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return {
                 response: new Response(JSON.stringify({
-                    error: 'Super-admin authentication required',
-                    detail: 'Admin endpoints require SUPER_ADMIN_API_KEY authentication'
+                    error: 'Authentication required',
+                    detail: 'Admin endpoints require JWT authentication'
                 }), {
                     status: 401,
                     headers: {
@@ -81,15 +79,30 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
             };
         }
         
-        const providedKey = authHeader.substring(7).trim();
-        if (providedKey !== superAdminKey) {
+        // Check if customer has super-admin role via access-service
+        const { AccessClient } = await import('../../shared/access-client.js');
+        
+        console.log('[CustomerRoutes] Checking super-admin with JWT:', {
+            hasJwtToken: !!auth.jwtToken,
+            jwtLength: auth.jwtToken?.length,
+            accessUrl: env.ACCESS_SERVICE_URL,
+            customerId: auth.customerId
+        });
+        
+        const accessClient = new AccessClient(env, {
+            jwtToken: auth.jwtToken, // Pass JWT token for authentication (REQUIRED)
+        });
+        
+        const isSuperAdmin = await accessClient.isSuperAdmin(auth.customerId!);
+        
+        if (!isSuperAdmin) {
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return {
                 response: new Response(JSON.stringify({
-                    error: 'Invalid super-admin key',
-                    detail: 'The provided SUPER_ADMIN_API_KEY is invalid'
+                    error: 'Forbidden',
+                    detail: 'Super-admin role required for admin endpoints'
                 }), {
                     status: 403,
                     headers: {
@@ -100,13 +113,6 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
                 customerId: null
             };
         }
-        
-        // Create service auth object for admin calls
-        const auth = {
-            userId: 'super-admin',
-            customerId: null,
-            jwtToken: '', // No JWT for service calls
-        };
         
         // Route admin endpoints
         if (path === '/admin/customers' && request.method === 'GET') {
@@ -159,7 +165,6 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
     if (!auth) {
         // Create a minimal auth object for internal calls
         auth = {
-            userId: 'service',
             customerId: null,
             jwtToken: '', // No JWT for service calls
         };
@@ -274,7 +279,8 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
         });
         // Use wrapWithEncryption to ensure integrity headers are added for internal calls
         // CRITICAL: Allow service-to-service calls without JWT (needed for OTP auth service)
-        return await wrapWithEncryption(errorResponse, auth, request, env, {
+        // Note: auth might have customerId: null, which is fine for wrapWithEncryption
+        return await wrapWithEncryption(errorResponse, auth as any, request, env, {
             allowServiceCallsWithoutJWT: true
         });
     }

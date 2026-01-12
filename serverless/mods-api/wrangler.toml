@@ -23,7 +23,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # Development environment (only used with --env development)
 [env.development]
-vars = { ENVIRONMENT = "development", ACCESS_SERVICE_URL = "http://localhost:8791" }
+vars = { ENVIRONMENT = "development", ACCESS_SERVICE_URL = "http://localhost:8795" }
 
 # Development KV Namespaces (using same namespaces for testing)
 [[env.development.kv_namespaces]]

@@ -110,7 +110,7 @@ export async function handleDownloadVersion(
         
         // Check if user is admin (for admin access to private mods)
         const { isSuperAdmin } = await import('../../utils/admin.js');
-        const isAdmin = auth?.customerId ? await isSuperAdmin(auth.customerId, env) : false;
+        const isAdmin = auth?.customerId ? await isSuperAdmin(auth.customerId, auth.jwtToken, env) : false;
         const isAuthor = mod.authorId === auth?.customerId;
         
         // Private mods: only author or admin can download

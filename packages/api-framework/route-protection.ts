@@ -84,7 +84,7 @@ export async function authenticateJWT(
         }
         
         return {
-            customerId: payload.customerId,
+            customerId: payload.customerId || payload.sub,  // Use sub as fallback if customerId not in payload
             email: payload.email,
             jwtToken: token,
         };

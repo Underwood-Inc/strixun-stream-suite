@@ -25,7 +25,7 @@ export async function handleGetModDetail(
         let isAdmin = false;
         if (auth?.customerId) {
             const { isSuperAdmin } = await import('../../utils/admin.js');
-            isAdmin = await isSuperAdmin(auth.customerId, env);
+            isAdmin = await isSuperAdmin(auth.customerId, auth.jwtToken, env);
         }
         
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)

@@ -1,6 +1,6 @@
 // Landing page and dashboard built files embedded as a module
 // This file is generated automatically when building
-// Generated: 2026-01-12T14:05:11.817Z
+// Generated: 2026-01-12T18:55:58.845Z
 // DO NOT EDIT - This file is auto-generated
 
 export default {

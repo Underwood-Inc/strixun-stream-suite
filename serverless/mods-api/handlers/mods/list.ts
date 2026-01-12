@@ -29,7 +29,7 @@ export async function handleListMods(
         const visibility = url.searchParams.get('visibility') || 'public'; // Default to public
 
         // Check if customer is super admin (once, not in loop)
-        const isAdmin = auth?.customerId ? await isSuperAdmin(auth.customerId, env) : false;
+        const isAdmin = auth?.customerId ? await isSuperAdmin(auth.customerId, auth.jwtToken, env) : false;
 
         // Get all mod IDs from global public list
         // This list contains ALL public mods regardless of customer

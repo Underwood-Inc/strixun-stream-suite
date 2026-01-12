@@ -108,7 +108,7 @@ export async function handleUploadVersion(
         }
 
         // Check upload quota (skip for super admins)
-        const isSuper = await isSuperAdmin(auth.customerId, env);
+        const isSuper = await isSuperAdmin(auth.customerId, auth.jwtToken, env);
         if (!isSuper) {
             const quotaCheck = await checkUploadQuota(auth.customerId, env);
             if (!quotaCheck.allowed) {

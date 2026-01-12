@@ -62,6 +62,7 @@ export interface EnsureCustomerRequest {
 export interface AccessClientOptions {
   accessUrl?: string;
   serviceApiKey?: string;
+  jwtToken?: string;
   timeout?: number;
 }
 
@@ -73,6 +74,7 @@ export interface AccessClientOptions {
 export class AccessClient {
   private readonly accessUrl: string;
   private readonly serviceApiKey: string;
+  private readonly jwtToken: string;
   private readonly timeout: number;
 
   constructor(env: any, options: AccessClientOptions = {}) {
@@ -82,6 +84,7 @@ export class AccessClient {
       || 'https://access-api.idling.app';
     
     this.serviceApiKey = options.serviceApiKey || env.SERVICE_API_KEY || '';
+    this.jwtToken = options.jwtToken || '';
     this.timeout = options.timeout || 5000; // 5 second timeout
   }
 
@@ -293,14 +296,30 @@ export class AccessClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
+      // Build headers - JWT token ONLY (security requirement)
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...options.headers as Record<string, string>,
+      };
+      
+      if (this.jwtToken) {
+        headers['Authorization'] = `Bearer ${this.jwtToken}`;
+        console.log('[AccessClient] Using JWT token authentication', {
+          hasToken: true,
+          tokenLength: this.jwtToken?.length,
+          url
+        });
+      } else {
+        console.error('[AccessClient] NO JWT TOKEN - Authentication will fail!', {
+          url,
+          hasJwtToken: !!this.jwtToken
+        });
+      }
+      
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Service-Key': this.serviceApiKey,
-          ...options.headers,
-        },
+        headers,
       });
 
       return response;
