@@ -8,6 +8,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import type { ModMetadata, ModVersion, ModDetailResponse, VariantVersion } from '../../types/mod.js';
+import type { AuthResult } from '../../utils/auth.js';
 
 /**
  * Handle get mod detail request
@@ -18,7 +19,7 @@ export async function handleGetModDetail(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; } | null
+    auth: AuthResult | null
 ): Promise<Response> {
     try {
         // Check if customer is super admin (needed for filtering)

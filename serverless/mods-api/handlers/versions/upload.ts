@@ -15,6 +15,7 @@ import { isSuperAdmin } from '../../utils/admin.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion, VersionUploadRequest } from '../../types/mod.js';
 import type { Env } from '../../worker.js';
+import type { AuthResult } from '../../utils/auth.js';
 
 /**
  * Generate unique version ID
@@ -32,7 +33,7 @@ export async function handleUploadVersion(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string },
+    auth: AuthResult,
     variantId?: string | null
 ): Promise<Response> {
     try {

@@ -33,7 +33,8 @@ export async function isSuperAdmin(customerId: string, env: Env): Promise<boolea
     }
 
     try {
-        const access = createAccessClient(env);
+        // Use service key for authentication during JWT creation (no JWT available yet)
+        const access = createAccessClient(env, { serviceApiKey: env.SERVICE_API_KEY });
         const isSuperAdmin = await access.isSuperAdmin(customerId);
         
         console.log('[SuperAdmin] Checking super admin status:', {

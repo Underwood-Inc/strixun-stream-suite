@@ -296,12 +296,13 @@ export class AccessClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      // Build headers - JWT token ONLY (security requirement)
+      // Build headers - JWT token OR service key for authentication
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...options.headers as Record<string, string>,
       };
       
+      // Prefer JWT token, fall back to service key
       if (this.jwtToken) {
         headers['Authorization'] = `Bearer ${this.jwtToken}`;
         console.log('[AccessClient] Using JWT token authentication', {
@@ -309,10 +310,17 @@ export class AccessClient {
           tokenLength: this.jwtToken?.length,
           url
         });
+      } else if (this.serviceApiKey) {
+        headers['X-Service-Key'] = this.serviceApiKey;
+        console.log('[AccessClient] Using service key authentication', {
+          hasServiceKey: true,
+          url
+        });
       } else {
-        console.error('[AccessClient] NO JWT TOKEN - Authentication will fail!', {
+        console.error('[AccessClient] NO AUTHENTICATION - Request will fail!', {
           url,
-          hasJwtToken: !!this.jwtToken
+          hasJwtToken: !!this.jwtToken,
+          hasServiceKey: !!this.serviceApiKey
         });
       }
       

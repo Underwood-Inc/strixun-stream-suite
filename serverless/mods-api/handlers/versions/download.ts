@@ -10,6 +10,7 @@ import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { formatStrixunHash } from '../../utils/hash.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
+import type { AuthResult } from '../../utils/auth.js';
 
 /**
  * Handle download version request
@@ -21,7 +22,7 @@ export async function handleDownloadVersion(
     env: Env,
     modId: string,
     versionId: string,
-    auth: { customerId: string } | null
+    auth: AuthResult | null
 ): Promise<Response> {
     console.log('[Download] handleDownloadVersion called:', { modId, versionId, hasAuth: !!auth, customerId: auth?.customerId });
     try {

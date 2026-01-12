@@ -9,6 +9,7 @@ import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import { isSuperAdmin } from '../../utils/admin.js';
 import type { ModMetadata, ModListResponse } from '../../types/mod.js';
+import type { AuthResult } from '../../utils/auth.js';
 
 /**
  * Handle list mods request
@@ -16,7 +17,7 @@ import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 export async function handleListMods(
     request: Request,
     env: Env,
-    auth: { customerId: string } | null
+    auth: AuthResult | null
 ): Promise<Response> {
     try {
         const url = new URL(request.url);
