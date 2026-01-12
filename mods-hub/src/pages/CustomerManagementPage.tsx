@@ -465,7 +465,7 @@ export function CustomerManagementPage() {
     const totalCustomers = data?.customers.length || 0;
     const filteredCustomersCount = sortedCustomers.length;
     const approvedCustomers = sortedCustomers.filter(c => c.hasUploadPermission).length;
-    const totalMods = sortedCustomers.reduce((sum, c) => sum + c.modCount, 0);
+    const totalMods = sortedCustomers.reduce((sum, c) => sum + (c.modCount ?? 0), 0);
 
     // Determine API status
     const apiStatus = isLoading ? 'loading' : error ? 'error' : 'success';

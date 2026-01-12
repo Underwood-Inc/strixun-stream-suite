@@ -164,7 +164,7 @@ export function useUpdateMod() {
         }) => api.updateMod(slug, updates, thumbnail, variantFiles),
         onSuccess: (data, variables) => {
             // Check if slug changed in the update
-            const newSlug = data?.mod?.slug || data?.slug;
+            const newSlug = data?.slug;
             const oldSlug = variables.slug;
             
             if (newSlug && newSlug !== oldSlug) {

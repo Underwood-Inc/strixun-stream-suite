@@ -142,7 +142,7 @@ export function ModManagePage() {
             const result = await updateMod.mutateAsync({ slug: slug!, updates, thumbnail, variantFiles });
             
             // Check if slug changed in the update
-            const newSlug = result?.mod?.slug || result?.slug;
+            const newSlug = result?.slug;
             if (newSlug && newSlug !== slug) {
                 // Slug changed - navigate to new slug
                 console.log('[ModManagePage] Navigating to new slug:', { oldSlug: slug, newSlug });

@@ -355,7 +355,7 @@ export function ModListPage() {
                             {isMobileView ? (
                                 <SimpleListContainer>
                                     {data.mods.map((mod) => (
-                                        <ModListItem key={mod.id} mod={mod} />
+                                        <ModListItem key={mod.modId} mod={mod} />
                                     ))}
                                 </SimpleListContainer>
                             ) : (
@@ -369,7 +369,7 @@ export function ModListPage() {
                                         {({ index, style }) => {
                                             const mod = data.mods[index];
                                             return (
-                                                <div key={mod.id} style={style}>
+                                                <div key={mod.modId} style={style}>
                                                     <ModListItem mod={mod} />
                                                 </div>
                                             );
@@ -384,7 +384,7 @@ export function ModListPage() {
                     ) : (
                         <GridContainer>
                             {data.mods.map((mod) => (
-                                <ModCard key={mod.id} mod={mod} />
+                                <ModCard key={mod.modId} mod={mod} />
                             ))}
                             <div key="end-of-list" style={{ 
                                 gridColumn: '1 / -1', 
