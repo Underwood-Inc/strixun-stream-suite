@@ -634,13 +634,13 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
-      - name: Build Worker
-        working-directory: serverless/otp-auth-service
-        run: pnpm run build:worker
-      
       - name: Build Dashboard
         working-directory: serverless/otp-auth-service
         run: pnpm run build
+      
+      - name: Build Worker
+        working-directory: serverless/otp-auth-service
+        run: pnpm run build:worker
       
       - name: Build and Deploy to Cloudflare Workers
         id: deploy

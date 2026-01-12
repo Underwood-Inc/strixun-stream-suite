@@ -124,6 +124,12 @@ jobs:
           # They don't need builds but must have proper export specifiers in package.json
           echo "✓ All workspace dependencies built successfully"
       
+      - name: Build Dashboard
+        working-directory: serverless/otp-auth-service
+        run: |
+          echo "🔨 Building dashboard..."
+          pnpm run build
+      
       - name: Build Worker
         working-directory: serverless/otp-auth-service
         run: pnpm run build:worker
@@ -136,9 +142,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           # VITE_SERVICE_ENCRYPTION_KEY removed - all encryption now uses JWT tokens
         run: |
-          # Build the dashboard and generate assets
-          echo "🔨 Building dashboard..."
-          pnpm run build
+          # Verify builds completed
+          echo "🔍 Verifying builds..."
           
           # Verify landing-page-assets.js was created
           echo "🔍 Verifying landing-page-assets.js..."
