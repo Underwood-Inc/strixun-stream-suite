@@ -256,9 +256,18 @@ export function CustomerDashboardPage() {
                                     </div>
                                 );
                             }
+                            const mod = mods[index];
                             return (
                                 <div style={style}>
-                                    <ModListItem mod={mods[index]} />
+                                    <ModListItem 
+                                        slug={mod.slug}
+                                        thumbnailUrl={mod.thumbnailUrl}
+                                        title={mod.title}
+                                        authorDisplayName={mod.authorDisplayName}
+                                        description={mod.description}
+                                        category={mod.category}
+                                        downloadCount={mod.downloadCount}
+                                    />
                                 </div>
                             );
                         }}

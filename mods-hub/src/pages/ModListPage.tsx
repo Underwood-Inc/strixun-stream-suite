@@ -355,7 +355,16 @@ export function ModListPage() {
                             {isMobileView ? (
                                 <SimpleListContainer>
                                     {data.mods.map((mod) => (
-                                        <ModListItem key={mod.modId} mod={mod} />
+                                        <ModListItem 
+                                            key={mod.modId} 
+                                            slug={mod.slug}
+                                            thumbnailUrl={mod.thumbnailUrl}
+                                            title={mod.title}
+                                            authorDisplayName={mod.authorDisplayName}
+                                            description={mod.description}
+                                            category={mod.category}
+                                            downloadCount={mod.downloadCount}
+                                        />
                                     ))}
                                 </SimpleListContainer>
                             ) : (
@@ -370,7 +379,15 @@ export function ModListPage() {
                                             const mod = data.mods[index];
                                             return (
                                                 <div key={mod.modId} style={style}>
-                                                    <ModListItem mod={mod} />
+                                                    <ModListItem 
+                                                        slug={mod.slug}
+                                                        thumbnailUrl={mod.thumbnailUrl}
+                                                        title={mod.title}
+                                                        authorDisplayName={mod.authorDisplayName}
+                                                        description={mod.description}
+                                                        category={mod.category}
+                                                        downloadCount={mod.downloadCount}
+                                                    />
                                                 </div>
                                             );
                                         }}

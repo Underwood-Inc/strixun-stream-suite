@@ -7,7 +7,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing, media } from '../../theme';
-import type { ModMetadata } from '../../types/mod';
 
 const ListItemContainer = styled(Link)`
   display: flex;
@@ -229,10 +228,24 @@ const DownloadCount = styled.span`
 `;
 
 interface ModListItemProps {
-    mod: ModMetadata;
+    slug: string;
+    thumbnailUrl?: string;
+    title: string;
+    authorDisplayName?: string;
+    description?: string;
+    category: string;
+    downloadCount: number;
 }
 
-export function ModListItem({ mod }: ModListItemProps) {
+export function ModListItem({ 
+    slug,
+    thumbnailUrl,
+    title,
+    authorDisplayName,
+    description,
+    category,
+    downloadCount
+}: ModListItemProps) {
     const [thumbnailError, setThumbnailError] = useState(false);
 
     const handleThumbnailError = () => {
@@ -240,9 +253,9 @@ export function ModListItem({ mod }: ModListItemProps) {
     };
 
     return (
-        <ListItemContainer to={`/${mod.slug}`}>
+        <ListItemContainer to={`/${slug}`}>
             <ThumbnailContainer>
-                {mod.thumbnailUrl ? (
+                {thumbnailUrl ? (
                     thumbnailError ? (
                         <ThumbnailError>
                             <ErrorIcon>⚠</ErrorIcon>
@@ -250,8 +263,8 @@ export function ModListItem({ mod }: ModListItemProps) {
                         </ThumbnailError>
                     ) : (
                         <Thumbnail 
-                            src={mod.thumbnailUrl} 
-                            alt={mod.title}
+                            src={thumbnailUrl} 
+                            alt={title}
                             onError={handleThumbnailError}
                         />
                     )
@@ -263,16 +276,16 @@ export function ModListItem({ mod }: ModListItemProps) {
                 )}
             </ThumbnailContainer>
             <Content>
-                <Title>{mod.title}</Title>
+                <Title>{title}</Title>
                 <Author>
                     <AuthorLabel>by</AuthorLabel>
-                    <span>{mod.authorDisplayName || 'Unknown Author'}</span>
+                    <span>{authorDisplayName || 'Unknown Author'}</span>
                 </Author>
-                <Description>{mod.description || 'No description available'}</Description>
+                <Description>{description || 'No description available'}</Description>
             </Content>
             <Meta>
-                <Category>{mod.category}</Category>
-                <DownloadCount>{mod.downloadCount} downloads</DownloadCount>
+                <Category>{category}</Category>
+                <DownloadCount>{downloadCount} downloads</DownloadCount>
             </Meta>
         </ListItemContainer>
     );
