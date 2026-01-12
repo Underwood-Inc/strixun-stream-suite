@@ -3,7 +3,8 @@
  * Handles admin-only operations like listing all customers
  */
 
-import { createCORSHeaders, createIntegrityResponse } from '@strixun/api-framework/enhanced';
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { wrapResponseWithIntegrity } from '@strixun/service-client/integrity-response';
 import { createError } from '../utils/errors.js';
 import { getCustomer, type CustomerData } from '../services/customer.js';
 
@@ -227,14 +228,19 @@ export async function handleListAllCustomers(
             customersWithIssues: customers.filter(c => c.validationIssues && c.validationIssues.length > 0).length
         });
         
-        // Create response with integrity headers for service-to-service calls
-        return createIntegrityResponse(
-            request,
-            200,
-            { customers, total: customers.length },
-            env,
-            corsHeaders
-        );
+        // Create base response
+        const baseResponse = new Response(JSON.stringify({
+            customers,
+            total: customers.length
+        }), {
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+        
+        // Wrap with integrity headers for service-to-service calls
+        return await wrapResponseWithIntegrity(baseResponse, request, auth, env);
     } catch (error: any) {
         console.error('[Admin] Failed to list all customers:', error);
         const rfcError = createError(
@@ -243,13 +249,16 @@ export async function handleListAllCustomers(
             'Internal Server Error',
             env.ENVIRONMENT === 'development' ? error.message : 'Failed to list customers'
         );
-        // Create error response with integrity headers
-        return createIntegrityResponse(
-            request,
-            500,
-            rfcError,
-            env,
-            corsHeaders
-        );
+        // Create base error response
+        const baseErrorResponse = new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+        
+        // Wrap with integrity headers for service-to-service calls
+        return await wrapResponseWithIntegrity(baseErrorResponse, request, auth, env);
     }
 }

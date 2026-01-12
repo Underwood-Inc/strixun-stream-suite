@@ -33,7 +33,8 @@
     "@strixun/types": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/otp-auth-service": "workspace:*",
-    "@strixun/schemas": "workspace:*"
+    "@strixun/schemas": "workspace:*",
+    "@strixun/service-client": "workspace:*"
   }
 }
 

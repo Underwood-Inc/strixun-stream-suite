@@ -792,6 +792,9 @@ importers:
       '@strixun/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
+      '@strixun/service-client':
+        specifier: workspace:*
+        version: link:../../packages/service-client
       '@strixun/types':
         specifier: workspace:*
         version: link:../../packages/types
