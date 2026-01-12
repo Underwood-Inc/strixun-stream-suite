@@ -392,7 +392,7 @@ export function CustomerManagementPage() {
             header: 'Mods',
             size: 100,
             enableSorting: true,
-            cell: ({ row }) => row.modCount.toLocaleString(),
+            cell: ({ row }) => (row.modCount ?? 0).toLocaleString(),
         },
         {
             id: 'createdAt',
