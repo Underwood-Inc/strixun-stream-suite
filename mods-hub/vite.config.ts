@@ -122,6 +122,44 @@ export default defineConfig({
           });
         },
       },
+      // Customer API proxy
+      '/customer-api': {
+        target: 'http://localhost:8790', // Customer API runs on port 8790
+        changeOrigin: true,
+        // Remove /customer-api prefix and send to worker
+        // /customer-api/admin/customers -> /admin/customers
+        rewrite: (path) => path.replace(/^\/customer-api/, ''),
+        secure: false, // Local dev server doesn't use HTTPS
+        ws: true, // Enable WebSocket proxying for API WebSockets (not Vite HMR)
+        timeout: 30000, // 30 second timeout for proxy requests
+        configure: (proxy, _options) => {
+          proxy.on('error', (err: NodeJS.ErrnoException, req, res) => {
+            console.error('[Vite Proxy] Customer API proxy error:', err.message);
+            // If connection refused, the backend isn't running
+            if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
+              if (res && typeof res === 'object' && 'writeHead' in res && 'headersSent' in res && !res.headersSent) {
+                (res as any).writeHead(503, { 'Content-Type': 'application/json' });
+                (res as any).end(JSON.stringify({
+                  error: 'Service Unavailable',
+                  message: 'Customer API server is not running. Please start it with: pnpm --filter strixun-customer-api dev',
+                  code: 'BACKEND_NOT_RUNNING'
+                }));
+              }
+            }
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Skip logging for WebSocket upgrade requests to reduce noise
+            if (!req.headers.upgrade || req.headers.upgrade !== 'websocket') {
+              console.log('[Vite Proxy] Customer API', req.method, req.url, '->', proxyReq.path, '(target: localhost:8790)');
+            }
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            if (!req.headers.upgrade || req.headers.upgrade !== 'websocket') {
+              console.log('[Vite Proxy] Customer API Response:', req.method, req.url, '->', proxyRes.statusCode);
+            }
+          });
+        },
+      },
     },
   },
   build: {

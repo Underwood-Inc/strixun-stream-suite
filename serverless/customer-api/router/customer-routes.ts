@@ -10,7 +10,7 @@ import { authenticateRequest } from '../utils/auth.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 import { handleGetCustomer, handleGetCustomerByEmail, handleCreateCustomer, handleUpdateCustomer } from '../handlers/customer.js';
 import { handleGetPreferences, handleUpdatePreferences, handleUpdateDisplayName } from '../handlers/preferences.js';
-import { handleListAllCustomers } from '../handlers/admin.js';
+import { handleListAllCustomers, handleGetCustomerDetails, handleUpdateCustomer as handleAdminUpdateCustomer } from '../handlers/admin.js';
 
 interface Env {
     CUSTOMER_KV: KVNamespace;
@@ -111,6 +111,29 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
         // Route admin endpoints
         if (path === '/admin/customers' && request.method === 'GET') {
             return await handleCustomerRoute(handleListAllCustomers, request, env, auth);
+        }
+        
+        // GET /admin/customers/:customerId - Get customer details
+        const adminCustomerIdMatch = path.match(/^\/admin\/customers\/([^\/]+)$/);
+        if (adminCustomerIdMatch && request.method === 'GET') {
+            const customerId = adminCustomerIdMatch[1];
+            return await handleCustomerRoute(
+                (req, e, a) => handleGetCustomerDetails(req, e, a, customerId),
+                request,
+                env,
+                auth
+            );
+        }
+        
+        // PUT /admin/customers/:customerId - Update customer
+        if (adminCustomerIdMatch && request.method === 'PUT') {
+            const customerId = adminCustomerIdMatch[1];
+            return await handleCustomerRoute(
+                (req, e, a) => handleAdminUpdateCustomer(req, e, a, customerId),
+                request,
+                env,
+                auth
+            );
         }
         
         // Admin route not found

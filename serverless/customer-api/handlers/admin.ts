@@ -123,6 +123,174 @@ function validateCustomerData(customer: Partial<CustomerData>): ValidationIssue[
 }
 
 /**
+ * Get customer details by ID (admin only)
+ * GET /admin/customers/:customerId
+ */
+export async function handleGetCustomerDetails(
+    request: Request,
+    env: Env,
+    auth: AuthResult,
+    customerId: string
+): Promise<Response> {
+    const corsHeaders = createCORSHeaders(request, {
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    });
+
+    try {
+        const customer = await getCustomer(env.CUSTOMER_KV, customerId);
+        
+        if (!customer) {
+            const rfcError = createError(
+                request,
+                404,
+                'Customer Not Found',
+                `Customer with ID ${customerId} does not exist`
+            );
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Validate customer data
+        const validationIssues = validateCustomerData(customer);
+        
+        const customerWithValidation: CustomerWithValidation = {
+            ...customer,
+            validationIssues: validationIssues.length > 0 ? validationIssues : undefined
+        };
+        
+        console.log(`[Admin] Retrieved customer details:`, {
+            customerId,
+            hasIssues: validationIssues.length > 0
+        });
+        
+        return new Response(JSON.stringify({
+            customer: customerWithValidation
+        }), {
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    } catch (error: any) {
+        console.error('[Admin] Failed to get customer details:', error);
+        const rfcError = createError(
+            request,
+            500,
+            'Internal Server Error',
+            env.ENVIRONMENT === 'development' ? error.message : 'Failed to get customer details'
+        );
+        return new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+}
+
+/**
+ * Update customer (admin only)
+ * PUT /admin/customers/:customerId
+ */
+export async function handleUpdateCustomer(
+    request: Request,
+    env: Env,
+    auth: AuthResult,
+    customerId: string
+): Promise<Response> {
+    const corsHeaders = createCORSHeaders(request, {
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    });
+
+    try {
+        // Get existing customer
+        const existingCustomer = await getCustomer(env.CUSTOMER_KV, customerId);
+        
+        if (!existingCustomer) {
+            const rfcError = createError(
+                request,
+                404,
+                'Customer Not Found',
+                `Customer with ID ${customerId} does not exist`
+            );
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Parse request body
+        const updates = await request.json().catch(() => ({})) as Partial<CustomerData>;
+        
+        // Merge updates with existing customer
+        const updatedCustomer: CustomerData = {
+            ...existingCustomer,
+            ...updates,
+            customerId, // Ensure customerId cannot be changed
+            updatedAt: new Date().toISOString()
+        };
+        
+        // Save updated customer
+        const key = `customer_${customerId}`;
+        await env.CUSTOMER_KV.put(key, JSON.stringify(updatedCustomer));
+        
+        // Also update by email hash if email exists
+        if (updatedCustomer.email) {
+            const { hashEmail } = await import('../utils/crypto.js');
+            const emailHash = await hashEmail(updatedCustomer.email);
+            const emailKey = `customer_${emailHash}`;
+            await env.CUSTOMER_KV.put(emailKey, JSON.stringify(updatedCustomer));
+        }
+        
+        console.log(`[Admin] Updated customer:`, {
+            customerId,
+            updatedFields: Object.keys(updates)
+        });
+        
+        // Validate updated customer data
+        const validationIssues = validateCustomerData(updatedCustomer);
+        
+        const customerWithValidation: CustomerWithValidation = {
+            ...updatedCustomer,
+            validationIssues: validationIssues.length > 0 ? validationIssues : undefined
+        };
+        
+        return new Response(JSON.stringify({
+            customer: customerWithValidation
+        }), {
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    } catch (error: any) {
+        console.error('[Admin] Failed to update customer:', error);
+        const rfcError = createError(
+            request,
+            500,
+            'Internal Server Error',
+            env.ENVIRONMENT === 'development' ? error.message : 'Failed to update customer'
+        );
+        return new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+}
+
+/**
  * List ALL customers from CUSTOMER_KV (admin only)
  * GET /admin/customers
  * 

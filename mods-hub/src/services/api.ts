@@ -15,13 +15,17 @@ import type { UpdateCustomerRequest } from '../types/customer';
 import { encryptFileForUpload, downloadFileFromArrayBuffer } from '../utils/fileEncryption';
 
 /**
- * API base URL for constructing absolute URLs
- * In dev mode, uses Vite proxy (/mods-api) to avoid CORS issues
- * In production, uses environment variable or defaults to production URL
+ * API base URLs for different services
+ * In dev mode, uses Vite proxy to avoid CORS issues
+ * In production, uses environment variables or defaults to production URLs
  */
 export const API_BASE_URL = import.meta.env.DEV 
   ? '/mods-api'  // Vite proxy in development
   : (import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idling.app');
+
+export const CUSTOMER_API_BASE_URL = import.meta.env.DEV
+  ? '/customer-api'  // Vite proxy in development
+  : (import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app');
 
 /**
  * Create API client instance with auth token getter
@@ -177,6 +181,108 @@ const createClient = () => {
 
 // Create singleton API client instance
 const api = createClient();
+
+/**
+ * Create customer API client instance for customer management
+ * Separate from mods API - customer data is managed by customer-api service
+ */
+const createCustomerClient = () => {
+    return createAPIClient({
+        baseURL: CUSTOMER_API_BASE_URL,
+        defaultHeaders: {
+            'Content-Type': 'application/json',
+        },
+        auth: {
+            tokenGetter: async () => {
+                // Use same token getter as mods API
+                if (typeof window === 'undefined') {
+                    return null;
+                }
+
+                // Priority 1: Zustand store
+                try {
+                    const { useAuthStore } = await import('../stores/auth');
+                    const store = useAuthStore.getState();
+                    if (store.customer?.token) {
+                        const token = store.customer.token.trim();
+                        if (token && token.length > 0) {
+                            return token;
+                        }
+                    }
+                } catch {
+                    // Ignore errors
+                }
+                
+                // Priority 2: localStorage
+                try {
+                    const authStorage = localStorage.getItem('auth-storage');
+                    if (authStorage) {
+                        const parsed = JSON.parse(authStorage);
+                        let token: string | null = null;
+                        if (parsed?.customer?.token) {
+                            token = parsed.customer.token;
+                        } else if (parsed?.state?.customer?.token) {
+                            token = parsed.state.customer.token;
+                        }
+                        
+                        if (token) {
+                            const trimmedToken = token.trim();
+                            if (trimmedToken && trimmedToken.length > 0) {
+                                return trimmedToken;
+                            }
+                        }
+                    }
+                } catch {
+                    // Ignore parse errors
+                }
+                
+                // Priority 3: Legacy keys
+                const legacyToken = localStorage.getItem('auth_token') || localStorage.getItem('access_token');
+                if (legacyToken) {
+                    const trimmedToken = legacyToken.trim();
+                    if (trimmedToken && trimmedToken.length > 0) {
+                        return trimmedToken;
+                    }
+                }
+                
+                return null;
+            },
+            onTokenExpired: () => {
+                if (typeof window !== 'undefined') {
+                    console.warn('[CustomerAPI] Token expired, clearing auth state');
+                    localStorage.removeItem('auth-storage');
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('access_token');
+                    window.dispatchEvent(new CustomEvent('auth:logout'));
+                    import('../stores/auth').then(({ useAuthStore }) => {
+                        useAuthStore.getState().logout();
+                    }).catch(() => {});
+                }
+            },
+        },
+        timeout: 30000,
+        retry: {
+            maxAttempts: 3,
+            backoff: 'exponential',
+            initialDelay: 1000,
+            maxDelay: 10000,
+            retryableErrors: [408, 429, 500, 502, 503, 504],
+        },
+        features: {
+            cancellation: true,
+            logging: import.meta.env.DEV,
+            deduplication: false,
+            queue: false,
+            circuitBreaker: false,
+            offlineQueue: false,
+            optimisticUpdates: false,
+            metrics: false,
+        },
+    });
+};
+
+// Create singleton customer API client instance
+const customerApi = createCustomerClient();
 
 /**
  * Get authentication token using the same logic as the API client
@@ -478,6 +584,7 @@ export async function submitModRating(
 
 /**
  * List customers (admin only)
+ * UPDATED: Now calls customer-api directly (not through mods-api proxy)
  */
 export async function listCustomers(filters: {
     page?: number;
@@ -495,29 +602,36 @@ export async function listCustomers(filters: {
     if (filters.search) params.append('search', filters.search);
     
     const queryString = params.toString() ? `?${params.toString()}` : '';
-    const response = await api.get<{
+    const response = await customerApi.get<{
         customers: any[];
         total: number;
-        page: number;
-        pageSize: number;
     }>(`/admin/customers${queryString}`);
-    return response.data;
+    
+    // Customer API returns just { customers, total }, so we need to add pagination data
+    return {
+        customers: response.data.customers,
+        total: response.data.total,
+        page: filters.page || 1,
+        pageSize: filters.pageSize || 20,
+    };
 }
 
 /**
  * Get customer details (admin only)
+ * UPDATED: Now calls customer-api directly (not through mods-api proxy)
  */
 export async function getCustomerDetails(customerId: string): Promise<any> {
-    const response = await api.get<any>(`/admin/customers/${customerId}`);
-    return response.data;
+    const response = await customerApi.get<{ customer: any }>(`/admin/customers/${customerId}`);
+    return response.data.customer;
 }
 
 /**
  * Update customer (admin only)
+ * UPDATED: Now calls customer-api directly (not through mods-api proxy)
  */
 export async function updateCustomer(customerId: string, updates: UpdateCustomerRequest): Promise<any> {
-    const response = await api.put<any>(`/admin/customers/${customerId}`, updates);
-    return response.data;
+    const response = await customerApi.put<{ customer: any }>(`/admin/customers/${customerId}`, updates);
+    return response.data.customer;
 }
 
 /**
