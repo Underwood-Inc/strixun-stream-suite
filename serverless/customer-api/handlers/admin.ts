@@ -4,7 +4,6 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { wrapResponseWithIntegrity } from '@strixun/service-client/integrity-response';
 import { createError } from '../utils/errors.js';
 import { getCustomer, type CustomerData } from '../services/customer.js';
 
@@ -12,7 +11,6 @@ interface Env {
     CUSTOMER_KV: KVNamespace;
     ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
-    NETWORK_INTEGRITY_KEYPHRASE?: string;
     [key: string]: any;
 }
 
@@ -228,8 +226,8 @@ export async function handleListAllCustomers(
             customersWithIssues: customers.filter(c => c.validationIssues && c.validationIssues.length > 0).length
         });
         
-        // Create base response
-        const baseResponse = new Response(JSON.stringify({
+        // Return response - router will add integrity headers via wrapWithEncryption
+        return new Response(JSON.stringify({
             customers,
             total: customers.length
         }), {
@@ -238,9 +236,6 @@ export async function handleListAllCustomers(
                 ...Object.fromEntries(corsHeaders.entries()),
             },
         });
-        
-        // Wrap with integrity headers for service-to-service calls
-        return await wrapResponseWithIntegrity(baseResponse, request, auth, env);
     } catch (error: any) {
         console.error('[Admin] Failed to list all customers:', error);
         const rfcError = createError(
@@ -249,16 +244,13 @@ export async function handleListAllCustomers(
             'Internal Server Error',
             env.ENVIRONMENT === 'development' ? error.message : 'Failed to list customers'
         );
-        // Create base error response
-        const baseErrorResponse = new Response(JSON.stringify(rfcError), {
+        // Return error response - router will add integrity headers via wrapWithEncryption
+        return new Response(JSON.stringify(rfcError), {
             status: 500,
             headers: {
                 'Content-Type': 'application/problem+json',
                 ...Object.fromEntries(corsHeaders.entries()),
             },
         });
-        
-        // Wrap with integrity headers for service-to-service calls
-        return await wrapResponseWithIntegrity(baseErrorResponse, request, auth, env);
     }
 }
