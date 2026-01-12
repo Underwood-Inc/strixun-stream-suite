@@ -7,7 +7,7 @@ import { useState } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { VariantVersion } from '../../types/mod';
-import { downloadVersion } from '../../services/api';
+import { downloadVersion } from '../../services/mods';
 import { IntegrityBadge } from './IntegrityBadge';
 import { celebrateClick } from '../../utils/confetti';
 import { getButtonStyles } from '../../utils/buttonStyles';

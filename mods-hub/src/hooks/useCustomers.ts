@@ -4,7 +4,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as api from '../services/api';
+import * as api from '../services/customerApi';
 import { useUIStore } from '../stores/ui';
 import type { UpdateCustomerRequest } from '../types/customer';
 

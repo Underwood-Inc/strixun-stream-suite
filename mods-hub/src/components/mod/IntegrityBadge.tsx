@@ -9,10 +9,9 @@
 import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
-import { API_BASE_URL } from '../../services/api';
+import { API_BASE_URL, getAuthToken } from '../../services/mods';
 import { Tooltip } from '@strixun/shared-components/react';
 import type { TooltipTheme } from '@strixun/shared-components/react';
-import { getAuthToken } from '../../services/api';
 
 // Theme configuration for shared Tooltip component
 const tooltipTheme: TooltipTheme = {

@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModVersion, ModVariant } from '../../types/mod';
-import { downloadVersion, downloadVariant } from '../../services/api';
+import { downloadVersion, downloadVariant } from '../../services/mods';
 import { IntegrityBadge } from './IntegrityBadge';
 import { celebrateClick } from '../../utils/confetti';
 import { getButtonStyles } from '../../utils/buttonStyles';

@@ -8,7 +8,7 @@ import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModVersion, VersionUploadRequest } from '../../types/mod';
 import { formatDate } from '@strixun/shared-config/date-utils';
-import { downloadVersion } from '../../services/api';
+import { downloadVersion } from '../../services/mods';
 import { IntegrityBadge } from './IntegrityBadge';
 import { celebrateClick } from '../../utils/confetti';
 import { getButtonStyles } from '../../utils/buttonStyles';

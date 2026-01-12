@@ -120,10 +120,8 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
     }
 
     // Customer Management endpoints
-    if (path === '/admin/customers' && request.method === 'GET') {
-        const auth = await authenticateRequest(request, env);
-        return handleAdminOrSuperAdminRoute(adminHandlers.handleListCustomers, request, env, auth);
-    }
+    // NOTE: GET /admin/customers has been moved to customer-api for proper separation of concerns
+    // OTP-auth-service handles auth-related customer operations (status, GDPR) only
 
     // GDPR endpoints
     const exportCustomerMatch = path.match(/^\/admin\/customers\/([^\/]+)\/export$/);

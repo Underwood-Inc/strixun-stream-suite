@@ -12,7 +12,7 @@ import { ModRatings } from '../components/mod/ModRatings';
 import { IntegrityBadge } from '../components/mod/IntegrityBadge';
 import { ModMetaTags } from '../components/MetaTags';
 import { useAuthStore } from '../stores/auth';
-import { downloadVersion } from '../services/api';
+import { downloadVersion } from '../services/mods';
 import { getUserFriendlyErrorMessage, shouldRedirectToLogin } from '../utils/error-messages';
 import { celebrateClick } from '../utils/confetti';
 import styled from 'styled-components';

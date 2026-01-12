@@ -4,7 +4,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as api from '../services/api';
+import * as api from '../services/mods';
 import { useUIStore } from '../stores/ui';
 import { useAuthStore } from '../stores/auth';
 import { getUserFriendlyErrorMessage, shouldRedirectToLogin } from '../utils/error-messages';

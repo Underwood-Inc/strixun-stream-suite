@@ -39,9 +39,6 @@ import {
     adminDeleteMod,
     getModRatings,
     submitModRating,
-    listCustomers,
-    getCustomerDetails,
-    updateCustomer,
     getCustomerMods,
     checkUploadPermission,
     getAdminSettings,
@@ -51,7 +48,13 @@ import {
     detectDuplicates,
     deleteR2File,
     bulkDeleteR2Files,
-} from './api.js';
+} from './mods/index.js';
+
+import {
+    listCustomers,
+    getCustomerDetails,
+    updateCustomer,
+} from './customerApi.js';
 
 describe('Mods Hub API Service - Unit Tests', () => {
     beforeEach(() => {

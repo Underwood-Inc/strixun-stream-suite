@@ -12,7 +12,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/auth';
-import * as api from '../services/api';
+import * as api from '../services/mods';
 
 /**
  * Hook to check upload permission
