@@ -100,6 +100,10 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build Worker
+        working-directory: serverless/game-api
+        run: pnpm run build:worker
+      
       - name: Deploy to Cloudflare Workers
         id: deploy
         working-directory: serverless/game-api

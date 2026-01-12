@@ -826,6 +826,9 @@ importers:
       '@strixun/e2e-helpers':
         specifier: workspace:*
         version: link:../../packages/e2e-helpers
+      '@strixun/service-client':
+        specifier: workspace:*
+        version: link:../../packages/service-client
       '@strixun/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -833,6 +836,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20241127.0
         version: 4.20251225.0
+      esbuild:
+        specifier: ^0.24.0
+        version: 0.24.2
       vitest:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(jsdom@25.0.1)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
@@ -976,6 +982,9 @@ importers:
       '@strixun/e2e-helpers':
         specifier: workspace:*
         version: link:../../packages/e2e-helpers
+      '@strixun/service-client':
+        specifier: workspace:*
+        version: link:../../packages/service-client
       '@strixun/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -986,6 +995,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.0.16
         version: 4.0.16(@vitest/browser@4.0.16(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))(vitest@4.0.16))(vitest@4.0.16)
+      esbuild:
+        specifier: ^0.24.0
+        version: 0.24.2
       vitest:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(jsdom@25.0.1)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)

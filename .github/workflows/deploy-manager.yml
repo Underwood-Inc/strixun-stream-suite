@@ -470,6 +470,10 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build Worker
+        working-directory: serverless/twitch-api
+        run: pnpm run build:worker
+      
       - name: Deploy Worker
         id: deploy
         working-directory: serverless/twitch-api
@@ -532,6 +536,10 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build Worker
+        working-directory: serverless/mods-api
+        run: pnpm run build:worker
+      
       - name: Deploy to Cloudflare Workers
         id: deploy
         working-directory: serverless/mods-api
@@ -544,7 +552,7 @@ jobs:
           else
             # CRITICAL: mods-api uses default deployment (NOT --env production)
             # Default deployment IS production for mods-api (unlike url-shortener)
-            pnpm exec wrangler deploy
+            pnpm exec wrangler deploy --env=""
           fi
       
       - name: Rollback on Failure
@@ -626,6 +634,14 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build Worker
+        working-directory: serverless/otp-auth-service
+        run: pnpm run build:worker
+      
+      - name: Build Dashboard
+        working-directory: serverless/otp-auth-service
+        run: pnpm run build
+      
       - name: Build and Deploy to Cloudflare Workers
         id: deploy
         working-directory: serverless/otp-auth-service
@@ -636,7 +652,7 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            pnpm run deploy
+            pnpm exec wrangler deploy --env=""
           fi
       
       - name: Rollback on Failure
@@ -806,6 +822,10 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build Worker
+        working-directory: serverless/game-api
+        run: pnpm run build:worker
+      
       - name: Deploy to Cloudflare Workers
         id: deploy
         working-directory: serverless/game-api
@@ -816,7 +836,7 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            pnpm exec wrangler deploy
+            pnpm exec wrangler deploy --env=""
           fi
       
       - name: Rollback on Failure
@@ -885,7 +905,7 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            pnpm exec wrangler deploy --env production
+            pnpm exec wrangler deploy --env=""
           fi
       
       - name: Rollback on Failure
@@ -946,6 +966,10 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build Worker
+        working-directory: serverless/access-service
+        run: pnpm run build:worker
+      
       - name: Create KV Namespace (if needed)
         working-directory: serverless/access-service
         env:
@@ -971,7 +995,7 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            pnpm exec wrangler deploy
+            pnpm exec wrangler deploy --env=""
           fi
       
       - name: Rollback on Failure

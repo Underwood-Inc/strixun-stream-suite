@@ -112,6 +112,10 @@ jobs:
       - name: Install all dependencies
         working-directory: .
         run: pnpm install --frozen-lockfile
+      
+      - name: Build Worker
+        working-directory: serverless/twitch-api
+        run: pnpm run build:worker
         
       - name: Deploy Worker
         id: deploy

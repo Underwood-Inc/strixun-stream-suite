@@ -2,7 +2,7 @@
 # Twitch API proxy with cloud storage, authentication, and CDN endpoints
 
 name = "strixun-twitch-api"
-main = "worker.ts"
+main = "dist/worker.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
