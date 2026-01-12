@@ -124,6 +124,10 @@ jobs:
           # They don't need builds but must have proper export specifiers in package.json
           echo "✓ All workspace dependencies built successfully"
       
+      - name: Build Worker
+        working-directory: serverless/otp-auth-service
+        run: pnpm run build:worker
+      
       - name: Build and Deploy to Cloudflare Workers
         id: deploy
         working-directory: serverless/otp-auth-service

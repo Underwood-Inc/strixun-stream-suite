@@ -1,12 +1,10 @@
 name = "strixun-url-shortener"
-main = "worker.ts"
+main = "dist/worker.js"
 compatibility_date = "2024-01-01"
 
-# Build is handled by GitHub Actions workflow before deployment
-# The workflow runs: pnpm build:all
-# Then deploys with: wrangler deploy --no-bundle
-# [build]
-# command = "pnpm build:all"
+# Build is handled by predeploy script in package.json
+# The predeploy script runs: pnpm build:all (which includes build:worker)
+# Then wrangler deploys the pre-built dist/worker.js
 
 [env.production]
 vars = { ENVIRONMENT = "production" }

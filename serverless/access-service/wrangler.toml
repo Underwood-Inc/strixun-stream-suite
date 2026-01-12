@@ -3,7 +3,7 @@
 # Service-agnostic: works for ANY service (mods, customer, analytics, etc.)
 
 name = "strixun-access-service"
-main = "worker.ts"
+main = "dist/worker.js"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
