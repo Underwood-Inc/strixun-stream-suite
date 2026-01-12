@@ -715,6 +715,10 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build Worker
+        working-directory: serverless/customer-api
+        run: pnpm run build:worker
+      
       - name: Create KV Namespace (if needed)
         working-directory: serverless/customer-api
         env:
@@ -735,7 +739,7 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            pnpm exec wrangler deploy
+            pnpm exec wrangler deploy --env=""
           fi
       
       - name: Rollback on Failure
