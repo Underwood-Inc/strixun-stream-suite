@@ -80,7 +80,7 @@ const ListContainer = styled.div`
   background: ${colors.bg};
   border: 1px solid ${colors.border};
   border-radius: 8px;
-  overflow: hidden;
+  overflow: auto;
 `;
 
 const SimpleListContainer = styled.div`
