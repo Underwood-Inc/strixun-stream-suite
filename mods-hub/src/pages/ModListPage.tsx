@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FixedSizeList as List } from 'react-window';
 import { useModsList } from '../hooks/useMods';
-import { ModListItem } from '../components/mod/ModListItem';
+import { ModListItem, mapModToListItemProps } from '../components/mod/ModListItem';
 import { ModCard } from '../components/mod/ModCard';
 import { ModFilters } from '../components/mod/ModFilters';
 import { ViewToggle, type ViewType } from '../components/mod/ViewToggle';
@@ -355,16 +355,7 @@ export function ModListPage() {
                             {isMobileView ? (
                                 <SimpleListContainer>
                                     {data.mods.map((mod) => (
-                                        <ModListItem 
-                                            key={mod.modId} 
-                                            slug={mod.slug}
-                                            thumbnailUrl={mod.thumbnailUrl}
-                                            title={mod.title}
-                                            authorDisplayName={mod.authorDisplayName}
-                                            description={mod.description}
-                                            category={mod.category}
-                                            downloadCount={mod.downloadCount}
-                                        />
+                                        <ModListItem key={mod.modId} {...mapModToListItemProps(mod)} />
                                     ))}
                                 </SimpleListContainer>
                             ) : (
@@ -379,15 +370,7 @@ export function ModListPage() {
                                             const mod = data.mods[index];
                                             return (
                                                 <div key={mod.modId} style={style}>
-                                                    <ModListItem 
-                                                        slug={mod.slug}
-                                                        thumbnailUrl={mod.thumbnailUrl}
-                                                        title={mod.title}
-                                                        authorDisplayName={mod.authorDisplayName}
-                                                        description={mod.description}
-                                                        category={mod.category}
-                                                        downloadCount={mod.downloadCount}
-                                                    />
+                                                    <ModListItem {...mapModToListItemProps(mod)} />
                                                 </div>
                                             );
                                         }}

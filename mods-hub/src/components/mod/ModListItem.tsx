@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing, media } from '../../theme';
+import type { ModMetadata } from '../../types/mod';
 
 const ListItemContainer = styled(Link)`
   display: flex;
@@ -235,6 +236,22 @@ interface ModListItemProps {
     description?: string;
     category: string;
     downloadCount: number;
+}
+
+/**
+ * Maps a ModMetadata object to ModListItemProps
+ * Centralizes the prop extraction logic for easier maintenance
+ */
+export function mapModToListItemProps(mod: ModMetadata): ModListItemProps {
+    return {
+        slug: mod.slug,
+        thumbnailUrl: mod.thumbnailUrl ?? undefined,
+        title: mod.title,
+        authorDisplayName: mod.authorDisplayName ?? undefined,
+        description: mod.description ?? undefined,
+        category: mod.category,
+        downloadCount: mod.downloadCount,
+    };
 }
 
 export function ModListItem({ 

@@ -9,7 +9,7 @@ import { FixedSizeList as List } from 'react-window';
 import { useModsList, useDeleteMod } from '../hooks/useMods';
 import { useAuthStore } from '../stores/auth';
 import { ModCard } from '../components/mod/ModCard';
-import { ModListItem } from '../components/mod/ModListItem';
+import { ModListItem, mapModToListItemProps } from '../components/mod/ModListItem';
 import { ViewToggle, type ViewType } from '../components/mod/ViewToggle';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import styled from 'styled-components';
@@ -259,15 +259,7 @@ export function CustomerDashboardPage() {
                             const mod = mods[index];
                             return (
                                 <div style={style}>
-                                    <ModListItem 
-                                        slug={mod.slug}
-                                        thumbnailUrl={mod.thumbnailUrl}
-                                        title={mod.title}
-                                        authorDisplayName={mod.authorDisplayName}
-                                        description={mod.description}
-                                        category={mod.category}
-                                        downloadCount={mod.downloadCount}
-                                    />
+                                    <ModListItem {...mapModToListItemProps(mod)} />
                                 </div>
                             );
                         }}

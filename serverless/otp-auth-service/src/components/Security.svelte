@@ -41,7 +41,7 @@
           <strong>What Happens After 5 Attempts:</strong><br>
           • OTP is invalidated immediately<br>
           • Customer must request a new code<br>
-          • Attempt counter stored in KV (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/main/serverless/otp-auth-service/handlers/auth/verify-otp.ts' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br>
+          • Attempt counter stored in KV (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/master/serverless/otp-auth-service/handlers/auth/verify-otp.ts' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br>
           • Tracked per-OTP, not per-customer<br><br>
           This prevents automated attacks while allowing legitimate users to recover from typos."
           position="top"
@@ -61,14 +61,14 @@
           • Free: 3 requests/hour<br>
           • Pro: 10 requests/hour<br>
           • Enterprise: 100 requests/hour<br>
-          (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/main/serverless/otp-auth-service/services/rate-limit.ts#L62-L90' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br><br>
+          (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/master/serverless/otp-auth-service/services/rate-limit.ts#L62-L90' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br><br>
           <strong>Dynamic Adjustment:</strong><br>
           The system automatically adjusts limits (-2 to +2) based on:<br>
           • Recent usage patterns (24h activity)<br>
           • Failed attempt history<br>
           • Suspicious behavior detection<br>
           • IP-based tracking patterns<br>
-          (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/main/serverless/otp-auth-service/services/rate-limit.ts#L92-L141' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see algorithm</a>)<br><br>
+          (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/master/serverless/otp-auth-service/services/rate-limit.ts#L92-L141' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see algorithm</a>)<br><br>
           <strong>Custom Configuration:</strong><br>
           Each customer can override with custom rate limits in their settings.<br><br>
           Super admins are exempt from all rate limits."
@@ -86,7 +86,7 @@
           text="<strong>JWT Structure (<a href='https://datatracker.ietf.org/doc/html/rfc7519' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 7519</a>):</strong><br><br>
           <strong>Algorithm:</strong> HMAC-SHA256 (HS256)<br>
           <strong>Expiration:</strong> 7 hours from issuance<br>
-          (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/main/serverless/otp-auth-service/handlers/auth/jwt-creation.ts#L148-L169' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br><br>
+          (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/master/serverless/otp-auth-service/handlers/auth/jwt-creation.ts#L148-L169' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br><br>
           <strong>Standard Claims Included:</strong><br>
           • sub (subject) - Customer ID<br>
           • iss (issuer) - auth.idling.app<br>
@@ -115,8 +115,7 @@
           • Login/logout events<br>
           • Rate limit violations<br>
           • Suspicious activity detection<br>
-          • API key usage<br>
-          (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/main/serverless/otp-auth-service/services/security.js' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see logging code</a>)<br><br>
+          • API key usage<br><br>
           <strong>Log Structure:</strong><br>
           • Timestamp (<a href='https://en.wikipedia.org/wiki/ISO_8601' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>ISO 8601</a>)<br>
           • Event type and result<br>
@@ -124,7 +123,7 @@
           • User agent<br>
           • Customer ID<br><br>
           <strong>Access & Retention:</strong><br>
-          Logs accessible via <a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/main/serverless/otp-auth-service/handlers/admin/gdpr.js#L127-L174' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>API endpoint</a>. 30-day automatic retention. Export available in JSON format."
+          Logs accessible via API endpoint. 30-day automatic retention. Export available in JSON format."
           position="top"
           level="info"
           interactive={true}
@@ -145,7 +144,7 @@
           • Allowed headers<br>
           • Credentials support<br>
           • Max age (preflight cache)<br>
-          (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/main/serverless/otp-auth-service/utils/cors.js' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see implementation</a>)<br><br>
+          (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/master/serverless/otp-auth-service/utils/cors.ts' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see implementation</a>)<br><br>
           <strong>IP Allowlisting:</strong><br>
           Optional additional layer restricting API access to specific IP ranges. Useful for:<br>
           • Internal tools<br>
@@ -165,11 +164,11 @@
         <Tooltip
           text="<strong>GDPR Compliance Features:</strong><br><br>
           <strong>✓ Right to Access (<a href='https://gdpr-info.eu/art-15-gdpr/' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>Art. 15</a>):</strong><br>
-          • Export all customer data via API (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/main/serverless/otp-auth-service/handlers/admin/gdpr.js#L15-L59' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br>
+          • Export all customer data via API<br>
           • JSON format for portability<br>
           • Includes customer data & audit logs<br><br>
           <strong>✓ Right to Erasure (<a href='https://gdpr-info.eu/art-17-gdpr/' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>Art. 17</a>):</strong><br>
-          • Complete data deletion endpoint (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/main/serverless/otp-auth-service/handlers/admin/gdpr.js#L65-L121' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br>
+          • Complete data deletion endpoint<br>
           • Removes all PII and sessions<br>
           • <strong>Executed immediately</strong> (not 72 hours)<br><br>
           <strong>✓ Data Minimization:</strong><br>
@@ -200,7 +199,7 @@
           <strong>✓ Our Defense:</strong><br>
           Constant-time comparison checks ALL digits regardless of matches. Every verification takes exactly the same time, revealing no information to attackers.<br><br>
           <strong>Implementation:</strong><br>
-          <a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/main/serverless/otp-auth-service/utils/crypto.ts#L145-L161' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>constantTimeEquals() function</a> resists timing analysis."
+          <a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/master/serverless/otp-auth-service/utils/crypto.ts#L145-L161' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>constantTimeEquals() function</a> resists timing analysis."
           position="top"
           level="info"
           interactive={true}
@@ -269,7 +268,7 @@
         <Tooltip
           text="<strong>Current Implementation:</strong><br><br>
           <strong>✓ JWT with OIDC-Compatible Claims:</strong><br>
-          • Standard claims: sub, iss, aud, exp, iat, jti (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/main/serverless/otp-auth-service/handlers/auth/jwt-creation.ts#L148-L169' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br>
+          • Standard claims: sub, iss, aud, exp, iat, jti (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/master/serverless/otp-auth-service/handlers/auth/jwt-creation.ts#L148-L169' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br>
           • email, email_verified claims<br>
           • <a href='https://datatracker.ietf.org/doc/html/rfc6749#section-5.1' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>OAuth 2.0 token response format</a><br>
           • scope: 'openid email profile'<br>
