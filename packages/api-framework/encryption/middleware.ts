@@ -7,6 +7,7 @@
 
 import type { EncryptionWrapperOptions } from './types.js';
 import { encryptWithJWT } from './jwt-encryption.js';
+import { isServiceToServiceCall, wrapResponseWithIntegrity } from '@strixun/service-client/integrity-response';
 
 /**
  * Route result interface
@@ -179,11 +180,10 @@ export async function wrapWithEncryption(
   // Default to requiring JWT (security hardening)
   const requireJWT = options?.requireJWT !== false; // Default: true
   const allowServiceCallsWithoutJWT = options?.allowServiceCallsWithoutJWT === true; // Default: false
-    // Import isServiceToServiceCall to properly detect service-to-service calls
+    // Detect service-to-service calls
     // This distinguishes between browser requests (no auth) and service-to-service calls (API key/service key)
     let isServiceCall = false;
     if (request) {
-        const { isServiceToServiceCall } = await import('@strixun/service-client/integrity-response');
         isServiceCall = isServiceToServiceCall(request, auth ?? null);
     }
     
@@ -192,7 +192,6 @@ export async function wrapWithEncryption(
         // Still add integrity header for service-to-service error responses
         if (request && env && isServiceCall) {
             try {
-                const { wrapResponseWithIntegrity } = await import('@strixun/service-client/integrity-response');
                 const responseWithIntegrity = await wrapResponseWithIntegrity(handlerResponse, request, auth ?? null, env);
                 return {
                     response: responseWithIntegrity,
@@ -221,7 +220,6 @@ export async function wrapWithEncryption(
     // Add integrity header for service-to-service calls (CRITICAL for security)
     if (request && env) {
         try {
-            const { wrapResponseWithIntegrity } = await import('@strixun/service-client/integrity-response');
             const responseWithIntegrity = await wrapResponseWithIntegrity(handlerResponse, request, auth ?? null, env);
             
             // Check if integrity header was added

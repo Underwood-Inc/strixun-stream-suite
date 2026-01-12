@@ -278,10 +278,28 @@ export async function checkOTPRateLimit(
 ): Promise<RateLimitResult> {
     try {
         // Super admins are ALWAYS exempt from rate limits
+        // Check by email FIRST (for pre-authentication OTP requests)
+        if (email && env.SUPER_ADMIN_EMAILS) {
+            const superAdminEmails = env.SUPER_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase());
+            if (superAdminEmails.includes(email.toLowerCase())) {
+                console.log('[RateLimit] Super admin email detected, bypassing rate limits:', { email: email.substring(0, 3) + '***' });
+                const now = Date.now();
+                const oneHour = 60 * 60 * 1000;
+                const resetAt = new Date(now + oneHour).toISOString();
+                return {
+                    allowed: true,
+                    remaining: 999999, // Effectively unlimited
+                    resetAt: resetAt
+                };
+            }
+        }
+        
+        // Check by customerId (for authenticated requests)
         if (customerId) {
             const { isSuperAdmin: checkSuperAdmin } = await import('../utils/super-admin.js');
             const isSuperAdmin = await checkSuperAdmin(customerId, env);
             if (isSuperAdmin) {
+                console.log('[RateLimit] Super admin customerId detected, bypassing rate limits.');
                 // Return unlimited access for super admins
                 const now = Date.now();
                 const oneHour = 60 * 60 * 1000;
@@ -521,10 +539,28 @@ export async function checkIPRateLimit(
 ): Promise<RateLimitResult> {
     try {
         // Super admins are ALWAYS exempt from rate limits
+        // Check by email FIRST (for pre-authentication requests)
+        if (email && env.SUPER_ADMIN_EMAILS) {
+            const superAdminEmails = env.SUPER_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase());
+            if (superAdminEmails.includes(email.toLowerCase())) {
+                console.log('[RateLimit] Super admin email detected, bypassing IP rate limits:', { email: email.substring(0, 3) + '***', endpoint: endpointName });
+                const now = Date.now();
+                const oneHour = 60 * 60 * 1000;
+                const resetAt = new Date(now + oneHour).toISOString();
+                return {
+                    allowed: true,
+                    remaining: 999999, // Effectively unlimited
+                    resetAt: resetAt
+                };
+            }
+        }
+        
+        // Check by customerId (for authenticated requests)
         if (customerId) {
             const { isSuperAdmin: checkSuperAdmin } = await import('../utils/super-admin.js');
             const isSuperAdmin = await checkSuperAdmin(customerId, env);
             if (isSuperAdmin) {
+                console.log('[RateLimit] Super admin customerId detected, bypassing IP rate limits:', { customerId, endpoint: endpointName });
                 const now = Date.now();
                 const oneHour = 60 * 60 * 1000;
                 const resetAt = new Date(now + oneHour).toISOString();
