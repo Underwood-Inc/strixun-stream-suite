@@ -5,6 +5,7 @@
   "type": "module",
   "main": "worker.ts",
   "scripts": {
+    "predev": "pnpm run build:worker",
     "dev": "wrangler dev --port 8790 --local",
     "predeploy": "pnpm run build:worker",
     "deploy": "wrangler deploy",

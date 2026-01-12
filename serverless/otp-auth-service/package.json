@@ -22,6 +22,7 @@
     }
   },
   "scripts": {
+    "predev": "pnpm run build:worker",
     "dev": "concurrently -n worker,app -c yellow,cyan --kill-others-on-fail --success first \"pnpm dev:worker\" \"pnpm dev:app\"",
     "dev:worker": "wrangler dev --port 8787 --local",
     "dev:app": "vite",
