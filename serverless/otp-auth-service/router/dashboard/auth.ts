@@ -226,5 +226,6 @@ export async function handleSuperAdminRoute(
     }
     
     const handlerResponse = await handler(request, env, auth?.customerId || null);
-    return await wrapWithEncryption(handlerResponse, auth, request, env);
+    // CRITICAL: Do NOT encrypt here - main router handles ALL encryption (avoids double-encryption)
+    return { response: handlerResponse, customerId: auth?.customerId || null };
 }

@@ -38,7 +38,9 @@ async function createErrorResponse(
         },
     });
     // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
-    return await wrapWithEncryption(errorResponse, auth, request, env);
+    return await wrapWithEncryption(errorResponse, null, request, env, {
+        requireJWT: false
+    });
 }
 
 /**
@@ -83,6 +85,15 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
 
     // Authenticate request (optional for public endpoints)
     const auth = await authenticateRequest(request, env);
+    
+    // CRITICAL: Detect if request is using HttpOnly cookie (browser request)
+    // If yes, we must disable response encryption because JavaScript can't access HttpOnly cookies to decrypt
+    const cookieHeader = request.headers.get('Cookie');
+    const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+    
+    // For HttpOnly cookie requests, pass null to wrapWithEncryption to disable encryption
+    // For Authorization header requests (service-to-service), pass auth object to enable encryption
+    const authForEncryption = isHttpOnlyCookie ? null : auth;
 
     try {
         // Parse path segments and normalize (remove 'mods' prefix if present)
@@ -115,10 +126,14 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     },
                 });
                 // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
-                return await wrapWithEncryption(errorResponse, null, request, env);
+                return await wrapWithEncryption(errorResponse, null, request, env, {
+                    requireJWT: false
+                });
             }
             const response = await handleUploadMod(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/permissions/me or GET /permissions/me - Get current user's upload permissions
@@ -128,7 +143,10 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetCustomerPermissions } = await import('../handlers/mods/permissions.js');
             const response = await handleGetCustomerPermissions(request, env, auth);
-            const encryptedResult = await wrapWithEncryption(response, auth, request, env);
+            // Use authForEncryption (already set above) to disable encryption for HttpOnly cookies
+            const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
             // Ensure CORS headers are preserved after encryption
             const corsHeaders = createCORSHeadersWithLocalhost(request, env);
             const finalHeaders = new Headers(encryptedResult.response.headers);
@@ -152,7 +170,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetSettings } = await import('../handlers/settings/get-settings.js');
             const response = await handleGetSettings(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/review or GET /:slug/review - Get mod review page (admin/uploader only)
@@ -165,7 +185,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetModReview } = await import('../handlers/mods/review.js');
             const response = await handleGetModReview(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug or GET /:slug - Get mod detail (by slug)
@@ -206,7 +228,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const response = await handleUpdateMod(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: DELETE /mods/:slug or DELETE /:slug - Delete mod (by slug)
@@ -232,7 +256,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const response = await handleDeleteMod(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/ratings or GET /:slug/ratings - Get ratings for a mod
@@ -274,7 +300,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleSubmitModRating } = await import('../handlers/mods/ratings.js');
             const response = await handleSubmitModRating(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/snapshots or GET /:slug/snapshots - List snapshots for a mod
@@ -290,7 +318,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleListModSnapshots } = await import('../handlers/mods/snapshots.js');
             const response = await handleListModSnapshots(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/snapshots/:snapshotId or GET /:slug/snapshots/:snapshotId - Load a specific snapshot
@@ -307,7 +337,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleLoadSnapshot } = await import('../handlers/mods/snapshots.js');
             const response = await handleLoadSnapshot(request, env, modId, snapshotId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: POST /mods/:slug/versions or POST /:slug/versions - Upload new version
@@ -333,7 +365,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const response = await handleUploadVersion(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/thumbnail or GET /:slug/thumbnail - Get thumbnail
@@ -532,7 +566,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleDeleteVariant } = await import('../handlers/variants/delete.js');
             const response = await handleDeleteVariant(request, env, modId, variantId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/versions/:versionId/verify or GET /:slug/versions/:versionId/verify - Verify file integrity
@@ -556,7 +592,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleVerifyVersion } = await import('../handlers/versions/verify.js');
             const response = await handleVerifyVersion(request, env, modId, versionId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: POST /mods/:slug/versions/:versionId/validate or POST /:slug/versions/:versionId/validate - Validate file against uploaded version
@@ -580,7 +618,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleValidateVersion } = await import('../handlers/versions/validate.js');
             const response = await handleValidateVersion(request, env, modId, versionId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/versions/:versionId/badge or GET /:slug/versions/:versionId/badge - Get integrity badge

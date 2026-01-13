@@ -69,16 +69,18 @@ function isDevModeEnabled(env: Env): boolean {
         return false; // PRODUCTION: Always returns false here
     }
     
-    // ADDITIONAL SAFETY: Also require test Resend API key
+    // ADDITIONAL SAFETY: If RESEND_API_KEY is provided, it MUST be a test key
+    // This prevents accidentally using a real production key in dev mode
+    // BUT: If no RESEND_API_KEY is provided, that's OK - OTPs will be console logged
     // Production keys never start with 're_test_' (that's a test key prefix)
-    // This provides defense in depth - even if ENVIRONMENT check fails, this also fails
     // PRODUCTION: resendKey will be a real key (e.g., 're_abc123...') -> returns false
-    if (!resendKey || typeof resendKey !== 'string' || !resendKey.startsWith('re_test_')) {
+    if (resendKey && typeof resendKey === 'string' && !resendKey.startsWith('re_test_')) {
+        // Has a key, but it's not a test key - reject (might be production key)
         return false; // PRODUCTION: Always returns false here (real keys don't start with 're_test_')
     }
     
-    // Both checks passed - we're in test/development mode
-    // PRODUCTION: This line is NEVER reached
+    // ENVIRONMENT check passed, and either no RESEND_API_KEY or it's a test key
+    // PRODUCTION: This line is NEVER reached (envMode='production' fails first check)
     return true;
 }
 

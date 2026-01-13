@@ -81,14 +81,6 @@ export async function handleHealth(
   
   const jwtToken = authCookie.substring('auth_token='.length).trim();
 
-  // Create auth object for encryption
-  // Note: For health checks, we use anonymous auth since we don't need user context
-  const authForEncryption = { 
-    userId: 'anonymous', 
-    customerId: null, 
-    jwtToken 
-  };
-
   // Create health check response data
   const healthData: HealthCheckData = {
     status: 'ok',
@@ -103,15 +95,26 @@ export async function handleHealth(
     },
   });
 
-  // Wrap with encryption - but disable for HttpOnly cookie auth (browser can't decrypt)
+  // CRITICAL: Detect if request is using HttpOnly cookie (browser request)
+  // If yes, we must disable response encryption because JavaScript can't access HttpOnly cookies to decrypt
+  // For HttpOnly cookie requests, pass null to disable encryption
+  // For Authorization header requests (service-to-service), pass auth object to enable encryption
+  const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+  const authForEncryption = isHttpOnlyCookie ? null : {
+    userId: 'anonymous',
+    customerId: null,
+    jwtToken
+  };
+
+  // Wrap with encryption - disable for HttpOnly cookie auth (browser can't decrypt)
   // (JavaScript can't access HttpOnly cookies to decrypt, and HTTPS already protects data in transit)
   const encryptedResult = await wrapWithEncryption(
     response, 
-    null, // Pass null to disable encryption for HttpOnly cookies
+    authForEncryption, // Pass null for HttpOnly cookies, auth object for service-to-service
     request, 
     env,
     {
-      requireJWT: false
+      requireJWT: authForEncryption ? true : false
     }
   );
   

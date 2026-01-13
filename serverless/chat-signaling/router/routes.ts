@@ -69,23 +69,28 @@ async function wrapResponseWithEncryption(
     });
   }
 
-  // Use REAL auth result with proper customerId and JWT token
-  // This aligns with the current API framework patterns
-  const authForEncryption = {
+  // CRITICAL: Detect if request is using HttpOnly cookie (browser request)
+  // If yes, we must disable response encryption because JavaScript can't access HttpOnly cookies to decrypt
+  const cookieHeader = request.headers.get('Cookie');
+  const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+  
+  // For HttpOnly cookie requests, pass null to disable encryption
+  // For Authorization header requests (service-to-service), pass auth object to enable encryption
+  const authForEncryption = isHttpOnlyCookie ? null : {
     userId: auth.userId || 'anonymous',
     customerId: auth.customerId || null,
     jwtToken: auth.jwtToken,
   };
 
-  // Use API framework's wrapWithEncryption - but disable for HttpOnly cookie auth (browser can't decrypt)
+  // Use API framework's wrapWithEncryption - disable for HttpOnly cookie auth (browser can't decrypt)
   // (JavaScript can't access HttpOnly cookies to decrypt, and HTTPS already protects data in transit)
   const result = await wrapWithEncryption(
     handlerResponse, 
-    null, // Pass null to disable encryption for HttpOnly cookies
+    authForEncryption, // Pass null for HttpOnly cookies, auth object for service-to-service
     request, 
     env,
     {
-      requireJWT: false
+      requireJWT: authForEncryption ? true : false
     }
   );
   

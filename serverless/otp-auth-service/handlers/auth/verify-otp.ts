@@ -355,24 +355,52 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             lastLogin: session.lastLogin,
         };
         
+        // Extract API key ID from request (for inter-tenant SSO scoping)
+        // API keys are in X-OTP-API-Key header
+        let keyId: string | undefined = undefined;
+        const apiKeyHeader = request.headers.get('X-OTP-API-Key');
+        if (apiKeyHeader) {
+            const apiKey = apiKeyHeader.trim();
+            // Verify and extract keyId from API key
+            try {
+                const { verifyApiKey } = await import('../../services/api-key.js');
+                const apiKeyVerification = await verifyApiKey(apiKey, env);
+                if (apiKeyVerification && apiKeyVerification.customerId === session.customerId) {
+                    keyId = apiKeyVerification.keyId;
+                    console.log(`[OTP Verify] Using API key for SSO scoping:`, {
+                        keyId,
+                        customerId: session.customerId
+                    });
+                }
+            } catch (error) {
+                console.error('[OTP Verify] Failed to verify API key for SSO scoping:', error);
+                // Continue without keyId - SSO scoping is optional
+            }
+        }
+        
         // CRITICAL: This will NOT return OTP email in response body
-        const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request);
+        // Pass keyId for inter-tenant SSO scoping
+        const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request, keyId);
         
         // Set HttpOnly cookie for automatic authentication across all *.idling.app domains
         // SECURITY: HttpOnly prevents XSS, Secure ensures HTTPS-only, SameSite=Lax prevents CSRF
         const isProduction = env.ENVIRONMENT === 'production';
-        const cookieDomain = isProduction ? '.idling.app' : undefined; // undefined for localhost
+        const cookieDomain = isProduction ? '.idling.app' : undefined; // undefined for localhost (omit Domain entirely)
         const cookieSecure = isProduction ? 'Secure; ' : ''; // Only set Secure in production (HTTPS)
         
-        const cookieValue = [
+        // CRITICAL: For localhost, DO NOT set Domain attribute at all - let browser default to current host
+        // Setting Domain=localhost can cause cookie issues in some browsers
+        const cookieParts = [
             `auth_token=${tokenResponse.token}`,
-            `Domain=${cookieDomain || 'localhost'}`,
+            cookieDomain ? `Domain=${cookieDomain}` : null, // Only set Domain in production
             'Path=/',
             'HttpOnly',
             cookieSecure,
             'SameSite=Lax',
             `Max-Age=${tokenResponse.expires_in}` // 7 hours (25200 seconds)
-        ].filter(Boolean).join('; ');
+        ].filter(Boolean); // Remove null values
+        
+        const cookieValue = cookieParts.join('; ');
         
         return new Response(JSON.stringify(tokenResponse), {
             headers: { 

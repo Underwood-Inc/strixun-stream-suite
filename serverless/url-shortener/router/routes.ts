@@ -25,11 +25,19 @@ interface Env {
  */
 async function wrapWithEncryption(handlerResponse: Response, request: Request, env: Env, auth: any = null): Promise<Response> {
   try {
+    // CRITICAL: Detect if request is using HttpOnly cookie (browser request)
+    // If yes, we must disable response encryption because JavaScript can't access HttpOnly cookies to decrypt
+    const cookieHeader = request.headers.get('Cookie');
+    const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+    
+    // For HttpOnly cookie requests, pass null to disable encryption
+    // For Authorization header requests (service-to-service), pass auth object to enable encryption
+    const authForEncryption = isHttpOnlyCookie ? null : auth;
+    
     // Use API framework's wrapWithEncryption for proper integrity headers and encryption
-    // CRITICAL: Pass null to disable encryption for HttpOnly cookies (JavaScript can't decrypt)
     const { wrapWithEncryption: apiWrapWithEncryption } = await import('@strixun/api-framework');
-    const result = await apiWrapWithEncryption(handlerResponse, null, request, env, {
-      requireJWT: false // Disable encryption for HttpOnly cookie auth
+    const result = await apiWrapWithEncryption(handlerResponse, authForEncryption, request, env, {
+      requireJWT: authForEncryption ? true : false // Only require JWT if we have auth to encrypt with
     });
     return result.response;
   } catch (error) {

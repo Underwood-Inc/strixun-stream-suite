@@ -18,16 +18,10 @@ on:
   push:
     branches: [master, main]
     paths:
-      # Trigger on markdown file changes in documentation directories
-      - 'docs/**/*.md'
-      - 'product-docs/**/*.md'
-      - 'serverless/**/*.md'
-      - 'mods-hub/**/*.md'
-      - 'shared-components/**/*.md'
+      # Trigger ONLY on changes to PANDA_CORE documentation hub
+      - '╠═══════ PANDA_CORE ═══════╣/**/*.md'
       # Also trigger if the migration script itself changes
       - 'scripts/migrate-wiki.js'
-      # Root level markdown files (like README.md changes that affect Home page)
-      - 'README.md'
   workflow_dispatch: # Allow manual triggering
 
 # Allow only one concurrent sync
@@ -71,19 +65,19 @@ jobs:
       - name: Check for markdown changes
         id: check-changes
         run: |
-          # Check if any markdown files were changed
+          # Check if any PANDA_CORE markdown files were changed
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Manual trigger - will sync all docs"
+            echo "Manual trigger - will sync all PANDA_CORE docs"
             echo "should_sync=true" >> $GITHUB_OUTPUT
           else
-            # Check if any .md files were changed
-            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '\.(md|MD)$' || true)
+            # Check if any .md files in PANDA_CORE were changed
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '╠═══════ PANDA_CORE ═══════╣.*\.(md|MD)$' || true)
             if [ -n "$CHANGED_FILES" ]; then
-              echo "Markdown files changed:"
+              echo "PANDA_CORE markdown files changed:"
               echo "$CHANGED_FILES"
               echo "should_sync=true" >> $GITHUB_OUTPUT
             else
-              echo "No markdown files changed, skipping sync"
+              echo "No PANDA_CORE markdown files changed, skipping sync"
               echo "should_sync=false" >> $GITHUB_OUTPUT
             fi
           fi
@@ -172,5 +166,5 @@ jobs:
       - name: Skip message
         if: steps.check-changes.outputs.should_sync == 'false'
         run: |
-          echo "ℹ No markdown files were changed in this commit, skipping wiki sync."
+          echo "ℹ No PANDA_CORE markdown files were changed in this commit, skipping wiki sync."
 

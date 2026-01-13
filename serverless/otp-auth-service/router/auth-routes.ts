@@ -76,12 +76,17 @@ async function authenticateRequest(request: Request, env: Env): Promise<ApiKeyAu
 }
 
 /**
- * Authenticate request using JWT token
+ * Authenticate request using JWT token with SSO scope validation
  * @param request - HTTP request
  * @param env - Worker environment
+ * @param requestingKeyId - API key ID from request (optional, for SSO validation)
  * @returns JWT payload with customerId or null
  */
-async function authenticateJWT(request: Request, env: Env): Promise<{ customerId: string; payload: any } | null> {
+async function authenticateJWT(
+    request: Request,
+    env: Env,
+    requestingKeyId?: string
+): Promise<{ customerId: string; payload: any } | null> {
     // CRITICAL: Check HttpOnly cookie FIRST, then Authorization header
     let token: string | null = null;
     
@@ -115,6 +120,34 @@ async function authenticateJWT(request: Request, env: Env): Promise<{ customerId
             return null;
         }
         
+        // INTER-TENANT SSO VALIDATION
+        // Validate that the requesting API key has permission to use this session
+        // This enables customers to control which of their API keys can share sessions
+        if (payload.ssoScope && requestingKeyId) {
+            const { validateSSOAccess } = await import('../services/api-key-management.js');
+            const hasAccess = validateSSOAccess(
+                requestingKeyId,
+                payload.ssoScope,
+                payload.customerId
+            );
+            
+            if (!hasAccess) {
+                console.log('[AuthRoutes] SSO access denied:', {
+                    requestingKeyId,
+                    sessionKeyId: payload.keyId,
+                    ssoScope: payload.ssoScope,
+                    customerId: payload.customerId
+                });
+                return null; // SSO access denied
+            }
+            
+            console.log('[AuthRoutes] SSO access granted:', {
+                requestingKeyId,
+                sessionKeyId: payload.keyId,
+                ssoScope: payload.ssoScope
+            });
+        }
+        
         return {
             customerId: payload.customerId,
             payload
@@ -146,76 +179,67 @@ export async function handleAuthRoutes(
     let apiKeyAuth: ApiKeyAuth | null = null;
     let jwtAuth: { customerId: string; payload: any } | null = null;
     
-    // Step 1: Try JWT authentication first
-    jwtAuth = await authenticateJWT(request, env);
+    // Step 1: Check API key first (to get keyId for SSO validation)
+    // API keys are for multi-tenant identification, not authentication
+    const AUTH_ENDPOINTS_NO_JWT = ['/auth/request-otp', '/auth/verify-otp'];
+    const isAuthEndpointNoJWT = AUTH_ENDPOINTS_NO_JWT.includes(path);
+    
+    if (!isAuthEndpointNoJWT) {
+        apiKeyAuth = await authenticateRequest(request, env);
+    }
+    
+    // Step 2: Try JWT authentication with SSO validation
+    // Pass the API key ID (if present) for inter-tenant SSO validation
+    jwtAuth = await authenticateJWT(request, env, apiKeyAuth?.keyId);
     if (jwtAuth) {
         customerId = jwtAuth.customerId;
         console.log(`[AuthRoutes] JWT authentication successful:`, {
             customerId: jwtAuth.customerId,
+            keyId: apiKeyAuth?.keyId,
             path
         });
     }
     
-    // Step 2: Check API key (multi-tenant identification, NOT security)
-    // API keys are for: subscription tier management, rate limiting, entity separation
-    // JWT handles security/authentication - API key identifies which customer entity
-    // If API key is provided, it MUST be valid (identifies customer entity for subscription/rate limiting)
-    // EXCEPTION: Auth endpoints that don't require JWT (/auth/request-otp, etc.) don't require API key
-    const AUTH_ENDPOINTS_NO_JWT = ['/auth/request-otp', '/auth/verify-otp'];
-    const isAuthEndpointNoJWT = AUTH_ENDPOINTS_NO_JWT.includes(path);
-    
+    // Step 3: Validate API key and JWT consistency
     // CRITICAL: API keys MUST be in X-OTP-API-Key header ONLY
     // Authorization header is for JWT tokens ONLY
     const apiKeyHeader = request.headers.get('X-OTP-API-Key');
     const hasApiKeyInHeader = !!apiKeyHeader;
     
-    // API Key: Multi-tenant identification (subscription tiers, rate limiting, entity separation)
-    // NOT for security - JWT handles authentication/encryption
-    // API key is OPTIONAL but when provided, validates customer entity for subscription/rate limiting
-    if (!isAuthEndpointNoJWT) {
-        // Check API key if provided (for multi-tenant identification)
-        apiKeyAuth = await authenticateRequest(request, env);
-        
-        // If API key is provided, it must be valid (for subscription/rate limiting purposes)
-        // API key identifies the customer entity, so invalid key = can't identify entity
-        if (hasApiKeyInHeader && !apiKeyAuth) {
-            // API key was provided but is invalid/revoked - reject request
-            // This is required because API key identifies which customer entity (for subscription/rate limiting)
-            console.log(`[AuthRoutes] API key provided but invalid or revoked`);
-            return {
-                response: new Response(JSON.stringify({ error: 'Invalid or revoked API key' }), {
-                    status: 401,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-                }),
-                customerId: null
-            };
-        }
-        
-        // If both JWT and API key are provided, validate they match the same customer entity
-        // This ensures the authenticated user (JWT) belongs to the identified entity (API key)
-        if (jwtAuth && apiKeyAuth && jwtAuth.customerId !== apiKeyAuth.customerId) {
-            console.log(`[AuthRoutes] Customer mismatch: JWT and API key must belong to the same customer entity`, {
-                jwtCustomerId: jwtAuth.customerId,
-                apiKeyCustomerId: apiKeyAuth.customerId
-            });
-            return {
-                response: new Response(JSON.stringify({ error: 'Customer mismatch: JWT and API key must belong to the same customer entity' }), {
-                    status: 403,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-                }),
-                customerId: null
-            };
-        }
-    } else {
-        // For auth endpoints that don't require JWT, API key is optional
-        // API key is ONLY for CORS bypass and multi-tenant features - JWT requirements are UNCHANGED
-        apiKeyAuth = await authenticateRequest(request, env);
-        
-        // SECURITY: If API key is provided, use it to get customerId for origin validation
-        // This ensures origin validation runs even when no JWT is present
-        if (apiKeyAuth && !customerId) {
-            customerId = apiKeyAuth.customerId;
-        }
+    // If API key is provided but invalid, reject request
+    if (!isAuthEndpointNoJWT && hasApiKeyInHeader && !apiKeyAuth) {
+        // API key was provided but is invalid/revoked - reject request
+        console.log(`[AuthRoutes] API key provided but invalid or revoked`);
+        return {
+            response: new Response(JSON.stringify({ error: 'Invalid or revoked API key' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            }),
+            customerId: null
+        };
+    }
+    
+    // If both JWT and API key are provided, validate they match the same customer entity
+    // This ensures the authenticated user (JWT) belongs to the identified entity (API key)
+    if (jwtAuth && apiKeyAuth && jwtAuth.customerId !== apiKeyAuth.customerId) {
+        console.log(`[AuthRoutes] Customer mismatch: JWT and API key must belong to the same customer entity`, {
+            jwtCustomerId: jwtAuth.customerId,
+            apiKeyCustomerId: apiKeyAuth.customerId
+        });
+        return {
+            response: new Response(JSON.stringify({ error: 'Customer mismatch: JWT and API key must belong to the same customer entity' }), {
+                status: 403,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            }),
+            customerId: null
+        };
+    }
+    
+    // For auth endpoints that don't require JWT, API key handling is already done above
+    // SECURITY: If API key is provided, use it to get customerId for origin validation
+    // This ensures origin validation runs even when no JWT is present
+    if (apiKeyAuth && !customerId) {
+        customerId = apiKeyAuth.customerId;
     }
     
     // Get customer for origin validation and CORS headers (needed when API key is used)

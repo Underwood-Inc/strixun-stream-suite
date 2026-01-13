@@ -77,15 +77,19 @@ export async function handleResponse<T = unknown>(
 ): Promise<APIResponse<T>> {
   let data: T;
   const contentType = response.headers.get('content-type');
-  const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+  const encryptedHeader = response.headers.get('X-Encrypted');
+  const isEncrypted = encryptedHeader === 'true';
+  const isExplicitlyUnencrypted = encryptedHeader === 'false'; // Explicitly marked as unencrypted
 
   try {
     if (contentType?.includes('application/json')) {
       data = await response.json();
       
       // Decrypt if response is encrypted (check both header and data structure)
-      const dataIsEncrypted = data && typeof data === 'object' && 'encrypted' in data && (data as any).encrypted === true;
-      const shouldDecrypt = isEncrypted || dataIsEncrypted; // Check both header and data structure
+      // CRITICAL: If X-Encrypted header is explicitly 'false', DO NOT attempt decryption
+      // The header is the authoritative source - respect it even if data has encrypted property
+      const dataIsEncrypted = !isExplicitlyUnencrypted && data && typeof data === 'object' && 'encrypted' in data && (data as any).encrypted === true;
+      const shouldDecrypt = isEncrypted || dataIsEncrypted; // Only decrypt if header says 'true' OR data says encrypted (and header doesn't explicitly say 'false')
       const token = getTokenForDecryption(request);
       console.log('[ResponseHandler] Checking encryption:', { 
         isEncrypted, 
@@ -294,14 +298,18 @@ export async function handleErrorResponse(
 ): Promise<APIError> {
   let errorData: unknown;
   const contentType = response.headers.get('content-type');
-  const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+  const encryptedHeader = response.headers.get('X-Encrypted');
+  const isEncrypted = encryptedHeader === 'true';
+  const isExplicitlyUnencrypted = encryptedHeader === 'false'; // Explicitly marked as unencrypted
 
   try {
     if (contentType?.includes('application/json')) {
       errorData = await response.json();
       
-      const errorIsEncrypted = errorData && typeof errorData === 'object' && 'encrypted' in errorData && (errorData as any).encrypted === true;
-      const shouldDecryptError = isEncrypted || errorIsEncrypted;
+      // CRITICAL: If X-Encrypted header is explicitly 'false', DO NOT attempt decryption
+      // The header is the authoritative source - respect it even if data has encrypted property
+      const errorIsEncrypted = !isExplicitlyUnencrypted && errorData && typeof errorData === 'object' && 'encrypted' in errorData && (errorData as any).encrypted === true;
+      const shouldDecryptError = isEncrypted || errorIsEncrypted; // Only decrypt if header says 'true' OR data says encrypted (and header doesn't explicitly say 'false')
       if (shouldDecryptError) {
         const token = getTokenForDecryption(request);
         

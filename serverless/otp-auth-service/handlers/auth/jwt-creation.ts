@@ -83,13 +83,15 @@ function generateJWTId(): string {
  * @param customerId - Customer ID (MANDATORY)
  * @param env - Worker environment
  * @param request - HTTP request (optional, for IP tracking)
+ * @param keyId - API key ID (optional, for inter-tenant SSO scoping)
  * @returns OAuth 2.0 token response (DOES NOT include OTP email)
  */
 export async function createAuthToken(
     customer: Customer,
     customerId: string,
     env: Env,
-    request?: Request
+    request?: Request,
+    keyId?: string
 ): Promise<TokenResponse> {
     // FAIL-FAST: customerId is MANDATORY
     if (!customerId) {
@@ -144,6 +146,39 @@ export async function createAuthToken(
         throw new Error(`Customer ID mismatch: expected ${customerId}, got ${customer.customerId}`);
     }
     
+    // Retrieve SSO config for the API key (if provided)
+    // This enables inter-tenant SSO validation
+    let ssoScope: string[] = [];
+    if (keyId) {
+        try {
+            const { getApiKeyById } = await import('../../services/api-key-management.js');
+            const keyData = await getApiKeyById(customerId, keyId, env);
+            
+            if (keyData && keyData.ssoConfig) {
+                const ssoConfig = keyData.ssoConfig;
+                
+                // Build SSO scope based on isolation mode
+                if (ssoConfig.isolationMode === 'none' && ssoConfig.globalSsoEnabled) {
+                    // Global SSO: session can be used by ALL customer's keys
+                    ssoScope = ['*']; // Wildcard means all keys for this customer
+                } else if (ssoConfig.isolationMode === 'selective') {
+                    // Selective SSO: session can be used by specific keys
+                    ssoScope = [keyId, ...ssoConfig.allowedKeyIds];
+                } else if (ssoConfig.isolationMode === 'complete') {
+                    // Complete isolation: session ONLY for this key
+                    ssoScope = [keyId];
+                }
+            } else {
+                // No SSO config: default to key-only scope (complete isolation)
+                ssoScope = [keyId];
+            }
+        } catch (error) {
+            console.error(`[JWT Creation] Failed to retrieve SSO config for keyId ${keyId}:`, error);
+            // Fail-safe: default to key-only scope
+            ssoScope = keyId ? [keyId] : [];
+        }
+    }
+    
     // JWT Standard Claims (RFC 7519) + OAuth 2.0 + Custom
     // NOTE: Email is included in JWT payload for internal use, but NOT returned in response body
     // CRITICAL: sub (subject) is customerId - NO userId
@@ -165,6 +200,10 @@ export async function createAuthToken(
         customerId: customerId, // MANDATORY - the ONLY identifier
         csrf: csrfToken, // CSRF token included in JWT
         isSuperAdmin: isSuperAdmin, // Super admin status
+        
+        // Inter-Tenant SSO Claims (Multi-Tenant Architecture)
+        keyId: keyId || null, // API key ID (for tenant identification)
+        ssoScope: ssoScope, // Keys that can use this session (for SSO validation)
     };
     
     // Log JWT creation for debugging

@@ -73,15 +73,8 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
         });
     }
     
-    const jwtToken = authCookie.substring('auth_token='.length).trim();
-
-    // Authenticate request to get auth object for encryption
-    const auth = await authenticateRequest(request, env);
-    const authForEncryption = auth && auth.customerId 
-        ? { customerId: auth.customerId, jwtToken } 
-        : { customerId: 'anonymous', jwtToken };
-
     // Create health check response
+    // Note: Health check doesn't require encryption (passing null to wrapWithEncryption)
     const healthData = { 
         status: 'ok', 
         message: 'Customer API is running',
@@ -146,10 +139,19 @@ export default {
                 },
             });
             
+            // Detect if request is from browser (HttpOnly cookie auth)
+            const cookieHeader = request.headers.get('Cookie');
+            const hasHttpOnlyCookie = cookieHeader?.includes('auth_token=') || false;
+            
+            // For HttpOnly cookie requests, pass null to disable encryption
+            // For service-to-service calls, pass auth (might be null, which is fine with allowServiceCallsWithoutJWT)
+            const authForEncryption = hasHttpOnlyCookie ? null : auth;
+            
             // Wrap with encryption to add integrity headers for service-to-service calls
             // CRITICAL: Allow service-to-service calls without JWT (needed for OTP auth service)
-            const wrappedResult = await wrapWithEncryption(errorResponse, auth, request, env, {
-                allowServiceCallsWithoutJWT: true
+            const wrappedResult = await wrapWithEncryption(errorResponse, authForEncryption, request, env, {
+                allowServiceCallsWithoutJWT: true,
+                requireJWT: authForEncryption ? true : false
             });
             return wrappedResult.response;
         } catch (error: any) {

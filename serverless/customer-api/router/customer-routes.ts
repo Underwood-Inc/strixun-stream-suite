@@ -40,13 +40,24 @@ async function handleCustomerRoute(
     // Get handler response
     const handlerResponse = await handler(request, env, auth);
 
+    // Detect if request is from browser (HttpOnly cookie auth)
+    const cookieHeader = request.headers.get('Cookie');
+    const hasHttpOnlyCookie = cookieHeader?.includes('auth_token=') || false;
+    
+    // CRITICAL: Disable encryption for browser requests (HttpOnly cookies)
+    // Browsers can't access HttpOnly cookies to decrypt responses
+    // For service-to-service calls (Authorization header), encryption is enabled
+    const authForEncryption = hasHttpOnlyCookie ? null : auth;
+
     // Use shared middleware for encryption and integrity headers
     // This automatically:
-    // - Encrypts responses if JWT token is present
+    // - Encrypts responses if JWT token is present (service-to-service only)
     // - Adds integrity headers for internal calls
+    // - For browser requests: passes null to disable encryption
     // CRITICAL: Allow service-to-service calls without JWT (needed for OTP auth service)
-    return await wrapWithEncryption(handlerResponse, auth, request, env, {
-        allowServiceCallsWithoutJWT: true
+    return await wrapWithEncryption(handlerResponse, authForEncryption, request, env, {
+        allowServiceCallsWithoutJWT: true,
+        requireJWT: authForEncryption ? true : false // Only require JWT if we have auth to encrypt with
     });
 }
 
@@ -277,11 +288,19 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
                 ...Object.fromEntries(corsHeaders.entries()),
             },
         });
+        // Detect if request is from browser (HttpOnly cookie auth)
+        const cookieHeader = request.headers.get('Cookie');
+        const hasHttpOnlyCookie = cookieHeader?.includes('auth_token=') || false;
+        
+        // For HttpOnly cookie requests, pass null to disable encryption
+        // For service-to-service calls, pass auth (might be null, which is fine with allowServiceCallsWithoutJWT)
+        const authForEncryption = hasHttpOnlyCookie ? null : (auth as any);
+        
         // Use wrapWithEncryption to ensure integrity headers are added for internal calls
         // CRITICAL: Allow service-to-service calls without JWT (needed for OTP auth service)
-        // Note: auth might have customerId: null, which is fine for wrapWithEncryption
-        return await wrapWithEncryption(errorResponse, auth as any, request, env, {
-            allowServiceCallsWithoutJWT: true
+        return await wrapWithEncryption(errorResponse, authForEncryption, request, env, {
+            allowServiceCallsWithoutJWT: true,
+            requireJWT: authForEncryption ? true : false
         });
     }
 }
