@@ -1337,7 +1337,8 @@
       const response = await fetch(\`\${API_URL}/auth/verify-otp\`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
+        body: JSON.stringify({ email, otp }),
+        credentials: 'include' // Send HttpOnly cookies
       });
       
       if (!response.ok) {
@@ -1345,17 +1346,15 @@
         throw new Error(error.detail || 'Invalid OTP');
       }
       
-      const data = await response.json();
-      localStorage.setItem('auth_token', data.token);
-      return data;
+      // HttpOnly cookie is set automatically by auth service
+      // No need to store token in localStorage!
+      return await response.json();
     }
 
     async function getCurrentUser() {
-      const token = localStorage.getItem('auth_token');
-      if (!token) return null;
-      
+      // HttpOnly cookie is sent automatically with credentials: 'include'
       const response = await fetch(\`\${API_URL}/auth/me\`, {
-        headers: { 'Authorization': \`Bearer \${token}\` }
+        credentials: 'include' // Send HttpOnly cookies
       });
       
       if (!response.ok) return null;
@@ -1426,8 +1425,13 @@
       document.getElementById('otp-error').textContent = '';
     }
 
-    function logout() {
-      localStorage.removeItem('auth_token');
+    async function logout() {
+      // Call logout endpoint to clear HttpOnly cookie
+      await fetch(\`\${API_URL}/auth/logout\`, {
+        method: 'POST',
+        credentials: 'include' // Send HttpOnly cookies
+      });
+      
       document.getElementById('login-form').style.display = 'block';
       document.getElementById('welcome').style.display = 'none';
       document.getElementById('email').value = '';
@@ -1476,28 +1480,22 @@ function LoginForm() {
   const [customer, setUser] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      getCurrentUser();
-    }
+    // Check auth on mount - HttpOnly cookie sent automatically
+    getCurrentUser();
   }, []);
 
   async function getCurrentUser() {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
-    
     try {
       const response = await fetch(\`\${API_URL}/auth/me\`, {
-        headers: { 'Authorization': \`Bearer \${token}\` }
+        credentials: 'include' // Send HttpOnly cookies
       });
       if (response.ok) {
         const customerData = await response.json();
         setUser(customerData);
-      } else {
-        localStorage.removeItem('auth_token');
       }
     } catch (err) {
-      localStorage.removeItem('auth_token');
+      // Not authenticated or error
+      setUser(null);
     }
   }
 
@@ -1544,12 +1542,14 @@ function LoginForm() {
       const response = await fetch(\`\${API_URL}/auth/verify-otp\`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
+        body: JSON.stringify({ email, otp }),
+        credentials: 'include' // Send HttpOnly cookies
       });
       
       const data = await response.json();
       if (response.ok) {
-        localStorage.setItem('auth_token', data.token);
+        // HttpOnly cookie is set automatically by auth service
+        // No need to store token in localStorage!
         setUser(data);
         setError('');
       } else {
@@ -1562,8 +1562,13 @@ function LoginForm() {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('auth_token');
+  const logout = async () => {
+    // Call logout endpoint to clear HttpOnly cookie
+    await fetch(\`\${API_URL}/auth/logout\`, {
+      method: 'POST',
+      credentials: 'include' // Send HttpOnly cookies
+    });
+    
     setUser(null);
     setEmail('');
     setOtp('');
@@ -1751,27 +1756,21 @@ export default LoginForm;</code></pre>
   const API_URL = 'https://auth.idling.app';
 
   onMount(async () => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      await getCurrentUser();
-    }
+    // Check auth on mount - HttpOnly cookie sent automatically
+    await getCurrentUser();
   });
 
   async function getCurrentUser() {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
-    
     try {
       const response = await fetch(\`\${API_URL}/auth/me\`, {
-        headers: { 'Authorization': \`Bearer \${token}\` }
+        credentials: 'include' // Send HttpOnly cookies
       });
       if (response.ok) {
         customer = await response.json();
-      } else {
-        localStorage.removeItem('auth_token');
       }
     } catch (err) {
-      localStorage.removeItem('auth_token');
+      // Not authenticated or error
+      customer = null;
     }
   }
 
@@ -1816,12 +1815,14 @@ export default LoginForm;</code></pre>
       const response = await fetch(\`\${API_URL}/auth/verify-otp\`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
+        body: JSON.stringify({ email, otp }),
+        credentials: 'include' // Send HttpOnly cookies
       });
       
       const data = await response.json();
       if (response.ok) {
-        localStorage.setItem('auth_token', data.token);
+        // HttpOnly cookie is set automatically by auth service
+        // No need to store token in localStorage!
         customer = data;
         error = '';
       } else {
@@ -1834,8 +1835,13 @@ export default LoginForm;</code></pre>
     }
   }
 
-  function logout() {
-    localStorage.removeItem('auth_token');
+  async function logout() {
+    // Call logout endpoint to clear HttpOnly cookie
+    await fetch(\`\${API_URL}/auth/logout\`, {
+      method: 'POST',
+      credentials: 'include' // Send HttpOnly cookies
+    });
+    
     customer = null;
     email = '';
     otp = '';
@@ -2541,10 +2547,11 @@ flowchart LR
                 <div class="accordion-body">
                     <h4>Token Storage</h4>
                     <ul>
-                        <li><strong>Web Apps:</strong> Store in httpOnly cookies (preferred) or localStorage</li>
+                        <li><strong>Web Apps:</strong> MUST use HttpOnly cookies (set automatically by auth service)</li>
                         <li><strong>Mobile Apps:</strong> Use secure storage (Keychain/Keystore)</li>
-                        <li><strong>Never:</strong> Store tokens in URL parameters or plain cookies</li>
+                        <li><strong>Never:</strong> Store tokens in URL parameters, localStorage, or plain cookies</li>
                     </ul>
+                    <p><strong>⚠ CRITICAL:</strong> For web applications, tokens are ONLY stored in HttpOnly cookies set by the auth service. Never manually store JWT tokens in localStorage or sessionStorage - this exposes your application to XSS attacks.</p>
 
                     <h4>HTTPS Only</h4>
                     <p>Always use HTTPS in production. The API only accepts HTTPS connections.</p>
@@ -2711,16 +2718,11 @@ flowchart LR
         const usageBar = document.getElementById('api-usage-bar');
         
         async function loadApiUsage() {
-            const token = localStorage.getItem('auth_token');
-            if (!token) {
-                usageBar.classList.remove('visible');
-                return;
-            }
-
             try {
+                // HttpOnly cookie is sent automatically with credentials: 'include'
                 const response = await fetch(`${API_URL}/auth/quota`, {
+                    credentials: 'include', // Send HttpOnly cookies
                     headers: {
-                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 });
@@ -2729,7 +2731,6 @@ flowchart LR
                     // If unauthorized, hide the bar
                     if (response.status === 401) {
                         usageBar.classList.remove('visible');
-                        localStorage.removeItem('auth_token');
                     }
                     return;
                 }
@@ -2800,11 +2801,10 @@ flowchart LR
         // Load usage on page load
         loadApiUsage();
 
-        // Refresh usage every 30 seconds if customer is authenticated
+        // Refresh usage every 30 seconds
+        // HttpOnly cookie is sent automatically, so just call loadApiUsage
         setInterval(() => {
-            if (localStorage.getItem('auth_token')) {
-                loadApiUsage();
-            }
+            loadApiUsage();
         }, 30000);
 
         // Initialize Swagger UI when API Endpoints accordion is opened

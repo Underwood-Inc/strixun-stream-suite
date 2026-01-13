@@ -221,24 +221,18 @@ export function IntegrityBadge({ modId, slug, versionId, style = 'flat' }: Integ
                 const badgeEndpoint = `${API_BASE_URL}/mods/${identifier}/versions/${versionId}/badge${style !== 'flat' ? `?style=${style}` : ''}`;
                 
                 // PUBLIC API: Badge endpoint works without auth
-                // Optionally include auth token for enhanced verification (if available)
+                // For authenticated users, HttpOnly cookie is sent automatically
                 // But badge will work fine without it for public access and social media embeds
-                const token = await getAuthToken();
-                
-                // Build headers - badge works without auth, but include token if available for verification
                 const headers: HeadersInit = {
                     'Accept': 'image/svg+xml',
                 };
                 
-                if (token) {
-                    headers['Authorization'] = `Bearer ${token}`;
-                }
-                
                 // Fetch badge - always returns unencrypted SVG (public API)
+                // HttpOnly cookie is sent automatically with credentials: 'include'
                 const response = await fetch(badgeEndpoint, {
                     method: 'GET',
                     headers,
-                    credentials: 'include',
+                    credentials: 'include', // Send HttpOnly auth_token cookie if available
                 });
                 
                 if (!response.ok) {

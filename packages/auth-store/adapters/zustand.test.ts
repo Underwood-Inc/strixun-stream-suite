@@ -1,178 +1,333 @@
 /**
- * Unit tests for Zustand auth store adapter
- * Tests customerId extraction from JWT in setCustomer
+ * Unit Tests for Zustand Auth Store Adapter
+ * Tests the React/Zustand auth adapter with HttpOnly cookie-based SSO
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createAuthStore } from './zustand.js';
-import type { Customer } from '../core/types.js';
+import type { AuthenticatedCustomer } from '../core/types.js';
 
-// Mock JWT creation helper (Node.js compatible)
-function createMockJWT(payload: Record<string, any>): string {
-    const header = { alg: 'HS256', typ: 'JWT' };
-    const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url');
-    const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
-    const signature = 'mock_signature';
-    const encodedSignature = Buffer.from(signature).toString('base64url');
-    return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
-}
+// Mock API framework client
+vi.mock('@strixun/api-framework/client', () => ({
+    createAPIClient: vi.fn(() => ({
+        get: vi.fn(),
+        post: vi.fn(),
+    })),
+}));
 
-describe('Zustand Auth Store - setCustomer customerId extraction', () => {
+// Mock core API functions
+vi.mock('../core/api.js', async (importOriginal) => {
+    const original = await importOriginal();
+    return {
+        ...original,
+        fetchCustomerInfo: vi.fn(),
+        getAuthApiUrl: vi.fn(() => 'https://auth.idling.app'),
+    };
+});
+
+describe('Zustand Auth Store Adapter', () => {
     let store: ReturnType<typeof createAuthStore>;
     
     beforeEach(() => {
-        // Create a fresh store for each test
-        store = createAuthStore({
-            authApiUrl: 'http://localhost:8787',
-            storageKey: 'test-auth-storage',
-            enableSessionRestore: false, // Disable for unit tests
-            enableTokenValidation: false, // Disable for unit tests
+        vi.clearAllMocks();
+        store = createAuthStore();
+    });
+
+    afterEach(() => {
+        vi.resetAllMocks();
+    });
+
+    describe('Initial State', () => {
+        it('should have correct initial state', () => {
+            const state = store.getState();
+            
+            expect(state.customer).toBeNull();
+            expect(state.isAuthenticated).toBe(false);
+            expect(state.isSuperAdmin).toBe(false);
+        });
+
+        it('should have all required methods', () => {
+            const state = store.getState();
+            
+            expect(typeof state.setCustomer).toBe('function');
+            expect(typeof state.logout).toBe('function');
+            expect(typeof state.checkAuth).toBe('function');
         });
     });
 
-    it('should extract customerId from JWT when setCustomer is called without customerId', () => {
-        const customerId = 'cust_0ab4c4434c48';
-        const email = 'test@example.com';
-        
-        // Create JWT with customerId
-        const token = createMockJWT({
-            sub: customerId,
-            email: email,
-            customerId: customerId,
-            exp: Math.floor(Date.now() / 1000) + 3600,
-            iat: Math.floor(Date.now() / 1000),
+    describe('setCustomer', () => {
+        it('should set customer and update authentication state', () => {
+            const customer: AuthenticatedCustomer = {
+                customerId: 'cust_123',
+                email: 'test@example.com',
+                displayName: 'Test User',
+                isSuperAdmin: false,
+            };
+
+            store.getState().setCustomer(customer);
+
+            const state = store.getState();
+            expect(state.customer).toEqual(customer);
+            expect(state.isAuthenticated).toBe(true);
+            expect(state.isSuperAdmin).toBe(false);
         });
 
-        // Call setCustomer without customerId in customer object
-        const customerWithoutCustomerId: Customer = {
-            customerId: customerId,
-            email: email,
-            token: token,
-            expiresAt: new Date(Date.now() + 3600000).toISOString(),
-        };
+        it('should set isSuperAdmin from customer object', () => {
+            const adminCustomer: AuthenticatedCustomer = {
+                customerId: 'cust_admin',
+                email: 'admin@example.com',
+                displayName: 'Admin User',
+                isSuperAdmin: true,
+            };
 
-        store.getState().setCustomer(customerWithoutCustomerId);
+            store.getState().setCustomer(adminCustomer);
 
-        // Verify customerId was extracted from JWT
-        const state = store.getState();
-        expect(state.customer).not.toBeNull();
-        expect(state.customer?.customerId).toBe(customerId);
-        expect(state.customer?.email).toBe(email);
+            const state = store.getState();
+            expect(state.customer).toEqual(adminCustomer);
+            expect(state.isAuthenticated).toBe(true);
+            expect(state.isSuperAdmin).toBe(true);
+        });
+
+        it('should clear authentication when setting null customer', () => {
+            // First set a customer
+            const customer: AuthenticatedCustomer = {
+                customerId: 'cust_123',
+                email: 'test@example.com',
+                isSuperAdmin: false,
+            };
+            store.getState().setCustomer(customer);
+            expect(store.getState().isAuthenticated).toBe(true);
+
+            // Then clear it
+            store.getState().setCustomer(null);
+
+            const state = store.getState();
+            expect(state.customer).toBeNull();
+            expect(state.isAuthenticated).toBe(false);
+            expect(state.isSuperAdmin).toBe(false);
+        });
+
+        it('should handle customer without displayName', () => {
+            const customer: AuthenticatedCustomer = {
+                customerId: 'cust_123',
+                email: 'test@example.com',
+                isSuperAdmin: false,
+            };
+
+            store.getState().setCustomer(customer);
+
+            const state = store.getState();
+            expect(state.customer).toEqual(customer);
+            expect(state.isAuthenticated).toBe(true);
+        });
+
+        it('should default isSuperAdmin to false if not provided', () => {
+            const customer: AuthenticatedCustomer = {
+                customerId: 'cust_123',
+                email: 'test@example.com',
+            };
+
+            store.getState().setCustomer(customer);
+
+            const state = store.getState();
+            expect(state.isSuperAdmin).toBe(false);
+        });
+
+        it('should update customer when called multiple times', () => {
+            const customer1: AuthenticatedCustomer = {
+                customerId: 'cust_123',
+                email: 'test@example.com',
+                displayName: 'User One',
+                isSuperAdmin: false,
+            };
+
+            const customer2: AuthenticatedCustomer = {
+                customerId: 'cust_456',
+                email: 'new@example.com',
+                displayName: 'User Two',
+                isSuperAdmin: true,
+            };
+
+            store.getState().setCustomer(customer1);
+            expect(store.getState().customer?.customerId).toBe('cust_123');
+            expect(store.getState().isSuperAdmin).toBe(false);
+
+            store.getState().setCustomer(customer2);
+            expect(store.getState().customer?.customerId).toBe('cust_456');
+            expect(store.getState().isSuperAdmin).toBe(true);
+        });
     });
 
-    it('should preserve existing customerId if already set in customer object', () => {
-        const existingCustomerId = 'cust_existing';
-        const jwtCustomerId = 'cust_jwt';
-        const email = 'test@example.com';
-        
-        // Create JWT with different customerId
-        const token = createMockJWT({
-            sub: existingCustomerId,
-            email: email,
-            customerId: jwtCustomerId,
-            exp: Math.floor(Date.now() / 1000) + 3600,
-            iat: Math.floor(Date.now() / 1000),
+    describe('logout', () => {
+        it('should clear authentication state on logout', async () => {
+            // First set a customer
+            const customer: AuthenticatedCustomer = {
+                customerId: 'cust_123',
+                email: 'test@example.com',
+                isSuperAdmin: false,
+            };
+            store.getState().setCustomer(customer);
+            expect(store.getState().isAuthenticated).toBe(true);
+
+            // Then logout
+            await store.getState().logout();
+
+            const state = store.getState();
+            expect(state.customer).toBeNull();
+            expect(state.isAuthenticated).toBe(false);
+            expect(state.isSuperAdmin).toBe(false);
         });
 
-        // Call setCustomer WITH customerId already set
-        const customerWithCustomerId: Customer = {
-            customerId: existingCustomerId,
-            email: email,
-            token: token,
-            expiresAt: new Date(Date.now() + 3600000).toISOString(),
-        };
+        it('should handle logout when not authenticated', async () => {
+            // Call logout when not authenticated
+            await store.getState().logout();
 
-        store.getState().setCustomer(customerWithCustomerId);
+            const state = store.getState();
+            expect(state.customer).toBeNull();
+            expect(state.isAuthenticated).toBe(false);
+        });
 
-        // Verify existing customerId is preserved (not overwritten by JWT)
-        const state = store.getState();
-        expect(state.customer).not.toBeNull();
-        expect(state.customer?.customerId).toBe(existingCustomerId);
-        expect(state.customer?.customerId).not.toBe(jwtCustomerId);
+        it('should clear authentication even if API call fails', async () => {
+            // Mock API failure
+            const { createAPIClient } = await import('@strixun/api-framework/client');
+            const mockPost = vi.fn().mockRejectedValue(new Error('Network error'));
+            vi.mocked(createAPIClient).mockReturnValue({
+                post: mockPost,
+                get: vi.fn(),
+            } as any);
+
+            // Set customer first
+            const customer: AuthenticatedCustomer = {
+                customerId: 'cust_123',
+                email: 'test@example.com',
+                isSuperAdmin: false,
+            };
+            store.getState().setCustomer(customer);
+
+            // Logout should clear state even with API failure
+            await store.getState().logout();
+
+            const state = store.getState();
+            expect(state.customer).toBeNull();
+            expect(state.isAuthenticated).toBe(false);
+            expect(state.isSuperAdmin).toBe(false);
+        });
     });
 
-    it('should extract customerId from JWT even if customer object has null customerId', () => {
-        const customerId = 'cust_0ab4c4434c48';
-        const email = 'test@example.com';
-        
-        // Create JWT with customerId
-        const token = createMockJWT({
-            sub: customerId,
-            email: email,
-            customerId: customerId,
-            exp: Math.floor(Date.now() / 1000) + 3600,
-            iat: Math.floor(Date.now() / 1000),
+    describe('checkAuth', () => {
+        it('should update auth state when customer info is available', async () => {
+            // Mock successful customer info fetch
+            const { fetchCustomerInfo } = await import('../core/api.js');
+            vi.mocked(fetchCustomerInfo).mockResolvedValue({
+                customerId: 'cust_123',
+                displayName: 'Test User',
+                isSuperAdmin: false,
+            });
+
+            const result = await store.getState().checkAuth();
+
+            expect(result).toBe(true);
+            const state = store.getState();
+            expect(state.customer).not.toBeNull();
+            expect(state.customer?.customerId).toBe('cust_123');
+            expect(state.customer?.displayName).toBe('Test User');
+            expect(state.isAuthenticated).toBe(true);
+            expect(state.isSuperAdmin).toBe(false);
         });
 
-        // Call setCustomer with explicit null customerId
-        const customerWithNullCustomerId: Customer = {
-            customerId: null as any, // Explicitly null
-            email: email,
-            token: token,
-            expiresAt: new Date(Date.now() + 3600000).toISOString(),
-        };
+        it('should set isSuperAdmin from customer info', async () => {
+            // Mock successful admin customer info fetch
+            const { fetchCustomerInfo } = await import('../core/api.js');
+            vi.mocked(fetchCustomerInfo).mockResolvedValue({
+                customerId: 'cust_admin',
+                displayName: 'Admin User',
+                isSuperAdmin: true,
+            });
 
-        store.getState().setCustomer(customerWithNullCustomerId);
+            const result = await store.getState().checkAuth();
 
-        // Verify customerId was extracted from JWT (null should be replaced)
-        const state = store.getState();
-        expect(state.customer).not.toBeNull();
-        expect(state.customer?.customerId).toBe(customerId);
+            expect(result).toBe(true);
+            const state = store.getState();
+            expect(state.isSuperAdmin).toBe(true);
+        });
+
+        it('should clear auth state when customer info is not available', async () => {
+            // First set authenticated state
+            const customer: AuthenticatedCustomer = {
+                customerId: 'cust_123',
+                email: 'test@example.com',
+                isSuperAdmin: false,
+            };
+            store.getState().setCustomer(customer);
+
+            // Mock no customer info available
+            const { fetchCustomerInfo } = await import('../core/api.js');
+            vi.mocked(fetchCustomerInfo).mockResolvedValue(null);
+
+            const result = await store.getState().checkAuth();
+
+            expect(result).toBe(false);
+            const state = store.getState();
+            expect(state.customer).toBeNull();
+            expect(state.isAuthenticated).toBe(false);
+            expect(state.isSuperAdmin).toBe(false);
+        });
+
+        it('should clear auth state on fetch error', async () => {
+            // First set authenticated state
+            const customer: AuthenticatedCustomer = {
+                customerId: 'cust_123',
+                email: 'test@example.com',
+                isSuperAdmin: false,
+            };
+            store.getState().setCustomer(customer);
+
+            // Mock fetch error
+            const { fetchCustomerInfo } = await import('../core/api.js');
+            vi.mocked(fetchCustomerInfo).mockRejectedValue(new Error('Network error'));
+
+            const result = await store.getState().checkAuth();
+
+            expect(result).toBe(false);
+            const state = store.getState();
+            expect(state.customer).toBeNull();
+            expect(state.isAuthenticated).toBe(false);
+            expect(state.isSuperAdmin).toBe(false);
+        });
+
+        it('should handle customer info without displayName', async () => {
+            // Mock customer info without displayName
+            const { fetchCustomerInfo } = await import('../core/api.js');
+            vi.mocked(fetchCustomerInfo).mockResolvedValue({
+                customerId: 'cust_123',
+                isSuperAdmin: false,
+            });
+
+            const result = await store.getState().checkAuth();
+
+            expect(result).toBe(true);
+            const state = store.getState();
+            expect(state.customer?.customerId).toBe('cust_123');
+            expect(state.customer?.displayName).toBeUndefined();
+            expect(state.isAuthenticated).toBe(true);
+        });
     });
 
-    it('should handle JWT without customerId gracefully', () => {
-        const customerId = 'cust_123';
-        const email = 'test@example.com';
-        
-        // Create JWT WITHOUT customerId
-        const token = createMockJWT({
-            sub: customerId,
-            email: email,
-            exp: Math.floor(Date.now() / 1000) + 3600,
-            iat: Math.floor(Date.now() / 1000),
+    describe('Custom Config', () => {
+        it('should use custom authApiUrl when provided', () => {
+            const customStore = createAuthStore({
+                authApiUrl: 'https://custom-auth.example.com',
+            });
+
+            expect(customStore).toBeDefined();
+            expect(customStore.getState()).toBeDefined();
         });
 
-        // Call setCustomer without customerId
-        const customerWithoutCustomerId: Customer = {
-            customerId: customerId,
-            email: email,
-            token: token,
-            expiresAt: new Date(Date.now() + 3600000).toISOString(),
-        };
+        it('should work with default config', () => {
+            const defaultStore = createAuthStore();
 
-        store.getState().setCustomer(customerWithoutCustomerId);
-
-        // Verify customerId is set from sub
-        const state = store.getState();
-        expect(state.customer).not.toBeNull();
-        expect(state.customer?.customerId).toBe(customerId);
-    });
-
-    it('should also extract isSuperAdmin from JWT (existing behavior)', () => {
-        const customerId = 'cust_123';
-        const email = 'test@example.com';
-        
-        // Create JWT with isSuperAdmin
-        const token = createMockJWT({
-            sub: customerId,
-            email: email,
-            isSuperAdmin: true,
-            exp: Math.floor(Date.now() / 1000) + 3600,
-            iat: Math.floor(Date.now() / 1000),
+            expect(defaultStore).toBeDefined();
+            expect(defaultStore.getState()).toBeDefined();
         });
-
-        const customer: Customer = {
-            customerId: customerId,
-            email: email,
-            token: token,
-            expiresAt: new Date(Date.now() + 3600000).toISOString(),
-        };
-
-        store.getState().setCustomer(customer);
-
-        // Verify isSuperAdmin was extracted
-        const state = store.getState();
-        expect(state.customer).not.toBeNull();
-        expect(state.isSuperAdmin).toBe(true);
     });
 });

@@ -169,7 +169,7 @@ export function CustomerProfilePage() {
                                 await useAuthStore.getState().fetchCustomerInfo();
                             }}
                             apiEndpoint="/customer/display-name"
-                            authToken={customer.token}
+                            // No authToken needed - HttpOnly cookie is sent automatically
                         />
                     </InfoItem>
                     <InfoItem>

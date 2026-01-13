@@ -368,17 +368,22 @@ export async function logout(): Promise<void> {
 }
 
 /**
- * Get current auth token from HttpOnly cookie
- * Falls back to store if cookie not accessible (shouldn't happen in normal flow)
+ * Get current auth token (DEPRECATED for HttpOnly cookie auth)
+ * 
+ * ⚠️ IMPORTANT: With HttpOnly cookies, the token cannot be read by JavaScript.
+ * This function always returns null because auth_token is HttpOnly.
+ * 
+ * The browser automatically sends the HttpOnly cookie with credentials: 'include'.
+ * Use isAuthenticated store to check if user is authenticated.
+ * 
+ * @deprecated Check isAuthenticated store instead
+ * @returns null (token is inaccessible in HttpOnly cookie)
  */
 export function getAuthToken(): string | null {
-  // Try to get from cookie first
-  const cookieToken = getCookie('auth_token');
-  if (cookieToken) {
-    return cookieToken;
-  }
-  // Fallback to store (shouldn't be needed with HttpOnly cookies)
-  return get(token);
+  // HttpOnly cookies cannot be read by JavaScript
+  // The token is sent automatically by the browser with credentials: 'include'
+  console.warn('[Auth] getAuthToken() is deprecated. Token is in HttpOnly cookie and cannot be read by JavaScript.');
+  return null;
 }
 
 /**
@@ -402,13 +407,17 @@ export function getApiUrl(): string {
 /**
  * Make authenticated API request
  * CRITICAL: Uses credentials: 'include' to send HttpOnly cookies
+ * 
+ * With HttpOnly cookies, we cannot read the token from JavaScript.
+ * The browser automatically sends the auth_token cookie with credentials: 'include'.
+ * We just need to ensure the user is authenticated (check store state).
  */
 export async function authenticatedFetch(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const token = getAuthToken();
-  if (!token) {
+  // Check if user is authenticated (from store state, not cookie)
+  if (!get(isAuthenticated)) {
     throw new Error('Not authenticated');
   }
   
@@ -418,7 +427,8 @@ export async function authenticatedFetch(
   }
   
   const headers = new Headers(options.headers);
-  headers.set('Authorization', `Bearer ${token}`);
+  // NOTE: Do NOT add Authorization header - token is in HttpOnly cookie
+  // The browser sends it automatically with credentials: 'include'
   headers.set('Content-Type', 'application/json');
   
   // Add CSRF token for state-changing operations (POST, PUT, DELETE)
@@ -431,7 +441,7 @@ export async function authenticatedFetch(
   }
   
   // Use secureFetch to enforce HTTPS
-  // CRITICAL: Include credentials to send HttpOnly cookies
+  // CRITICAL: Include credentials to send HttpOnly cookies automatically
   return secureFetch(`${apiUrl}${endpoint}`, {
     ...options,
     headers,

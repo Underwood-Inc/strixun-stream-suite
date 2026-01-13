@@ -15,9 +15,11 @@
  *   currentDisplayName="Order Fierce"
  *   onUpdate={(newName) => console.log('Updated to:', newName)}
  *   apiEndpoint="/customer/display-name"
- *   authToken={token}
  * />
  * ```
+ * 
+ * Note: Authentication is handled automatically via HttpOnly cookies.
+ * No need to pass authToken anymore!
  */
 
 import { useState, useCallback } from 'react';
@@ -193,8 +195,12 @@ interface DisplayNameEditorProps {
   onUpdate: (newDisplayName: string) => void | Promise<void>;
   /** API endpoint for updating display name (e.g., '/customer/display-name') */
   apiEndpoint: string;
-  /** Authentication token for API requests */
-  authToken: string | null;
+  /** 
+   * @deprecated Authentication token for API requests - NO LONGER USED
+   * Authentication is now handled via HttpOnly cookies automatically
+   * This prop is kept for backward compatibility but is ignored
+   */
+  authToken?: string | null;
   /** Optional: Custom API base URL (defaults to AUTH_API_URL) */
   apiBaseUrl?: string;
   /** Optional: Custom error handler */
@@ -308,8 +314,9 @@ export function DisplayNameEditor({
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          // HttpOnly cookie is sent automatically with credentials: 'include'
         },
+        credentials: 'include', // Send HttpOnly auth_token cookie
         body: JSON.stringify({ displayName: trimmed }),
       });
 
