@@ -72,10 +72,11 @@ function getTokenFromCookie(): string | null {
 }
 
 /**
- * Fetch customer info from /auth/me to get admin status, displayName, and customerId
+ * Fetch customer info from /auth/me and /customer/me to get admin status, displayName, and customerId
  * CRITICAL: Cookie is sent automatically with request
  * 
- * NOTE: /auth/me returns encrypted responses that need to be decrypted with the JWT token
+ * NOTE: /auth/me returns JWT payload data only (no displayName)
+ * We need to call /customer/me to get displayName from Customer API
  */
 export async function fetchCustomerInfo(
     token: string | null, // Ignored - cookie is used instead
@@ -93,10 +94,10 @@ export async function fetchCustomerInfo(
             },
         });
         
+        // Step 1: Get customerId and isSuperAdmin from /auth/me
         // Cookie is sent automatically with request
-        const response = await authClient.get<{ 
+        const authResponse = await authClient.get<{ 
             isSuperAdmin?: boolean; 
-            displayName?: string | null; 
             customerId: string; 
             [key: string]: any;
         }>('/auth/me', undefined, {
@@ -107,15 +108,60 @@ export async function fetchCustomerInfo(
             credentials: 'include',
         });
         
-        if (response.status === 200 && response.data) {
-            return {
-                isSuperAdmin: response.data.isSuperAdmin || false,
-                displayName: response.data.displayName || null,
-                customerId: response.data.customerId || '',
-            };
+        if (authResponse.status !== 200 || !authResponse.data) {
+            return null;
         }
         
-        return null;
+        const customerId = authResponse.data.customerId;
+        const isSuperAdmin = authResponse.data.isSuperAdmin || false;
+        
+        // Step 2: Fetch displayName from Customer API
+        // Determine Customer API URL (use proxy in dev, direct URL in production)
+        const isDev = typeof window !== 'undefined' && 
+                     (window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' ||
+                      (typeof import.meta !== 'undefined' && import.meta.env?.DEV));
+        
+        const customerApiUrl = isDev 
+            ? '/customer-api'  // Vite proxy in development
+            : (typeof window !== 'undefined' && (window as any).VITE_CUSTOMER_API_URL) 
+                ? (window as any).VITE_CUSTOMER_API_URL
+                : 'https://customer-api.idling.app';
+        
+        let displayName: string | null = null;
+        try {
+            const customerClient = createAPIClient({
+                baseURL: customerApiUrl,
+                timeout: 10000,
+                cache: {
+                    enabled: false,
+                },
+            });
+            
+            const customerResponse = await customerClient.get<{
+                displayName?: string | null;
+                [key: string]: any;
+            }>('/customer/me', undefined, {
+                metadata: {
+                    cache: false,
+                },
+                credentials: 'include',
+            });
+            
+            if (customerResponse.status === 200 && customerResponse.data) {
+                displayName = customerResponse.data.displayName || null;
+            }
+        } catch (customerError) {
+            // If Customer API call fails, we still return auth data (just without displayName)
+            console.warn('[Auth] Failed to fetch displayName from Customer API:', 
+                customerError instanceof Error ? customerError.message : String(customerError));
+        }
+        
+        return {
+            isSuperAdmin,
+            displayName,
+            customerId,
+        };
     } catch (error) {
         console.error('[Auth] Failed to fetch customer info:', error instanceof Error ? error.message : String(error));
         return null;
