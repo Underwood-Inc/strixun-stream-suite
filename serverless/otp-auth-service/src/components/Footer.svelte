@@ -1,7 +1,11 @@
+<script lang="ts">
+  import StrixunSuiteLink from '@shared-components/svelte/StrixunSuiteLink.svelte';
+</script>
+
 <footer class="footer">
   <p>OTP Authentication API - Powered by Cloudflare Workers</p>
   <p class="footer-subtitle">
-    Part of the Strixun Stream Suite
+    Part of the <StrixunSuiteLink />
   </p>
 </footer>
 

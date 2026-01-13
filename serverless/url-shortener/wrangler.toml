@@ -7,7 +7,7 @@ compatibility_date = "2024-01-01"
 # Then wrangler deploys the pre-built dist/worker.js
 
 [env.production]
-vars = { ENVIRONMENT = "production" }
+vars = { ENVIRONMENT = "production", CUSTOMER_API_URL = "https://customer-api.idling.app" }
 # Custom domain route (s.idling.app/*) is managed in Cloudflare Dashboard
 # Routes configured in the dashboard take precedence over wrangler.toml
 # KV Namespace for storing URL mappings
@@ -25,7 +25,7 @@ id = "486b241817f34f76b0cbb44d81205ce3"
 preview_id = "b0e590fa55ce4513af3c5e07068372ef"
 
 [env.development]
-vars = { ENVIRONMENT = "development" }
+vars = { ENVIRONMENT = "development", CUSTOMER_API_URL = "http://localhost:8790" }
 
 # Development KV Namespace for storing URL mappings
 [[env.development.kv_namespaces]]
@@ -42,6 +42,7 @@ preview_id = "b0e590fa55ce4513af3c5e07068372ef"
 # Default to production for backward compatibility
 [vars]
 ENVIRONMENT = "production"
+CUSTOMER_API_URL = "https://customer-api.idling.app"
 
 # Default KV Namespaces (required for routes configured in dashboard or when no environment is specified)
 [[kv_namespaces]]
@@ -61,6 +62,8 @@ id = "486b241817f34f76b0cbb44d81205ce3"
 # DO NOT put actual secrets here - use wrangler CLI:
 #   wrangler secret put JWT_SECRET
 #   IMPORTANT: Use the SAME JWT_SECRET as your OTP auth service for compatibility
+#   wrangler secret put NETWORK_INTEGRITY_KEYPHRASE
+#   IMPORTANT: Use the SAME NETWORK_INTEGRITY_KEYPHRASE as other services for service-to-service communication
 #   wrangler secret put ALLOWED_ORIGINS (optional, comma-separated)
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):

@@ -9,19 +9,41 @@ import { getCorsHeaders } from '../utils/cors.js';
 import { authenticateRequest } from '../utils/auth.js';
 
 /**
+ * Environment interface for display name handler
+ */
+interface Env {
+  JWT_SECRET?: string;
+  CUSTOMER_API_URL?: string;
+  NETWORK_INTEGRITY_KEYPHRASE?: string;
+  ENVIRONMENT?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Authentication result interface
+ */
+interface AuthResult {
+  authenticated: boolean;
+  customerId?: string;
+  error?: string;
+  status?: number;
+  [key: string]: unknown;
+}
+
+/**
  * Get user display name
  * GET /api/display-name
  * 
  * Fetches display name from customer API using customerId from JWT token
  * This uses the same mechanism as mods-api and other services
  */
-export async function handleGetDisplayName(request, env) {
+export async function handleGetDisplayName(request: Request, env: Env): Promise<Response> {
   try {
     // Authenticate user
-    const auth = await authenticateRequest(request, env);
+    const auth: AuthResult = await authenticateRequest(request, env);
     if (!auth.authenticated) {
       return new Response(JSON.stringify({ error: auth.error }), {
-        status: auth.status,
+        status: auth.status || 401,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
       });
     }
@@ -42,7 +64,7 @@ export async function handleGetDisplayName(request, env) {
 
     // CRITICAL: Fetch displayName from customer data - customer is the source of truth
     // Use the same mechanism as mods-api and other services
-    let displayName = null;
+    let displayName: string | null = null;
     try {
       const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
       displayName = await fetchDisplayNameByCustomerId(customerId, env);

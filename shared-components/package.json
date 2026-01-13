@@ -56,6 +56,10 @@
     "./svelte/DataTable": {
       "types": "./svelte/DataTable.svelte",
       "default": "./svelte/DataTable.svelte"
+    },
+    "./svelte/StrixunSuiteLink": {
+      "types": "./svelte/StrixunSuiteLink.svelte",
+      "default": "./svelte/StrixunSuiteLink.svelte"
     }
   },
   "scripts": {
