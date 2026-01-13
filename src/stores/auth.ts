@@ -90,14 +90,14 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
     storage.remove('auth_user');
     storage.remove('auth_token');
     
-    // Extract CSRF token and isSuperAdmin from JWT payload
-    // CRITICAL: Token might be empty string if using HttpOnly cookies
-    const payload = customerData.token ? decodeJWTPayload(customerData.token) : null;
-    const csrf = payload?.csrf as string | undefined;
-    const isSuperAdminFromJWT = payload?.isSuperAdmin === true;
+    // Extract CSRF token and isSuperAdmin from /auth/me response data
+    // CRITICAL: With HttpOnly cookies, JWT is inaccessible to JavaScript
+    // CSRF token and isSuperAdmin are now included in /auth/me response
+    const csrf = (customerData as any).csrf as string | undefined;
+    const isSuperAdminFromResponse = customerData.isSuperAdmin === true;
     
-    // Update customerData with isSuperAdmin from JWT if not already set
-    const updatedCustomerData = { ...customerData, isSuperAdmin: isSuperAdminFromJWT || customerData.isSuperAdmin };
+    // Update customerData with isSuperAdmin from response if not already set
+    const updatedCustomerData = { ...customerData, isSuperAdmin: isSuperAdminFromResponse || customerData.isSuperAdmin };
     
     // CRITICAL: Update stores immediately first (for synchronous reads)
     isAuthenticated.set(true);

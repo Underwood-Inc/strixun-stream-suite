@@ -31,8 +31,9 @@ export interface MessageHistoryConfig {
   
   /**
    * Encryption token (JWT token for key derivation)
+   * Optional - if not provided, messages are stored unencrypted
    */
-  encryptionToken: string;
+  encryptionToken?: string;
 }
 
 export interface StoredMessage {
@@ -47,9 +48,9 @@ export interface StoredMessage {
   roomId: string;
   
   /**
-   * Encrypted message data
+   * Encrypted message data (or unencrypted data structure)
    */
-  encryptedData: EncryptedData;
+  encryptedData: EncryptedData | { encrypted: false; data: string };
   
   /**
    * Message metadata (not encrypted, for indexing)
@@ -133,15 +134,17 @@ export class MessageHistoryService {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      // Encrypt message content
-      const encryptedContent = await encrypt(
-        JSON.stringify({
-          content: message.content,
-          emoteIds: message.emoteIds,
-          customEmojiIds: message.customEmojiIds,
-        }),
-        this.config.encryptionToken
-      );
+      // Encrypt message content if encryption token is available
+      // With HttpOnly cookies, token may not be accessible
+      const messageData = JSON.stringify({
+        content: message.content,
+        emoteIds: message.emoteIds,
+        customEmojiIds: message.customEmojiIds,
+      });
+      
+      const encryptedContent = this.config.encryptionToken
+        ? await encrypt(messageData, this.config.encryptionToken)
+        : null; // Store unencrypted if no token available
 
       const storedMessage: StoredMessage = {
         id: message.id,
@@ -204,9 +207,21 @@ export class MessageHistoryService {
             const stored = cursor.value as StoredMessage;
             
             try {
-              // Decrypt message content
-              const decrypted = await decrypt(stored.encryptedData, this.config.encryptionToken);
-              const contentData = JSON.parse(decrypted as string);
+              // Decrypt message content if encrypted, otherwise use as-is
+              let contentData: any;
+              if (stored.encryptedData && typeof stored.encryptedData === 'object' && 'encrypted' in stored.encryptedData && !stored.encryptedData.encrypted) {
+                // Unencrypted message
+                contentData = JSON.parse((stored.encryptedData as any).data);
+              } else if (this.config.encryptionToken) {
+                // Encrypted message - decrypt it
+                const decrypted = await decrypt(stored.encryptedData, this.config.encryptionToken);
+                contentData = JSON.parse(decrypted as string);
+              } else {
+                // No encryption token available - try to parse as unencrypted
+                contentData = typeof stored.encryptedData === 'string' 
+                  ? JSON.parse(stored.encryptedData)
+                  : (stored.encryptedData as any);
+              }
 
               const message: ChatMessage = {
                 id: stored.id,

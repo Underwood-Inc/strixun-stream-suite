@@ -84,7 +84,7 @@ export async function initializeApp(): Promise<void> {
     // Notes storage is cloud-only, no initialization needed
     
     // Load authentication state (includes cross-domain session restoration)
-    const { loadAuthState, getAuthToken } = await import('../stores/auth');
+    const { loadAuthState, isAuthenticated } = await import('../stores/auth');
     await loadAuthState();
     addLogEntry('Authentication state loaded', 'info', 'AUTH');
     
@@ -96,13 +96,15 @@ export async function initializeApp(): Promise<void> {
     const { authCheckComplete } = await import('../stores/auth');
     authCheckComplete.set(true);
     
-    // CRITICAL: If encryption is enabled but no auth token exists, auth is required
+    // CRITICAL: If encryption is enabled but user is not authenticated, auth is required
     // The App component will reactively show AuthScreen instead of the main app
+    // Note: With HttpOnly cookies, we check isAuthenticated store instead of token
     const { isEncryptionEnabled } = await import('../core/services/encryption');
     const encryptionEnabled = await isEncryptionEnabled();
-    const authToken = getAuthToken();
+    const { get } = await import('svelte/store');
+    const authenticated = get(isAuthenticated);
     
-    if (encryptionEnabled && !authToken) {
+    if (encryptionEnabled && !authenticated) {
       // Encryption is enabled but customer is not authenticated - auth required
       addLogEntry('⚠ AUTH REQUIRED: Encryption enabled but customer not authenticated', 'warning', 'AUTH');
       addLogEntry('Customer must authenticate via email OTP to access the application', 'info', 'AUTH');

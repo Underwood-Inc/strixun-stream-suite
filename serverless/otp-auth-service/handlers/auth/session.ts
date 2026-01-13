@@ -171,6 +171,8 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             aud: payload.aud,
             // Custom Claims (from JWT only)
             isSuperAdmin: payload.isSuperAdmin ?? false, // Explicit false if missing
+            // CSRF token for state-changing operations (POST, PUT, DELETE)
+            csrf: payload.csrf || null, // Extract from JWT payload for HttpOnly cookie compatibility
         };
         
         // OpenID Connect UserInfo Response (RFC 7662)

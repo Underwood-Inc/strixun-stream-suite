@@ -1,0 +1,32 @@
+# Music API Service - Cloudflare Worker Configuration
+# Dedicated worker for fetching copyright-free music from external sources
+
+name = "strixun-music-api"
+main = "dist/worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Development environment
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+# Default configuration (production)
+[vars]
+ENVIRONMENT = "production"
+ROUTES = '[{"pattern":"music-api.idling.app/*","zone_name":"idling.app"}]'
+
+# Observability Configuration
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1

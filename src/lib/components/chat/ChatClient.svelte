@@ -8,7 +8,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { RoomManager, type RoomManagerConfig } from '../../../services/chat/roomManager';
   import { chatState, messages, connectionStatus, isConnected, getCurrentCustomerId, getCurrentCustomerName, resetChat } from '../../../stores/chat';
-  import { getAuthToken, customer } from '../../../stores/auth';
+  import { isAuthenticated, customer } from '../../../stores/auth';
   import ChatMessage from './ChatMessage.svelte';
   import ChatInput from './ChatInput.svelte';
   import RoomList from './RoomList.svelte';
@@ -28,15 +28,16 @@
   let error: string | null = null;
 
   // Get config from window or props
+  // Note: token is optional - HttpOnly cookies are sent automatically
   $: config = {
     signalingBaseUrl: signalingBaseUrl || (typeof window !== 'undefined' && (window as any).CHAT_SIGNALING_URL) || '',
-    token: getAuthToken(),
+    token: undefined, // HttpOnly cookies are sent automatically via authenticatedFetch
     userId: getCurrentCustomerId() || '',
     userName: getCurrentCustomerName() || 'Anonymous',
   };
 
   onMount(async () => {
-    if (!config.token || !config.userId) {
+    if (!$isAuthenticated || !config.userId) {
       error = 'Not authenticated. Please log in.';
       return;
     }

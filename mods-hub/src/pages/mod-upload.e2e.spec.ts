@@ -117,12 +117,10 @@ test.describe('Mod Upload', () => {
         { timeout: 10000 }
       );
       
-      // Get user's mods to verify they have customerId
-      const token = await page.evaluate(() => {
-        return localStorage.getItem('auth_token') || 
-               localStorage.getItem('jwt_token') ||
-               localStorage.getItem('token');
-      });
+      // Get token from HttpOnly cookie (for API calls)
+      const cookies = await page.context().cookies();
+      const authCookie = cookies.find(c => c.name === 'auth_token');
+      const token = authCookie?.value || null;
       
       if (token) {
         const response = await fetch(`${WORKER_URLS.MODS_API}/mods?authorId=me`, {

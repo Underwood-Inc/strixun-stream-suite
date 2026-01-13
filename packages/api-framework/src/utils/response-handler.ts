@@ -90,9 +90,22 @@ export async function handleResponse<T = unknown>(
       // The header is the authoritative source - respect it even if data has encrypted property
       const dataIsEncrypted = !isExplicitlyUnencrypted && data && typeof data === 'object' && 'encrypted' in data && (data as any).encrypted === true;
       const shouldDecrypt = isEncrypted || dataIsEncrypted; // Only decrypt if header says 'true' OR data says encrypted (and header doesn't explicitly say 'false')
+      
+      // CRITICAL: Skip decryption if explicitly marked as unencrypted (HttpOnly cookie requests)
+      if (isExplicitlyUnencrypted) {
+        console.log('[ResponseHandler] Skipping decryption - X-Encrypted: false header present');
+        return {
+          data: data as T,
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        };
+      }
+      
       const token = getTokenForDecryption(request);
       console.log('[ResponseHandler] Checking encryption:', { 
         isEncrypted, 
+        isExplicitlyUnencrypted,
         dataIsEncrypted,
         shouldDecrypt,
         hasData: !!data, 

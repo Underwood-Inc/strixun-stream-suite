@@ -6,7 +6,7 @@
 
 import { get } from 'svelte/store';
 import { decrypt, encrypt, type EncryptedData } from '../../core/services/encryption';
-import { getAuthToken } from '../../stores/auth';
+import { isAuthenticated } from '../../stores/auth';
 import { addMessage, addParticipant, chatState, removeParticipant, removeTyping, setConnectionState, setRoom, setTyping } from '../../stores/chat';
 import type { ChatMessage, RoomMetadata } from '../../types/chat';
 import { MessageHistoryService } from './messageHistory';
@@ -16,7 +16,7 @@ import { WebRTCService, type WebRTCConfig } from './webrtc';
 
 export interface RoomManagerConfig {
   signalingBaseUrl: string;
-  token: string;
+  token?: string; // Optional - HttpOnly cookies are sent automatically
   userId: string;
   userName: string;
   onMessage?: (message: ChatMessage) => void;
@@ -36,14 +36,15 @@ export class RoomManager {
     this.config = config;
     this.signaling = new SignalingService({
       baseUrl: config.signalingBaseUrl,
-      token: config.token,
+      token: config.token || '', // HttpOnly cookies are sent automatically via authenticatedFetch
     });
     
     // Initialize message history service
-    const token = getAuthToken();
-    if (token) {
+    // Note: With HttpOnly cookies, we can't access the token for encryption
+    // Message history encryption is optional - messages are still stored unencrypted
+    if (get(isAuthenticated)) {
       this.messageHistory = new MessageHistoryService({
-        encryptionToken: token,
+        encryptionToken: config.token || '', // Empty string if not available - encryption will be skipped
       });
     }
   }
@@ -162,8 +163,7 @@ export class RoomManager {
    * Setup WebRTC connection
    */
   private async setupWebRTC(roomId: string): Promise<void> {
-    const authToken = getAuthToken();
-    if (!authToken) {
+    if (!get(isAuthenticated)) {
       throw new Error('Not authenticated');
     }
 
@@ -268,8 +268,7 @@ export class RoomManager {
     await this.webrtc.createConnection(roomId);
 
     // Initialize reconnection service
-    const reconnectToken = getAuthToken();
-    if (reconnectToken) {
+    if (get(isAuthenticated)) {
       this.reconnectionService = new ReconnectionService({
         initialDelay: 1000,
         maxDelay: 30000,
@@ -353,8 +352,7 @@ export class RoomManager {
       throw new Error('Not connected to room');
     }
 
-    const authToken = getAuthToken();
-    if (!authToken) {
+    if (!get(isAuthenticated)) {
       throw new Error('Not authenticated');
     }
 
