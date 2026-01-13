@@ -45,18 +45,17 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-    const { restoreSession } = useAuthStore();
+    const { checkAuth } = useAuthStore();
 
-    // Restore session from backend on mount
-    // This enables cross-application session sharing for the same device
-    // Always try to restore - it will check if restoration is needed
-    // Note: This is a secondary call - App.tsx also calls restoreSession on initialization
+    // Check authentication status on mount (HttpOnly cookie SSO)
+    // HttpOnly cookie is automatically sent with /auth/me request
+    // Note: This is a secondary call - App.tsx also calls checkAuth on initialization
     // The Zustand adapter handles deduplication to prevent concurrent calls
     useEffect(() => {
-        restoreSession().catch(error => {
-            console.debug('[Layout] Session restoration failed (non-critical):', error);
+        checkAuth().catch(error => {
+            console.debug('[Layout] Auth check failed (non-critical):', error);
         });
-    }, [restoreSession]); // Only run once on mount
+    }, [checkAuth]); // Only run once on mount
 
     return (
         <LayoutContainer>

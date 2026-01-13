@@ -289,13 +289,13 @@ export async function handleCreateCustomer(
         // CRITICAL: displayName is REQUIRED - generate if not provided
         let finalDisplayName = displayName;
         if (!finalDisplayName || finalDisplayName.trim() === '') {
-            const { generateUniqueDisplayName, reserveDisplayName } = await import('@strixun/otp-auth-service/services/nameGenerator');
+            const { generateUniqueDisplayName, reserveDisplayName } = await import('../services/nameGenerator.js');
             const nameGeneratorEnv = {
-                OTP_AUTH_KV: env.CUSTOMER_KV,
+                OTP_AUTH_KV: env.CUSTOMER_KV, // Use CUSTOMER_KV for display name storage
             } as { OTP_AUTH_KV: KVNamespace; [key: string]: any };
             
             finalDisplayName = await generateUniqueDisplayName({
-                maxAttempts: 10,
+                maxAttempts: 50,
                 pattern: 'random'
             }, nameGeneratorEnv);
             

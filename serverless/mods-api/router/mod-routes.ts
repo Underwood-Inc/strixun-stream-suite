@@ -98,8 +98,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // All other endpoints require JWT encryption
         if (pathSegments.length === 0 && request.method === 'GET') {
             const response = await handleListMods(request, env, auth);
-            // Allow public browsing - requireJWT: false for mod list only
-            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
+            // Allow public browsing - no encryption for public endpoints
+            return await wrapWithEncryption(response, null, request, env, { requireJWT: false });
         }
 
         // Route: POST /mods or POST / - Upload new mod
@@ -178,8 +178,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
             }
             const response = await handleGetModDetail(request, env, modId, auth);
-            // Allow public browsing - requireJWT: false for mod detail only
-            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
+            // Allow public browsing - no encryption for public endpoints
+            return await wrapWithEncryption(response, null, request, env, { requireJWT: false });
         }
 
         // Route: PUT /mods/:slug or PUT /:slug - Update mod (by slug)
@@ -246,8 +246,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetModRatings } = await import('../handlers/mods/ratings.js');
             const response = await handleGetModRatings(request, env, modId, auth);
-            // Allow public browsing - requireJWT: false for ratings only
-            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
+            // Allow public browsing - no encryption for public endpoints
+            return await wrapWithEncryption(response, null, request, env, { requireJWT: false });
         }
 
         // Route: POST /mods/:slug/ratings or POST /:slug/ratings - Submit a rating for a mod

@@ -156,11 +156,11 @@ export async function handleVerifyVersion(
         if (isEncrypted) {
             // File is encrypted - decrypt it first (same process as download)
             try {
-                // Get JWT token for decryption
+                // Get JWT token for decryption - ONLY from HttpOnly cookie, NO fallbacks
                 // CRITICAL: Trim token to ensure it matches the token used for encryption
-                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || '';
-                if (!jwtToken) {
-                    const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and verify files');
+                const cookieHeader = request.headers.get('Cookie');
+                if (!cookieHeader) {
+                    const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and verify files. Please authenticate with HttpOnly cookie.');
                     const corsHeaders = createCORSHeaders(request, {
                         allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                     });
@@ -172,6 +172,24 @@ export async function handleVerifyVersion(
                         },
                     });
                 }
+                
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (!authCookie) {
+                    const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and verify files. Please authenticate with HttpOnly cookie.');
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 401,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
+                
+                const jwtToken = authCookie.substring('auth_token='.length).trim();
                 
                 // Decrypt based on format
                 if (encryptionFormat === 'binary-v4') {

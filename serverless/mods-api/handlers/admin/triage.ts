@@ -124,10 +124,24 @@ export async function handleUpdateModStatus(
                                       (body && typeof body === 'object' && 'encrypted' in body && (body as any).encrypted === true);
             
             if (requestIsEncrypted) {
-                // Body is encrypted - decrypt using JWT token
-                const authHeader = request.headers.get('Authorization');
-                if (!authHeader || !authHeader.startsWith('Bearer ')) {
-                    const rfcError = createError(request, 401, 'Unauthorized', 'JWT token required to decrypt request body');
+                // Body is encrypted - decrypt using JWT token from HttpOnly cookie
+                const cookieHeader = request.headers.get('Cookie');
+                if (!cookieHeader) {
+                    const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to decrypt request body. Please authenticate with HttpOnly cookie.');
+                    const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 401,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
+                
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (!authCookie) {
+                    const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to decrypt request body. Please authenticate with HttpOnly cookie.');
                     const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                     return new Response(JSON.stringify(rfcError), {
                         status: 401,
@@ -139,7 +153,7 @@ export async function handleUpdateModStatus(
                 }
                 
                 // CRITICAL: Trim token to ensure it matches the token used for encryption
-                const token = authHeader.substring(7).trim();
+                const token = authCookie.substring('auth_token='.length).trim();
                 
                 // Validate token before decryption
                 if (!token || token.length < 10) {

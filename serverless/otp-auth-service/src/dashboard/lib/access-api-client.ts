@@ -13,23 +13,18 @@ const ACCESS_SERVICE_URL = typeof window !== 'undefined'
   ? (window.location.hostname === 'localhost' ? window.location.origin : 'https://access-api.idling.app')
   : '';
 
-// Create Access Service API client with JWT auth
+// Create Access Service API client with HttpOnly cookie auth
 const createAccessClient = () => {
   return createAPIClient({
     baseURL: ACCESS_SERVICE_URL,
     defaultHeaders: {
       'Content-Type': 'application/json',
     },
+    // CRITICAL: HttpOnly cookie sent automatically - NO tokenGetter needed
+    credentials: 'include' as RequestCredentials,
     auth: {
-      tokenGetter: () => {
-        if (typeof window !== 'undefined') {
-          return localStorage.getItem('auth_token');
-        }
-        return null;
-      },
       onTokenExpired: () => {
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('auth_token');
           window.dispatchEvent(new CustomEvent('auth:logout'));
         }
       },

@@ -62,10 +62,28 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
         };
     }
     
-    // Option 2: JWT authentication (for debugging/testing only)
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7).trim();
+    // Option 2: JWT authentication from HttpOnly cookie OR Authorization header
+    let token: string | null = null;
+    
+    // PRIORITY 1: Check HttpOnly cookie (browser requests)
+    const cookieHeader = request.headers.get('Cookie');
+    if (cookieHeader) {
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        if (authCookie) {
+            token = authCookie.substring('auth_token='.length).trim();
+        }
+    }
+    
+    // PRIORITY 2: Check Authorization header (service-to-service calls with JWT)
+    if (!token) {
+        const authHeader = request.headers.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring('Bearer '.length).trim();
+        }
+    }
+    
+    if (token) {
         
         try {
             const jwtSecret = getJWTSecret(env);

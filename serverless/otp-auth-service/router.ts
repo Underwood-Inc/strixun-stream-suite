@@ -23,7 +23,6 @@ import type { ExecutionContext } from '@strixun/types';
 const NO_JWT_REQUIRED_PATHS = [
     '/auth/request-otp',
     '/auth/verify-otp',      // ⚠ CRITICAL - Returns JWT token
-    '/auth/restore-session',
     '/signup',
     '/signup/verify',
     '/track/email-open',     // Email clients can't send headers
@@ -164,10 +163,19 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         }
         
         // CRITICAL: Handle JWT encryption requirements per route
-        // Extract JWT token from request for encryption
+        // Extract JWT token from HttpOnly cookie ONLY - NO Authorization header fallback
         // CRITICAL: Trim token to ensure it matches the token used for decryption
-        const authHeader = request.headers.get('Authorization');
-        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
+        let jwtToken: string | null = null;
+        let isHttpOnlyCookie = false;
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+                jwtToken = authCookie.substring('auth_token='.length).trim();
+                isHttpOnlyCookie = true; // JWT from HttpOnly cookie (browser request)
+            }
+        }
         const authForEncryption = jwtToken ? { userId: 'anonymous', customerId, jwtToken } : null;
         
         // Check if this endpoint should NOT require JWT
@@ -234,12 +242,16 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         }
         
         // For JSON responses or non-required JWT, use wrapWithEncryption
+        // CRITICAL FIX: Disable encryption for browser requests with HttpOnly cookies
+        // (JavaScript can't access HttpOnly cookies to decrypt, and HTTPS already protects data in transit)
         const encryptedResult = await wrapWithEncryption(
             response,
-            authForEncryption,
+            isHttpOnlyCookie ? null : authForEncryption, // Pass null to disable encryption for HttpOnly cookies
             request,
             env,
-            { requireJWT: shouldRequireJWT }
+            { 
+                requireJWT: shouldRequireJWT
+            }
         );
         return encryptedResult.response;
     } catch (error: any) {
@@ -267,13 +279,10 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         }
         
         // Apply encryption to error responses (but don't require JWT for errors)
-        // CRITICAL: Trim token to ensure it matches the token used for decryption
-        const authHeader = request.headers.get('Authorization');
-        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
-        const authForEncryption = jwtToken ? { userId: 'anonymous', customerId, jwtToken } : null;
+        // CRITICAL: Never encrypt error responses (frontend needs to read them)
         const encryptedError = await wrapWithEncryption(
             errorResponse,
-            authForEncryption,
+            null, // Never encrypt errors - frontend must be able to read them
             request,
             env,
             { requireJWT: false } // Don't require JWT for error responses

@@ -74,15 +74,9 @@ export function verifySuperAdmin(apiKey: string, env: Env): boolean {
  * @returns True if authenticated as super-admin
  */
 export function authenticateSuperAdmin(request: Request, env: Env): boolean {
-    const authHeader = request.headers.get('Authorization');
-    let apiKey: string | null = null;
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        apiKey = authHeader.substring(7).trim();
-    } else {
-        apiKey = request.headers.get('X-Super-Admin-Key');
-    }
+    // ONLY check X-Super-Admin-Key header for API key authentication
+    // NO Authorization header fallback
+    const apiKey = request.headers.get('X-Super-Admin-Key');
     
     if (!apiKey) {
         return false;
@@ -101,13 +95,20 @@ export function authenticateSuperAdmin(request: Request, env: Env): boolean {
  * @returns customerId if authenticated as super-admin, null otherwise
  */
 export async function authenticateSuperAdminJWT(request: Request, env: Env): Promise<string | null> {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // ONLY check HttpOnly cookie for JWT token - NO Authorization header fallback
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) {
+        return null;
+    }
+    
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    if (!authCookie) {
         return null;
     }
     
     // CRITICAL: Trim token to ensure it matches the token used for encryption
-    const token = authHeader.substring(7).trim();
+    const token = authCookie.substring('auth_token='.length).trim();
     
     try {
         // Import JWT verification utilities

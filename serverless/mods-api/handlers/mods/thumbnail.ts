@@ -380,9 +380,17 @@ export async function handleThumbnail(
         }
 
         // EXCEPTION: Allow public browsing (no JWT required) for thumbnails
-        // Get JWT token from request (optional for public access)
+        // Get JWT token from HttpOnly cookie (optional for public access)
         // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || null;
+        let jwtToken: string | null = null;
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+                jwtToken = authCookie.substring('auth_token='.length).trim();
+            }
+        }
 
         // Encrypt with JWT if token is present, otherwise return unencrypted for public browsing
         const corsHeaders = createCORSHeaders(request, {

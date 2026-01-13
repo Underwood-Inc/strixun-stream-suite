@@ -2,13 +2,11 @@
  * Shared Authentication Configuration
  * Used by all API clients (Mods API, Customer API)
  * 
- * SIMPLIFIED: HttpOnly cookie-based authentication
+ * CRITICAL: HttpOnly cookie-based authentication
  * - Token is in HttpOnly cookie (inaccessible to JavaScript)
  * - Browser automatically sends cookie with credentials: 'include'
- * - NO token reading from localStorage or Zustand state
+ * - NO token reading, NO tokenGetter, NO manual Authorization headers
  */
-
-import { getCookie } from '@strixun/auth-store/core/utils';
 
 /**
  * Check if user is authenticated
@@ -31,63 +29,11 @@ export async function isAuthenticated(): Promise<boolean> {
 }
 
 /**
- * Get authentication token from HttpOnly cookie
- * 
- * ⚠️ IMPORTANT: This function is deprecated for HttpOnly cookie auth.
- * With HttpOnly cookies, the token cannot be accessed by JavaScript.
- * 
- * The browser automatically sends the auth_token cookie with every request
- * when you use credentials: 'include' in fetch options.
- * 
- * This function is kept for backward compatibility with old API clients
- * but returns null. Update your API clients to use credentials: 'include'
- * instead of tokenGetter.
- * 
- * @deprecated Use credentials: 'include' in fetch options instead
- * @returns null (token is inaccessible in HttpOnly cookie)
- */
-export async function getAuthToken(): Promise<string | null> {
-    console.warn(
-        '[Auth] getAuthToken() is deprecated. ' +
-        'Token is in HttpOnly cookie and cannot be read by JavaScript. ' +
-        'Use credentials: "include" in your API client configuration.'
-    );
-    
-    // With HttpOnly cookies, we cannot and should not read the token
-    // The browser sends it automatically with credentials: 'include'
-    return null;
-}
-
-/**
- * Shared authentication configuration for all API clients
- * 
- * ⚠️ DEPRECATED: tokenGetter approach is deprecated.
- * Modern approach: Don't use tokenGetter, just use credentials: 'include'
- * 
- * @deprecated Configure your API client with credentials: 'include' instead
- */
-export const sharedAuthConfig = {
-    tokenGetter: getAuthToken,
-    onTokenExpired: () => {
-        if (typeof window !== 'undefined') {
-            console.warn('[Auth] Token expired, clearing auth state');
-            // Clear Zustand store
-            import('../stores/auth').then(({ useAuthStore }) => {
-                useAuthStore.getState().logout();
-            }).catch(() => {
-                // Ignore errors if store isn't available
-            });
-            
-            // Dispatch logout event
-            window.dispatchEvent(new CustomEvent('auth:logout'));
-        }
-    },
-};
-
-/**
  * Shared client configuration for all API clients
  * 
- * MODERN APPROACH: Use this configuration which relies on HttpOnly cookies
+ * CRITICAL: Uses HttpOnly cookies for authentication
+ * - NO tokenGetter (cookie sent automatically)
+ * - credentials: 'include' ensures cookie is sent with every request
  */
 export const sharedClientConfig = {
     defaultHeaders: {
@@ -95,8 +41,18 @@ export const sharedClientConfig = {
     },
     // CRITICAL: Include credentials to send HttpOnly cookies
     credentials: 'include' as RequestCredentials,
-    // Legacy auth config (deprecated - cookie is sent automatically)
-    auth: sharedAuthConfig,
+    // CRITICAL: NO auth.tokenGetter needed - HttpOnly cookie handles everything!
+    auth: {
+        onTokenExpired: () => {
+            if (typeof window !== 'undefined') {
+                console.warn('[Auth] Token expired, clearing auth state');
+                import('../stores/auth').then(({ useAuthStore }) => {
+                    useAuthStore.getState().logout();
+                }).catch(() => {});
+                window.dispatchEvent(new CustomEvent('auth:logout'));
+            }
+        },
+    },
     timeout: 30000,
     retry: {
         maxAttempts: 3,

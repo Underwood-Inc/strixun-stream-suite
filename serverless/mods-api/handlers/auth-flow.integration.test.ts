@@ -54,7 +54,7 @@ describe('Authentication Flow Integration', () => {
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                 },
             });
 
@@ -98,7 +98,7 @@ describe('Authentication Flow Integration', () => {
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${expiredToken}`,
+                    'Cookie': `auth_token=${expiredToken}`,
                 },
             });
 
@@ -134,7 +134,7 @@ describe('Authentication Flow Integration', () => {
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                 },
             });
 
@@ -162,7 +162,7 @@ describe('Authentication Flow Integration', () => {
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                 },
             });
 
@@ -195,7 +195,7 @@ describe('Authentication Flow Integration', () => {
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                 },
             });
 
@@ -210,7 +210,7 @@ describe('Authentication Flow Integration', () => {
             const secondRequest = new Request('https://example.com/api/mods/123', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                 },
             });
 

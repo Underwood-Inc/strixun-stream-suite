@@ -197,16 +197,26 @@ export async function handleCreateApiKey(
         const body = await request.json() as CreateApiKeyBody;
         const name = body.name || 'New API Key';
         
-        // SECURITY: Get JWT token from Authorization header and verify it
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return new Response(JSON.stringify({ error: 'Authorization required' }), {
+        // SECURITY: Get JWT token from HttpOnly cookie and verify it
+        const cookieHeader = request.headers.get('Cookie');
+        if (!cookieHeader) {
+            return new Response(JSON.stringify({ error: 'Authentication required. Please authenticate with HttpOnly cookie.' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
+        
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        if (!authCookie) {
+            return new Response(JSON.stringify({ error: 'Authentication required. Please authenticate with HttpOnly cookie.' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
         // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const jwtToken = authHeader.substring(7).trim();
+        const jwtToken = authCookie.substring('auth_token='.length).trim();
         
         // SECURITY: Verify JWT token and extract customerId from it (defense-in-depth)
         // Router already checks this, but we verify again at handler level for security

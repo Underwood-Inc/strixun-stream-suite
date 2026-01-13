@@ -62,10 +62,13 @@ export default defineConfig({
         target: 'http://localhost:8787', // OTP Auth Service runs on port 8787
         changeOrigin: true,
         // Remove /auth-api prefix - auth service handles /auth/* routes
-        // /auth-api/auth/restore-session -> /auth/restore-session
+        // Example: /auth-api/auth/me -> /auth/me
         rewrite: (path) => path.replace(/^\/auth-api/, ''),
         secure: false, // Local dev server doesn't use HTTPS
         ws: true, // Enable WebSocket proxying for API WebSockets (not Vite HMR)
+        // CRITICAL: Forward cookies between frontend and backend for HttpOnly cookie SSO
+        cookieDomainRewrite: 'localhost', // Rewrite cookie domain to localhost for dev
+        cookiePathRewrite: '/', // Keep cookie path as root
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             console.error('[Vite Proxy] Auth proxy error:', err.message);
@@ -74,11 +77,20 @@ export default defineConfig({
             // Skip logging for WebSocket upgrade requests to reduce noise
             if (!req.headers.upgrade || req.headers.upgrade !== 'websocket') {
               console.log('[Vite Proxy] Auth', req.method, req.url, '->', proxyReq.path, '(target: localhost:8787)');
+              // Log cookies being sent
+              if (req.headers.cookie) {
+                console.log('[Vite Proxy] Auth - Cookies sent:', req.headers.cookie);
+              }
             }
           });
           proxy.on('proxyRes', (proxyRes, req, _res) => {
             if (!req.headers.upgrade || req.headers.upgrade !== 'websocket') {
               console.log('[Vite Proxy] Auth Response:', req.method, req.url, '->', proxyRes.statusCode);
+              // Log Set-Cookie headers
+              const setCookie = proxyRes.headers['set-cookie'];
+              if (setCookie) {
+                console.log('[Vite Proxy] Auth - Set-Cookie received:', setCookie);
+              }
             }
           });
         },
@@ -94,6 +106,9 @@ export default defineConfig({
         secure: false, // Local dev server doesn't use HTTPS
         ws: true, // Enable WebSocket proxying for API WebSockets (not Vite HMR)
         timeout: 30000, // 30 second timeout for proxy requests
+        // CRITICAL: Forward cookies between frontend and backend for HttpOnly cookie SSO
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
         configure: (proxy, _options) => {
           proxy.on('error', (err: NodeJS.ErrnoException, req, res) => {
             console.error('[Vite Proxy] Mods API proxy error:', err.message);
@@ -132,6 +147,9 @@ export default defineConfig({
         secure: false, // Local dev server doesn't use HTTPS
         ws: true, // Enable WebSocket proxying for API WebSockets (not Vite HMR)
         timeout: 30000, // 30 second timeout for proxy requests
+        // CRITICAL: Forward cookies between frontend and backend for HttpOnly cookie SSO
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
         configure: (proxy, _options) => {
           proxy.on('error', (err: NodeJS.ErrnoException, req, res) => {
             console.error('[Vite Proxy] Customer API proxy error:', err.message);

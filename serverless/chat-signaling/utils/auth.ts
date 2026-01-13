@@ -56,23 +56,33 @@ export async function authenticateRequest(
   request: Request,
   env: Env
 ): Promise<AuthResult> {
-  // Check for Authorization header
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return { 
-      authenticated: false, 
-      status: 401, 
-      error: 'Authorization header required' 
-    };
+  let token: string | null = null;
+  
+  // PRIORITY 1: Check HttpOnly cookie (browser requests)
+  const cookieHeader = request.headers.get('Cookie');
+  if (cookieHeader) {
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    
+    if (authCookie) {
+      token = authCookie.substring('auth_token='.length).trim();
+    }
   }
-
-  // Extract token
-  const token = authHeader.substring(7);
+  
+  // PRIORITY 2: Check Authorization header (service-to-service calls)
+  if (!token) {
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring('Bearer '.length).trim();
+    }
+  }
+  
+  // No authentication provided
   if (!token) {
     return { 
       authenticated: false, 
       status: 401, 
-      error: 'JWT token required' 
+      error: 'Authentication required' 
     };
   }
 

@@ -77,12 +77,16 @@ async function wrapResponseWithEncryption(
     jwtToken: auth.jwtToken,
   };
 
-  // Use API framework's wrapWithEncryption which requires JWT by default
+  // Use API framework's wrapWithEncryption - but disable for HttpOnly cookie auth (browser can't decrypt)
+  // (JavaScript can't access HttpOnly cookies to decrypt, and HTTPS already protects data in transit)
   const result = await wrapWithEncryption(
     handlerResponse, 
-    authForEncryption, 
+    null, // Pass null to disable encryption for HttpOnly cookies
     request, 
-    env
+    env,
+    {
+      requireJWT: false
+    }
   );
   
   return result.response;

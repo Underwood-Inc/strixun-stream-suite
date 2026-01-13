@@ -18,7 +18,7 @@ test.describe('URL Shortener Health', () => {
     
     const response = await request.get(`${WORKER_URLS.URL_SHORTENER}/health`, {
       headers: {
-        'Authorization': `Bearer ${testJWTToken}`,
+        'Cookie': `auth_token=${testJWTToken}`,
       },
     });
     expect(response.ok()).toBeTruthy();

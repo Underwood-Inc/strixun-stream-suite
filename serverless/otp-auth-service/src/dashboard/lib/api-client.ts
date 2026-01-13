@@ -5,7 +5,6 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
-import { getCookie, deleteCookie } from '@strixun/auth-store/core/utils';
 import type {
   Customer,
   ApiKey,
@@ -19,18 +18,19 @@ import type {
 // API base URL - uses current origin (works with Vite proxy in dev, or same origin in production)
 const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
-// Create API client instance with auth token getter reading from HttpOnly cookie
+// Create API client instance with HttpOnly cookie authentication
+// CRITICAL: NO tokenGetter - HttpOnly cookies are sent automatically!
 const createClient = () => {
   return createAPIClient({
     baseURL: API_BASE_URL,
     defaultHeaders: {
       'Content-Type': 'application/json',
     },
+    // CRITICAL: HttpOnly cookie sent automatically - NO tokenGetter needed
+    credentials: 'include' as RequestCredentials,
     auth: {
-      tokenGetter: () => getCookie('auth_token'), // Read from HttpOnly cookie
       onTokenExpired: () => {
         if (typeof window !== 'undefined') {
-          deleteCookie('auth_token', window.location.hostname, '/');
           window.dispatchEvent(new CustomEvent('auth:logout'));
         }
       },
@@ -41,8 +41,6 @@ const createClient = () => {
       backoff: 'exponential',
       retryableErrors: [408, 429, 500, 502, 503, 504],
     },
-    // CRITICAL: Include credentials to send HttpOnly cookies
-    credentials: 'include',
   });
 };
 
@@ -55,15 +53,20 @@ export class ApiClient {
 
   /**
    * Set token is now a no-op - HttpOnly cookie is set by the server
-   * We just recreate the client to pick up the cookie
    */
   setToken(_token: string | null): void {
-    // HttpOnly cookie is set by the server, we just recreate the client
+    // HttpOnly cookie is set by the server, nothing to do client-side
+    // Just recreate the client to ensure fresh config
     this.api = createClient();
   }
 
+  /**
+   * Get token - DEPRECATED: HttpOnly cookies cannot be read by JavaScript
+   * @returns null (token is in HttpOnly cookie)
+   */
   getToken(): string | null {
-    return getCookie('auth_token');
+    console.warn('[API Client] getToken() is deprecated. Token is in HttpOnly cookie and cannot be read by JavaScript.');
+    return null;
   }
 
   // Authentication endpoints

@@ -220,9 +220,17 @@ export async function handleOGImage(
         }
 
         // EXCEPTION: Allow public access (no JWT required) for OG images (social media crawlers)
-        // Get JWT token from request (optional for public access)
+        // Get JWT token from HttpOnly cookie (optional for public access)
         // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || null;
+        let jwtToken: string | null = null;
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+                jwtToken = authCookie.substring('auth_token='.length).trim();
+            }
+        }
 
         // Generate OG image SVG
         const ogImageSvg = generateOGImage(mod, mod.thumbnailUrl);

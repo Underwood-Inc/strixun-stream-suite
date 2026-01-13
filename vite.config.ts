@@ -74,7 +74,7 @@ export default defineConfig({
         },
         // OTP/Auth endpoints - NEVER cache (explicit, more specific pattern)
         {
-          urlPattern: /^https:\/\/.*\/auth\/(request-otp|verify-otp|restore-session|session|session-by-ip|logout|refresh|me).*$/i,
+          urlPattern: /^https:\/\/.*\/auth\/(request-otp|verify-otp|session|logout|refresh|me).*$/i,
           handler: 'NetworkOnly',
           options: {
             // NetworkOnly handler doesn't use cache at all
@@ -185,7 +185,32 @@ export default defineConfig({
   server: {
     port: 5173,
     open: false,
-    cors: true
+    cors: true,
+    // CRITICAL: Proxy API requests to local workers with cookie forwarding for HttpOnly SSO
+    proxy: {
+      '/auth-api': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/auth-api/, ''),
+        secure: false,
+        // CRITICAL: Forward cookies for HttpOnly cookie SSO
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) {
+              console.log('[Vite Proxy] Auth - Cookies sent:', req.headers.cookie);
+            }
+          });
+          proxy.on('proxyRes', (proxyRes) => {
+            const setCookie = proxyRes.headers['set-cookie'];
+            if (setCookie) {
+              console.log('[Vite Proxy] Auth - Set-Cookie received:', setCookie);
+            }
+          });
+        },
+      },
+    },
   },
   // Optimize for OBS dock environment
   optimizeDeps: {

@@ -76,7 +76,7 @@ describe('API Framework Integration Tests', () => {
             const request = new Request('https://mods-api.idling.app/admin/mods/mod_123/status', {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                     'Content-Type': 'application/json',
                     'X-Encrypted': 'true',
                 },
@@ -100,7 +100,7 @@ describe('API Framework Integration Tests', () => {
             const request = new Request('https://mods-api.idling.app/admin/mods/mod_123/status', {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `Bearer ${invalidToken}`,
+                    'Cookie': `auth_token=${invalidToken}`,
                     'Content-Type': 'application/json',
                     'X-Encrypted': 'true',
                 },
@@ -131,7 +131,7 @@ describe('API Framework Integration Tests', () => {
             const request = new Request('https://mods-api.idling.app/admin/mods/mod_123/status', {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                     'Content-Type': 'application/json',
                     'X-Encrypted': 'true',
                 },

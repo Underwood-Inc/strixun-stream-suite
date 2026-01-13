@@ -376,10 +376,10 @@ export async function handleUpdateMod(
                     };
                     variantFormData.append('metadata', JSON.stringify(variantMetadata));
                     
-                    // Create request
+                    // Create request - forward HttpOnly cookie for authentication
                     const headers = new Headers();
-                    const authHeader = request.headers.get('Authorization');
-                    if (authHeader) headers.set('Authorization', authHeader);
+                    const cookieHeader = request.headers.get('Cookie');
+                    if (cookieHeader) headers.set('Cookie', cookieHeader);
                     
                     const variantUploadRequest = new Request(request.url, {
                         method: 'POST',

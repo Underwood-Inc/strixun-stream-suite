@@ -18,7 +18,7 @@ test.describe('Customer API Health', () => {
     
     const response = await request.get(`${WORKER_URLS.CUSTOMER_API}/health`, {
       headers: {
-        'Authorization': `Bearer ${testJWTToken}`,
+        'Cookie': `auth_token=${testJWTToken}`,
       },
     });
     expect(response.ok()).toBeTruthy();

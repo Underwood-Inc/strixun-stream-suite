@@ -10,7 +10,7 @@
 
 import { getCorsHeaders } from '../utils/cors.js';
 import { requireSuperAdmin } from '../utils/super-admin.js';
-import { wrapWithEncryption } from '@strixun/api-framework';
+// CRITICAL: wrapWithEncryption removed - main router handles ALL encryption (avoids double-encryption)
 // @ts-ignore - JS handlers don't have type declarations
 import * as adminHandlers from '../handlers/admin.js';
 // @ts-ignore - JS handlers don't have type declarations
@@ -74,9 +74,9 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
             },
         });
         const auth = await authenticateRequest(request, env);
-        const wrappedResponse = await wrapWithEncryption(errorResponse, auth, request, env, { allowServiceCallsWithoutJWT: true });
+        // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
         return {
-            response: wrappedResponse.response,
+            response: errorResponse,
             customerId: auth && 'customerId' in auth ? auth.customerId : null,
         };
     }

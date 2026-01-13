@@ -29,16 +29,14 @@ interface Env {
  */
 async function handleHealth(env: Env, request: Request): Promise<Response> {
     // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
-    // Get JWT token from request
-    const authHeader = request.headers.get('Authorization');
-    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-    
-    if (!jwtToken) {
+    // ONLY check HttpOnly cookie - NO fallbacks, NO Authorization header
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) {
         const errorResponse = {
             type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
             title: 'Unauthorized',
             status: 401,
-            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            detail: 'JWT token is required for encryption/decryption. Please authenticate with HttpOnly cookie.',
             instance: request.url
         };
         const corsHeaders = createCORSHeaders(request, {
@@ -52,10 +50,36 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
             },
         });
     }
+    
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    if (!authCookie) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please authenticate with HttpOnly cookie.',
+            instance: request.url
+        };
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+    
+    const jwtToken = authCookie.substring('auth_token='.length).trim();
 
     // Authenticate request to get auth object for encryption
     const auth = await authenticateRequest(request, env);
-    const authForEncryption = auth ? { ...auth, jwtToken } : { userId: 'anonymous', customerId: null, jwtToken };
+    const authForEncryption = auth && auth.customerId 
+        ? { customerId: auth.customerId, jwtToken } 
+        : { customerId: 'anonymous', jwtToken };
 
     // Create health check response
     const healthData = { 
@@ -71,8 +95,11 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
         },
     });
 
-    // Wrap with encryption to ensure JWT encryption is applied
-    const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
+    // Wrap with encryption - but disable for HttpOnly cookie auth (browser can't decrypt)
+    // (JavaScript can't access HttpOnly cookies to decrypt, and HTTPS already protects data in transit)
+    const encryptedResult = await wrapWithEncryption(response, null, request, env, {
+        requireJWT: false // Pass null to disable encryption for HttpOnly cookies
+    });
     return encryptedResult.response;
 }
 

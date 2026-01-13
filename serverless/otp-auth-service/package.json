@@ -57,6 +57,7 @@
     "@strixun/access-service": "workspace:*",
     "@strixun/ad-carousel": "workspace:*",
     "@strixun/api-framework": "workspace:*",
+    "@strixun/auth-store": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/otp-login": "workspace:*",
     "@strixun/service-client": "workspace:*",

@@ -18,7 +18,7 @@ test.describe('Chat Signaling Health', () => {
     
     const response = await request.get(`${WORKER_URLS.CHAT_SIGNALING}/health`, {
       headers: {
-        'Authorization': `Bearer ${testJWTToken}`,
+        'Cookie': `auth_token=${testJWTToken}`,
       },
     });
     expect(response.ok()).toBeTruthy();

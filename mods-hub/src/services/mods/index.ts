@@ -70,5 +70,3 @@ export type {
     R2FileAssociatedData,
 } from '../../types/r2';
 
-// Re-export getAuthToken for convenience
-export { getAuthToken } from '../authConfig';

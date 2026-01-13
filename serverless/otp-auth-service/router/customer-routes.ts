@@ -26,6 +26,7 @@ interface AuthResult {
     error?: string;
     customerId?: string;
     email?: string;
+    jwtToken?: string;
 }
 
 interface RouteResult {
@@ -35,15 +36,23 @@ interface RouteResult {
 
 /**
  * Authenticate request using JWT token
+ * ONLY checks HttpOnly cookie - NO Authorization header fallback
  */
 async function authenticateRequest(request: Request, env: Env): Promise<AuthResult> {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return { authenticated: false, status: 401, error: 'Authorization header required' };
+    // ONLY check HttpOnly cookie - NO Authorization header fallback
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) {
+        return { authenticated: false, status: 401, error: 'Authentication required. Please authenticate with HttpOnly cookie.' };
+    }
+
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    if (!authCookie) {
+        return { authenticated: false, status: 401, error: 'Authentication required. Please authenticate with HttpOnly cookie.' };
     }
 
     // CRITICAL: Trim token to ensure it matches the token used for encryption
-    const token = authHeader.substring(7).trim();
+    const token = authCookie.substring('auth_token='.length).trim();
     const jwtSecret = getJWTSecret(env);
     const payload = await verifyJWT(token, jwtSecret);
 
@@ -55,6 +64,7 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
         authenticated: true,
         customerId: payload.customerId || payload.userId || payload.sub,
         email: payload.email,
+        jwtToken: token,
     };
 }
 
@@ -85,10 +95,8 @@ async function handleCustomerRoute(
     const handlerResponse = await handler(request, env);
 
     // If JWT token is present, encrypt the response (automatic E2E encryption)
-    // CRITICAL: Trim token to ensure it matches the token used for decryption
-    // The frontend trims tokens, so we must trim here too to prevent token hash mismatches
-    const authHeader = request.headers.get('Authorization');
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
+    // CRITICAL: Use JWT token from auth result (already extracted from HttpOnly cookie)
+    const token = auth.jwtToken || null;
     
     if (token && token.length >= 10 && handlerResponse.ok) {
         try {

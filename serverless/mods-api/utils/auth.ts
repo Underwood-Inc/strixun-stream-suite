@@ -77,14 +77,38 @@ async function fetchEmailFromAuthService(token: string, env: Env): Promise<strin
  */
 export async function authenticateRequest(request: Request, env: Env): Promise<AuthResult | null> {
     try {
-        const authHeader = request.headers.get('Authorization');
-        console.debug(`[Auth] Authorization header check: hasHeader=${!!authHeader}, headerLength=${authHeader?.length || 0}, startsWithBearer=${authHeader?.startsWith('Bearer ') || false}, firstChars=${authHeader?.substring(0, 20) || 'none'}`);
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        let token: string | null = null;
+        
+        // PRIORITY 1: Check HttpOnly cookie (browser requests)
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            
+            if (authCookie) {
+                token = authCookie.substring('auth_token='.length).trim();
+                console.debug(`[Auth] Token from HttpOnly cookie: tokenLength=${token.length}`);
+            }
+        }
+        
+        // PRIORITY 2: Check Authorization header (service-to-service calls)
+        // This supports JWT tokens from ServiceClient and other internal services
+        if (!token) {
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring('Bearer '.length).trim();
+                console.debug(`[Auth] Token from Authorization header: tokenLength=${token.length}`);
+            }
+        }
+        
+        // No authentication provided
+        if (!token) {
+            console.debug('[Auth] No authentication found - not authenticated');
             return null;
         }
 
         // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authHeader.substring(7).trim();
+        token = token.trim();
         const jwtSecret = getJWTSecret(env);
         console.debug(`[Auth] Verifying JWT: tokenLength=${token.length}, secretLength=${jwtSecret.length}, secretFirstChars=${jwtSecret.substring(0, 20)}`);
         const payload = await verifyJWT(token, jwtSecret);

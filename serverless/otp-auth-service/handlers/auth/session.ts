@@ -48,40 +48,37 @@ interface JWTPayload {
  */
 export async function handleGetMe(request: Request, env: Env): Promise<Response> {
     try {
-        // Try to get token from cookie first (primary), then Authorization header (backward compat)
-        let token: string | null = null;
-        
-        // Check cookie first
+        console.log('[handleGetMe] Starting request processing');
+        // ONLY check HttpOnly cookie - NO Authorization header fallback
         const cookieHeader = request.headers.get('Cookie');
-        if (cookieHeader) {
-            const cookies = cookieHeader.split(';').map(c => c.trim());
-            const authCookie = cookies.find(c => c.startsWith('auth_token='));
-            if (authCookie) {
-                token = authCookie.substring('auth_token='.length).trim();
-            }
-        }
-        
-        // Fallback to Authorization header if no cookie
-        if (!token) {
-            const authHeader = request.headers.get('Authorization');
-            if (authHeader && authHeader.startsWith('Bearer ')) {
-                token = authHeader.substring(7).trim();
-            }
-        }
-        
-        if (!token) {
-            return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        console.log('[handleGetMe] Cookie header:', cookieHeader ? 'present' : 'missing');
+        if (!cookieHeader) {
+            console.log('[handleGetMe] Returning 401 - no cookie header');
+            return new Response(JSON.stringify({ error: 'Authentication required (HttpOnly cookie)' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        token = token.trim();
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        console.log('[handleGetMe] Auth cookie found:', !!authCookie);
+        if (!authCookie) {
+            console.log('[handleGetMe] Returning 401 - no auth_token cookie');
+            return new Response(JSON.stringify({ error: 'Authentication required (auth_token cookie missing)' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const token = authCookie.substring('auth_token='.length).trim();
+        console.log('[handleGetMe] Token extracted:', token ? token.substring(0, 20) + '...' : 'empty');
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
+        console.log('[handleGetMe] JWT verification result:', payload ? 'SUCCESS' : 'FAILED');
         
         if (!payload) {
+            console.log('[handleGetMe] Returning 401 - invalid or expired token');
             return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -177,6 +174,10 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
         };
         
         // OpenID Connect UserInfo Response (RFC 7662)
+        console.log('[handleGetMe] Returning SUCCESS 200 with customer data:', {
+            customerId: responseData.customerId,
+            isSuperAdmin: responseData.isSuperAdmin
+        });
         return new Response(JSON.stringify(responseData), {
             headers: { 
                 ...getCorsHeaders(env, request), 
@@ -187,6 +188,8 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
         });
     } catch (error: any) {
         // RFC 7807 Problem Details for HTTP APIs
+        console.error('[handleGetMe] EXCEPTION caught:', error instanceof Error ? error.message : String(error));
+        console.error('[handleGetMe] Error stack:', error instanceof Error ? error.stack : 'No stack');
         return new Response(JSON.stringify({ 
             type: 'https://tools.ietf.org/html/rfc7231#section-6.6.1',
             title: 'Internal Server Error',
@@ -209,36 +212,25 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
  */
 export async function handleLogout(request: Request, env: Env): Promise<Response> {
     try {
-        // Try to get token from cookie first (primary), then Authorization header (backward compat)
-        let token: string | null = null;
-        
-        // Check cookie first
+        // ONLY check HttpOnly cookie - NO Authorization header fallback
         const cookieHeader = request.headers.get('Cookie');
-        if (cookieHeader) {
-            const cookies = cookieHeader.split(';').map(c => c.trim());
-            const authCookie = cookies.find(c => c.startsWith('auth_token='));
-            if (authCookie) {
-                token = authCookie.substring('auth_token='.length).trim();
-            }
-        }
-        
-        // Fallback to Authorization header if no cookie
-        if (!token) {
-            const authHeader = request.headers.get('Authorization');
-            if (authHeader && authHeader.startsWith('Bearer ')) {
-                token = authHeader.substring(7).trim();
-            }
-        }
-        
-        if (!token) {
-            return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        if (!cookieHeader) {
+            return new Response(JSON.stringify({ error: 'Authentication required (HttpOnly cookie)' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        token = token.trim();
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        if (!authCookie) {
+            return new Response(JSON.stringify({ error: 'Authentication required (auth_token cookie missing)' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const token = authCookie.substring('auth_token='.length).trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
         

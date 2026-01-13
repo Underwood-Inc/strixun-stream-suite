@@ -9,7 +9,7 @@ import type {
     VariantVersionUploadRequest,
 } from '../../types/mod';
 import { downloadFileFromArrayBuffer } from '../../utils/fileEncryption';
-import { sharedClientConfig, getAuthToken } from '../authConfig';
+import { sharedClientConfig } from '../authConfig';
 import { API_BASE_URL } from './modsApi';
 
 const api = createAPIClient({
@@ -71,16 +71,14 @@ export async function updateVariantVersion(
 
 /**
  * Download mod variant (latest version)
+ * CRITICAL: Uses HttpOnly cookie for authentication - token is sent automatically
  */
 export async function downloadVariant(modSlug: string, variantId: string): Promise<void> {
     try {
-        const token = await getAuthToken();
-        
         const url = `${API_BASE_URL}/mods/${modSlug}/variants/${variantId}/download`;
+        // CRITICAL: Use credentials: 'include' to send HttpOnly cookie automatically
         const response = await fetch(url, {
-            headers: {
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            }
+            credentials: 'include' // Send HttpOnly cookie
         });
 
         if (!response.ok) {

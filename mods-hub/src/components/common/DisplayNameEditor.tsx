@@ -18,8 +18,7 @@
  * />
  * ```
  * 
- * Note: Authentication is handled automatically via HttpOnly cookies.
- * No need to pass authToken anymore!
+ * Authentication is handled automatically via HttpOnly cookies
  */
 
 import { useState, useCallback } from 'react';
@@ -195,12 +194,6 @@ interface DisplayNameEditorProps {
   onUpdate: (newDisplayName: string) => void | Promise<void>;
   /** API endpoint for updating display name (e.g., '/customer/display-name') */
   apiEndpoint: string;
-  /** 
-   * @deprecated Authentication token for API requests - NO LONGER USED
-   * Authentication is now handled via HttpOnly cookies automatically
-   * This prop is kept for backward compatibility but is ignored
-   */
-  authToken?: string | null;
   /** Optional: Custom API base URL (defaults to AUTH_API_URL) */
   apiBaseUrl?: string;
   /** Optional: Custom error handler */
@@ -215,7 +208,6 @@ export function DisplayNameEditor({
   currentDisplayName,
   onUpdate,
   apiEndpoint,
-  authToken,
   apiBaseUrl,
   onError,
   showHelpText = true,
@@ -281,13 +273,6 @@ export function DisplayNameEditor({
 
   // Save display name
   const handleSave = useCallback(async () => {
-    if (!authToken) {
-      const errorMsg = 'Authentication required to update display name';
-      setError(errorMsg);
-      onError?.(errorMsg);
-      return;
-    }
-
     const trimmed = displayName.trim();
     
     // Validate before sending
@@ -345,7 +330,7 @@ export function DisplayNameEditor({
     } finally {
       setIsSaving(false);
     }
-  }, [displayName, currentDisplayName, authToken, apiEndpoint, getApiBaseUrl, onUpdate, onError]);
+  }, [displayName, currentDisplayName, apiEndpoint, getApiBaseUrl, onUpdate, onError]);
 
   // Cancel editing
   const handleCancel = useCallback(() => {

@@ -76,10 +76,10 @@
     return 'https://auth.idling.app';
   }
   
-  function handleLoginSuccess(data: LoginSuccessData) {
+  async function handleLoginSuccess(data: LoginSuccessData) {
     // Use the new login function - HttpOnly cookie is already set by the OTP auth service
-    // Just update the local store with customer data
-    login(data.token);
+    // Fetch full customer data from /auth/me
+    await login(data.token);
     
     showToast({ message: 'Login successful', type: 'success' });
     onClose();

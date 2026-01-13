@@ -7,10 +7,34 @@
   "main": "./index.ts",
   "types": "./index.ts",
   "exports": {
-    ".": "./index.ts",
-    "./zustand": "./adapters/zustand.ts",
-    "./svelte": "./adapters/svelte.ts",
-    "./core": "./core/index.ts"
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    },
+    "./zustand": {
+      "types": "./adapters/zustand.ts",
+      "default": "./adapters/zustand.ts"
+    },
+    "./svelte": {
+      "types": "./adapters/svelte.ts",
+      "default": "./adapters/svelte.ts"
+    },
+    "./core": {
+      "types": "./core/index.ts",
+      "default": "./core/index.ts"
+    },
+    "./core/api": {
+      "types": "./core/api.ts",
+      "default": "./core/api.ts"
+    },
+    "./core/utils": {
+      "types": "./core/utils.ts",
+      "default": "./core/utils.ts"
+    },
+    "./core/types": {
+      "types": "./core/types.ts",
+      "default": "./core/types.ts"
+    }
   },
   "files": [
     "*.ts",

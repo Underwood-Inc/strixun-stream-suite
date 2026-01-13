@@ -162,17 +162,14 @@ async function autoRunMigrations(env: Env): Promise<void> {
  * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health
  */
 async function handleHealth(env: Env, request: Request): Promise<Response> {
-    // Extract JWT token from request
-    const authHeader = request.headers.get('Authorization');
-    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-    
-    // CRITICAL SECURITY: JWT is required for encryption/decryption
-    if (!jwtToken) {
+    // ONLY check HttpOnly cookie - NO fallbacks, NO Authorization header
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) {
         const errorResponse = {
             type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
             title: 'Unauthorized',
             status: 401,
-            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            detail: 'JWT token is required for encryption/decryption. Please authenticate with HttpOnly cookie.',
             instance: request.url
         };
         
@@ -184,6 +181,28 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
             },
         });
     }
+    
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    if (!authCookie) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please authenticate with HttpOnly cookie.',
+            instance: request.url
+        };
+        
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...getCorsHeaders(env, request),
+            },
+        });
+    }
+    
+    const jwtToken = authCookie.substring('auth_token='.length).trim();
     
     // Authenticate request to get auth object for encryption
     const { authenticateRequest } = await import('./utils/auth.js');
@@ -227,8 +246,11 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
         },
     });
     
-    // Wrap with encryption (will encrypt with JWT token)
-    const encryptedResult = await wrapWithEncryption(response, auth, request, env);
+    // Wrap with encryption - but disable for HttpOnly cookie auth (browser can't decrypt)
+    // (JavaScript can't access HttpOnly cookies to decrypt, and HTTPS already protects data in transit)
+    const encryptedResult = await wrapWithEncryption(response, null, request, env, {
+        requireJWT: false // Pass null to disable encryption for HttpOnly cookies
+    });
     return encryptedResult.response;
 }
 

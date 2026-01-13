@@ -26,9 +26,9 @@ export type { AuthenticatedCustomer };
 // Store for authentication state
 export const isAuthenticated: Writable<boolean> = writable(false);
 export const customer: Writable<AuthenticatedCustomer | null> = writable(null);
-export const token: Writable<string | null> = writable(null);
 export const csrfToken: Writable<string | null> = writable(null);
 export const isSuperAdmin: Writable<boolean> = writable(false);
+// NOTE: No token store - token is in HttpOnly cookie and CANNOT be read by JavaScript
 
 // Re-export encryption enabled from storage module
 export const encryptionEnabled = storageEncryptionEnabled;
@@ -91,7 +91,8 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
     storage.remove('auth_token');
     
     // Extract CSRF token and isSuperAdmin from JWT payload
-    const payload = decodeJWTPayload(customerData.token);
+    // CRITICAL: Token might be empty string if using HttpOnly cookies
+    const payload = customerData.token ? decodeJWTPayload(customerData.token) : null;
     const csrf = payload?.csrf as string | undefined;
     const isSuperAdminFromJWT = payload?.isSuperAdmin === true;
     
@@ -101,7 +102,6 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
     // CRITICAL: Update stores immediately first (for synchronous reads)
     isAuthenticated.set(true);
     customer.set(updatedCustomerData);
-    token.set(customerData.token);
     csrfToken.set(csrf || null);
     isSuperAdmin.set(isSuperAdminFromJWT || customerData.isSuperAdmin || false);
     
@@ -111,7 +111,6 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
     queueMicrotask(() => {
       isAuthenticated.set(true);
       customer.set(updatedCustomerData);
-      token.set(customerData.token);
       csrfToken.set(csrf || null);
       isSuperAdmin.set(isSuperAdminFromJWT || customerData.isSuperAdmin || false);
     });
@@ -125,7 +124,6 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
     // CRITICAL: Update stores immediately first (for synchronous reads)
     isAuthenticated.set(false);
     customer.set(null);
-    token.set(null);
     csrfToken.set(null);
     isSuperAdmin.set(false);
     
@@ -133,7 +131,6 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
     queueMicrotask(() => {
       isAuthenticated.set(false);
       customer.set(null);
-      token.set(null);
       csrfToken.set(null);
       isSuperAdmin.set(false);
     });
@@ -201,54 +198,47 @@ function decodeJWTPayloadLocal(jwt: string): { csrf?: string; isSuperAdmin?: boo
 
 /**
  * Check authentication status from HttpOnly cookie
- * Reads token from cookie and validates with backend
+ * CRITICAL: HttpOnly cookies are NOT accessible from JavaScript!
+ * We call /auth/me which automatically sends the cookie, and if it returns customer data, we're authenticated
  * 
- * CRITICAL: This replaces IP-based session restoration with true SSO via cookies
+ * This replaces IP-based session restoration with true SSO via cookies
  */
 async function checkAuthFromCookie(): Promise<boolean> {
   try {
-    const authToken = getCookie('auth_token');
-    if (!authToken) {
-      console.debug('[Auth] No auth token cookie found');
-      return false;
-    }
-    
     const apiUrl = getOtpAuthApiUrl();
     if (!apiUrl) {
       console.warn('[Auth] OTP Auth API URL not configured');
       return false;
     }
 
-    // Fetch customer info from /auth/me to validate token and get customer data
+    // Fetch customer info from /auth/me - cookie is sent automatically by browser
+    // If the HttpOnly cookie is valid, this will return customer data
     const customerInfo = await fetchCustomerInfo({ authApiUrl: apiUrl });
     
     if (customerInfo) {
-      const payload = decodeJWTPayloadLocal(authToken);
-      const customerId = customerInfo.customerId || payload?.customerId as string;
-      const email = payload?.email as string;
-      const expiresAt = payload?.exp ? new Date(payload.exp * 1000).toISOString() : new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString();
-      
+      // We don't have direct access to the JWT token (it's HttpOnly)
+      // But we can create a customer object with the info we got from /auth/me
       const authenticatedCustomer: AuthenticatedCustomer = {
-        customerId,
-        email,
+        customerId: customerInfo.customerId,
+        email: customerInfo.email || '',
         displayName: customerInfo.displayName || undefined,
-        token: authToken,
-        expiresAt,
-        isSuperAdmin: customerInfo.isSuperAdmin,
+        token: '', // Token is in HttpOnly cookie, not accessible from JS
+        expiresAt: new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(), // Default 7 hours
+        isSuperAdmin: customerInfo.isSuperAdmin || false,
       };
       
       saveAuthState(authenticatedCustomer);
-      console.log('[Auth] ✓ Session restored from HttpOnly cookie for customer:', email);
+      console.log('[Auth] ✓ Session restored from HttpOnly cookie for customer:', authenticatedCustomer.email);
       return true;
     } else {
-      // Token invalid or expired on backend
-      deleteCookie('auth_token', '.idling.app', '/');
-      console.warn('[Auth] Token in HttpOnly cookie invalid or expired, cleared');
+      // No customer data returned - not authenticated
+      console.debug('[Auth] No customer data from /auth/me - not authenticated');
+      saveAuthState(null);
       return false;
     }
   } catch (error) {
     console.error('[Auth] Error during checkAuth:', error);
-    deleteCookie('auth_token', '.idling.app', '/');
+    saveAuthState(null);
     return false;
   }
 }
@@ -287,26 +277,35 @@ export function setAuth(customerData: AuthenticatedCustomer): void {
 
 /**
  * Login with token (after successful OTP verification)
- * CRITICAL: Token is in HttpOnly cookie, this just updates the local store with customer data
+ * CRITICAL: Token is in HttpOnly cookie, we fetch full customer data from /auth/me
  */
-export function login(jwtToken: string): void {
-  // Decode token to get customer info
+export async function login(jwtToken: string): Promise<void> {
+  // Decode token to get basic customer info
   const payload = decodeJWTPayloadLocal(jwtToken);
   if (!payload) {
     console.error('[Auth] Failed to decode JWT token');
     return;
   }
   
-  const customerData: AuthenticatedCustomer = {
+  // Immediately set basic auth state from JWT
+  const basicCustomerData: AuthenticatedCustomer = {
     customerId: payload.customerId as string || payload.sub as string,
     email: payload.email as string,
     displayName: payload.displayName as string | undefined,
-    token: jwtToken,
+    token: '', // Token is in HttpOnly cookie
     expiresAt: payload.exp ? new Date(payload.exp as number * 1000).toISOString() : new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(),
     isSuperAdmin: payload.isSuperAdmin as boolean || false,
   };
   
-  saveAuthState(customerData);
+  saveAuthState(basicCustomerData);
+  
+  // Then fetch full customer data from /auth/me (which uses the HttpOnly cookie)
+  try {
+    await checkAuthFromCookie();
+  } catch (error) {
+    console.warn('[Auth] Failed to fetch full customer data after login:', error);
+    // Keep the basic data we decoded from JWT
+  }
 }
 
 /**
@@ -362,29 +361,13 @@ export async function logout(): Promise<void> {
   } finally {
     // Always clear local auth state
     clearAuth();
-    // Also try to delete cookie client-side (though server should have cleared it)
-    deleteCookie('auth_token', '.idling.app', '/');
+    // HttpOnly cookie is cleared by the server, we can't delete it from JavaScript
   }
 }
 
-/**
- * Get current auth token (DEPRECATED for HttpOnly cookie auth)
- * 
- * ⚠️ IMPORTANT: With HttpOnly cookies, the token cannot be read by JavaScript.
- * This function always returns null because auth_token is HttpOnly.
- * 
- * The browser automatically sends the HttpOnly cookie with credentials: 'include'.
- * Use isAuthenticated store to check if user is authenticated.
- * 
- * @deprecated Check isAuthenticated store instead
- * @returns null (token is inaccessible in HttpOnly cookie)
- */
-export function getAuthToken(): string | null {
-  // HttpOnly cookies cannot be read by JavaScript
-  // The token is sent automatically by the browser with credentials: 'include'
-  console.warn('[Auth] getAuthToken() is deprecated. Token is in HttpOnly cookie and cannot be read by JavaScript.');
-  return null;
-}
+// getAuthToken() REMOVED: HttpOnly cookies cannot be read by JavaScript.
+// The browser automatically sends the cookie with credentials: 'include'.
+// Use isAuthenticated store to check authentication status.
 
 /**
  * Get current CSRF token from JWT payload

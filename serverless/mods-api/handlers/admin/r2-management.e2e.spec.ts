@@ -104,7 +104,7 @@ async function createTestR2File(
   const response = await fetch(`${TEST_CONFIG.API_URL}/mods`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Cookie': `auth_token=${token}`,
     },
     body: formData,
   });
@@ -125,7 +125,7 @@ async function createTestR2File(
   // Get the version to find its R2 key
   const versionResponse = await fetch(`${TEST_CONFIG.API_URL}/mods/${modId}/versions/${versionId}`, {
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Cookie': `auth_token=${token}`,
     },
   });
   
@@ -168,7 +168,7 @@ async function createTestThumbnail(
   const response = await fetch(`${TEST_CONFIG.API_URL}/mods/${modId}`, {
     method: 'PUT',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Cookie': `auth_token=${token}`,
     },
     body: formData,
   });
@@ -190,7 +190,7 @@ async function createTestThumbnail(
   // We'll need to get the mod to find the customer ID
   const modResponse = await fetch(`${TEST_CONFIG.API_URL}/mods/${modId}`, {
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Cookie': `auth_token=${token}`,
     },
   });
   
@@ -218,7 +218,7 @@ async function getFileMetadata(
 ): Promise<{ marked_for_deletion?: string; marked_for_deletion_on?: string; [key: string]: any } | null> {
   const response = await fetch(`${TEST_CONFIG.API_URL}/admin/r2/files?prefix=${encodeURIComponent(fileKey)}&limit=1`, {
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Cookie': `auth_token=${token}`,
     },
   });
   
@@ -241,7 +241,7 @@ async function fileExists(
 ): Promise<boolean> {
   const response = await fetch(`${TEST_CONFIG.API_URL}/admin/r2/files?prefix=${encodeURIComponent(fileKey)}&limit=1`, {
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Cookie': `auth_token=${token}`,
     },
   });
   
@@ -265,7 +265,7 @@ async function setOldDeletionTimestamp(
   // Get the file
   const getResponse = await fetch(`${TEST_CONFIG.API_URL}/admin/r2/files?prefix=${encodeURIComponent(fileKey)}&limit=1`, {
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Cookie': `auth_token=${token}`,
     },
   });
   
@@ -293,7 +293,7 @@ async function triggerCleanup(token: string): Promise<{ scanned: number; marked:
   const response = await fetch(`${TEST_CONFIG.API_URL}/admin/r2/cleanup`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Cookie': `auth_token=${token}`,
     },
   });
   
@@ -338,7 +338,7 @@ test.describe('R2 Management - Soft Delete (Mark for Deletion)', () => {
     const modResponse = await fetch(`${TEST_CONFIG.API_URL}/mods`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
       },
       body: formData,
     });
@@ -355,7 +355,7 @@ test.describe('R2 Management - Soft Delete (Mark for Deletion)', () => {
     // Mark file for deletion
     const deleteResponse = await request.delete(`${TEST_CONFIG.API_URL}/admin/r2/files/${encodeURIComponent(testFileKey)}`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -396,7 +396,7 @@ test.describe('R2 Management - Soft Delete (Mark for Deletion)', () => {
     // Mark all for deletion
     const bulkDeleteResponse = await request.post(`${TEST_CONFIG.API_URL}/admin/r2/files/delete`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
         'Content-Type': 'application/json',
       },
       data: { keys: fileKeys },
@@ -431,7 +431,7 @@ test.describe('R2 Management - Soft Delete (Mark for Deletion)', () => {
     // Mark for deletion
     await request.delete(`${TEST_CONFIG.API_URL}/admin/r2/files/${encodeURIComponent(testKey)}`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
       },
     });
     
@@ -466,7 +466,7 @@ test.describe('R2 Management - Protected Thumbnails', () => {
     const modResponse = await fetch(`${TEST_CONFIG.API_URL}/mods`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
       },
       body: formData,
     });
@@ -482,7 +482,7 @@ test.describe('R2 Management - Protected Thumbnails', () => {
     // Attempt to delete the thumbnail
     const deleteResponse = await request.delete(`${TEST_CONFIG.API_URL}/admin/r2/files/${encodeURIComponent(thumbnailKey)}`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -507,7 +507,7 @@ test.describe('R2 Management - Protected Thumbnails', () => {
     // Attempt bulk delete including the protected thumbnail
     const bulkDeleteResponse = await request.post(`${TEST_CONFIG.API_URL}/admin/r2/files/delete`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
         'Content-Type': 'application/json',
       },
       data: { keys: [thumbnailKey] },
@@ -555,7 +555,7 @@ test.describe('R2 Management - Cleanup Job', () => {
       // Mark for deletion
       await request.delete(`${TEST_CONFIG.API_URL}/admin/r2/files/${encodeURIComponent(fileKey)}`, {
         headers: {
-          'Authorization': `Bearer ${adminToken}`,
+          'Cookie': `auth_token=${adminToken}`,
         },
       });
       
@@ -563,7 +563,7 @@ test.describe('R2 Management - Cleanup Job', () => {
       // This simulates files that should be cleaned up
       const file = await fetch(`${TEST_CONFIG.API_URL}/admin/r2/files?prefix=${encodeURIComponent(fileKey)}&limit=1`, {
         headers: {
-          'Authorization': `Bearer ${adminToken}`,
+          'Cookie': `auth_token=${adminToken}`,
         },
       }).then(r => r.json()) as { files?: Array<{ key: string }> };
       
@@ -581,7 +581,7 @@ test.describe('R2 Management - Cleanup Job', () => {
       
       await request.delete(`${TEST_CONFIG.API_URL}/admin/r2/files/${encodeURIComponent(fileKey)}`, {
         headers: {
-          'Authorization': `Bearer ${adminToken}`,
+          'Cookie': `auth_token=${adminToken}`,
         },
       });
       
@@ -608,7 +608,7 @@ test.describe('R2 Management - Cleanup Job', () => {
     // Get all marked files to verify cleanup logic
     const listResponse = await request.get(`${TEST_CONFIG.API_URL}/admin/r2/files?limit=10000`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
       },
     });
     
@@ -642,7 +642,7 @@ test.describe('R2 Management - Cleanup Job', () => {
     // Trigger manual cleanup (for testing)
     const cleanupResponse = await request.post(`${TEST_CONFIG.API_URL}/admin/r2/cleanup`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT * 2, // Cleanup can take longer
     });
@@ -683,7 +683,7 @@ test.describe('R2 Management - Cleanup Job', () => {
     // Mark for deletion first
     await request.delete(`${TEST_CONFIG.API_URL}/admin/r2/files/${encodeURIComponent(oldFileKey)}`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
       },
     });
     
@@ -691,7 +691,7 @@ test.describe('R2 Management - Cleanup Job', () => {
     const oldTimestamp = Date.now() - (6 * 24 * 60 * 60 * 1000);
     const timestampResponse = await request.put(`${TEST_CONFIG.API_URL}/admin/r2/files/${encodeURIComponent(oldFileKey)}/timestamp`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
         'Content-Type': 'application/json',
       },
       data: { timestamp: oldTimestamp },
@@ -750,7 +750,7 @@ test.describe('R2 Management - Cleanup Job', () => {
     // Get all marked files
     const listResponse = await request.get(`${TEST_CONFIG.API_URL}/admin/r2/files?limit=10000`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
       },
     });
     
@@ -784,7 +784,7 @@ test.describe('R2 Management - Edge Cases', () => {
     
     const deleteResponse = await request.delete(`${TEST_CONFIG.API_URL}/admin/r2/files/${encodeURIComponent(nonExistentKey)}`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -796,7 +796,7 @@ test.describe('R2 Management - Edge Cases', () => {
   test('should handle empty bulk delete request', async ({ request }) => {
     const bulkDeleteResponse = await request.post(`${TEST_CONFIG.API_URL}/admin/r2/files/delete`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
         'Content-Type': 'application/json',
       },
       data: { keys: [] },
@@ -810,7 +810,7 @@ test.describe('R2 Management - Edge Cases', () => {
   test('should handle invalid file keys in bulk delete', async ({ request }) => {
     const bulkDeleteResponse = await request.post(`${TEST_CONFIG.API_URL}/admin/r2/files/delete`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
         'Content-Type': 'application/json',
       },
       data: { keys: ['invalid-key-1', 'invalid-key-2'] },
@@ -860,7 +860,7 @@ test.describe('R2 Management - Metadata Verification', () => {
     // Get file info to verify metadata is accessible
     const listResponse = await request.get(`${TEST_CONFIG.API_URL}/admin/r2/files?prefix=${encodeURIComponent(testKey)}&limit=1`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -882,7 +882,7 @@ test.describe('R2 Management - Metadata Verification', () => {
     // Mark for deletion
     await request.delete(`${TEST_CONFIG.API_URL}/admin/r2/files/${encodeURIComponent(testKey)}`, {
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Cookie': `auth_token=${adminToken}`,
       },
     });
     

@@ -18,7 +18,7 @@ test.describe('OTP Auth Service Health', () => {
     
     const response = await request.get(`${WORKER_URLS.OTP_AUTH}/health`, {
       headers: {
-        'Authorization': `Bearer ${testJWTToken}`,
+        'Cookie': `auth_token=${testJWTToken}`,
       },
     });
     expect(response.ok()).toBeTruthy();

@@ -7,7 +7,7 @@ import { getCorsHeaders } from '../../utils/cors.js';
 import { verifyApiKey } from '../../services/api-key.js';
 import { verifyJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
-import { wrapWithEncryption } from '@strixun/api-framework';
+// CRITICAL: wrapWithEncryption removed - main router handles ALL encryption (avoids double-encryption)
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -36,31 +36,32 @@ export interface RouteResult {
 
 /**
  * Authenticate request using API key or JWT token
- * Supports both authentication methods for backward compatibility and dashboard access
+ * - JWT tokens ONLY from HttpOnly cookies (NO Authorization header)
+ * - API keys from X-OTP-API-Key header (for service-to-service)
  */
 export async function authenticateRequest(request: Request, env: Env): Promise<AuthResult> {
-    const authHeader = request.headers.get('Authorization');
-    let token: string | null = null;
+    // First check for API key in X-OTP-API-Key header (service-to-service auth)
+    const apiKey = request.headers.get('X-OTP-API-Key');
+    if (apiKey) {
+        return await verifyApiKey(apiKey, env);
+    }
     
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7).trim();
-    } else {
-        const apiKey = request.headers.get('X-OTP-API-Key');
-        if (apiKey) {
-            return await verifyApiKey(apiKey, env);
+    // Then check HttpOnly cookie for JWT token (user auth)
+    let token: string | null = null;
+    const cookieHeader = request.headers.get('Cookie');
+    if (cookieHeader) {
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        if (authCookie) {
+            token = authCookie.substring('auth_token='.length).trim();
         }
-        return null;
     }
     
     if (!token) {
         return null;
     }
     
-    // Try API key verification (for backward compatibility)
-    const apiKeyAuth = await verifyApiKey(token, env);
-    if (apiKeyAuth) {
-        return apiKeyAuth;
-    }
+    // Token is a JWT - verify it
     
     // If API key verification fails, try JWT token verification (for dashboard access)
     try {
@@ -129,7 +130,8 @@ export async function handleAdminRoute(
     }
     
     const handlerResponse = await handler(request, env, auth.customerId);
-    return await wrapWithEncryption(handlerResponse, auth, request, env);
+    // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
+    return { response: handlerResponse, customerId: auth.customerId };
 }
 
 /**
@@ -143,22 +145,18 @@ export async function handleAdminOrSuperAdminRoute(
 ): Promise<RouteResult> {
     if (!auth) {
         const { verifySuperAdmin } = await import('../../utils/super-admin.js');
-        const authHeader = request.headers.get('Authorization');
         let isSuperAdminKey = false;
         
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.substring(7).trim();
-            isSuperAdminKey = verifySuperAdmin(token, env);
-        } else {
-            const apiKey = request.headers.get('X-OTP-API-Key');
-            if (apiKey) {
-                isSuperAdminKey = verifySuperAdmin(apiKey, env);
-            }
+        // Check X-OTP-API-Key header for super-admin API key
+        const apiKey = request.headers.get('X-OTP-API-Key');
+        if (apiKey) {
+            isSuperAdminKey = verifySuperAdmin(apiKey, env);
         }
         
         if (isSuperAdminKey) {
             const handlerResponse = await handler(request, env, null);
-            return await wrapWithEncryption(handlerResponse, null, request, env);
+            // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
+            return { response: handlerResponse, customerId: null };
         }
         
         return {
@@ -190,7 +188,8 @@ export async function handleAdminOrSuperAdminRoute(
     }
     
     const handlerResponse = await handler(request, env, auth.customerId);
-    return await wrapWithEncryption(handlerResponse, auth, request, env);
+    // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
+    return { response: handlerResponse, customerId: auth.customerId };
 }
 
 /**
@@ -211,22 +210,18 @@ export async function handleSuperAdminRoute(
     
     if (!auth) {
         const { verifySuperAdmin } = await import('../../utils/super-admin.js');
-        const authHeader = request.headers.get('Authorization');
         let isSuperAdminKey = false;
         
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.substring(7).trim();
-            isSuperAdminKey = verifySuperAdmin(token, env);
-        } else {
-            const apiKey = request.headers.get('X-OTP-API-Key');
-            if (apiKey) {
-                isSuperAdminKey = verifySuperAdmin(apiKey, env);
-            }
+        // Check X-OTP-API-Key header for super-admin API key
+        const apiKey = request.headers.get('X-OTP-API-Key');
+        if (apiKey) {
+            isSuperAdminKey = verifySuperAdmin(apiKey, env);
         }
         
         if (isSuperAdminKey) {
             const handlerResponse = await handler(request, env, null);
-            return await wrapWithEncryption(handlerResponse, null, request, env);
+            // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
+            return { response: handlerResponse, customerId: null };
         }
     }
     

@@ -20,6 +20,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
     const isAuthenticated: Writable<boolean> = writable(false);
     const isSuperAdmin: Writable<boolean> = writable(false);
     const csrfToken: Writable<string | null> = writable(null);
+    // NOTE: No token store - token is in HttpOnly cookie and CANNOT be read by JavaScript
     
     // Derived stores
     const isTokenExpired: Readable<boolean> = derived(
@@ -199,9 +200,14 @@ export function createAuthStore(config?: AuthStoreConfig) {
     
     /**
      * Get current auth token from HttpOnly cookie
+     * WARNING: This returns null because HttpOnly cookies cannot be read by JavaScript
+     * The cookie is sent automatically with credentials: 'include'
+     * This function exists for backward compatibility only
      */
     function getAuthToken(): string | null {
-        return getCookie('auth_token');
+        // HttpOnly cookies cannot be read by JavaScript
+        // Use isAuthenticated store to check authentication status
+        return null;
     }
     
     /**

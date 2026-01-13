@@ -342,8 +342,16 @@ export async function handleBadge(
         // For public badges: if hash exists, show as "verified" (file has integrity tracking)
         // For authenticated users: attempt actual verification if token matches upload token
         
-        const authHeader = request.headers.get('Authorization');
-        const jwtToken = authHeader?.replace('Bearer ', '').trim() || null;
+        // Get JWT token from HttpOnly cookie (optional for public access)
+        let jwtToken: string | null = null;
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+                jwtToken = authCookie.substring('auth_token='.length).trim();
+            }
+        }
         
         const displayVersionId = isVariantVersion ? (variantVersion as VariantVersion).variantVersionId : (version as ModVersion).versionId;
         

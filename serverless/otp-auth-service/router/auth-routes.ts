@@ -13,7 +13,7 @@ import * as authHandlers from '../handlers/auth.js';
 import { handleRequestOTP } from '../handlers/auth/request-otp.js';
 import { handleVerifyOTP } from '../handlers/auth/verify-otp.js';
 // CRITICAL: user-lookup removed - we ONLY use customerId, NO userId
-import { wrapWithEncryption } from '@strixun/api-framework';
+// CRITICAL: wrapWithEncryption removed - main router handles ALL encryption (avoids double-encryption)
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -82,13 +82,24 @@ async function authenticateRequest(request: Request, env: Env): Promise<ApiKeyAu
  * @returns JWT payload with customerId or null
  */
 async function authenticateJWT(request: Request, env: Env): Promise<{ customerId: string; payload: any } | null> {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null;
+    // CRITICAL: Check HttpOnly cookie FIRST, then Authorization header
+    let token: string | null = null;
+    
+    // Check cookie first (primary - HttpOnly SSO)
+    const cookieHeader = request.headers.get('Cookie');
+    console.log('[AuthRoutes] authenticateJWT - Cookie header:', cookieHeader ? 'present' : 'missing');
+    if (cookieHeader) {
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        if (authCookie) {
+            token = authCookie.substring('auth_token='.length).trim();
+            console.log('[AuthRoutes] authenticateJWT - Token extracted from cookie:', token ? token.substring(0, 20) + '...' : 'empty');
+        }
     }
     
-    // CRITICAL: Trim token to ensure it matches the token used for encryption
-    const token = authHeader.substring(7).trim();
+    if (!token) {
+        return null;
+    }
     
     // Check if it's an API key format - if so, don't try JWT verification
     if (token.startsWith('otp_live_sk_') || token.startsWith('otp_test_sk_')) {
@@ -345,21 +356,28 @@ export async function handleAuthRoutes(
     
     // Extract JWT token for encryption (CRITICAL: JWT is ALWAYS required for encryption)
     // API key authentication does NOT replace JWT - JWT is mandatory for encryption
-    const authHeader = request.headers.get('Authorization');
-    const rawJwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-    const jwtToken = rawJwtToken ? rawJwtToken.trim() : null;
+    // CRITICAL: Check HttpOnly cookie FIRST, then Authorization header
+    let jwtToken: string | null = null;
+    
+    // Check cookie first (primary - HttpOnly SSO)
+    const cookieHeader = request.headers.get('Cookie');
+    console.log('[AuthRoutes] JWT extraction for encryption - Cookie header:', cookieHeader ? 'present' : 'missing', 'path:', path);
+    if (cookieHeader) {
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        if (authCookie) {
+            jwtToken = authCookie.substring('auth_token='.length).trim();
+            console.log('[AuthRoutes] JWT extraction for encryption - Token from cookie:', jwtToken ? jwtToken.substring(0, 20) + '...' : 'empty');
+        } else {
+            console.log('[AuthRoutes] JWT extraction for encryption - No auth_token cookie found');
+        }
+    } else {
+        console.log('[AuthRoutes] JWT extraction for encryption - No cookie header, NO FALLBACKS');
+    }
     
     // Check if the token is actually a JWT (not an API key)
     const isJWT = jwtToken && !jwtToken.startsWith('otp_live_sk_') && !jwtToken.startsWith('otp_test_sk_');
-    
-    if (path === '/auth/me' && jwtToken && isJWT) {
-        console.log('[AuthRoutes] /auth/me - Token extraction for encryption:', {
-            rawTokenLength: rawJwtToken?.length || 0,
-            trimmedTokenLength: jwtToken?.length || 0,
-            rawTokenPrefix: rawJwtToken ? rawJwtToken.substring(0, 20) + '...' : 'none',
-            trimmedTokenPrefix: jwtToken ? jwtToken.substring(0, 20) + '...' : 'none',
-        });
-    }
+    console.log('[AuthRoutes] JWT extraction for encryption - isJWT:', isJWT, 'jwtAuth present:', !!jwtAuth);
     
     // Build auth object for encryption wrapper
     // CRITICAL: JWT is ALWAYS required for encryption (security requirement)
@@ -367,6 +385,8 @@ export async function handleAuthRoutes(
     const authForEncryption = (jwtToken && isJWT && jwtAuth)
         ? { userId: 'anonymous', customerId: jwtAuth.customerId, jwtToken } 
         : null;
+    
+    console.log('[AuthRoutes] authForEncryption built:', authForEncryption ? 'YES (has token)' : 'NO (null)', 'for path:', path);
     
     // Attach customerId to request context by wrapping handlers
     // Note: AUTH_ENDPOINTS_NO_JWT and isAuthEndpointNoJWT are already declared above (lines 162-163)
@@ -391,17 +411,8 @@ export async function handleAuthRoutes(
             },
         });
         
-        const encryptedResult = await wrapWithEncryption(
-            responseWithCors,
-            authForEncryption,
-            request,
-            env,
-            { 
-                requireJWT: false, // ⚠ Exception - part of auth flow (OTP endpoints don't require JWT)
-                allowServiceCallsWithoutJWT: true // ⚠ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
-            }
-        );
-        return { response: encryptedResult.response, customerId };
+        // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
+        return { response: responseWithCors, customerId };
     }
     if (path === '/auth/verify-otp' && request.method === 'POST') {
         // API key is OPTIONAL and ONLY provides CORS bypass for allowed origins
@@ -421,27 +432,15 @@ export async function handleAuthRoutes(
             },
         });
         
-        const encryptedResult = await wrapWithEncryption(
-            responseWithCors,
-            authForEncryption,
-            request,
-            env,
-            { 
-                requireJWT: false, // ⚠ CRITICAL - Returns JWT token (chicken-and-egg problem)
-                allowServiceCallsWithoutJWT: true // ⚠ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
-            }
-        );
-        return { response: encryptedResult.response, customerId };
+        // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
+        return { response: responseWithCors, customerId };
     }
     if (path === '/auth/me' && request.method === 'GET') {
+        console.log('[AuthRoutes] /auth/me - Calling handleGetMe');
         const handlerResponse = await authHandlers.handleGetMe(request, env);
-        const encryptedResult = await wrapWithEncryption(
-            handlerResponse,
-            authForEncryption,
-            request,
-            env
-        );
-        return { response: encryptedResult.response, customerId };
+        console.log('[AuthRoutes] /auth/me - handleGetMe returned status:', handlerResponse.status);
+        // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
+        return { response: handlerResponse, customerId };
     }
     if (path === '/auth/quota' && request.method === 'GET') {
         // Pass customerId from JWT auth (primary) - API key is NOT a fallback
@@ -457,35 +456,18 @@ export async function handleAuthRoutes(
             xApiKeyHeader: request.headers.get('X-OTP-API-Key') ? request.headers.get('X-OTP-API-Key')?.substring(0, 30) + '...' : null
         });
         const handlerResponse = await authHandlers.handleGetQuota(request, env, customerIdToPass);
-        const encryptedResult = await wrapWithEncryption(
-            handlerResponse,
-            authForEncryption,
-            request,
-            env
-            // CRITICAL: No requireJWT: false - JWT is ALWAYS required for encryption
-            // If JWT is missing or invalid, encryption will fail (security requirement)
-        );
-        return { response: encryptedResult.response, customerId: customerIdToPass };
+        // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
+        return { response: handlerResponse, customerId: customerIdToPass };
     }
     if (path === '/auth/logout' && request.method === 'POST') {
         const handlerResponse = await authHandlers.handleLogout(request, env);
-        const encryptedResult = await wrapWithEncryption(
-            handlerResponse,
-            authForEncryption,
-            request,
-            env
-        );
-        return { response: encryptedResult.response, customerId };
+        // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
+        return { response: handlerResponse, customerId };
     }
     if (path === '/auth/refresh' && request.method === 'POST') {
         const handlerResponse = await authHandlers.handleRefresh(request, env);
-        const encryptedResult = await wrapWithEncryption(
-            handlerResponse,
-            authForEncryption,
-            request,
-            env
-        );
-        return { response: encryptedResult.response, customerId };
+        // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
+        return { response: handlerResponse, customerId };
     }
     
     // CRITICAL: User lookup endpoint removed - we ONLY use customerId, NO userId

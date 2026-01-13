@@ -44,20 +44,56 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8787',
-        changeOrigin: true
+        target: 'http://localhost:8793', // URL shortener worker
+        changeOrigin: true,
+        secure: false,
+        // CRITICAL: Forward cookies for HttpOnly cookie authentication
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) {
+              console.log('[Vite Proxy] /api - Cookies sent:', req.headers.cookie);
+            }
+          });
+          proxy.on('proxyRes', (proxyRes) => {
+            const setCookie = proxyRes.headers['set-cookie'];
+            if (setCookie) {
+              console.log('[Vite Proxy] /api - Set-Cookie received:', setCookie);
+            }
+          });
+        },
       },
       '/auth': {
-        target: 'http://localhost:8787',
-        changeOrigin: true
+        target: 'http://localhost:8787', // Auth service for login
+        changeOrigin: true,
+        secure: false,
+        // CRITICAL: Forward cookies for HttpOnly cookie authentication
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) {
+              console.log('[Vite Proxy] /auth - Cookies sent:', req.headers.cookie);
+            }
+          });
+          proxy.on('proxyRes', (proxyRes) => {
+            const setCookie = proxyRes.headers['set-cookie'];
+            if (setCookie) {
+              console.log('[Vite Proxy] /auth - Set-Cookie received:', setCookie);
+            }
+          });
+        },
       },
       '/decrypt.js': {
         target: 'http://localhost:8793',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false,
       },
       '/otp-core.js': {
         target: 'http://localhost:8793',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false,
       }
     }
   }
