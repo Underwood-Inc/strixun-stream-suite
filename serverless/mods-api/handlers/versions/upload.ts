@@ -111,7 +111,7 @@ export async function handleUploadVersion(
         // Check upload quota (skip for super admins)
         const isSuper = await isSuperAdmin(auth.customerId, auth.jwtToken, env);
         if (!isSuper) {
-            const quotaCheck = await checkUploadQuota(auth.customerId, env);
+            const quotaCheck = await checkUploadQuota(auth.customerId, env, auth.jwtToken);
             if (!quotaCheck.allowed) {
                 const quotaMessage = `Upload quota exceeded. Limit: ${quotaCheck.limit}, Remaining: ${quotaCheck.remaining}. Resets at ${new Date(quotaCheck.resetAt).toLocaleString()}.`;
                 
@@ -466,7 +466,7 @@ export async function handleUploadVersion(
 
         // Track successful upload (skip for super admins)
         if (!isSuperAdmin) {
-            await trackUpload(auth.customerId, env);
+            await trackUpload(auth.customerId, env, auth.jwtToken);
         }
 
         const corsHeaders = createCORSHeaders(request, {

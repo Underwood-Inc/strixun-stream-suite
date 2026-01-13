@@ -172,7 +172,9 @@ export async function handleAdminOrSuperAdminRoute(
     }
     
     const { isAdminOrSuperAdmin } = await import('../../utils/super-admin.js');
-    const hasAdminAccess = await isAdminOrSuperAdmin(auth.customerId!, env);
+    // Extract jwtToken if auth is JwtAuth type
+    const jwtToken = 'jwtToken' in auth ? auth.jwtToken : undefined;
+    const hasAdminAccess = await isAdminOrSuperAdmin(auth.customerId!, env, jwtToken);
     
     if (!hasAdminAccess) {
         return {

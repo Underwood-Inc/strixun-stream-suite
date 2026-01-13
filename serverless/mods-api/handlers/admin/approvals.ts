@@ -15,12 +15,27 @@ export async function handleApproveCustomer(
     request: Request,
     env: Env,
     customerId: string,
-    _auth: { customerId: string }
+    auth: { customerId: string; jwtToken?: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
         // Add 'uploader' role to customer via Access Service
-        const access = createAccessClient(env);
+        // Extract JWT token from auth object or from cookie
+        let jwtToken: string | null = null;
+        if (auth.jwtToken) {
+            jwtToken = auth.jwtToken;
+        } else {
+            // Fallback: extract from cookie if not in auth object
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    jwtToken = authCookie.substring('auth_token='.length).trim();
+                }
+            }
+        }
+        const access = createAccessClient(env, { jwtToken: jwtToken || undefined });
         const authorization = await access.getCustomerAuthorization(customerId);
         
         if (!authorization) {
@@ -77,12 +92,27 @@ export async function handleRevokeCustomer(
     request: Request,
     env: Env,
     customerId: string,
-    _auth: { customerId: string }
+    auth: { customerId: string; jwtToken?: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
         // Remove 'uploader' role from customer via Access Service
-        const access = createAccessClient(env);
+        // Extract JWT token from auth object or from cookie
+        let jwtToken: string | null = null;
+        if (auth.jwtToken) {
+            jwtToken = auth.jwtToken;
+        } else {
+            // Fallback: extract from cookie if not in auth object
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    jwtToken = authCookie.substring('auth_token='.length).trim();
+                }
+            }
+        }
+        const access = createAccessClient(env, { jwtToken: jwtToken || undefined });
         const authorization = await access.getCustomerAuthorization(customerId);
         
         if (!authorization) {

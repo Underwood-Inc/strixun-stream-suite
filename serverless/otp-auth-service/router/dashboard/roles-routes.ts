@@ -35,7 +35,9 @@ export async function handleRolesRoutes(
         
         // Service-to-service call to Access Service for authenticated user's roles
         const { createAccessClient } = await import('../../../shared/access-client.js');
-        const accessClient = createAccessClient(env);
+        // Extract jwtToken if auth is JwtAuth type
+        const jwtToken = 'jwtToken' in auth ? auth.jwtToken : undefined;
+        const accessClient = createAccessClient(env, { jwtToken: jwtToken || undefined });
         const authorization = await accessClient.getCustomerAuthorization(auth.customerId);
         
         if (!authorization) {

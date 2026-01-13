@@ -102,15 +102,33 @@ export async function extractAuth(
     env: RouteProtectionEnv,
     verifyJWT: (token: string, secret: string) => Promise<any>
 ): Promise<AuthResult | null> {
-    const authHeader = request.headers.get('Authorization');
+    let token: string | null = null;
     
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authHeader.substring(7).trim();
-        return await authenticateJWT(token, env, verifyJWT);
+    // PRIORITY 1: Check HttpOnly cookie (browser requests)
+    const cookieHeader = request.headers.get('Cookie');
+    if (cookieHeader) {
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        
+        if (authCookie) {
+            token = authCookie.substring('auth_token='.length).trim();
+        }
     }
     
-    return null;
+    // PRIORITY 2: Check Authorization header (service-to-service calls)
+    if (!token) {
+        const authHeader = request.headers.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            // CRITICAL: Trim token to ensure it matches the token used for encryption
+            token = authHeader.substring(7).trim();
+        }
+    }
+    
+    if (!token) {
+        return null;
+    }
+    
+    return await authenticateJWT(token, env, verifyJWT);
 }
 
 /**
@@ -178,24 +196,14 @@ export async function protectAdminRoute(
     level: AdminLevel,
     verifyJWT: (token: string, secret: string) => Promise<any>
 ): Promise<RouteProtectionResult> {
-    // First, try to authenticate the request
+    // CRITICAL: Admin routes ALWAYS require JWT authentication
+    // API keys are NOT authentication keys - they are for service identification only
+    // Admin routes must have valid JWT with proper role verification
+    
+    // Authenticate the request (extracts JWT from HttpOnly cookie or Authorization header)
     const auth = await extractAuth(request, env, verifyJWT);
     
-    // Check for super admin API key (service-to-service calls)
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authHeader.substring(7).trim();
-        if (verifySuperAdminKey(token, env)) {
-            // Super admin API key authenticated - allow access
-            return {
-                allowed: true,
-                level: 'super-admin',
-            };
-        }
-    }
-    
-    // If no auth and no API key, require authentication
+    // If no JWT authentication, deny access
     if (!auth) {
         return {
             allowed: false,

@@ -134,15 +134,16 @@ export async function authenticateSuperAdminJWT(request: Request, env: Env): Pro
  * 
  * @param customerId - Customer ID
  * @param env - Environment
+ * @param jwtToken - Optional JWT token for authentication
  * @returns True if customer has admin or super-admin role
  */
-export async function isAdminOrSuperAdmin(customerId: string, env: Env): Promise<boolean> {
+export async function isAdminOrSuperAdmin(customerId: string, env: Env, jwtToken?: string): Promise<boolean> {
     if (!customerId) {
         return false;
     }
 
     try {
-        const access = createAccessClient(env);
+        const access = createAccessClient(env, { jwtToken: jwtToken || undefined });
         const authorization = await access.getCustomerAuthorization(customerId);
         
         if (!authorization) {

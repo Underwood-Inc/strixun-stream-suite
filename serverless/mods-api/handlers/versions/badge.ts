@@ -78,7 +78,7 @@ export async function handleBadge(
     env: Env,
     modId: string,
     versionId: string,
-    auth: { customerId: string } | null
+    auth: { customerId: string; jwtToken?: string } | null
 ): Promise<Response> {
     try {
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
@@ -139,9 +139,25 @@ export async function handleBadge(
         
         console.log('[Badge] Mod found:', { modId: mod.modId, slug: mod.slug, status: mod.status, visibility: mod.visibility, customerId: mod.customerId });
 
-        // Check if user is super admin
+        // Extract JWT token from auth object or from cookie (used for admin check and verification)
+        let jwtToken: string | null = null;
+        if (auth?.jwtToken) {
+            jwtToken = auth.jwtToken;
+        } else {
+            // Fallback: extract from cookie if not in auth object
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    jwtToken = authCookie.substring('auth_token='.length).trim();
+                }
+            }
+        }
+        
+        // Check if user is super admin (requires JWT token)
         const { isAdmin: checkIsAdmin } = await import('../../utils/admin.js');
-        const isAdmin = auth?.customerId ? await checkIsAdmin(auth.customerId, env) : false;
+        const isAdmin = auth?.customerId && jwtToken ? await checkIsAdmin(auth.customerId, jwtToken, env) : false;
 
         // CRITICAL: Enforce visibility and status filtering
         // Badges are often loaded as images without auth, so we need to be more permissive
@@ -342,16 +358,7 @@ export async function handleBadge(
         // For public badges: if hash exists, show as "verified" (file has integrity tracking)
         // For authenticated users: attempt actual verification if token matches upload token
         
-        // Get JWT token from HttpOnly cookie (optional for public access)
-        let jwtToken: string | null = null;
-        const cookieHeader = request.headers.get('Cookie');
-        if (cookieHeader) {
-            const cookies = cookieHeader.split(';').map(c => c.trim());
-            const authCookie = cookies.find(c => c.startsWith('auth_token='));
-            if (authCookie) {
-                jwtToken = authCookie.substring('auth_token='.length).trim();
-            }
-        }
+        // JWT token already extracted above for admin check - reuse it here
         
         const displayVersionId = isVariantVersion ? (variantVersion as VariantVersion).variantVersionId : (version as ModVersion).versionId;
         
@@ -359,7 +366,7 @@ export async function handleBadge(
             modId: mod.modId,
             versionId: displayVersionId,
             isVariantVersion,
-            hasAuthHeader: !!authHeader,
+            hasAuth: !!auth,
             hasJwtToken: !!jwtToken,
             hasSha256: !!fileVersion!.sha256,
             r2Key: fileVersion!.r2Key,

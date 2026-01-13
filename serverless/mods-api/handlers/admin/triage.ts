@@ -18,7 +18,7 @@ export async function handleUpdateModStatus(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string }
+    auth: { customerId: string; jwtToken?: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures customer is super admin
@@ -372,7 +372,7 @@ export async function handleAddReviewComment(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string }
+    auth: { customerId: string; jwtToken?: string }
 ): Promise<Response> {
     try {
         // Get mod metadata
@@ -431,7 +431,22 @@ export async function handleAddReviewComment(
         }
 
         // Check access: only admin or uploader can comment
-        const isAdmin = await checkIsAdmin(auth.customerId, env);
+        // Extract JWT token from auth object or from cookie
+        let jwtToken: string | null = null;
+        if (auth.jwtToken) {
+            jwtToken = auth.jwtToken;
+        } else {
+            // Fallback: extract from cookie if not in auth object
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    jwtToken = authCookie.substring('auth_token='.length).trim();
+                }
+            }
+        }
+        const isAdmin = auth.customerId && jwtToken ? await checkIsAdmin(auth.customerId, jwtToken, env) : false;
         const isUploader = mod.authorId === auth.customerId;
 
         if (!isAdmin && !isUploader) {

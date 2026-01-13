@@ -25,7 +25,7 @@ export async function handleDeleteVariant(
     env: Env,
     modId: string,
     variantId: string,
-    auth: { customerId: string }
+    auth: { customerId: string; jwtToken?: string }
 ): Promise<Response> {
     try {
         const normalizedModId = normalizeModId(modId);
@@ -33,7 +33,22 @@ export async function handleDeleteVariant(
         let mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
 
         // Try superadmin context if not found in customer context
-        const isSuperAdmin = await checkIsSuperAdmin(auth.customerId, env);
+        // Extract JWT token from auth object or from cookie
+        let jwtToken: string | null = null;
+        if (auth.jwtToken) {
+            jwtToken = auth.jwtToken;
+        } else {
+            // Fallback: extract from cookie if not in auth object
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    jwtToken = authCookie.substring('auth_token='.length).trim();
+                }
+            }
+        }
+        const isSuperAdmin = auth.customerId && jwtToken ? await checkIsSuperAdmin(auth.customerId, jwtToken, env) : false;
         if (!mod && isSuperAdmin) {
             const superadminModKey = `mod_${normalizedModId}`;
             mod = await env.MODS_KV.get(superadminModKey, { type: 'json' }) as ModMetadata | null;

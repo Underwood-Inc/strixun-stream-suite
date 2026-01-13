@@ -29,14 +29,16 @@ interface QuotaCheckResult {
  * 
  * @param customerId - Customer ID
  * @param env - Environment
+ * @param jwtToken - Optional JWT token for authentication
  * @returns Quota check result
  */
 export async function checkUploadQuota(
     customerId: string,
-    env: Env
+    env: Env,
+    jwtToken?: string
 ): Promise<QuotaCheckResult> {
     try {
-        const access = createAccessClient(env);
+        const access = createAccessClient(env, { jwtToken: jwtToken || undefined });
         const quotaResult = await access.checkQuota(customerId, 'upload:mod', 'mod');
         
         return {
@@ -65,10 +67,11 @@ export async function checkUploadQuota(
  * 
  * @param customerId - Customer ID
  * @param env - Environment
+ * @param jwtToken - Optional JWT token for authentication
  */
-export async function trackUpload(customerId: string, env: Env): Promise<void> {
+export async function trackUpload(customerId: string, env: Env, jwtToken?: string): Promise<void> {
     try {
-        const access = createAccessClient(env);
+        const access = createAccessClient(env, { jwtToken: jwtToken || undefined });
         await access.incrementQuota(customerId, 'upload:mod', 'mod');
         console.log('[UploadQuota] Tracked upload for customer:', customerId);
     } catch (error) {

@@ -115,7 +115,7 @@ export async function handleUploadMod(
         }
         
         // Check upload quota (uses Authorization Service)
-        const quotaCheck = await checkUploadQuota(auth.customerId, env);
+        const quotaCheck = await checkUploadQuota(auth.customerId, env, auth.jwtToken);
         if (!quotaCheck.allowed) {
             const quotaMessage = `Upload quota exceeded. Limit: ${quotaCheck.limit}, Remaining: ${quotaCheck.remaining}. Resets at ${new Date(quotaCheck.resetAt).toLocaleString()}.`;
             
@@ -639,7 +639,7 @@ export async function handleUploadMod(
         // This ensures pending mods are not visible to the public, even if visibility is 'public'
 
         // Track successful upload
-        await trackUpload(auth.customerId, env);
+        await trackUpload(auth.customerId, env, auth.jwtToken);
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
