@@ -22,7 +22,7 @@ export interface MusicSearchResponse {
 export class MusicAPIClient {
   private apiUrl: string;
   
-  constructor(apiUrl: string = 'http://localhost:8790') {
+  constructor(apiUrl: string = 'http://localhost:8791') {
     this.apiUrl = apiUrl.replace(/\/$/, '');
   }
   

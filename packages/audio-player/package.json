@@ -28,8 +28,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "howler": "^2.2.4",
-    "@essentia/js": "^0.1.2"
+    "howler": "^2.2.4"
   },
   "peerDependencies": {
     "react": "^19.0.0",

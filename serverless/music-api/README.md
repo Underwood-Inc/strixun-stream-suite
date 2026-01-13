@@ -64,7 +64,7 @@ pnpm install
 # Build worker
 pnpm build:worker
 
-# Run locally
+# Run locally (runs on port 8791)
 pnpm dev
 
 # Deploy

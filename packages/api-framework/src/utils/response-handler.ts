@@ -99,6 +99,8 @@ export async function handleResponse<T = unknown>(
           status: response.status,
           statusText: response.statusText,
           headers: response.headers,
+          request,
+          timestamp: Date.now(),
         };
       }
       
