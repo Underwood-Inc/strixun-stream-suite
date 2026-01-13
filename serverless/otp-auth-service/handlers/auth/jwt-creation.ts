@@ -6,7 +6,6 @@
 
 import { createJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
-import { storeIPSessionMapping } from '../../services/ip-session-index.js';
 import { getClientIP } from '../../utils/ip.js';
 import { createFingerprintHash } from '@strixun/api-framework';
 
@@ -191,24 +190,8 @@ export async function createAuthToken(
     
     await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(sessionData), { expirationTtl: 25200 }); // 7 hours (matches token expiration)
     
-    // Store IP-to-session mapping for cross-application session discovery
-    // This enables SSO - other apps can discover this session by IP address
-    if (clientIP !== 'unknown') {
-        await storeIPSessionMapping(
-            clientIP,
-            customerId, // Use customerId, not userId
-            customerId,
-            sessionKey,
-            expiresAt.toISOString(),
-            emailLower, // OTP email - used internally only for IP mapping
-            env
-        );
-        // CRITICAL: Do NOT log OTP email - it's sensitive data
-        console.log(`[JWT Creation] ✓ Created session and IP mapping for customer: ${customerId} from IP: ${clientIP}`);
-    } else {
-        // CRITICAL: Do NOT log OTP email - it's sensitive data
-        console.warn(`[JWT Creation] ⚠ Created session but could not create IP mapping (IP unknown) for customer: ${customerId}. SSO will not work for this session.`);
-    }
+    // CRITICAL: Do NOT log OTP email - it's sensitive data
+    console.log(`[JWT Creation] ✓ Created session for customer: ${customerId} from IP: ${clientIP}`);
     
     // OAuth 2.0 Token Response (RFC 6749 Section 5.1)
     // CRITICAL: DO NOT return OTP email in response - it's sensitive data

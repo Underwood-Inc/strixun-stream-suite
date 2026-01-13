@@ -1103,6 +1103,11 @@
                 <p>Simple REST API that works with any framework. React, Svelte, Vue, or vanilla JavaScript—we've got you covered.</p>
             </div>
             <div class="feature-card">
+                <div class="feature-icon">🍪</div>
+                <h3>True Single Sign-On</h3>
+                <p>Login once, authenticated everywhere. HttpOnly cookies provide seamless SSO across all subdomains with enterprise-grade XSS protection.</p>
+            </div>
+            <div class="feature-card">
                 <div class="feature-icon">≡</div>
                 <h3>Multi-Tenant Ready</h3>
                 <p>Built for SaaS applications. Complete customer isolation, per-tenant rate limiting, and usage analytics.</p>
@@ -1157,6 +1162,10 @@
                 <div class="security-item">
                     <h3>✓ JWT Tokens</h3>
                     <p>HMAC-SHA256 signed tokens with 7-hour expiration. Token blacklisting for secure logout.</p>
+                </div>
+                <div class="security-item">
+                    <h3>🍪 HttpOnly Cookie SSO</h3>
+                    <p>Secure, XSS-proof authentication cookies. Domain-wide SSO with automatic transmission, HTTPS-only, and SameSite protection.</p>
                 </div>
                 <div class="security-item">
                     <h3>ℹ Audit Logging</h3>
@@ -2299,10 +2308,154 @@ graph LR
                         <li><strong>Authorization: Bearer:</strong> Customer authentication, session management</li>
                     </ul>
 
+                    <h4>Single Sign-On (SSO) with HttpOnly Cookies</h4>
+                    <div class="mermaid-container">
+                        <div class="mermaid">
+sequenceDiagram
+    participant User as 🧙 User Browser
+    participant Mods as mods.idling.app
+    participant Short as s.idling.app
+    participant Stream as streamkit.idling.app
+    participant Auth as auth.idling.app
+    participant KV as Cloudflare KV
+    
+    Note over User,KV: User logs in on first app
+    User->>Mods: Visit mods.idling.app
+    Mods->>User: Show login form
+    User->>Auth: Request OTP (email)
+    Auth->>KV: Store OTP (10min TTL)
+    Auth-->>User: Send OTP via email
+    User->>Auth: Verify OTP code
+    Auth->>KV: Validate OTP
+    Auth->>Auth: Generate JWT token
+    Auth->>User: Set HttpOnly Cookie<br/>Domain=.idling.app<br/>Path=/<br/>Secure; SameSite=Lax
+    User->>Mods: Authenticated!
+    
+    Note over User,KV: User visits second app - already logged in!
+    User->>Short: Visit s.idling.app
+    Short->>User: Check cookie
+    User->>Short: HttpOnly Cookie sent<br/>automatically by browser
+    Short->>Auth: Validate token (/auth/me)
+    Auth->>KV: Verify session
+    Auth-->>Short: ✓ Customer info
+    Short->>User: Authenticated! (No login needed)
+    
+    Note over User,KV: User visits third app - still logged in!
+    User->>Stream: Visit streamkit.idling.app
+    Stream->>User: Check cookie
+    User->>Stream: HttpOnly Cookie sent<br/>automatically by browser
+    Stream->>Auth: Validate token (/auth/me)
+    Auth->>KV: Verify session
+    Auth-->>Stream: ✓ Customer info
+    Stream->>User: Authenticated! (No login needed)
+</div>
+                    </div>
+                    <p>
+                        <strong>How SSO Works Across All Apps:</strong>
+                    </p>
+                    <ol>
+                        <li><strong>Login Once:</strong> User logs in on any app (e.g., mods.idling.app)</li>
+                        <li><strong>Shared Cookie:</strong> Auth service sets an HttpOnly cookie on <code>.idling.app</code> domain</li>
+                        <li><strong>Automatic Authentication:</strong> Cookie is automatically sent to all subdomains</li>
+                        <li><strong>Seamless Experience:</strong> User is instantly authenticated on all apps</li>
+                        <li><strong>Secure Logout:</strong> Logging out on any app clears the cookie for all apps</li>
+                    </ol>
+                    <p>
+                        <strong>Apps Using This SSO:</strong>
+                    </p>
+                    <ul>
+                        <li><strong>mods.idling.app</strong> - Mod Management Hub</li>
+                        <li><strong>s.idling.app</strong> / <strong>shorten.idling.app</strong> / <strong>short.idling.app</strong> / <strong>short.army</strong> - URL Shortener Service</li>
+                        <li><strong>streamkit.idling.app</strong> - Stream Suite (OBS overlays, widgets)</li>
+                        <li><strong>design.idling.app</strong> - Component Library (Storybook)</li>
+                        <li><strong>docs.idling.app</strong> - Documentation & API Reference</li>
+                    </ul>
+
+                    <h4>SSO Cookie Security</h4>
+                    <div class="mermaid-container">
+                        <div class="mermaid">
+graph TB
+    Cookie["`**HttpOnly Cookie**<br/>auth_token=eyJhbGc...`"] --> Props["`**Cookie Properties**`"]
+    
+    Props --> Prop1["`**Domain: .idling.app**<br/>Works on all subdomains`"]
+    Props --> Prop2["`**HttpOnly: true**<br/>No JavaScript access<br/>⚔ XSS Protection`"]
+    Props --> Prop3["`**Secure: true**<br/>HTTPS only<br/>⚔ MITM Protection`"]
+    Props --> Prop4["`**SameSite: Lax**<br/>⚔ CSRF Protection`"]
+    Props --> Prop5["`**Max-Age: 7 hours**<br/>Auto-expiry`"]
+    
+    Cookie --> Benefits["`**Security Benefits**`"]
+    
+    Benefits --> Ben1["`⚔ **XSS Protection**<br/>Cannot be read by malicious scripts`"]
+    Benefits --> Ben2["`⚔ **Automatic Transmission**<br/>Browser sends cookie to all subdomains`"]
+    Benefits --> Ben3["`⚔ **Secure Storage**<br/>Isolated from localStorage/sessionStorage`"]
+    Benefits --> Ben4["`⚔ **No Token Exposure**<br/>Not visible in client-side code`"]
+    
+    classDef cookieStyle fill:#252017,stroke:#edae49,stroke-width:3px,color:#f9f9f9
+    classDef propStyle fill:#1a1611,stroke:#6495ed,stroke-width:3px,color:#f9f9f9
+    classDef benefitStyle fill:#252017,stroke:#28a745,stroke-width:3px,color:#f9f9f9
+    
+    class Cookie cookieStyle
+    class Props,Prop1,Prop2,Prop3,Prop4,Prop5 propStyle
+    class Benefits,Ben1,Ben2,Ben3,Ben4 benefitStyle
+</div>
+                    </div>
+                    <p>
+                        <strong>Why HttpOnly Cookies for SSO?</strong>
+                    </p>
+                    <ul>
+                        <li><strong>XSS Protection:</strong> JavaScript cannot access HttpOnly cookies, preventing token theft</li>
+                        <li><strong>Automatic Sharing:</strong> Browser automatically sends cookie to all <code>.idling.app</code> subdomains</li>
+                        <li><strong>True SSO:</strong> Login once, authenticated everywhere - no manual token passing</li>
+                        <li><strong>No localStorage:</strong> Tokens never stored in client-side storage (vulnerable to XSS)</li>
+                        <li><strong>Secure by Default:</strong> HTTPS-only, CSRF protection, automatic expiry</li>
+                    </ul>
+
+                    <h4>SSO Flow Example</h4>
+                    <div class="mermaid-container">
+                        <div class="mermaid">
+flowchart LR
+    Start(["`👤 **User**`"]) --> Login{"`Already<br/>logged in?`"}
+    
+    Login -->|"`❌ No`"| OTP["`📧 **Request OTP**<br/>on mods.idling.app`"]
+    OTP --> Verify["`🔐 **Enter OTP Code**`"]
+    Verify --> SetCookie["`🍪 **Set HttpOnly Cookie**<br/>Domain: .idling.app`"]
+    SetCookie --> ModsAuth["`✓ **Authenticated**<br/>on mods.idling.app`"]
+    
+    Login -->|"`✓ Yes`"| ModsAuth
+    
+    ModsAuth --> VisitShort["`🔗 **Visit s.idling.app**`"]
+    VisitShort --> AutoAuth1["`🍪 **Cookie Auto-Sent**<br/>by browser`"]
+    AutoAuth1 --> ShortAuth["`✓ **Instantly Authenticated**<br/>on s.idling.app`"]
+    
+    ShortAuth --> VisitStream["`🎥 **Visit streamkit.idling.app**`"]
+    VisitStream --> AutoAuth2["`🍪 **Cookie Auto-Sent**<br/>by browser`"]
+    AutoAuth2 --> StreamAuth["`✓ **Instantly Authenticated**<br/>on streamkit.idling.app`"]
+    
+    StreamAuth --> VisitDocs["`📚 **Visit docs.idling.app**`"]
+    VisitDocs --> AutoAuth3["`🍪 **Cookie Auto-Sent**<br/>by browser`"]
+    AutoAuth3 --> DocsAuth["`✓ **Instantly Authenticated**<br/>on docs.idling.app`"]
+    
+    DocsAuth --> Logout["`🚪 **Logout**<br/>on any app`"]
+    Logout --> ClearCookie["`🗑 **Clear Cookie**<br/>Domain: .idling.app`"]
+    ClearCookie --> AllLogout["`✓ **Logged out**<br/>on all apps`"]
+    
+    classDef userStyle fill:#252017,stroke:#edae49,stroke-width:3px,color:#f9f9f9
+    classDef authStyle fill:#1a1611,stroke:#28a745,stroke-width:3px,color:#f9f9f9
+    classDef cookieStyle fill:#252017,stroke:#6495ed,stroke-width:3px,color:#f9f9f9
+    classDef logoutStyle fill:#1a1611,stroke:#dc3545,stroke-width:3px,color:#f9f9f9
+    
+    class Start,Login userStyle
+    class OTP,Verify,ModsAuth,ShortAuth,StreamAuth,DocsAuth authStyle
+    class SetCookie,AutoAuth1,AutoAuth2,AutoAuth3 cookieStyle
+    class Logout,ClearCookie,AllLogout logoutStyle
+</div>
+                    </div>
+
                     <h4>Storage</h4>
                     <ul>
                         <li><strong>Cloudflare KV</strong> - OTP codes, customer sessions, customer data (tenant-isolated)</li>
                         <li><strong>JWT Tokens</strong> - Stateless authentication (no server-side storage)</li>
+                        <li><strong>HttpOnly Cookies</strong> - Secure token storage in browser (XSS-safe, auto-transmitted)</li>
                         <li><strong>Token Blacklist</strong> - Stored in KV for logout/revocation</li>
                     </ul>
                 </div>

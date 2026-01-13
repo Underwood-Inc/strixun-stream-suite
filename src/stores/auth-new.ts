@@ -1,12 +1,11 @@
 /**
- * Auth store using shared @strixun/auth-store package
- * This is a wrapper that exports the Svelte store for the main app
- * 
- * NOTE: This is the new implementation. Once tested, replace auth.ts with this.
+ * Auth store using shared @strixun/auth-store package with HttpOnly cookie SSO
+ * This implementation uses the new cookie-based auth for true Single Sign-On
  */
 
 import { createAuthStore } from '@strixun/auth-store/svelte';
 import { secureFetch } from '../core/services/encryption';
+import type { AuthenticatedCustomer } from '@strixun/auth-store';
 
 // Get OTP Auth API URL
 function getOtpAuthApiUrl(): string {
@@ -23,6 +22,15 @@ function getOtpAuthApiUrl(): string {
             return 'http://localhost:8787';
         }
         
+        // Priority 1: VITE_AUTH_API_URL (for E2E tests, set by playwright config)
+        if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
+            const viteUrl = import.meta.env.VITE_AUTH_API_URL;
+            if (viteUrl) {
+                return viteUrl;
+            }
+        }
+        
+        // Priority 2: window.getOtpAuthApiUrl() (from config.js)
         if ((window as any).getOtpAuthApiUrl) {
             const url = (window as any).getOtpAuthApiUrl();
             if (url) {
@@ -36,19 +44,15 @@ function getOtpAuthApiUrl(): string {
     return '';
 }
 
-// Create the auth store
+// Create the auth store with HttpOnly cookie SSO
 const authStore = createAuthStore({
     authApiUrl: getOtpAuthApiUrl(),
-    storageKey: 'auth_user',
-    enableSessionRestore: true,
-    enableTokenValidation: true,
-    sessionRestoreTimeout: 10000,
-    tokenValidationTimeout: 5000,
+    storageKey: 'auth-storage', // Use consistent key across all apps
 });
 
 // Export stores (for backward compatibility)
 export const { 
-    user, 
+    customer,
     isAuthenticated, 
     isSuperAdmin, 
     csrfToken, 
@@ -57,17 +61,17 @@ export const {
 
 // Export methods
 export const { 
-    setUser, 
+    setCustomer,
+    login,
     logout, 
-    restoreSession, 
-    fetchUserInfo, 
-    loadAuthState, 
+    checkAuth,
+    fetchCustomerInfo,
     getAuthToken, 
     getCsrfToken 
 } = authStore;
 
 // Re-export types
-export type { User, AuthState } from '@strixun/auth-store/core';
+export type { AuthenticatedCustomer } from '@strixun/auth-store';
 
 // Legacy helpers for backward compatibility
 export function getApiUrl(): string {
@@ -117,8 +121,10 @@ export async function authenticatedFetch(
 }
 
 // Legacy aliases for backward compatibility
-export const setAuth = setUser;
-export const clearAuth = () => setUser(null);
+export const setAuth = setCustomer;
+export const clearAuth = () => logout();
+export const loadAuthState = checkAuth; // Map old loadAuthState to new checkAuth
+export const restoreSession = checkAuth; // Map old restoreSession to new checkAuth
 
 // Derived store for authRequired (legacy compatibility)
 import { derived } from 'svelte/store';

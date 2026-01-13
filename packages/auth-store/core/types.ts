@@ -2,16 +2,18 @@
  * Core types for auth store
  * Framework-agnostic types that work across all implementations
  * 
- * CRITICAL: We ONLY have Customer entities - NO "customer" entity exists
- * The authenticated entity is a Customer with a customerId
+ * SIMPLIFIED: HttpOnly cookie-based authentication
+ * - No IP restoration
+ * - No localStorage token storage
+ * - Cookies handle everything
  */
 
 export interface AuthenticatedCustomer {
     customerId: string; // PRIMARY IDENTITY - REQUIRED
     email: string;
     displayName?: string | null;
-    token: string;
-    expiresAt: string;
+    token?: string; // Optional - only for backward compat, not used with cookies
+    expiresAt?: string;
     isSuperAdmin?: boolean;
     // Optional extensions for specific projects
     twitchAccount?: {
@@ -36,42 +38,6 @@ export interface AuthStoreConfig {
      * Can be overridden via environment variable or config
      */
     authApiUrl?: string;
-    
-    /**
-     * Storage key for persisting auth state
-     * Defaults to 'auth-storage'
-     */
-    storageKey?: string;
-    
-    /**
-     * Storage implementation (localStorage, sessionStorage, or custom)
-     * Defaults to localStorage
-     */
-    storage?: Storage;
-    
-    /**
-     * Enable session restoration from backend
-     * Defaults to true
-     */
-    enableSessionRestore?: boolean;
-    
-    /**
-     * Enable token validation with backend
-     * Defaults to true
-     */
-    enableTokenValidation?: boolean;
-    
-    /**
-     * Timeout for session restoration (ms)
-     * Defaults to 10000 (10 seconds)
-     */
-    sessionRestoreTimeout?: number;
-    
-    /**
-     * Timeout for token validation (ms)
-     * Defaults to 5000 (5 seconds)
-     */
-    tokenValidationTimeout?: number;
 }
 
 export interface AuthStoreMethods {
@@ -82,14 +48,15 @@ export interface AuthStoreMethods {
     
     /**
      * Clear authentication state (logout)
+     * Calls /auth/logout to clear HttpOnly cookie
      */
-    logout: () => void;
+    logout: () => Promise<void>;
     
     /**
-     * Restore session from backend (IP-based session sharing)
-     * Returns true if session was restored, false otherwise
+     * Check authentication status by calling /auth/me
+     * Returns true if authenticated, false otherwise
      */
-    restoreSession: () => Promise<boolean>;
+    checkAuth: () => Promise<boolean>;
     
     /**
      * Fetch fresh customer info from backend

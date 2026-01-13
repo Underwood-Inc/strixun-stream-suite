@@ -32,18 +32,15 @@ function ConditionalLayout({ children }: { children: React.ReactNode }) {
 }
 
 export function App() {
-    const { restoreSession } = useAuthStore();
+    const { checkAuth } = useAuthStore();
 
-    // Restore session from backend on app initialization
-    // This enables cross-application session sharing for the same device
-    // Called early in app lifecycle, similar to main app's loadAuthState()
+    // Check authentication status on app initialization
+    // HttpOnly cookie is sent automatically with /auth/me request
     useEffect(() => {
-        // Always try to restore - it will check if restoration is needed
-        // (validates existing tokens, checks expiration, etc.)
-        restoreSession().catch(error => {
-            console.debug('[App] Session restoration failed (non-critical):', error);
+        checkAuth().catch(error => {
+            console.debug('[App] Auth check failed (non-critical):', error);
         });
-    }, [restoreSession]); // Only run once on mount
+    }, [checkAuth]); // Only run once on mount
 
     return (
         <BrowserRouter>

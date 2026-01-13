@@ -358,11 +358,28 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         // CRITICAL: This will NOT return OTP email in response body
         const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request);
         
+        // Set HttpOnly cookie for automatic authentication across all *.idling.app domains
+        // SECURITY: HttpOnly prevents XSS, Secure ensures HTTPS-only, SameSite=Lax prevents CSRF
+        const isProduction = env.ENVIRONMENT === 'production';
+        const cookieDomain = isProduction ? '.idling.app' : undefined; // undefined for localhost
+        const cookieSecure = isProduction ? 'Secure; ' : ''; // Only set Secure in production (HTTPS)
+        
+        const cookieValue = [
+            `auth_token=${tokenResponse.token}`,
+            `Domain=${cookieDomain || 'localhost'}`,
+            'Path=/',
+            'HttpOnly',
+            cookieSecure,
+            'SameSite=Lax',
+            `Max-Age=${tokenResponse.expires_in}` // 7 hours (25200 seconds)
+        ].filter(Boolean).join('; ');
+        
         return new Response(JSON.stringify(tokenResponse), {
             headers: { 
                 ...getCorsHeaders(env, request), 
                 ...getOtpCacheHeaders(),
                 'Content-Type': 'application/json',
+                'Set-Cookie': cookieValue,
             },
         });
     } catch (error: any) {

@@ -1,6 +1,11 @@
 /**
  * Auth store using shared @strixun/auth-store package
  * This is a thin wrapper that exports the Zustand store for mods-hub
+ * 
+ * SIMPLIFIED: HttpOnly cookie-based authentication
+ * - No IP restoration
+ * - No localStorage token storage
+ * - Cookies handle everything
  */
 
 import { createAuthStore } from '@strixun/auth-store/zustand';
@@ -16,11 +21,6 @@ const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL
 // Create and export the auth store
 export const useAuthStore = createAuthStore({
     authApiUrl: AUTH_API_URL,
-    storageKey: 'auth-storage',
-    enableSessionRestore: true,
-    enableTokenValidation: true,
-    sessionRestoreTimeout: 10000,
-    tokenValidationTimeout: 5000,
 });
 
 // Re-export types for convenience

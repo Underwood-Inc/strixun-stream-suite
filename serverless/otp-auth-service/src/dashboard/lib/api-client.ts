@@ -5,6 +5,7 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
+import { getCookie, deleteCookie } from '@strixun/auth-store/core/utils';
 import type {
   Customer,
   ApiKey,
@@ -18,7 +19,7 @@ import type {
 // API base URL - uses current origin (works with Vite proxy in dev, or same origin in production)
 const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
-// Create API client instance with auth token getter
+// Create API client instance with auth token getter reading from HttpOnly cookie
 const createClient = () => {
   return createAPIClient({
     baseURL: API_BASE_URL,
@@ -26,15 +27,10 @@ const createClient = () => {
       'Content-Type': 'application/json',
     },
     auth: {
-      tokenGetter: () => {
-        if (typeof window !== 'undefined') {
-          return localStorage.getItem('auth_token');
-        }
-        return null;
-      },
+      tokenGetter: () => getCookie('auth_token'), // Read from HttpOnly cookie
       onTokenExpired: () => {
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('auth_token');
+          deleteCookie('auth_token', window.location.hostname, '/');
           window.dispatchEvent(new CustomEvent('auth:logout'));
         }
       },
@@ -45,6 +41,8 @@ const createClient = () => {
       backoff: 'exponential',
       retryableErrors: [408, 429, 500, 502, 503, 504],
     },
+    // CRITICAL: Include credentials to send HttpOnly cookies
+    credentials: 'include',
   });
 };
 
@@ -52,26 +50,20 @@ export class ApiClient {
   private api = createClient();
 
   constructor() {
-    // Client is created with token getter, so it will always read from localStorage
+    // Client is created with token getter, so it will always read from HttpOnly cookie
   }
 
-  setToken(token: string | null): void {
-    if (typeof window !== 'undefined') {
-      if (token) {
-        localStorage.setItem('auth_token', token);
-      } else {
-        localStorage.removeItem('auth_token');
-      }
-    }
-    // Recreate client to pick up new token
+  /**
+   * Set token is now a no-op - HttpOnly cookie is set by the server
+   * We just recreate the client to pick up the cookie
+   */
+  setToken(_token: string | null): void {
+    // HttpOnly cookie is set by the server, we just recreate the client
     this.api = createClient();
   }
 
   getToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth_token');
-    }
-    return null;
+    return getCookie('auth_token');
   }
 
   // Authentication endpoints

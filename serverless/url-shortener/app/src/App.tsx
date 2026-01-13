@@ -1,10 +1,13 @@
 /**
  * URL Shortener App
  * Main application component with React OTP login
+ * 
+ * SIMPLIFIED: HttpOnly cookie-based authentication
+ * - No localStorage token storage
+ * - Cookies handle everything
  */
 
 import { useState, useEffect } from 'react';
-import { apiClient } from './lib/api-client';
 import UrlManager from './pages/UrlManager';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
@@ -18,133 +21,60 @@ function getAuthApiUrl(): string {
   if (typeof window === 'undefined') return '';
   
   // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
-  // Check if we're running on localhost (development mode)
   const isLocalhost = window.location.hostname === 'localhost' || 
                       window.location.hostname === '127.0.0.1' ||
                       import.meta.env.DEV ||
                       import.meta.env.MODE === 'development';
   
   if (isLocalhost) {
-    // NEVER fall back to production when on localhost
     return 'http://localhost:8787';
   }
   
-  // Only use production URL if NOT on localhost
-  // Environment variable override for production builds
   return import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
 }
 
 /**
- * Get URL shortener API URL (same logic as api-client.ts)
+ * Check authentication status by calling /auth/me
+ * Cookie is sent automatically
  */
-function getUrlShortenerApiUrl(): string {
-  if (typeof window === 'undefined') {
-    return 'https://s.idling.app';
+async function checkAuth(): Promise<{ customerId: string; displayName?: string | null } | null> {
+  try {
+    const apiUrl = getAuthApiUrl();
+    const response = await fetch(`${apiUrl}/auth/me`, {
+      method: 'GET',
+      credentials: 'include', // Send cookies
+      cache: 'no-store',
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        customerId: data.customerId,
+        displayName: data.displayName || null,
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[URL Shortener] Auth check failed:', error);
+    return null;
   }
-  
-  const isLocalhost = window.location.hostname === 'localhost' || 
-                      window.location.hostname === '127.0.0.1' ||
-                      import.meta.env?.DEV ||
-                      import.meta.env?.MODE === 'development';
-  
-  if (isLocalhost) {
-    // URL shortener worker runs on port 8793
-    return 'http://localhost:8793';
-  }
-  
-  // Use current origin in production
-  return window.location.origin;
 }
 
 /**
- * Fetch user display name from customer API
- * Uses the same mechanism as other services - customer API is the source of truth
+ * Logout by calling /auth/logout
+ * This clears the HttpOnly cookie
  */
-async function fetchUserDisplayName(token: string): Promise<string | null> {
-  console.log('[URL Shortener] fetchUserDisplayName called with token:', token ? `${token.substring(0, 20)}...` : 'null');
+async function logout(): Promise<void> {
   try {
-    // Get the URL shortener API URL (not auth API)
-    const apiUrl = getUrlShortenerApiUrl();
-    
-    console.log('[URL Shortener] Fetching display name from:', `${apiUrl}/api/display-name`);
-    const response = await fetch(`${apiUrl}/api/display-name`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+    const apiUrl = getAuthApiUrl();
+    await fetch(`${apiUrl}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include', // Send cookies
     });
-
-    console.log('[URL Shortener] /api/display-name response status:', response.status, response.statusText);
-    if (response.ok) {
-      // Check if response is encrypted
-      const encryptedHeader = response.headers.get('X-Encrypted') || response.headers.get('x-encrypted');
-      const isEncrypted = encryptedHeader === 'true';
-      console.log('[URL Shortener] Response encryption check:', { encryptedHeader, isEncrypted });
-      
-      let data: any = await response.json();
-      console.log('[URL Shortener] Response data type:', typeof data, 'keys:', data && typeof data === 'object' ? Object.keys(data) : 'not an object');
-      
-      // Check if data looks encrypted
-      const looksEncrypted = data && typeof data === 'object' && 'encrypted' in data && data.encrypted === true;
-      console.log('[URL Shortener] Data encryption check:', { looksEncrypted, hasEncryptedKey: data && typeof data === 'object' && 'encrypted' in data });
-      
-      if (isEncrypted || looksEncrypted) {
-        // Wait for decryptWithJWT to be available
-        let decryptFn = (window as any).decryptWithJWT;
-        
-        // Poll for decryptWithJWT if not immediately available
-        if (typeof decryptFn !== 'function') {
-          console.warn('[URL Shortener] Decryption library not loaded yet, waiting...');
-          for (let i = 0; i < 10; i++) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            decryptFn = (window as any).decryptWithJWT;
-            if (typeof decryptFn === 'function') {
-              console.log('[URL Shortener] Decryption library loaded after wait');
-              break;
-            }
-          }
-        }
-        
-        if (typeof decryptFn !== 'function') {
-          console.error('[URL Shortener] Decryption library not available after waiting. Response is encrypted but cannot decrypt.');
-          return null;
-        }
-        
-        try {
-          const trimmedToken = token.trim();
-          data = await decryptFn(data, trimmedToken);
-          console.log('[URL Shortener] Successfully decrypted /api/display-name response');
-        } catch (error) {
-          console.error('[URL Shortener] Failed to decrypt response:', error);
-          return null;
-        }
-      }
-      
-      // Extract displayName from response
-      const displayName = data?.displayName;
-      console.log('[URL Shortener] Display name response:', { 
-        hasDisplayName: !!displayName, 
-        displayName, 
-        allKeys: data ? Object.keys(data) : null
-      });
-      
-      if (displayName) {
-        console.log('[URL Shortener] Found displayName:', displayName);
-        return displayName;
-      } else {
-        console.warn('[URL Shortener] No displayName in response. Response keys:', data ? Object.keys(data) : 'null');
-        return null;
-      }
-    } else {
-      console.error('[URL Shortener] /api/display-name returned non-OK status:', response.status, response.statusText);
-      const errorText = await response.text();
-      console.error('[URL Shortener] Error response:', errorText);
-    }
   } catch (error) {
-    console.error('[URL Shortener] Failed to fetch display name:', error);
+    console.error('[URL Shortener] Logout failed:', error);
   }
-  return null;
 }
 
 export default function App() {
@@ -153,44 +83,33 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function checkAuth() {
-      const token = apiClient.getToken();
-      
-      if (token) {
-        const displayName = await fetchUserDisplayName(token);
-        if (displayName) {
-          setIsAuthenticated(true);
-          setUserDisplayName(displayName);
-        }
+    async function init() {
+      const authData = await checkAuth();
+      if (authData) {
+        setIsAuthenticated(true);
+        setUserDisplayName(authData.displayName || null);
       }
-      
       setLoading(false);
     }
     
-    checkAuth();
+    init();
   }, []);
 
   async function handleLoginSuccess(data: LoginSuccessData): Promise<void> {
-    const token = data.token;
-    
-    if (!token) {
-      console.error('[URL Shortener] No token in login response');
-      return;
+    // Cookie is set by server, just update UI
+    const authData = await checkAuth();
+    if (authData) {
+      setIsAuthenticated(true);
+      setUserDisplayName(authData.displayName || null);
     }
-    
-    apiClient.setToken(token);
-    const displayName = await fetchUserDisplayName(token);
-    
-    setIsAuthenticated(true);
-    setUserDisplayName(displayName);
   }
 
   function handleLoginError(error: string): void {
     console.error('[URL Shortener] Login error:', error);
   }
 
-  function handleLogout(): void {
-    apiClient.logout();
+  async function handleLogout(): Promise<void> {
+    await logout();
     setIsAuthenticated(false);
     setUserDisplayName(null);
   }
@@ -228,4 +147,3 @@ export default function App() {
     </div>
   );
 }
-

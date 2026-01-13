@@ -12,8 +12,6 @@ import { checkIPAllowlist, logSecurityEvent } from '../services/security.js';
 import * as authHandlers from '../handlers/auth.js';
 import { handleRequestOTP } from '../handlers/auth/request-otp.js';
 import { handleVerifyOTP } from '../handlers/auth/verify-otp.js';
-import { handleSessionByIP } from '../handlers/auth/session-by-ip.js';
-import { handleRestoreSession } from '../handlers/auth/restore-session.js';
 // CRITICAL: user-lookup removed - we ONLY use customerId, NO userId
 import { wrapWithEncryption } from '@strixun/api-framework';
 
@@ -152,7 +150,7 @@ export async function handleAuthRoutes(
     // JWT handles security/authentication - API key identifies which customer entity
     // If API key is provided, it MUST be valid (identifies customer entity for subscription/rate limiting)
     // EXCEPTION: Auth endpoints that don't require JWT (/auth/request-otp, etc.) don't require API key
-    const AUTH_ENDPOINTS_NO_JWT = ['/auth/request-otp', '/auth/verify-otp', '/auth/restore-session'];
+    const AUTH_ENDPOINTS_NO_JWT = ['/auth/request-otp', '/auth/verify-otp'];
     const isAuthEndpointNoJWT = AUTH_ENDPOINTS_NO_JWT.includes(path);
     
     // CRITICAL: API keys MUST be in X-OTP-API-Key header ONLY
@@ -486,47 +484,6 @@ export async function handleAuthRoutes(
             authForEncryption,
             request,
             env
-        );
-        return { response: encryptedResult.response, customerId };
-    }
-    if (path === '/auth/session-by-ip' && request.method === 'GET') {
-        const handlerResponse = await handleSessionByIP(request, env);
-        const encryptedResult = await wrapWithEncryption(
-            handlerResponse,
-            authForEncryption,
-            request,
-            env
-        );
-        return { response: encryptedResult.response, customerId };
-    }
-    if (path === '/auth/restore-session' && request.method === 'POST') {
-        // THIRD-PARTY DEVELOPER INTEGRATION: API key provides CORS bypass for allowed origins
-        // - API key is OPTIONAL and ONLY provides CORS bypass and multi-tenant features
-        // - restore-session doesn't require JWT (it's for unauthenticated session restoration)
-        // - API key does NOT replace JWT - it's additional functionality
-        const handlerResponse = await handleRestoreSession(request, env);
-        
-        // Apply CORS headers based on customer's allowedOrigins (API key-based origin bypass)
-        // NOTE: This is ONLY for CORS - JWT is still required for authentication (if provided)
-        const corsHeaders = getCorsHeaders(env, request, customer);
-        const responseWithCors = new Response(handlerResponse.body, {
-            status: handlerResponse.status,
-            statusText: handlerResponse.statusText,
-            headers: {
-                ...Object.fromEntries(handlerResponse.headers.entries()),
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
-        
-        const encryptedResult = await wrapWithEncryption(
-            responseWithCors,
-            authForEncryption,
-            request,
-            env,
-            { 
-                requireJWT: false, // ⚠ Exception - may return JWT
-                allowServiceCallsWithoutJWT: true // ⚠ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
-            }
         );
         return { response: encryptedResult.response, customerId };
     }

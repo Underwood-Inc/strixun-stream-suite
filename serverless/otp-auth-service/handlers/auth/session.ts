@@ -7,7 +7,6 @@ import { getCustomerKey } from '../../services/customer.js';
 import { getCorsHeaders } from '../../utils/cors.js';
 import { getAuthCacheHeaders } from '../../utils/cache-headers.js';
 import { createJWT, getJWTSecret, hashEmail, verifyJWT } from '../../utils/crypto.js';
-import { storeIPSessionMapping, deleteIPSessionMapping } from '../../services/ip-session-index.js';
 import { getClientIP } from '../../utils/ip.js';
 import { createFingerprintHash } from '@strixun/api-framework';
 
@@ -49,16 +48,36 @@ interface JWTPayload {
  */
 export async function handleGetMe(request: Request, env: Env): Promise<Response> {
     try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return new Response(JSON.stringify({ error: 'Authorization header required' }), {
+        // Try to get token from cookie first (primary), then Authorization header (backward compat)
+        let token: string | null = null;
+        
+        // Check cookie first
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+                token = authCookie.substring('auth_token='.length).trim();
+            }
+        }
+        
+        // Fallback to Authorization header if no cookie
+        if (!token) {
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring(7).trim();
+            }
+        }
+        
+        if (!token) {
+            return new Response(JSON.stringify({ error: 'Authentication required' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
         // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authHeader.substring(7).trim();
+        token = token.trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
         
@@ -190,16 +209,36 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
  */
 export async function handleLogout(request: Request, env: Env): Promise<Response> {
     try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return new Response(JSON.stringify({ error: 'Authorization header required' }), {
+        // Try to get token from cookie first (primary), then Authorization header (backward compat)
+        let token: string | null = null;
+        
+        // Check cookie first
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+                token = authCookie.substring('auth_token='.length).trim();
+            }
+        }
+        
+        // Fallback to Authorization header if no cookie
+        if (!token) {
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring(7).trim();
+            }
+        }
+        
+        if (!token) {
+            return new Response(JSON.stringify({ error: 'Authentication required' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
         // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authHeader.substring(7).trim();
+        token = token.trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
         
@@ -235,28 +274,37 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             // Get session to find IP address for cleanup
             const sessionData = await env.OTP_AUTH_KV.get(sessionKey, { type: 'json' }) as SessionData | null;
             
-            // Delete IP-to-session mapping for this customer from all IPs
-            // We need to delete from the current session's IP, but also check if there are other sessions
-            // Since we can't list all IPs, we'll delete from the known IP and rely on session restore
-            // to validate sessions exist before restoring
-            if (sessionData?.ipAddress) {
-                // Delete IP-to-session mapping for this customer from this IP
-                await deleteIPSessionMapping(sessionData.ipAddress, customerId, env);
-            }
-            
-            // CRITICAL: Delete the session itself - this prevents /auth/me and session restore
-            // from working with this session
+            // CRITICAL: Delete the session itself - this prevents /auth/me from working with this session
             await env.OTP_AUTH_KV.delete(sessionKey);
             
             // CRITICAL: Do NOT log OTP email - it's sensitive data
             console.log(`[Logout] ✓ Deleted session for customer: ${customerId}`);
         }
         
+        // Clear HttpOnly cookie by setting it to expire immediately
+        const isProduction = env.ENVIRONMENT === 'production';
+        const cookieDomain = isProduction ? '.idling.app' : undefined;
+        const cookieSecure = isProduction ? 'Secure; ' : '';
+        
+        const clearCookieValue = [
+            'auth_token=',
+            `Domain=${cookieDomain || 'localhost'}`,
+            'Path=/',
+            'HttpOnly',
+            cookieSecure,
+            'SameSite=Lax',
+            'Max-Age=0' // Expire immediately
+        ].filter(Boolean).join('; ');
+        
         return new Response(JSON.stringify({ 
             success: true,
             message: 'Logged out successfully'
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { 
+                ...getCorsHeaders(env, request), 
+                'Content-Type': 'application/json',
+                'Set-Cookie': clearCookieValue,
+            },
         });
     } catch (error: any) {
         return new Response(JSON.stringify({ 
@@ -364,23 +412,6 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         };
         
         await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(sessionData), { expirationTtl: 25200 }); // 7 hours
-        
-        // Update IP-to-session mapping (delete old IP if changed, add new IP)
-        if (existingSession?.ipAddress && existingSession.ipAddress !== sessionIP) {
-            await deleteIPSessionMapping(existingSession.ipAddress, customerId, env);
-        }
-        
-        if (sessionIP !== 'unknown') {
-            await storeIPSessionMapping(
-                sessionIP,
-                customerId, // Use customerId, not customerId
-                customerId,
-                sessionKey,
-                expiresAt.toISOString(),
-                payload.email,
-                env
-            );
-        }
         
         return new Response(JSON.stringify({ 
             success: true,
