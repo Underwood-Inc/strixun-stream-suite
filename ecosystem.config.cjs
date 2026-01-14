@@ -1,381 +1,75 @@
 /**
- * PM2 Ecosystem Configuration for Strixun Stream Suite
+ * PM2 Ecosystem Configuration for Strixun Stream Suite (Windows-Optimized)
  * 
- * This configuration manages all 21+ concurrent services in local development:
- * - 6 Frontend Applications (Vite/React/Svelte)
- * - 8 Backend Workers (Cloudflare Workers)
- * - 5+ Library Packages (TypeScript watch mode)
- * - 2 Additional Apps (Dice Board Game)
+ * This configuration manages all 21+ concurrent services in local development.
+ * Uses npm scripts as the entry point for maximum Windows compatibility.
+ * 
+ * Key Features:
+ * - autorestart: false (dev servers have their own HMR/hot reload)
+ * - max_restarts: 3 (prevents restart loops)
+ * - min_uptime: 10s (only restart if process was running for 10+ seconds)
  * 
  * Usage:
  *   Start all:    pm2 start ecosystem.config.cjs
- *   Web UI:       pm2 web (then visit http://localhost:9615)
+ *   GUI:          pm2-gui start (then visit http://localhost:8088)
  *   View logs:    pm2 logs <service-name>
- *   View logs:    pm2 logs --lines 50
  *   Restart:      pm2 restart <service-name>
  *   Stop all:     pm2 stop all
  *   Delete all:   pm2 delete all
  *   Monitor:      pm2 monit
  */
 
+// Helper function to create app config
+function createAppConfig(name, filterOrScript, options = {}) {
+  return {
+    name,
+    script: 'pnpm.cmd',
+    args: filterOrScript,
+    cwd: './',
+    env: {
+      NODE_ENV: 'development',
+      FORCE_COLOR: '1',
+      ...(options.port && { PORT: String(options.port) }),
+    },
+    out_file: `./logs/${name}.log`,
+    error_file: `./logs/${name}-error.log`,
+    merge_logs: true,
+    time: true,
+    autorestart: false, // Dev servers handle their own restarts
+    watch: false,
+    max_restarts: 3,
+    min_uptime: '10s',
+    kill_timeout: 5000,
+  };
+}
+
 module.exports = {
   apps: [
     // ========== FRONTEND APPLICATIONS ==========
-    {
-      name: 'stream-suite',
-      script: 'cmd.exe',
-      args: '/c pnpm dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '5173',
-      },
-      out_file: './logs/stream-suite.log',
-      error_file: './logs/stream-suite-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'mods-hub',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/mods-hub dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '3001',
-      },
-      out_file: './logs/mods-hub.log',
-      error_file: './logs/mods-hub-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'otp-auth-dashboard',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/otp-auth-service dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '5174',
-      },
-      out_file: './logs/otp-auth-dashboard.log',
-      error_file: './logs/otp-auth-dashboard-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'control-panel',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/control-panel dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '5175',
-      },
-      out_file: './logs/control-panel.log',
-      error_file: './logs/control-panel-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'access-hub',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/access-hub dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '5178',
-      },
-      out_file: './logs/access-hub.log',
-      error_file: './logs/access-hub-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'url-shortener-app',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/url-shortener-app dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '5176',
-      },
-      out_file: './logs/url-shortener-app.log',
-      error_file: './logs/url-shortener-app-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'dice-board-game',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/dice-board-game dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '5178',
-      },
-      out_file: './logs/dice-board-game.log',
-      error_file: './logs/dice-board-game-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
+    createAppConfig('stream-suite', 'dev', { port: 5173 }),
+    createAppConfig('mods-hub', '--filter @strixun/mods-hub dev', { port: 3001 }),
+    createAppConfig('otp-auth-dashboard', '--filter @strixun/otp-auth-service dev', { port: 5174 }),
+    createAppConfig('control-panel', '--filter @strixun/control-panel dev', { port: 5175 }),
+    createAppConfig('access-hub', '--filter @strixun/access-hub dev', { port: 5178 }),
+    createAppConfig('url-shortener-app', '--filter @strixun/url-shortener-app dev', { port: 5176 }),
+    createAppConfig('dice-board-game', '--filter @strixun/dice-board-game dev', { port: 5179 }),
 
     // ========== BACKEND WORKERS (CLOUDFLARE) ==========
-    {
-      name: 'otp-auth-worker',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/otp-auth-service dev:worker',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '8787',
-      },
-      out_file: './logs/otp-auth-worker.log',
-      error_file: './logs/otp-auth-worker-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'mods-api',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter strixun-mods-api dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '8788',
-      },
-      out_file: './logs/mods-api.log',
-      error_file: './logs/mods-api-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'twitch-api',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter strixun-twitch-api dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '8789',
-      },
-      out_file: './logs/twitch-api.log',
-      error_file: './logs/twitch-api-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'customer-api',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter strixun-customer-api dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '8790',
-      },
-      out_file: './logs/customer-api.log',
-      error_file: './logs/customer-api-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'music-api',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter strixun-music-api dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '8791',
-      },
-      out_file: './logs/music-api.log',
-      error_file: './logs/music-api-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'chat-signaling',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter strixun-chat-signaling dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '8792',
-      },
-      out_file: './logs/chat-signaling.log',
-      error_file: './logs/chat-signaling-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'url-shortener-worker',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/url-shortener dev:worker',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '8793',
-      },
-      out_file: './logs/url-shortener-worker.log',
-      error_file: './logs/url-shortener-worker-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'game-api',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter strixun-game-api dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '8794',
-      },
-      out_file: './logs/game-api.log',
-      error_file: './logs/game-api-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'access-service',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter strixun-access-service dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-        PORT: '8795',
-      },
-      out_file: './logs/access-service.log',
-      error_file: './logs/access-service-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
+    createAppConfig('otp-auth-worker', '--filter @strixun/otp-auth-service dev:worker', { port: 8787 }),
+    createAppConfig('mods-api', '--filter strixun-mods-api dev', { port: 8788 }),
+    createAppConfig('twitch-api', '--filter strixun-twitch-api dev', { port: 8789 }),
+    createAppConfig('customer-api', '--filter strixun-customer-api dev', { port: 8790 }),
+    createAppConfig('music-api', '--filter strixun-music-api dev', { port: 8791 }),
+    createAppConfig('chat-signaling', '--filter strixun-chat-signaling dev', { port: 8792 }),
+    createAppConfig('url-shortener-worker', '--filter @strixun/url-shortener dev:worker', { port: 8793 }),
+    createAppConfig('game-api', '--filter strixun-game-api dev', { port: 8794 }),
+    createAppConfig('access-service', '--filter strixun-access-service dev', { port: 8795 }),
 
     // ========== LIBRARY PACKAGES (WATCH MODE) ==========
-    {
-      name: 'auth-store',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/auth-store dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-      },
-      out_file: './logs/auth-store.log',
-      error_file: './logs/auth-store-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'api-framework',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/api-framework dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-      },
-      out_file: './logs/api-framework.log',
-      error_file: './logs/api-framework-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'types',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/types dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-      },
-      out_file: './logs/types.log',
-      error_file: './logs/types-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'schemas',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/schemas dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-      },
-      out_file: './logs/schemas.log',
-      error_file: './logs/schemas-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
-    {
-      name: 'service-client',
-      script: 'cmd.exe',
-      args: '/c pnpm --filter @strixun/service-client dev',
-      cwd: './',
-      env: {
-        NODE_ENV: 'development',
-      },
-      out_file: './logs/service-client.log',
-      error_file: './logs/service-client-error.log',
-      merge_logs: true,
-      time: true,
-      autorestart: true,
-      watch: false,
-      windowsHide: true,
-    },
+    createAppConfig('auth-store', '--filter @strixun/auth-store dev'),
+    createAppConfig('api-framework', '--filter @strixun/api-framework dev'),
+    createAppConfig('types', '--filter @strixun/types dev'),
+    createAppConfig('schemas', '--filter @strixun/schemas dev'),
+    createAppConfig('service-client', '--filter @strixun/service-client dev'),
   ],
 };

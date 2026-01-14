@@ -12,7 +12,22 @@
 
 *Source animations, layout presets, text cycling, and Twitch integration - all in one powerful suite*
 
-[Quick Start](#quick-start) • [Documentation](#documentation) • [Issues](https://github.com/Underwood-Inc/strixun-stream-suite/issues) • [Discussions](https://github.com/Underwood-Inc/strixun-stream-suite/discussions)
+[Quick Start](#quick-start) • [Documentation](#documentation) • [Issues](https://github.com/Underwood-Inc/strixun-stream-suite/issues)
+
+---
+
+### 🚀 **Quick: Developer Setup**
+
+```bash
+# 1. Clone & install
+git clone <repo-url> && cd "source fade script plugin" && pnpm install
+
+# 2. Setup environment files
+pnpm setup:cloud-ide
+
+# 3. Start everything (monorepo)
+pnpm dev:turbo
+```
 
 </div>
 
@@ -670,7 +685,13 @@ VITE_MODS_ENCRYPTION_KEY=strixun_mods_encryption_key_dev_2025_secure_random_64_c
 
 #### Step 6: Start Development Servers
 
-**Option A: Full Stack (Mods Hub + All Services)**
+**Option A: All Services (Turborepo)**
+```bash
+# From root directory
+pnpm dev:turbo
+```
+
+**Option B: Full Stack (Mods Hub + All Services)**
 ```bash
 cd mods-hub
 pnpm dev:all
@@ -682,19 +703,14 @@ This starts:
 - OTP Auth Service: http://localhost:8787
 - Customer API: http://localhost:8790
 
-**Option B: Main OBS Control Panel Only**
+**Option C: Main OBS Control Panel Only**
 ```bash
 # From root directory
 pnpm dev
 ```
 Runs at: http://localhost:5173
 
-**Option C: All Services (Turborepo)**
-```bash
-# From root directory
-pnpm dev:turbo
-```
-Starts all frontend apps and backend workers simultaneously.
+Starts the main app only.
 
 ---
 
@@ -810,64 +826,11 @@ node scripts/setup-cloud-ide.js
 
 ---
 
-### Docker Compose Development (Alternative)
+### Local Development (All Services)
 
-**🐳 Docker Compose provides an isolated, reproducible development environment!**
-
-**Prerequisites:**
-- Docker Desktop installed
-- Docker Compose v2+
-
-**Quick Start:**
-
-1. **Setup environment files:**
 ```bash
-pnpm setup:cloud-ide
+pnpm dev:turbo
 ```
-
-2. **Start all services:**
-```bash
-# Start all services
-pnpm docker:dev
-
-# Or build and start
-pnpm docker:dev:build
-
-# Stop all services
-pnpm docker:dev:down
-```
-
-**What's Included:**
-- ✓ All frontend apps (Mods Hub, Stream Suite, Control Panel)
-- ✓ All backend workers (OTP Auth, Mods API, Customer API)
-- ✓ Hot reload enabled (code changes reflect immediately)
-- ✓ Wrangler local storage persisted (R2/KV data survives restarts)
-- ✓ Isolated network (services communicate via Docker network)
-- ✓ Pre-configured ports (same as local dev)
-
-**Services:**
-- **Mods Hub**: http://localhost:3001
-- **Stream Suite**: http://localhost:5173
-- **Control Panel**: http://localhost:5175
-- **OTP Auth Service**: http://localhost:8787
-- **Mods API**: http://localhost:8788
-- **Customer API**: http://localhost:8790
-
-**Benefits:**
-- ✓ **Isolated environment** - No conflicts with local Node.js versions
-- ✓ **Reproducible** - Same environment for all developers
-- ✓ **Easy cleanup** - `docker-compose down` removes everything
-- ✓ **Consistent** - Same setup across Windows, Mac, Linux
-- ✓ **No local dependencies** - Only Docker needed
-
-**Volume Mounts:**
-- Source code mounted for hot reload
-- Wrangler state persisted in Docker volumes
-- Node modules excluded (faster startup)
-
-**Note:** This is an **alternative** to local development, not a replacement. Use whichever workflow you prefer!
-
----
 
 ### Port Assignments
 
