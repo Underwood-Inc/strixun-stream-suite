@@ -466,6 +466,19 @@ export async function handleAuthRoutes(
         // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
         return { response: handlerResponse, customerId };
     }
+    if (path === '/auth/encryption/dek' && request.method === 'GET') {
+        if (!jwtAuth || !jwtAuth.customerId) {
+            return {
+                response: new Response(JSON.stringify({ error: 'Authentication required' }), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+                customerId: null,
+            };
+        }
+        const handlerResponse = await authHandlers.handleGetEncryptionDek(request, env, jwtAuth.customerId);
+        return { response: handlerResponse, customerId: jwtAuth.customerId };
+    }
     if (path === '/auth/quota' && request.method === 'GET') {
         // Pass customerId from JWT auth (primary) - API key is NOT a fallback
         // CRITICAL: JWT is ALWAYS required for encryption (security requirement)

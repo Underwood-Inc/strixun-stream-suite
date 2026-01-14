@@ -11,8 +11,7 @@ import type { AuthenticatedCustomer } from '@strixun/auth-store';
 import { secureFetch } from '../core/services/encryption';
 import { fetchCustomerInfo, decodeJWTPayload } from '@strixun/auth-store/core/api';
 import { getCookie, deleteCookie } from '@strixun/auth-store/core/utils';
-import { getAuthApiUrl as getAuthApiUrlShared } from '@strixun/otp-auth-service/shared';
-import { storage, encryptionEnabled as storageEncryptionEnabled } from '../modules/storage';
+import { storage } from '../modules/storage';
 
 export interface TwitchAccount {
   twitchUserId: string;
@@ -31,8 +30,9 @@ export const csrfToken: Writable<string | null> = writable(null);
 export const isSuperAdmin: Writable<boolean> = writable(false);
 // NOTE: No token store - token is in HttpOnly cookie and CANNOT be read by JavaScript
 
-// Re-export encryption enabled from storage module
-export const encryptionEnabled = storageEncryptionEnabled;
+// Encryption enabled flag is owned by the encryption service.
+// This store exists for UI convenience (reactive gating), and is set during bootstrap.
+export const encryptionEnabled: Writable<boolean> = writable(false);
 
 // Store to track if auth check has completed
 // Starts as false - we show auth screen by default until we know auth state
@@ -104,7 +104,7 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
     isAuthenticated.set(true);
     customer.set(updatedCustomerData);
     csrfToken.set(csrf || null);
-    isSuperAdmin.set(isSuperAdminFromJWT || customerData.isSuperAdmin || false);
+    isSuperAdmin.set(customerData.isSuperAdmin || false);
     
     // CRITICAL: Then use queueMicrotask to trigger another update cycle
     // This ensures Svelte components that mounted during initialization get the updates
@@ -113,7 +113,7 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
       isAuthenticated.set(true);
       customer.set(updatedCustomerData);
       csrfToken.set(csrf || null);
-      isSuperAdmin.set(isSuperAdminFromJWT || customerData.isSuperAdmin || false);
+      isSuperAdmin.set(customerData.isSuperAdmin || false);
     });
   } else {
     // Clean up all storage keys

@@ -37,6 +37,15 @@ export interface EncryptionConfig {
   salt?: string; // Base64 encoded
 }
 
+interface DekApiResponse {
+  dek: string;
+}
+
+interface EncryptionAuthRequiredEvent {
+  reason: 'encryption-locked';
+  status: 401 | 403;
+}
+
 export interface EncryptedData {
   version: number;
   encrypted: boolean;
@@ -63,6 +72,9 @@ const KEY_LENGTH = 256;
 let encryptionConfig: EncryptionConfig | null = null;
 let derivedKey: CryptoKey | null = null;
 let keyDerivationPromise: Promise<CryptoKey> | null = null;
+
+// A2: session key material (DEK) is fetched from server via HttpOnly cookie and kept in memory only.
+let sessionDekB64: string | null = null;
 
 // ============ Configuration Management ============
 
@@ -119,12 +131,67 @@ export async function isEncryptionEnabled(): Promise<boolean> {
 }
 
 /**
+ * Fetch per-customer DEK from OTP auth service using HttpOnly cookie session.
+ * No offline decrypt: this will fail if the session is expired/invalid.
+ */
+export async function fetchSessionDek(): Promise<string> {
+  // Prefer injected helper if present (keeps consistency across apps)
+  let authApiUrl = '';
+  if (typeof window !== 'undefined' && (window as any).getOtpAuthApiUrl) {
+    const url = (window as any).getOtpAuthApiUrl();
+    if (typeof url === 'string') authApiUrl = url;
+  }
+  if (!authApiUrl) {
+    // Dev default: use Vite proxy path convention used across apps
+    authApiUrl = '/auth-api';
+  }
+
+  const response = await fetch(`${authApiUrl}/auth/encryption/dek`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    cache: 'no-store',
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    const { EventBus } = await import('../events/EventBus');
+    EventBus.emitSync<EncryptionAuthRequiredEvent>('auth:required', {
+      reason: 'encryption-locked',
+      status: response.status,
+    });
+    throw new Error('Authentication required to unlock encryption');
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch encryption key material: ${response.status}`);
+  }
+
+  const data = (await response.json()) as DekApiResponse;
+  if (!data || typeof data.dek !== 'string' || data.dek.length < 10) {
+    throw new Error('Invalid encryption key material response');
+  }
+
+  sessionDekB64 = data.dek;
+  return data.dek;
+}
+
+export function clearSessionDek(): void {
+  sessionDekB64 = null;
+  derivedKey = null;
+  keyDerivationPromise = null;
+}
+
+async function requireSessionKeyMaterial(): Promise<string> {
+  if (sessionDekB64) return sessionDekB64;
+  return await fetchSessionDek();
+}
+
+/**
  * Enable encryption with JWT token
  * The JWT token is used as the key derivation source - without it (and email OTP access), decryption is impossible
  */
 export async function enableEncryption(token: string): Promise<void> {
   if (!token || token.length < 10) {
-    throw new Error('Valid JWT token is required for encryption');
+    throw new Error('Valid session key material is required for encryption');
   }
 
   // Generate salt if not exists
@@ -152,7 +219,7 @@ export async function enableEncryption(token: string): Promise<void> {
   };
 
   await saveEncryptionConfig(config);
-  console.log('[Encryption] ✓ Encryption enabled with JWT token-based key derivation');
+  console.log('[Encryption] Encryption enabled with session key-based derivation');
 }
 
 /**
@@ -187,7 +254,7 @@ export async function disableEncryption(token: string): Promise<void> {
   };
 
   await saveEncryptionConfig(newConfig);
-  console.log('[Encryption] ✗ Encryption disabled');
+  console.log('[Encryption] Encryption disabled');
 }
 
 /**
@@ -237,7 +304,7 @@ export async function changeEncryptionToken(
   };
 
   await saveEncryptionConfig(newConfig);
-  console.log('[Encryption] ★ Encryption token changed - data will be re-encrypted');
+  console.log('[Encryption] Encryption key material changed - data will be re-encrypted');
 }
 
 // ============ Key Derivation ============
@@ -374,12 +441,11 @@ async function saveSalt(salt: Uint8Array): Promise<void> {
 // ============ Encryption/Decryption ============
 
 /**
- * Encrypt data using JWT token as key derivation source
- * CRITICAL: The token is stored as a hash for verification only
- * Without the exact token (obtained via email OTP), decryption is impossible
+ * Encrypt data using session key material as key derivation source.
+ * In A2, session key material (DEK) is fetched from the auth service via HttpOnly cookie and is not persisted.
  * 
  * @param data - Data to encrypt
- * @param token - JWT token (obtained via email OTP authentication)
+ * @param token - Session key material. If empty, the function will fetch DEK via cookie-auth.
  * @param password - Optional password for additional security layer (for sensitive items)
  */
 export async function encrypt(
@@ -388,7 +454,7 @@ export async function encrypt(
   password?: string
 ): Promise<EncryptedData> {
   if (!token || token.length < 10) {
-    throw new Error('Valid JWT token is required for encryption');
+    token = await requireSessionKeyMaterial();
   }
 
   // Get or generate salt
@@ -445,7 +511,7 @@ export async function encrypt(
     encoder.encode(dataStr)
   );
 
-  // Return encrypted blob with token hash for verification
+  // Return encrypted blob with key-material hash for verification
   return {
     version: 3, // Version 3: JWT token-based encryption
     encrypted: true,
@@ -460,12 +526,10 @@ export async function encrypt(
 }
 
 /**
- * Decrypt data using JWT token as key derivation source
- * CRITICAL: The token MUST match the token used for encryption (obtained via email OTP)
- * Without the exact token (and email OTP access), decryption is impossible
+ * Decrypt data using session key material as key derivation source.
  * 
  * @param encryptedData - Encrypted data to decrypt
- * @param token - JWT token (obtained via email OTP authentication)
+ * @param token - Session key material. If empty, the function will fetch DEK via cookie-auth.
  * @param password - Optional password if item is password-protected
  */
 export async function decrypt(
@@ -487,7 +551,7 @@ export async function decrypt(
   const encrypted = encryptedData as EncryptedData;
 
   if (!token || token.length < 10) {
-    throw new Error('Valid JWT token is required for decryption');
+    token = await requireSessionKeyMaterial();
   }
 
   // Extract metadata
@@ -600,7 +664,7 @@ export function enforceHTTPS(url: string): string {
 
   // Enforce HTTPS
   if (url.startsWith('http://')) {
-    console.warn('[Encryption] ⚠ HTTP request blocked, upgrading to HTTPS:', url);
+    console.warn('[Encryption] HTTP request blocked, upgrading to HTTPS:', url);
     return url.replace('http://', 'https://');
   }
 
@@ -617,9 +681,7 @@ export async function secureFetch(
   const secureUrl = enforceHTTPS(url);
 
   if (!isHTTPS() && !secureUrl.includes('localhost') && !secureUrl.includes('127.0.0.1')) {
-    console.warn(
-      '[Encryption] ⚠ Non-HTTPS connection detected. Some features may not work.'
-    );
+    console.warn('[Encryption] Non-HTTPS connection detected. Some features may not work.');
   }
 
   return fetch(secureUrl, options);

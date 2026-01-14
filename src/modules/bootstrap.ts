@@ -66,6 +66,20 @@ export async function initializeApp(): Promise<void> {
       originalError('[EventBus log:cleared] Failed to clear log entries:', err);
     }
   });
+  EventBus.on('auth:required', async (data: { reason?: string; status?: number } | undefined) => {
+    try {
+      // A2: If encryption becomes locked (cookie expired), force re-auth immediately.
+      const { clearAuth } = await import('../stores/auth');
+      clearAuth();
+      addLogEntry(
+        `Authentication required (${data?.reason || 'unknown'}). Please sign in again.`,
+        'warning',
+        'AUTH'
+      );
+    } catch (err) {
+      originalError('[EventBus auth:required] Failed to handle auth required:', err);
+    }
+  });
   
   // Intercept all console calls to route through the store
   // NOTE: This must happen AFTER window.addLogEntry is set up
@@ -123,8 +137,8 @@ export async function initializeApp(): Promise<void> {
       // Once customer authenticates, everything will be ready
     } else if (!encryptionEnabled) {
       addLogEntry('Encryption disabled - authentication not required', 'info', 'AUTH');
-    } else if (authToken) {
-      addLogEntry('User authenticated - encryption enabled', 'success', 'AUTH');
+    } else if (authenticated) {
+      addLogEntry('Customer authenticated - encryption enabled', 'success', 'AUTH');
     }
     
     // Initialize modules in order (even if auth is required, so app is ready when customer logs in)
@@ -132,7 +146,7 @@ export async function initializeApp(): Promise<void> {
     
     // Only complete app initialization if auth is not required
     // When auth is required, the app will show AuthScreen and initialization will continue after login
-    if (!(encryptionEnabled && !authToken)) {
+    if (!(encryptionEnabled && !authenticated)) {
       // Complete app initialization (rendering, UI state, etc.)
       await completeAppInitialization();
       

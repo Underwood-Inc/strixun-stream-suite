@@ -12,7 +12,6 @@
 
 import { storage } from '../../modules/storage';
 import { get } from 'svelte/store';
-import { token } from '../../stores/auth';
 import {
   isEncryptionEnabled,
   encrypt,
@@ -55,17 +54,7 @@ function shouldEncrypt(key: string): boolean {
   return true;
 }
 
-/**
- * Get JWT token from authentication store
- * The token is used as the key derivation source - without it (and email OTP access), decryption is impossible
- */
-function getToken(): string | null {
-  const authToken = get(token);
-  if (!authToken || typeof authToken !== 'string') {
-    return null;
-  }
-  return authToken;
-}
+// A2: no JS-readable auth token. Encryption key material is fetched via cookie-auth by the encryption service.
 
 /**
  * Encrypted storage wrapper
@@ -94,18 +83,10 @@ export const encryptedStorage = {
       'encrypted' in value &&
       (value as EncryptedData).encrypted
     ) {
-      // Decrypt using JWT token from auth store
-      const authToken = getToken();
-      if (!authToken) {
-        // Encrypted data but no auth token - cannot decrypt
-        // Return null silently (no warnings) - this is expected when encryption is enabled but user not logged in
-        return null;
-      }
-
       try {
         // Check if password-protected (would need password from caller)
         // For now, try without password - if it fails with password error, return null
-        const decrypted = await decrypt(value as EncryptedData, authToken);
+        const decrypted = await decrypt(value as EncryptedData, '');
         return decrypted;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -114,15 +95,13 @@ export const encryptedStorage = {
           // Only warn once per key to prevent spam
           if (!warnedKeys.has(`password:${key}`)) {
             warnedKeys.add(`password:${key}`);
-            console.warn(
-              `[EncryptedStorage] ⚠ Cannot decrypt ${key}: password-protected item requires password`
-            );
+            console.warn(`[EncryptedStorage] Cannot decrypt ${key}: password-protected item requires password`);
           }
         } else {
           // Only log error once per key to prevent spam
           if (!warnedKeys.has(`error:${key}`)) {
             warnedKeys.add(`error:${key}`);
-            console.error(`[EncryptedStorage] ✗ Failed to decrypt ${key}:`, error);
+            console.error(`[EncryptedStorage] Failed to decrypt ${key}:`, error);
           }
         }
         // If decryption fails, it means the token doesn't match - this is expected
@@ -146,24 +125,18 @@ export const encryptedStorage = {
       return storage.set(key, value);
     }
 
-    // CRITICAL: Encryption requires authentication - check token first
-    const authToken = getToken();
-    if (!authToken) {
-      // Encryption is enabled but user not authenticated
-      // Don't try to encrypt - just store unencrypted silently
-      // Encryption will work once user authenticates
-      return storage.set(key, value);
-    }
-
     try {
       // Check if this is a password-protected item (would need to be passed as option)
       // For now, encrypt without password - password protection should be handled at higher level
-      const encrypted = await encrypt(value, authToken);
+      const encrypted = await encrypt(value, '');
       return storage.set(key, encrypted);
     } catch (error) {
-      console.error(`[EncryptedStorage] ✗ Failed to encrypt ${key}:`, error);
-      // Fallback to unencrypted storage
-      return storage.set(key, value);
+      // A2: No queueing and no fallback writes. If encryption is enabled but locked, hard-block writes.
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[EncryptedStorage] Failed to encrypt ${key}: ${errorMessage}`);
+      throw new Error(
+        `Write blocked: encryption is enabled but locked. Please re-authenticate. (${errorMessage})`
+      );
     }
   },
 

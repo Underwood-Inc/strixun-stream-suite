@@ -11,114 +11,35 @@
    */
 
   import { onMount } from 'svelte';
-  import { get } from 'svelte/store';
   import {
     isEncryptionEnabled,
-    enableEncryption,
-    disableEncryption,
-    changeEncryptionToken,
-    verifyEncryptionToken,
     isHTTPS,
   } from '../../core/services/encryption';
   import { encryptedStorage, migrateToEncryption } from '../../core/services/encrypted-storage';
-import { token, customer } from '../../stores/auth';
-import { showToast } from '../../stores/toast-queue';
+  import { isAuthenticated, customer } from '../../stores/auth';
+  import { showToast } from '../../stores/toast-queue';
 
   let encryptionEnabled = false;
   let isProcessing = false;
   let migrationStatus = '';
   let httpsStatus = false;
-  let currentToken: string | null = null;
-  let currentUserEmail: string | null = null;
-  let tokenMatches = false;
+  let currentCustomerEmail: string | null = null;
 
   onMount(async () => {
     encryptionEnabled = await isEncryptionEnabled();
     httpsStatus = isHTTPS();
-    
-    // Get current token and email
-    currentToken = get(token);
-    const userData = get(user);
-    currentUserEmail = userData?.email || null;
 
-    // If user is authenticated and encryption is enabled, verify token matches
-    if (encryptionEnabled && currentToken) {
-      tokenMatches = await verifyEncryptionToken(currentToken);
-      
-      // If encryption is enabled but token doesn't match, warn user
-      if (!tokenMatches) {
-        showToast(
-          '⚠ Current authentication token does not match the token used for encryption. ' +
-          'You may not be able to decrypt existing data. Please log in again.',
-          'warning'
-        );
-      }
-    }
+    // Track current authenticated customer email for display only
+    currentCustomerEmail = $customer?.email || null;
 
-    // If user is authenticated but encryption is not enabled, enable it automatically
-    if (currentToken && !encryptionEnabled) {
-      await handleAutoEnableEncryption();
+    // A2: If encryption is enabled but customer is not authenticated, encryption is locked until re-auth.
+    if (encryptionEnabled && !$isAuthenticated) {
+      showToast('Authentication required to unlock encryption', 'warning');
     }
   });
 
-  // Watch for token changes
-  $: {
-    const newToken = get(token);
-    const userData = get(user);
-    const newEmail = userData?.email || null;
-    
-    if (newToken !== currentToken || newEmail !== currentUserEmail) {
-      currentToken = newToken;
-      currentUserEmail = newEmail;
-      
-      // If user logged in and encryption is enabled, verify token
-      if (encryptionEnabled && newToken) {
-        verifyEncryptionToken(newToken).then(matches => {
-          tokenMatches = matches;
-          if (!matches) {
-            showToast(
-              '⚠ Current authentication token does not match the token used for encryption. ' +
-              'You may not be able to decrypt existing data. Please log in again.',
-              'warning'
-            );
-          }
-        });
-      }
-      
-      // If user logged in and encryption is not enabled, enable it
-      if (newToken && !encryptionEnabled) {
-        handleAutoEnableEncryption();
-      }
-    }
-  }
-
-  async function handleAutoEnableEncryption(): Promise<void> {
-    if (!currentToken) {
-      return;
-    }
-
-    isProcessing = true;
-    try {
-      await enableEncryption(currentToken);
-      tokenMatches = true;
-      encryptionEnabled = true;
-      
-      // Migrate existing data
-      migrationStatus = 'Migrating existing data to encrypted format...';
-      const result = await migrateToEncryption();
-      migrationStatus = `Migration complete: ${result.migrated} items migrated, ${result.failed} failed`;
-      
-      showToast('Encryption enabled automatically with your authentication token', 'success');
-    } catch (error) {
-      showToast(
-        `Failed to enable encryption: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'error'
-      );
-    } finally {
-      isProcessing = false;
-      migrationStatus = '';
-    }
-  }
+  // Keep displayed email in sync
+  $: currentCustomerEmail = $customer?.email || null;
 
   async function handleDisableEncryption(): Promise<void> {
     if (!currentToken) {

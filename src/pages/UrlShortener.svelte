@@ -9,7 +9,7 @@
   import { onMount } from 'svelte';
   import { LoginModal, Tooltip } from '@components';
   import { stagger } from '../core/animations';
-  import { clearAuth, isAuthenticated, token, customer } from '../stores/auth';
+  import { clearAuth, isAuthenticated, customer } from '../stores/auth';
   import { showToast } from '../stores/toast-queue';
 
   interface ShortUrl {

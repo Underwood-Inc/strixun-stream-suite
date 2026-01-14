@@ -18,6 +18,11 @@ export {
     handleRefresh
 } from './auth/session.js';
 
+// Encryption key (DEK) handler
+export {
+    handleGetEncryptionDek
+} from './auth/encryption-dek.js';
+
 // Quota handler
 export {
     handleGetQuota
