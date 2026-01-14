@@ -269,7 +269,11 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     }
     
     const url = new URL(request.url);
-    const path = url.pathname;
+    // Dev-proxy normalization: allow apps to call through /mods-api/* without 404s
+    let path = url.pathname;
+    if (path.startsWith('/mods-api/')) {
+        path = path.substring('/mods-api'.length);
+    }
 
     try {
         // Health check (only at /health, not at root to allow root-level mod routes)

@@ -87,7 +87,7 @@ export default defineConfig({
         },
       },
       '/customer-api': {
-        target: 'http://localhost:8788', // Customer API service
+        target: 'http://localhost:8790', // Customer API service
         changeOrigin: true,
         secure: false,
         // CRITICAL: Forward cookies for HttpOnly cookie authentication

@@ -113,7 +113,11 @@ export default {
         }
 
         const url = new URL(request.url);
-        const path = url.pathname;
+        // Dev-proxy normalization: allow apps to call through /game-api/* without 404s
+        let path = url.pathname;
+        if (path.startsWith('/game-api/')) {
+            path = path.substring('/game-api'.length);
+        }
 
         try {
             // Health check

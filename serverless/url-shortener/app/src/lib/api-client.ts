@@ -18,8 +18,9 @@ function getApiUrl(): string {
                         import.meta.env?.MODE === 'development';
     
     if (isLocalhost) {
-        // URL shortener worker runs on port 8793
-        return 'http://localhost:8793';
+        // In dev, always use the Vite proxy to avoid CORS and ensure cookies flow correctly.
+        // Vite proxy is configured for `/api` -> http://localhost:8793
+        return '';
     }
     
     return window.location.origin;

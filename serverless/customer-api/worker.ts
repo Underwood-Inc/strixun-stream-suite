@@ -110,7 +110,11 @@ export default {
         }
 
         const url = new URL(request.url);
-        const path = url.pathname;
+        // Dev-proxy normalization: allow apps to call through /customer-api/* without 404s
+        let path = url.pathname;
+        if (path.startsWith('/customer-api/')) {
+            path = path.substring('/customer-api'.length);
+        }
 
         try {
             // Health check

@@ -79,7 +79,14 @@ async function checkErrorRateAlert(customerId: string, env: any): Promise<void> 
 export async function route(request: Request, env: any, ctx?: ExecutionContext): Promise<Response> {
     const startTime = performance.now();
     const url = new URL(request.url);
-    const path = url.pathname;
+    // Dev-proxy normalization:
+    // Some frontend apps call the auth worker through a Vite proxy mounted at /auth-api.
+    // When they accidentally hit the worker directly (or proxy doesn't rewrite), the worker receives /auth-api/* paths.
+    // Normalize this so SSO works consistently across all apps in dev.
+    let path = url.pathname;
+    if (path.startsWith('/auth-api/')) {
+        path = path.substring('/auth-api'.length);
+    }
     let customerId: string | null = null;
     let endpoint = path.split('/').pop() || 'unknown';
     

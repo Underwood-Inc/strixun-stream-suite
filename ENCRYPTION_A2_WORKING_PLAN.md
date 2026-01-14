@@ -99,4 +99,6 @@ Key properties:
 - 2026-01-14: Added OTP Auth Service endpoint `GET /auth/encryption/dek` to return a per-customer DEK to authenticated cookie sessions; DEK is stored encrypted at rest in `OTP_AUTH_KV`.
 - 2026-01-14: Removed all remaining Stream Suite imports of a JS-readable auth `token` store; client encryption now fetches session key material (DEK) via cookie-auth on demand.
 - 2026-01-14: Implemented A2 lock handling: DEK fetch emits `auth:required`, bootstrap clears auth to force re-auth UI, and encrypted writes now hard-block (no fallback writes).
+- 2026-01-14: Fixed dev SSO pathing across apps by normalizing `/auth-api/*` to `/auth/*` inside the OTP auth worker router (prevents false 401s when apps call `/auth-api/auth/me`).
+- 2026-01-14: Normalized additional dev proxy prefixes in workers to prevent cross-app false 404/401: `/customer-api/*`, `/mods-api/*`, `/game-api/*`, `/twitch-api/*`.
 

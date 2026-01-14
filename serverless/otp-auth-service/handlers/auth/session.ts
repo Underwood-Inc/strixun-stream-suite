@@ -214,21 +214,37 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
  */
 export async function handleLogout(request: Request, env: Env): Promise<Response> {
     try {
+        // Always clear the HttpOnly cookie (idempotent logout).
+        // A2/SSO requirement: logout must work even if the session already expired.
+        const isProduction = env.ENVIRONMENT === 'production';
+        const cookieDomain = isProduction ? '.idling.app' : 'localhost';
+        const cookieSecure = isProduction ? 'Secure; ' : '';
+
+        const clearCookieValue = [
+            'auth_token=',
+            `Domain=${cookieDomain}`,
+            'Path=/',
+            'HttpOnly',
+            cookieSecure,
+            'SameSite=Lax',
+            'Max-Age=0' // Expire immediately
+        ].join('; ');
+
         // ONLY check HttpOnly cookie - NO Authorization header fallback
         const cookieHeader = request.headers.get('Cookie');
         if (!cookieHeader) {
-            return new Response(JSON.stringify({ error: 'Authentication required (HttpOnly cookie)' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            return new Response(JSON.stringify({ success: true, message: 'Logged out (no active session)' }), {
+                status: 200,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json', 'Set-Cookie': clearCookieValue },
             });
         }
         
         const cookies = cookieHeader.split(';').map(c => c.trim());
         const authCookie = cookies.find(c => c.startsWith('auth_token='));
         if (!authCookie) {
-            return new Response(JSON.stringify({ error: 'Authentication required (auth_token cookie missing)' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            return new Response(JSON.stringify({ success: true, message: 'Logged out (no auth cookie)' }), {
+                status: 200,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json', 'Set-Cookie': clearCookieValue },
             });
         }
         
@@ -237,9 +253,9 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
         
         if (!payload) {
-            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            return new Response(JSON.stringify({ success: true, message: 'Logged out (invalid/expired token)' }), {
+                status: 200,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json', 'Set-Cookie': clearCookieValue },
             });
         }
         
@@ -274,23 +290,6 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             // CRITICAL: Do NOT log OTP email - it's sensitive data
             console.log(`[Logout] ✓ Deleted session for customer: ${customerId}`);
         }
-        
-        // Clear HttpOnly cookie by setting it to expire immediately
-        const isProduction = env.ENVIRONMENT === 'production';
-        // CRITICAL: For SSO to work in development, set Domain=localhost to share cookies across ports
-        // In production, use .idling.app to share across subdomains
-        const cookieDomain = isProduction ? '.idling.app' : 'localhost';
-        const cookieSecure = isProduction ? 'Secure; ' : '';
-        
-        const clearCookieValue = [
-            'auth_token=',
-            `Domain=${cookieDomain}`,
-            'Path=/',
-            'HttpOnly',
-            cookieSecure,
-            'SameSite=Lax',
-            'Max-Age=0' // Expire immediately
-        ].join('; ');
         
         return new Response(JSON.stringify({ 
             success: true,

@@ -72,7 +72,11 @@ async function handleHealth(env, request) {
  */
 export async function route(request, env) {
     const url = new URL(request.url);
-    const path = url.pathname;
+    // Dev-proxy normalization: allow apps to call through /twitch-api/* without 404s
+    let path = url.pathname;
+    if (path.startsWith('/twitch-api/')) {
+        path = path.substring('/twitch-api'.length);
+    }
 
     try {
         // Twitch API endpoints
