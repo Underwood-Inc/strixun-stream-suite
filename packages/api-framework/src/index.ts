@@ -11,7 +11,7 @@ export {
   getAPIClient,
   setAPIClient,
   resetAPIClient,
-} from './client.js';
+} from './client';
 
 // Types
 export type {

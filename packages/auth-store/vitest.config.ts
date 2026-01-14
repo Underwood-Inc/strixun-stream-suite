@@ -27,7 +27,7 @@ export default defineConfig({
         'dist/**',
         'node_modules/**',
       ],
-      all: true,
+      // all: true, // Removed - not supported in coverage v8
       lines: 90,
       functions: 90,
       branches: 80,

@@ -11,55 +11,9 @@ import { useState, useEffect } from 'react';
 import UrlManager from './pages/UrlManager';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
+import { getAuthApiUrl, checkAuth as checkAuthShared, getAuthErrorMessage } from '@strixun/otp-auth-service/shared';
 import '@strixun/otp-login/dist/react/otp-login.css';
 import './app.scss';
-
-/**
- * Get auth API URL for OTP login
- */
-function getAuthApiUrl(): string {
-  if (typeof window === 'undefined') return '';
-  
-  // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
-  const isLocalhost = window.location.hostname === 'localhost' || 
-                      window.location.hostname === '127.0.0.1' ||
-                      import.meta.env.DEV ||
-                      import.meta.env.MODE === 'development';
-  
-  if (isLocalhost) {
-    return 'http://localhost:8787';
-  }
-  
-  return import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
-}
-
-/**
- * Check authentication status by calling /auth/me
- * Cookie is sent automatically
- */
-async function checkAuth(): Promise<{ customerId: string; displayName?: string | null } | null> {
-  try {
-    const apiUrl = getAuthApiUrl();
-    const response = await fetch(`${apiUrl}/auth/me`, {
-      method: 'GET',
-      credentials: 'include', // Send cookies
-      cache: 'no-store',
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return {
-        customerId: data.customerId,
-        displayName: data.displayName || null,
-      };
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('[URL Shortener] Auth check failed:', error);
-    return null;
-  }
-}
 
 /**
  * Logout by calling /auth/logout
@@ -73,7 +27,8 @@ async function logout(): Promise<void> {
       credentials: 'include', // Send cookies
     });
   } catch (error) {
-    console.error('[URL Shortener] Logout failed:', error);
+    // Logout errors are non-critical - we clear local state anyway
+    console.warn('[URL Shortener] Logout API call failed (non-critical):', getAuthErrorMessage(error));
   }
 }
 
@@ -81,15 +36,29 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function init() {
-      const authData = await checkAuth();
-      if (authData) {
-        setIsAuthenticated(true);
-        setUserDisplayName(authData.displayName || null);
+      try {
+        const authData = await checkAuthShared();
+        
+        if (authData) {
+          setIsAuthenticated(true);
+          setUserDisplayName(authData.displayName || null);
+        } else {
+          // Not authenticated - this is expected, show login screen
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        // Critical error - show error message to user
+        const errorMessage = getAuthErrorMessage(error);
+        console.error('[URL Shortener] Critical auth error:', errorMessage);
+        setError(errorMessage);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     
     init();
@@ -97,10 +66,17 @@ export default function App() {
 
   async function handleLoginSuccess(data: LoginSuccessData): Promise<void> {
     // Cookie is set by server, just update UI
-    const authData = await checkAuth();
-    if (authData) {
-      setIsAuthenticated(true);
-      setUserDisplayName(authData.displayName || null);
+    try {
+      const authData = await checkAuthShared();
+      if (authData) {
+        setIsAuthenticated(true);
+        setUserDisplayName(authData.displayName || null);
+        setError(null); // Clear any previous errors
+      }
+    } catch (error) {
+      const errorMessage = getAuthErrorMessage(error);
+      console.error('[URL Shortener] Auth check after login failed:', errorMessage);
+      setError(errorMessage);
     }
   }
 
@@ -120,6 +96,20 @@ export default function App() {
         <div className="loading">
           <div className="loading__spinner"></div>
           <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="app-container">
+        <div style={{ padding: '2rem', textAlign: 'center', color: '#ff4444' }}>
+          <h2>Authentication Error</h2>
+          <p>{error}</p>
+          <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#888' }}>
+            Please check your connection and try refreshing the page. If the problem persists, contact support.
+          </p>
         </div>
       </div>
     );

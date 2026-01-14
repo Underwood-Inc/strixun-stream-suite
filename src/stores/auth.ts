@@ -11,6 +11,7 @@ import type { AuthenticatedCustomer } from '@strixun/auth-store';
 import { secureFetch } from '../core/services/encryption';
 import { fetchCustomerInfo, decodeJWTPayload } from '@strixun/auth-store/core/api';
 import { getCookie, deleteCookie } from '@strixun/auth-store/core/utils';
+import { getAuthApiUrl as getAuthApiUrlShared } from '@strixun/otp-auth-service/shared';
 import { storage, encryptionEnabled as storageEncryptionEnabled } from '../modules/storage';
 
 export interface TwitchAccount {
@@ -137,43 +138,15 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
   }
 }
 
+import { getAuthApiUrl as getAuthApiUrlShared } from '@strixun/otp-auth-service/shared';
+
 /**
  * Get OTP Auth API URL
+ * Uses shared utility for consistency across all apps
  */
 function getOtpAuthApiUrl(): string {
-  // Try to get from window config (injected during build)
-  if (typeof window !== 'undefined') {
-    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
-    const isLocalhost = window.location.hostname === 'localhost' || 
-                        window.location.hostname === '127.0.0.1' ||
-                        import.meta.env?.DEV ||
-                        import.meta.env?.MODE === 'development';
-    
-    if (isLocalhost) {
-      // NEVER fall back to production when on localhost
-      return 'http://localhost:8787';
-    }
-    
-    // Priority 1: VITE_AUTH_API_URL (for E2E tests, set by playwright config)
-    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
-      const viteUrl = import.meta.env.VITE_AUTH_API_URL;
-      if (viteUrl) {
-        return viteUrl;
-      }
-    }
-    
-    // Priority 2: window.getOtpAuthApiUrl() (from config.js)
-    if ((window as any).getOtpAuthApiUrl) {
-      const url = (window as any).getOtpAuthApiUrl();
-      if (url) {
-        return url;
-      }
-    }
-    
-    // Only use production URL if NOT on localhost
-    return 'https://auth.idling.app';
-  }
-  return '';
+  if (typeof window === 'undefined') return '';
+  return getAuthApiUrlShared();
 }
 
 /**
@@ -203,17 +176,20 @@ function decodeJWTPayloadLocal(jwt: string): { csrf?: string; isSuperAdmin?: boo
  * 
  * This replaces IP-based session restoration with true SSO via cookies
  */
+/**
+ * Check authentication from HttpOnly cookie
+ * FAIL-FAST: Throws errors for network issues, returns false only for "not authenticated"
+ */
 async function checkAuthFromCookie(): Promise<boolean> {
-  try {
-    const apiUrl = getOtpAuthApiUrl();
-    if (!apiUrl) {
-      console.warn('[Auth] OTP Auth API URL not configured');
-      return false;
-    }
+  const apiUrl = getOtpAuthApiUrl();
+  if (!apiUrl) {
+    throw new Error('[Auth] OTP Auth API URL not configured. Check VITE_AUTH_API_URL environment variable.');
+  }
 
+  try {
     // Fetch customer info from /auth/me - cookie is sent automatically by browser
     // If the HttpOnly cookie is valid, this will return customer data
-    const customerInfo = await fetchCustomerInfo({ authApiUrl: apiUrl });
+    const customerInfo = await fetchCustomerInfo(null, { authApiUrl: apiUrl });
     
     if (customerInfo) {
       // We don't have direct access to the JWT token (it's HttpOnly)
@@ -231,15 +207,19 @@ async function checkAuthFromCookie(): Promise<boolean> {
       console.log('[Auth] ✓ Session restored from HttpOnly cookie for customer:', authenticatedCustomer.email);
       return true;
     } else {
-      // No customer data returned - not authenticated
+      // No customer data returned - not authenticated (401/403) - this is expected
       console.debug('[Auth] No customer data from /auth/me - not authenticated');
       saveAuthState(null);
       return false;
     }
   } catch (error) {
-    console.error('[Auth] Error during checkAuth:', error);
+    // Network errors, 500s, etc. are critical - log and rethrow for caller to handle
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[Auth] Error during checkAuth:', errorMessage);
     saveAuthState(null);
-    return false;
+    
+    // Re-throw so caller can handle it (fail-fast)
+    throw new Error(`Authentication check failed: ${errorMessage}. Check your connection and that the auth service is running.`);
   }
 }
 

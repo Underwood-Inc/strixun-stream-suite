@@ -12,6 +12,22 @@
       "types": "./worker.ts",
       "default": "./worker.ts"
     },
+    "./shared": {
+      "types": "./shared/dist/index.d.ts",
+      "default": "./shared/dist/index.js"
+    },
+    "./shared/auth-urls": {
+      "types": "./shared/dist/auth-urls.d.ts",
+      "default": "./shared/dist/auth-urls.js"
+    },
+    "./shared/auth-check": {
+      "types": "./shared/dist/auth-check.d.ts",
+      "default": "./shared/dist/auth-check.js"
+    },
+    "./shared/auth-errors": {
+      "types": "./shared/dist/auth-errors.d.ts",
+      "default": "./shared/dist/auth-errors.js"
+    },
     "./utils/crypto": {
       "types": "./utils/crypto.ts",
       "default": "./utils/crypto.ts"
@@ -29,7 +45,7 @@
     "dev:all": "concurrently -n worker,customer-api,app -c yellow,green,cyan --kill-others-on-fail --success first \"pnpm dev:worker\" \"pnpm --filter strixun-customer-api dev\" \"pnpm dev:app\"",
     "setup:test-secrets": "node scripts/setup-test-secrets.js",
     "dev:with-secrets": "pnpm setup:test-secrets && pnpm dev",
-    "build": "vite build && node scripts/build-landing-assets.js",
+    "build": "pnpm run build:shared && vite build && node scripts/build-landing-assets.js",
     "build:worker": "esbuild worker.ts --bundle --format=esm --outfile=dist/worker.js --platform=node --external:cloudflare:* --external:node:*",
     "predeploy": "pnpm run build && pnpm run build:worker",
     "preview": "pnpm build && wrangler dev --env production",
@@ -57,7 +73,6 @@
     "@strixun/access-service": "workspace:*",
     "@strixun/ad-carousel": "workspace:*",
     "@strixun/api-framework": "workspace:*",
-    "@strixun/auth-store": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/otp-login": "workspace:*",
     "@strixun/service-client": "workspace:*",

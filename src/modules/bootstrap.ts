@@ -85,8 +85,16 @@ export async function initializeApp(): Promise<void> {
     
     // Load authentication state (includes cross-domain session restoration)
     const { loadAuthState, isAuthenticated } = await import('../stores/auth');
-    await loadAuthState();
-    addLogEntry('Authentication state loaded', 'info', 'AUTH');
+    try {
+      await loadAuthState();
+      addLogEntry('Authentication state loaded', 'info', 'AUTH');
+    } catch (error) {
+      // Critical auth error - log but don't block initialization
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLogEntry(`Authentication check failed: ${errorMessage}`, 'error', 'AUTH');
+      console.error('[Bootstrap] Critical auth error:', errorMessage);
+      // Continue initialization - app will show error or login screen
+    }
     
     // Set encryption enabled state in store (for reactive auth checks)
     await setEncryptionState();

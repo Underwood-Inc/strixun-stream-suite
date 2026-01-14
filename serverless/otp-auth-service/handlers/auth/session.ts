@@ -277,18 +277,20 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
         
         // Clear HttpOnly cookie by setting it to expire immediately
         const isProduction = env.ENVIRONMENT === 'production';
-        const cookieDomain = isProduction ? '.idling.app' : undefined;
+        // CRITICAL: For SSO to work in development, set Domain=localhost to share cookies across ports
+        // In production, use .idling.app to share across subdomains
+        const cookieDomain = isProduction ? '.idling.app' : 'localhost';
         const cookieSecure = isProduction ? 'Secure; ' : '';
         
         const clearCookieValue = [
             'auth_token=',
-            `Domain=${cookieDomain || 'localhost'}`,
+            `Domain=${cookieDomain}`,
             'Path=/',
             'HttpOnly',
             cookieSecure,
             'SameSite=Lax',
             'Max-Age=0' // Expire immediately
-        ].filter(Boolean).join('; ');
+        ].join('; ');
         
         return new Response(JSON.stringify({ 
             success: true,

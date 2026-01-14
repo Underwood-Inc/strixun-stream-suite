@@ -9,8 +9,8 @@
  */
 
 import { createServiceClient, type ServiceClient } from '@strixun/service-client';
-import { createAPIClient } from './src/client.js';
-import { getCustomerApiUrl as getCustomerApiUrlFromUtils } from './src/utils/service-url.js';
+import { createAPIClient } from './src/client';
+import { getCustomerApiUrl as getCustomerApiUrlFromUtils } from './src/utils/service-url';
 
 /**
  * Customer data structure

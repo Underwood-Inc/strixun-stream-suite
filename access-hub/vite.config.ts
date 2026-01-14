@@ -8,6 +8,28 @@ export default defineConfig({
     port: 5178,
     // Allow auto-shift to next available port if 5178 is taken
     proxy: {
+      '/auth-api': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/auth-api/, ''),
+        secure: false,
+        // CRITICAL: Forward cookies for HttpOnly cookie SSO
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) {
+              console.log('[Vite Proxy] /auth-api - Cookies sent:', req.headers.cookie);
+            }
+          });
+          proxy.on('proxyRes', (proxyRes) => {
+            const setCookie = proxyRes.headers['set-cookie'];
+            if (setCookie) {
+              console.log('[Vite Proxy] /auth-api - Set-Cookie received:', setCookie);
+            }
+          });
+        },
+      },
       '/access': {
         target: 'http://localhost:8791', // Access Service port
         changeOrigin: true,

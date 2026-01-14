@@ -7,9 +7,9 @@
  */
 
 import { writable, derived, get, type Writable, type Readable } from 'svelte/store';
-import type { AuthenticatedCustomer, AuthStoreConfig } from '../core/types.js';
-import { fetchCustomerInfo, decodeJWTPayload } from '../core/api.js';
-import { getCookie, deleteCookie } from '../core/utils.js';
+import type { AuthenticatedCustomer, AuthStoreConfig } from '../core/types';
+import { fetchCustomerInfo, decodeJWTPayload } from '../core/api';
+import { getCookie, deleteCookie } from '../core/utils';
 
 /**
  * Create Svelte auth stores with HttpOnly cookie SSO
@@ -26,7 +26,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
     const isTokenExpired: Readable<boolean> = derived(
         customer,
         ($customer) => {
-            if (!$customer) return true;
+            if (!$customer || !$customer.expiresAt) return true;
             return new Date($customer.expiresAt) < new Date();
         }
     );
@@ -38,7 +38,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
     function saveAuthState(customerData: AuthenticatedCustomer | null): void {
         if (customerData) {
             // Extract CSRF token and isSuperAdmin from JWT payload
-            const payload = decodeJWTPayload(customerData.token);
+            const payload = decodeJWTPayload(customerData.token || '');
             const csrf = payload?.csrf as string | undefined;
             // Prioritize customerData.isSuperAdmin (from API), fallback to JWT if not explicitly set
             const isSuperAdminValue = customerData.isSuperAdmin ?? (payload?.isSuperAdmin === true);
@@ -129,7 +129,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
             }
             
             // Fetch customer info from /auth/me to validate token
-            const customerInfo = await fetchCustomerInfo(config);
+            const customerInfo = await fetchCustomerInfo(null, config);
             
             if (customerInfo) {
                 const payload = decodeJWTPayload(authToken);
@@ -150,17 +150,21 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 console.log('[Auth] ✓ Session restored from HttpOnly cookie for customer:', email);
                 return true;
             } else {
-                // Token invalid or expired on backend
+                // Not authenticated (401/403) - this is expected, not an error
                 deleteCookie('auth_token', '.idling.app', '/');
                 saveAuthState(null);
-                console.warn('[Auth] Token in HttpOnly cookie invalid or expired, cleared');
+                console.debug('[Auth] Token in HttpOnly cookie invalid or expired');
                 return false;
             }
         } catch (error) {
-            console.error('[Auth] Error during checkAuth:', error);
+            // Network errors, 500s, etc. are critical - log and rethrow for caller to handle
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error('[Auth] Check auth failed with critical error:', errorMessage);
             deleteCookie('auth_token', '.idling.app', '/');
             saveAuthState(null);
-            return false;
+            
+            // Re-throw so caller can handle it (fail-fast)
+            throw new Error(`Authentication check failed: ${errorMessage}. Check your connection and that the auth service is running.`);
         }
     }
     
@@ -169,7 +173,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
      */
     async function fetchCustomerInfoFromAPI(): Promise<void> {
         try {
-            const customerInfo = await fetchCustomerInfo(config);
+            const customerInfo = await fetchCustomerInfo(null, config);
             if (customerInfo && get(customer)) {
                 const currentCustomer = get(customer);
                 if (currentCustomer) {
@@ -238,4 +242,4 @@ export function createAuthStore(config?: AuthStoreConfig) {
 }
 
 // Export types for convenience
-export type { AuthenticatedCustomer, AuthStoreConfig } from '../core/types.js';
+export type { AuthenticatedCustomer, AuthStoreConfig } from '../core/types';

@@ -385,20 +385,20 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         // Set HttpOnly cookie for automatic authentication across all *.idling.app domains
         // SECURITY: HttpOnly prevents XSS, Secure ensures HTTPS-only, SameSite=Lax prevents CSRF
         const isProduction = env.ENVIRONMENT === 'production';
-        const cookieDomain = isProduction ? '.idling.app' : undefined; // undefined for localhost (omit Domain entirely)
+        // CRITICAL: For SSO to work in development, set Domain=localhost to share cookies across ports
+        // In production, use .idling.app to share across subdomains
+        const cookieDomain = isProduction ? '.idling.app' : 'localhost';
         const cookieSecure = isProduction ? 'Secure; ' : ''; // Only set Secure in production (HTTPS)
         
-        // CRITICAL: For localhost, DO NOT set Domain attribute at all - let browser default to current host
-        // Setting Domain=localhost can cause cookie issues in some browsers
         const cookieParts = [
             `auth_token=${tokenResponse.token}`,
-            cookieDomain ? `Domain=${cookieDomain}` : null, // Only set Domain in production
+            `Domain=${cookieDomain}`, // Set domain for SSO (localhost in dev, .idling.app in prod)
             'Path=/',
             'HttpOnly',
             cookieSecure,
             'SameSite=Lax',
             `Max-Age=${tokenResponse.expires_in}` // 7 hours (25200 seconds)
-        ].filter(Boolean); // Remove null values
+        ];
         
         const cookieValue = cookieParts.join('; ');
         

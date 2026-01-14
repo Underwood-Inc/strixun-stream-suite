@@ -9,8 +9,8 @@
  */
 
 import { create, type StateCreator } from 'zustand';
-import type { AuthenticatedCustomer, AuthState, AuthStoreMethods, AuthStoreConfig } from '../core/types.js';
-import { fetchCustomerInfo, getAuthApiUrl } from '../core/api.js';
+import type { AuthenticatedCustomer, AuthState, AuthStoreMethods, AuthStoreConfig } from '../core/types';
+import { fetchCustomerInfo, getAuthApiUrl } from '../core/api';
 
 interface ZustandAuthState extends AuthState, AuthStoreMethods {}
 
@@ -51,9 +51,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 });
                 
                 // Call logout endpoint - this clears the HttpOnly cookie
-                await authClient.post('/auth/logout', {}, {
-                    credentials: 'include',
-                });
+                await authClient.post('/auth/logout', {});
             } catch (error) {
                 console.warn('[Auth] Logout API call failed:', error);
             } finally {
@@ -84,7 +82,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
                     return true;
                 }
                 
-                // Not authenticated
+                // Not authenticated (401/403) - this is expected, not an error
                 set({ 
                     customer: null, 
                     isAuthenticated: false,
@@ -92,13 +90,19 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 });
                 return false;
             } catch (error) {
-                console.error('[Auth] Check auth failed:', error);
+                // Network errors, 500s, etc. are critical - log and rethrow for caller to handle
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                console.error('[Auth] Check auth failed with critical error:', errorMessage);
+                
+                // Set auth state to false but don't swallow the error
                 set({ 
                     customer: null, 
                     isAuthenticated: false,
                     isSuperAdmin: false,
                 });
-                return false;
+                
+                // Re-throw so caller can handle it (fail-fast)
+                throw new Error(`Authentication check failed: ${errorMessage}. Check your connection and that the auth service is running.`);
             }
         },
         

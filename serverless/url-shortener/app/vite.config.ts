@@ -64,7 +64,7 @@ export default defineConfig({
           });
         },
       },
-      '/auth': {
+      '/auth-api': {
         target: 'http://localhost:8787', // Auth service for login
         changeOrigin: true,
         secure: false,
@@ -74,13 +74,34 @@ export default defineConfig({
         configure: (proxy) => {
           proxy.on('proxyReq', (proxyReq, req) => {
             if (req.headers.cookie) {
-              console.log('[Vite Proxy] /auth - Cookies sent:', req.headers.cookie);
+              console.log('[Vite Proxy] /auth-api - Cookies sent:', req.headers.cookie);
             }
           });
           proxy.on('proxyRes', (proxyRes) => {
             const setCookie = proxyRes.headers['set-cookie'];
             if (setCookie) {
-              console.log('[Vite Proxy] /auth - Set-Cookie received:', setCookie);
+              console.log('[Vite Proxy] /auth-api - Set-Cookie received:', setCookie);
+            }
+          });
+        },
+      },
+      '/customer-api': {
+        target: 'http://localhost:8788', // Customer API service
+        changeOrigin: true,
+        secure: false,
+        // CRITICAL: Forward cookies for HttpOnly cookie authentication
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) {
+              console.log('[Vite Proxy] /customer-api - Cookies sent:', req.headers.cookie);
+            }
+          });
+          proxy.on('proxyRes', (proxyRes) => {
+            const setCookie = proxyRes.headers['set-cookie'];
+            if (setCookie) {
+              console.log('[Vite Proxy] /customer-api - Set-Cookie received:', setCookie);
             }
           });
         },

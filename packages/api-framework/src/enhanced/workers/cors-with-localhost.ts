@@ -5,7 +5,7 @@
  * This is the source of truth for CORS across all services
  */
 
-import { createCORSHeaders as frameworkCreateCORSHeaders, handleCORSPreflight as frameworkHandleCORSPreflight, type CORSOptions } from './cors.js';
+import { createCORSHeaders as frameworkCreateCORSHeaders, handleCORSPreflight as frameworkHandleCORSPreflight, type CORSOptions } from './cors';
 
 export interface CORSWithLocalhostOptions extends CORSOptions {
     /**

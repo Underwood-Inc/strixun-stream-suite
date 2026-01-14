@@ -968,9 +968,6 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../../packages/api-framework
-      '@strixun/auth-store':
-        specifier: workspace:*
-        version: link:../../packages/auth-store
       '@strixun/e2e-helpers':
         specifier: workspace:*
         version: link:../../packages/e2e-helpers

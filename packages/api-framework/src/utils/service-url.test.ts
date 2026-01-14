@@ -19,7 +19,7 @@ import {
     getModsApiUrl,
     type ServiceUrlEnv,
     type ServiceUrlConfig,
-} from './service-url.js';
+} from './service-url';
 
 describe('Service URL Resolution Utility', () => {
     describe('isLocalDev', () => {

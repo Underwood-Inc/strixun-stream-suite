@@ -5,8 +5,8 @@
  * when JWT tokens are present in the request.
  */
 
-import type { EncryptionWrapperOptions } from './types.js';
-import { encryptWithJWT } from './jwt-encryption.js';
+import type { EncryptionWrapperOptions } from './types';
+import { encryptWithJWT } from './jwt-encryption';
 import { isServiceToServiceCall, wrapResponseWithIntegrity } from '@strixun/service-client/integrity-response';
 
 /**

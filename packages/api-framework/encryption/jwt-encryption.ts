@@ -10,7 +10,7 @@
  * @version 4.0.0 - Unified implementation
  */
 
-import type { EncryptedData } from './types.js';
+import type { EncryptedData } from './types';
 
 // ============ Constants ============
 

@@ -38,6 +38,12 @@ export interface AuthStoreConfig {
      * Can be overridden via environment variable or config
      */
     authApiUrl?: string;
+    /**
+     * Customer API base URL
+     * Defaults to 'https://customer-api.idling.app' in production
+     * Can be overridden via environment variable or config
+     */
+    customerApiUrl?: string;
 }
 
 export interface AuthStoreMethods {

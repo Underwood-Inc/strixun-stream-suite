@@ -210,6 +210,27 @@ export default defineConfig({
           });
         },
       },
+      '/customer-api': {
+        target: 'http://localhost:8788',
+        changeOrigin: true,
+        secure: false,
+        // CRITICAL: Forward cookies for HttpOnly cookie SSO
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) {
+              console.log('[Vite Proxy] /customer-api - Cookies sent:', req.headers.cookie);
+            }
+          });
+          proxy.on('proxyRes', (proxyRes) => {
+            const setCookie = proxyRes.headers['set-cookie'];
+            if (setCookie) {
+              console.log('[Vite Proxy] /customer-api - Set-Cookie received:', setCookie);
+            }
+          });
+        },
+      },
     },
   },
   // Optimize for OBS dock environment

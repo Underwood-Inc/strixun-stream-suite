@@ -19,15 +19,15 @@
  */
 
 // Re-export everything from the base API framework
-export * from './src/index.js';
+export * from './src/index';
 
 // Re-export enhanced framework (excluding APIResponse, E2EEncryptionConfig, EncryptedData to avoid conflicts)
 export type {
   BuiltResponse, EnhancedAPIClientConfig, ErrorHandlingConfig, FilteringParams, MetricDefinition, RequestContext, ResponseBuilderOptions, ResponseFilterConfig, RFC7807Error, RootResponseConfig, TypeDefinition, WorkerAdapterConfig
-} from './src/enhanced/types.js';
+} from './src/enhanced/types';
 
 // Re-export enhanced APIResponse as EnhancedAPIResponse to avoid conflict
-export type { APIResponse as EnhancedAPIResponse } from './src/enhanced/types.js';
+export type { APIResponse as EnhancedAPIResponse } from './src/enhanced/types';
 
 // Re-export enhanced framework exports (excluding APIResponse)
 // Note: EnhancedAPIClientV2 has been merged into APIClient - use createAPIClient with feature flags instead
@@ -37,16 +37,16 @@ export {
   applyFiltering, buildResponse, clearCachedMetric, COMMON_TAGS, composeServerMiddlewares, computeMetric,
   computeMetrics, createCORSHeaders, createCORSMiddleware, createE2EEncryptionMiddleware, createEnhancedHandler, createErrorLegendMiddleware, createGetHandler, createKVCache, createPostHandler, createResponseBuilderMiddleware, createResponseFilterMiddleware, createRFC7807Error, createRFC7807Response, createServerMiddleware, createWorkerAdapter,
   createWorkerHandler, detectPlatform, enhanceErrorWithLegend, formatErrorAsRFC7807, generateMetricCacheKey, getStorageAdapter, getTagFields, getType, getTypeRegistry, handleCORSPreflight, initializeCommonTags, isBrowser, isCloudflareWorker, isNode, KVCache, parseFilteringParams, registerTag, registerType, TypeRegistry, validateResponse, withMiddleware, WorkerAdapter
-} from './src/enhanced/index.js';
+} from './src/enhanced/index';
 
 export type {
   CORSOptions, HandlerContext, HandlerOptions, KVCacheOptions, ServerMiddleware
-} from './src/enhanced/index.js';
+} from './src/enhanced/index';
 
 // Re-export client factory for convenience
 export {
   createAPIClient, getAPIClient, resetAPIClient, setAPIClient
-} from './src/factory.js';
+} from './src/factory';
 
 // Re-export encryption utilities
 export {
@@ -68,7 +68,7 @@ export {
   isMultiEncrypted,
   withEncryption,
   wrapWithEncryption
-} from './encryption/index.js';
+} from './encryption/index';
 
 // Re-export encryption types
 export type {
@@ -85,7 +85,7 @@ export type {
   RouteEncryptionPolicy,
   RouteResult,
   TwoStageEncryptedData
-} from './encryption/index.js';
+} from './encryption/index';
 
 // Re-export fingerprinting utilities
 export {
@@ -94,12 +94,12 @@ export {
   hashFingerprint,
   validateFingerprint,
   validateFingerprintLenient,
-} from './fingerprint.js';
+} from './fingerprint';
 
 export type {
   FingerprintData,
   FingerprintHash,
-} from './fingerprint.js';
+} from './fingerprint';
 
 // Re-export route protection utilities
 export {
@@ -108,13 +108,13 @@ export {
   verifySuperAdminKey,
   createUnauthorizedResponse,
   createForbiddenResponse,
-} from './route-protection.js';
+} from './route-protection';
 
 export type {
   AdminLevel,
   RouteProtectionEnv,
   RouteProtectionResult,
-} from './route-protection.js';
+} from './route-protection';
 
 // Re-export customer lookup utilities (customer-lookup is part of api-framework)
 // All application code should import these from @strixun/api-framework
@@ -132,12 +132,12 @@ export {
   updateCustomer,
   getCustomerRoles,
   isSuperAdminByCustomerId,
-} from './customer-lookup.js';
+} from './customer-lookup';
 
 export type {
   CustomerData,
   CustomerLookupEnv,
-} from './customer-lookup.js';
+} from './customer-lookup';
 
 // Re-export upload limits utilities
 export {
@@ -147,22 +147,22 @@ export {
   formatFileSize,
   validateFileSize,
   createFileSizeValidator,
-} from './upload-limits.js';
+} from './upload-limits';
 
 export type {
   UploadLimitsConfig,
-} from './upload-limits.js';
+} from './upload-limits';
 
 // Re-export JWT utilities (canonical implementation)
 export {
   createJWT,
   verifyJWT,
   getJWTSecret,
-} from './jwt.js';
+} from './jwt';
 
 export type {
   JWTPayload,
-} from './jwt.js';
+} from './jwt';
 
 // Re-export service URL resolution utilities
 export {
@@ -171,10 +171,10 @@ export {
   getCustomerApiUrl,
   getModsApiUrl,
   isLocalDev,
-} from './src/utils/service-url.js';
+} from './src/utils/service-url';
 
 export type {
   ServiceUrlEnv,
   ServiceUrlConfig,
-} from './src/utils/service-url.js';
+} from './src/utils/service-url';
 

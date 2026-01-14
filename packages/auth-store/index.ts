@@ -16,21 +16,26 @@
  * ```ts
  * import { createAuthStore } from '@strixun/auth-store/zustand';
  * 
+ * // Create the store - URLs are auto-detected from environment
+ * // In dev: uses '/auth-api' (Vite proxy) or 'http://localhost:8787'
+ * // In prod: uses 'https://auth.idling.app' (or VITE_AUTH_API_URL if set)
  * export const useAuthStore = createAuthStore({
- *   authApiUrl: 'https://auth.idling.app',
+ *   // Optional: override URLs if needed
+ *   // authApiUrl: 'https://custom-auth.example.com',
+ *   // customerApiUrl: 'https://custom-customer.example.com',
  * });
  * 
  * // In your app:
- * const { checkAuth, login, logout } = useAuthStore();
+ * const { customer, isAuthenticated, checkAuth, logout } = useAuthStore();
  * 
  * // On mount: check auth from HttpOnly cookie
  * useEffect(() => {
  *   checkAuth();
  * }, []);
  * 
- * // After OTP login: token is in HttpOnly cookie, just update local state
- * function handleLoginSuccess(data: LoginSuccessData) {
- *   login(data.token);
+ * // After OTP login: cookie is set by server, just refresh state
+ * function handleLoginSuccess() {
+ *   checkAuth(); // Refresh auth state
  * }
  * ```
  * 
@@ -38,14 +43,19 @@
  * ```ts
  * import { createAuthStore } from '@strixun/auth-store/svelte';
  * 
+ * // Create the store - URLs are auto-detected from environment
  * export const authStore = createAuthStore({
- *   authApiUrl: 'https://auth.idling.app',
+ *   // Optional: override URLs if needed
  * });
  * 
  * // In your component:
  * onMount(async () => {
  *   await authStore.checkAuth();
  * });
+ * 
+ * // Access state reactively:
+ * $: customer = $authStore.customer;
+ * $: isAuthenticated = $authStore.isAuthenticated;
  * ```
  * 
  * Core functionality (framework-agnostic):
@@ -55,4 +65,4 @@
  * ```
  */
 
-export * from './core/index.js';
+export * from './core/index';

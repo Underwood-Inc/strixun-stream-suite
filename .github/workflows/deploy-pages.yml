@@ -87,6 +87,8 @@ jobs:
           # If you need to support both custom domain and github.io, use:
           # VITE_BASE_PATH: ${{ secrets.CUSTOM_DOMAIN && '/' || format('/{0}/', github.event.repository.name) }}
           VITE_BASE_PATH: /
+          VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
+          VITE_CUSTOMER_API_URL: ${{ secrets.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app' }}
         run: pnpm build
         
       - name: Copy build output to dist root

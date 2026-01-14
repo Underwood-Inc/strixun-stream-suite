@@ -4,42 +4,43 @@
   "description": "Shared API framework for Strixun Stream Suite - Cloudflare Workers and browser support",
   "private": true,
   "type": "module",
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.ts",
-      "default": "./index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./enhanced": {
-      "types": "./enhanced.d.ts",
-      "default": "./enhanced.ts"
+      "types": "./dist/enhanced.d.ts",
+      "default": "./dist/enhanced.js"
     },
     "./client": {
-      "types": "./client.d.ts",
-      "default": "./client.ts"
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
     },
     "./enhanced-router": {
-      "types": "./enhanced-router.ts",
-      "default": "./enhanced-router.ts"
+      "types": "./dist/enhanced-router.d.ts",
+      "default": "./dist/enhanced-router.js"
     },
     "./jwt": {
-      "types": "./jwt.ts",
-      "default": "./jwt.ts"
+      "types": "./dist/jwt.d.ts",
+      "default": "./dist/jwt.js"
     },
     "./test-utils": {
-      "types": "./test-utils.ts",
-      "default": "./test-utils.ts"
+      "types": "./dist/test-utils.d.ts",
+      "default": "./dist/test-utils.js"
     }
   },
   "files": [
-    "*.js",
-    "*.d.ts",
-    "*.ts"
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "*.md"
   ],
   "scripts": {
-    "build": "tsc --noEmit",
-    "dev": "tsc --noEmit --watch",
+    "build": "tsc",
+    "dev": "tsc --watch",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests"

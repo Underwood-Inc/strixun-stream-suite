@@ -8,10 +8,29 @@
  * - Cookies handle everything
  */
 
-import type { AuthenticatedCustomer, AuthStoreConfig } from './types.js';
+import type { AuthStoreConfig } from './types';
+
+/**
+ * Check if running in development/localhost
+ */
+function isDevelopment(): boolean {
+    if (typeof window === 'undefined') return false;
+    
+    return window.location.hostname === 'localhost' || 
+           window.location.hostname === '127.0.0.1' ||
+           (typeof import.meta !== 'undefined' && (import.meta.env?.DEV || import.meta.env?.MODE === 'development'));
+}
 
 /**
  * Get OTP Auth API URL from config or environment
+ * 
+ * Priority:
+ * 1. Config override (authApiUrl)
+ * 2. Window.VITE_AUTH_API_URL (for E2E tests)
+ * 3. import.meta.env.VITE_AUTH_API_URL (for builds)
+ * 4. window.getOtpAuthApiUrl() (from config.js)
+ * 5. If localhost: '/auth-api' (Vite proxy) or 'http://localhost:8787'
+ * 6. Production default: 'https://auth.idling.app'
  */
 export function getAuthApiUrl(config?: AuthStoreConfig): string {
     // Priority 1: Config override
@@ -19,12 +38,12 @@ export function getAuthApiUrl(config?: AuthStoreConfig): string {
         return config.authApiUrl;
     }
     
-    // Priority 2: Environment variable (for E2E tests)
+    // Priority 2: Window env (for E2E tests)
     if (typeof window !== 'undefined' && (window as any).VITE_AUTH_API_URL) {
         return (window as any).VITE_AUTH_API_URL;
     }
     
-    // Priority 3: Vite env (for development)
+    // Priority 3: Vite env (for builds)
     if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
         return import.meta.env.VITE_AUTH_API_URL;
     }
@@ -35,26 +54,50 @@ export function getAuthApiUrl(config?: AuthStoreConfig): string {
         if (url) return url;
     }
     
-    // Priority 5: Check if running on localhost (CRITICAL: NO FALLBACKS ON LOCAL)
-    if (typeof window !== 'undefined') {
-        const isLocalhost = window.location.hostname === 'localhost' || 
-                            window.location.hostname === '127.0.0.1' ||
-                            import.meta.env?.DEV ||
-                            import.meta.env?.MODE === 'development';
-        
-        if (isLocalhost) {
-            // NEVER fall back to production when on localhost
-            return 'http://localhost:8787';
-        }
-    }
-    
-    // Priority 6: Development proxy (Vite)
-    if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+    // Priority 5: Development detection
+    if (isDevelopment()) {
+        // Prefer Vite proxy for SSO (shares cookies across ports)
         return '/auth-api';
     }
     
-    // Priority 7: Production default (only if NOT on localhost)
+    // Priority 6: Production default
     return 'https://auth.idling.app';
+}
+
+/**
+ * Get Customer API URL from config or environment
+ * 
+ * Priority:
+ * 1. Config override (customerApiUrl)
+ * 2. import.meta.env.VITE_CUSTOMER_API_URL (for builds)
+ * 3. window.VITE_CUSTOMER_API_URL (for E2E tests)
+ * 4. If localhost: '/customer-api' (Vite proxy)
+ * 5. Production default: 'https://customer-api.idling.app'
+ */
+export function getCustomerApiUrl(config?: AuthStoreConfig): string {
+    // Priority 1: Config override
+    if (config?.customerApiUrl) {
+        return config.customerApiUrl;
+    }
+    
+    // Priority 2: Vite env (for builds)
+    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CUSTOMER_API_URL) {
+        return import.meta.env.VITE_CUSTOMER_API_URL;
+    }
+    
+    // Priority 3: Window env (for E2E tests)
+    if (typeof window !== 'undefined' && (window as any).VITE_CUSTOMER_API_URL) {
+        return (window as any).VITE_CUSTOMER_API_URL;
+    }
+    
+    // Priority 4: Development detection
+    if (isDevelopment()) {
+        // Use Vite proxy for SSO (shares cookies across ports)
+        return '/customer-api';
+    }
+    
+    // Priority 5: Production default
+    return 'https://customer-api.idling.app';
 }
 
 /**
@@ -62,14 +105,8 @@ export function getAuthApiUrl(config?: AuthStoreConfig): string {
  * This is read-only - we can't access the cookie value in JS (HttpOnly)
  * But we can check if it exists by making an API call
  */
-function getTokenFromCookie(): string | null {
-    if (typeof document === 'undefined') return null;
-    
-    // We can't read HttpOnly cookies from JavaScript
-    // The cookie is automatically sent with requests
-    // So we return null here - the cookie will be sent automatically
-    return null;
-}
+// Note: getTokenFromCookie is not used - HttpOnly cookies are sent automatically
+// This function is kept for reference but not called
 
 /**
  * Fetch customer info from /auth/me and /customer/me to get admin status, displayName, and customerId
@@ -79,11 +116,16 @@ function getTokenFromCookie(): string | null {
  * We need to call /customer/me to get displayName from Customer API
  */
 export async function fetchCustomerInfo(
-    token: string | null, // Ignored - cookie is used instead
+    _token: string | null, // Ignored - cookie is used instead
     config?: AuthStoreConfig
 ): Promise<{ isSuperAdmin: boolean; displayName?: string | null; customerId: string } | null> {
+    const apiUrl = getAuthApiUrl(config);
+    
+    if (!apiUrl) {
+        throw new Error('Auth API URL not configured. Check VITE_AUTH_API_URL environment variable.');
+    }
+    
     try {
-        const apiUrl = getAuthApiUrl(config);
         const { createAPIClient } = await import('@strixun/api-framework/client');
         const authClient = createAPIClient({
             baseURL: apiUrl,
@@ -96,37 +138,39 @@ export async function fetchCustomerInfo(
         
         // Step 1: Get customerId and isSuperAdmin from /auth/me
         // Cookie is sent automatically with request
-        const authResponse = await authClient.get<{ 
-            isSuperAdmin?: boolean; 
-            customerId: string; 
-            [key: string]: any;
-        }>('/auth/me', undefined, {
-            metadata: {
-                cache: false, // Explicitly disable caching
-            },
-            // Credentials: 'include' ensures cookies are sent
-            credentials: 'include',
-        });
+        let authResponse;
+        try {
+            authResponse = await authClient.get<{ 
+                isSuperAdmin?: boolean; 
+                customerId: string; 
+                [key: string]: any;
+            }>('/auth/me', undefined, {
+                metadata: {
+                    cache: false, // Explicitly disable caching
+                },
+            });
+        } catch (networkError) {
+            // Network errors are critical - fail fast
+            const errorMessage = networkError instanceof Error ? networkError.message : String(networkError);
+            throw new Error(`Network error checking authentication: ${errorMessage}. Check your connection and that the auth service is running at ${apiUrl}.`);
+        }
         
-        if (authResponse.status !== 200 || !authResponse.data) {
+        // 401/403 means not authenticated - this is expected, return null
+        if (authResponse.status === 401 || authResponse.status === 403) {
             return null;
+        }
+        
+        // Other non-OK statuses are errors - fail fast
+        if (authResponse.status !== 200 || !authResponse.data) {
+            const errorText = authResponse.data ? JSON.stringify(authResponse.data) : 'Unknown error';
+            throw new Error(`Auth service returned error ${authResponse.status}: ${errorText}. Check auth service configuration.`);
         }
         
         const customerId = authResponse.data.customerId;
         const isSuperAdmin = authResponse.data.isSuperAdmin || false;
         
         // Step 2: Fetch displayName from Customer API
-        // Determine Customer API URL (use proxy in dev, direct URL in production)
-        const isDev = typeof window !== 'undefined' && 
-                     (window.location.hostname === 'localhost' || 
-                      window.location.hostname === '127.0.0.1' ||
-                      (typeof import.meta !== 'undefined' && import.meta.env?.DEV));
-        
-        const customerApiUrl = isDev 
-            ? '/customer-api'  // Vite proxy in development
-            : (typeof window !== 'undefined' && (window as any).VITE_CUSTOMER_API_URL) 
-                ? (window as any).VITE_CUSTOMER_API_URL
-                : 'https://customer-api.idling.app';
+        const customerApiUrl = getCustomerApiUrl(config);
         
         let displayName: string | null = null;
         try {
@@ -145,7 +189,6 @@ export async function fetchCustomerInfo(
                 metadata: {
                     cache: false,
                 },
-                credentials: 'include',
             });
             
             if (customerResponse.status === 200 && customerResponse.data) {
@@ -163,8 +206,14 @@ export async function fetchCustomerInfo(
             customerId,
         };
     } catch (error) {
-        console.error('[Auth] Failed to fetch customer info:', error instanceof Error ? error.message : String(error));
-        return null;
+        // If it's already our error, re-throw it (fail-fast)
+        if (error instanceof Error && (error.message.includes('Network error') || error.message.includes('Auth service returned error'))) {
+            throw error;
+        }
+        
+        // For other errors, wrap and throw (fail-fast)
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to fetch customer info: ${errorMessage}. Check auth service configuration.`);
     }
 }
 

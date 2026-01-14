@@ -4,7 +4,7 @@
  * Wraps existing router functions with enhanced framework features
  */
 
-import { createErrorResponse, createEnhancedResponse, extractCustomerFromRequest } from './enhanced-wrapper.js';
+import { createErrorResponse, createEnhancedResponse, extractCustomerFromRequest } from './enhanced-wrapper';
 import type { ExecutionContext } from '@strixun/types';
 
 interface EnhancedContext {

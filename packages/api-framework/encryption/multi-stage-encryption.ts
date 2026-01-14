@@ -26,8 +26,8 @@
  * - Each party can use JWT token, request key, or custom key
  */
 
-import type { MultiStageEncryptedData, TwoStageEncryptedData, EncryptionParty, EncryptedData } from './types.js';
-import { encryptWithJWT, decryptWithJWT } from './jwt-encryption.js';
+import type { MultiStageEncryptedData, TwoStageEncryptedData, EncryptionParty, EncryptedData } from './types';
+import { encryptWithJWT, decryptWithJWT } from './jwt-encryption';
 
 // ============ Constants ============
 

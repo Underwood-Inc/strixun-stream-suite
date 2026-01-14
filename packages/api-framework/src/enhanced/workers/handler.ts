@@ -14,7 +14,7 @@ import { createRFC7807Response } from '../errors';
 import { applyFiltering, parseFilteringParams } from '../filtering';
 import { WorkerAdapter } from './adapter';
 // Import directly from encryption source to avoid circular dependency
-import { encryptWithJWT } from '../../../encryption/jwt-encryption.js';
+import { encryptWithJWT } from '../../../encryption/jwt-encryption';
 
 export interface HandlerOptions {
   typeDef?: TypeDefinition;

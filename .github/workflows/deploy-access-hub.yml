@@ -38,6 +38,8 @@ jobs:
         working-directory: access-hub
         env:
           VITE_ACCESS_API_URL: https://access-api.idling.app
+          VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
+          VITE_CUSTOMER_API_URL: ${{ secrets.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app' }}
         run: pnpm build
       
       - name: Deploy to Cloudflare Pages

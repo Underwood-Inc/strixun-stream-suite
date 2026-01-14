@@ -102,6 +102,9 @@ jobs:
       
       - name: Build URL Shortener App
         working-directory: serverless/url-shortener
+        env:
+          VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
+          VITE_CUSTOMER_API_URL: ${{ secrets.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app' }}
         run: pnpm build:all
       
       - name: Verify Build Output

@@ -17,8 +17,8 @@
  * - JWT-based encryption: All authenticated routes use JWT encryption
  */
 
-import type { EncryptedData } from './types.js';
-import { encryptWithJWT } from './jwt-encryption.js';
+import type { EncryptedData } from './types';
+import { encryptWithJWT } from './jwt-encryption';
 
 // ============ Types ============
 
