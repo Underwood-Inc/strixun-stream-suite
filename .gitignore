@@ -73,6 +73,12 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+logs/
+
+# PM2
+.pm2/
+pm2.log
+pm2-*.log
 
 # Environment
 .env

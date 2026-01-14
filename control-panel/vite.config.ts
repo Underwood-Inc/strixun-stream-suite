@@ -5,6 +5,7 @@ import { resolve } from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
+  clearScreen: false, // Prevent console clearing in turbo dev mode
   plugins: [
     react(),
     // Bundle everything into a single HTML file for OBS dock compatibility

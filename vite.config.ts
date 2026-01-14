@@ -9,6 +9,8 @@ export default defineConfig({
   base: process.env.VITE_BASE_PATH || '/',
   // Explicitly set public directory to ensure brand images are copied
   publicDir: 'public',
+  // Prevent console clearing in watch mode (useful for debugging with turbo)
+  clearScreen: false,
   plugins: [svelte({
     onwarn: (warning, handler) => {
       // Suppress CSS unused selector warnings (classes may be used dynamically or in imported SCSS)

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  clearScreen: false, // Prevent console clearing in turbo dev mode
   plugins: [react()],
   resolve: {
     alias: [

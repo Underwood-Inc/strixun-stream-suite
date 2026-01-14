@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
+  clearScreen: false, // Prevent console clearing in turbo dev mode
   plugins: [react()],
   server: {
     port: 5178,

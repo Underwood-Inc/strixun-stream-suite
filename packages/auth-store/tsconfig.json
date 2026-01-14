@@ -21,6 +21,8 @@
     "sourceMap": true,
     "outDir": "./dist",
     "rootDir": ".",
+    "incremental": true,
+    "composite": true,
     "types": ["node", "vite/client"]
   },
   "include": [

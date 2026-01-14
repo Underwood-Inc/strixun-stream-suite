@@ -133,7 +133,7 @@ export function initializeServiceTypes(): TypeRegistry {
       },
       clickRate: {
         required: false,
-        compute: (data: any, context?: any) => {
+        compute: (data: any) => {
           // Calculate clicks per day since creation
           if (!data.clicks || !data.createdAt) return 0;
           const daysSinceCreation = (Date.now() - new Date(data.createdAt).getTime()) / (1000 * 60 * 60 * 24);

@@ -3,6 +3,7 @@ import path from 'path';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  clearScreen: false, // Prevent console clearing in turbo dev mode
   plugins: [svelte({
     compilerOptions: {
       css: 'injected',

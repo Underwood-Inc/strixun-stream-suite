@@ -12,7 +12,7 @@
  * - Configurable timeouts and retries
  */
 
-import type { IntegrityConfig } from './integrity.js';
+import type { IntegrityConfig } from './integrity';
 
 export interface ServiceClientConfig {
     /**
@@ -428,7 +428,7 @@ export class ServiceClient {
         body: string,
         headers: Headers
     ): Promise<{ verified: boolean; error?: string }> {
-        const { verifyResponseIntegrityFromHeaders } = await import('./integrity.js');
+        const { verifyResponseIntegrityFromHeaders } = await import('./integrity');
         return await verifyResponseIntegrityFromHeaders(status, body, headers, this.integrityKeyphrase);
     }
     
@@ -442,7 +442,7 @@ export class ServiceClient {
         body: string | null,
         headers: Headers
     ): Promise<void> {
-        const { addRequestIntegrityHeaders } = await import('./integrity.js');
+        const { addRequestIntegrityHeaders } = await import('./integrity');
         await addRequestIntegrityHeaders(method, path, body, headers, this.integrityKeyphrase);
     }
 }

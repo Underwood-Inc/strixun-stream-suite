@@ -1124,6 +1124,9 @@ importers:
 
   serverless/url-shortener/app:
     dependencies:
+      '@strixun/otp-auth-service':
+        specifier: workspace:*
+        version: link:../../otp-auth-service
       '@strixun/otp-login':
         specifier: workspace:*
         version: link:../../../packages/otp-login

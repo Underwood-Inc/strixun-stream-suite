@@ -5,7 +5,7 @@
  */
 
 // Re-export all customer schemas
-export * from './customer.js';
+export * from './customer';
 
 // Re-export all auth schemas
-export * from './auth.js';
+export * from './auth';

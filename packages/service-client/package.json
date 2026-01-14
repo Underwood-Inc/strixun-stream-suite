@@ -4,27 +4,31 @@
   "description": "Reusable service-to-service client library for authenticated API calls",
   "private": true,
   "type": "module",
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.ts",
-      "default": "./index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./integrity": {
-      "types": "./integrity.ts",
-      "default": "./integrity.ts"
+      "types": "./dist/integrity.d.ts",
+      "default": "./dist/integrity.js"
     },
     "./integrity-response": {
-      "types": "./integrity-response.ts",
-      "default": "./integrity-response.ts"
+      "types": "./dist/integrity-response.d.ts",
+      "default": "./dist/integrity-response.js"
     }
   },
   "files": [
-    "*.ts",
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
     "*.md"
   ],
   "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests"

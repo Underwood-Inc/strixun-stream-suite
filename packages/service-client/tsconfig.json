@@ -5,7 +5,7 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "allowJs": true,
+    "allowJs": false,
     "checkJs": false,
     "strict": true,
     "noUnusedLocals": true,
@@ -16,15 +16,17 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["@cloudflare/workers-types"],
-    "rootDir": ".",
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "incremental": true,
+    "composite": true,
+    "types": ["node", "@cloudflare/workers-types"]
   },
   "include": [
-    "**/*.ts",
-    "**/*.d.ts"
+    "**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -19,11 +19,12 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["@cloudflare/workers-types"],
     "outDir": "./dist",
-    // Note: TypeScript outDir uses relative paths, which is fine for tsconfig
     "rootDir": ".",
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "incremental": true,
+    "composite": true
   },
   "include": [
     "**/*.ts",
