@@ -2,12 +2,59 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Plugin to copy Cloudflare Pages Functions to build output
+ * This ensures the functions directory is included in the deployment
+ */
+function copyFunctionsPlugin() {
+  return {
+    name: 'copy-functions',
+    closeBundle: () => {
+      const functionsSource = path.resolve(__dirname, 'functions');
+      const functionsTarget = path.resolve(__dirname, '../dist/mods-hub/functions');
+      
+      // Check if functions directory exists
+      if (!fs.existsSync(functionsSource)) {
+        console.log('No functions directory found, skipping copy');
+        return;
+      }
+      
+      // Copy functions directory to build output
+      console.log('Copying Cloudflare Pages Functions to build output...');
+      
+      // Create target directory if it doesn't exist
+      if (!fs.existsSync(functionsTarget)) {
+        fs.mkdirSync(functionsTarget, { recursive: true });
+      }
+      
+      // Copy all files from functions directory
+      const files = fs.readdirSync(functionsSource);
+      files.forEach((file) => {
+        const sourcePath = path.join(functionsSource, file);
+        const targetPath = path.join(functionsTarget, file);
+        
+        // Skip non-TypeScript files (like README.md, test files, etc.)
+        if (!file.endsWith('.ts') || file.includes('.test.') || file.includes('.spec.')) {
+          console.log(`  Skipping ${file} (not a deployable function)`);
+          return;
+        }
+        
+        fs.copyFileSync(sourcePath, targetPath);
+        console.log(`  Copied ${file} to ${functionsTarget}`);
+      });
+      
+      console.log('* Cloudflare Pages Functions copied successfully!');
+    },
+  };
+}
+
 export default defineConfig({
   clearScreen: false, // Prevent console clearing in turbo dev mode
-  plugins: [react()],
+  plugins: [react(), copyFunctionsPlugin()],
   resolve: {
     alias: [
       { find: '@', replacement: path.resolve(__dirname, './src') },
