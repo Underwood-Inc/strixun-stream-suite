@@ -43,6 +43,7 @@ export default defineConfig({
   base: '/',
   server: {
     port: 3001,
+    strictPort: true,
     open: true,
     // HMR (Hot Module Replacement) WebSocket configuration
     // CRITICAL: Must be configured to avoid conflicts with proxy

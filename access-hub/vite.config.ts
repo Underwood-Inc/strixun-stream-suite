@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5178,
-    // Allow auto-shift to next available port if 5178 is taken
+    strictPort: true,
     proxy: {
       '/auth-api': {
         target: 'http://localhost:8787',

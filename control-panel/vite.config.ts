@@ -38,6 +38,7 @@ export default defineConfig({
   },
   server: {
     port: 5175,
+    strictPort: true,
     open: false,
     // CRITICAL: Proxy API requests for HttpOnly cookie SSO
     proxy: {

@@ -186,6 +186,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    strictPort: true, // Fail if port is taken instead of silently shifting
     open: false,
     cors: true,
     // CRITICAL: Proxy API requests to local workers with cookie forwarding for HttpOnly SSO

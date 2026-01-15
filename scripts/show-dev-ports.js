@@ -56,6 +56,14 @@ const services = [
     url: 'http://localhost:5176',
     framework: 'React',
   },
+  {
+    name: 'Dice Board Game',
+    location: 'dice-board-game',
+    port: 5179,
+    type: 'Frontend',
+    url: 'http://localhost:5179',
+    framework: 'React',
+  },
   // Backend Workers
   {
     name: 'OTP Auth Service (Worker)',
@@ -141,17 +149,13 @@ async function probeUrl(url, timeoutMs) {
 }
 
 async function resolveFrontendUrl(service) {
-  // Vite will auto-shift ports if the requested one is taken (default behavior).
-  // To avoid "page can't be found" confusion, probe a small range to find where it actually started.
-  const startPort = service.port;
-  const maxScan = 10;
-  for (let i = 0; i <= maxScan; i++) {
-    const port = startPort + i;
-    const url = `http://localhost:${port}`;
-    const probe = await probeUrl(url, 350);
-    if (probe.ok) {
-      return { url, port, status: 'UP' };
-    }
+  // Only check the exact configured port - no scanning.
+  // The old scanning approach caused false positives where a different service
+  // running at a higher port would be reported for multiple services.
+  const url = service.url;
+  const probe = await probeUrl(url, 350);
+  if (probe.ok) {
+    return { url, port: service.port, status: 'UP' };
   }
   return { url: service.url, port: service.port, status: 'DOWN' };
 }
