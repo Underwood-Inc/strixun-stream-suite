@@ -12,9 +12,9 @@
  * 3. Adding type definitions for mods
  */
 
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import type { ExecutionContext } from '@cloudflare/workers-types';
 import { createError } from './utils/errors.js';
+import { getCorsHeadersRecord } from './utils/cors.js';
 import { handleModRoutes } from './router/mod-routes.js';
 import { handleAdminRoutes } from './router/admin-routes.js';
 import { handleR2Cleanup } from './handlers/admin/r2-cleanup.js';
@@ -57,68 +57,6 @@ function parseRoutes(env: Env): RouteConfig[] {
         console.warn('Failed to parse ROUTES environment variable:', error);
         return [];
     }
-}
-
-/**
- * Get CORS headers (temporary - will be replaced by framework)
- */
-function getCorsHeaders(env: Env, request: Request): Record<string, string> {
-    const origin = request.headers.get('Origin');
-    const allowedOrigins = env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
-    
-    // Always allow localhost for development (even in production mode)
-    // This ensures local development works without needing to configure ALLOWED_ORIGINS
-    const isLocalhost = origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'));
-    
-    // If no origins configured, allow all (including localhost)
-    // If localhost is detected, always allow it (for development)
-    let effectiveOrigins = allowedOrigins.length > 0 ? allowedOrigins : ['*'];
-    
-    // Always allow localhost for development (even if not in allowedOrigins)
-    if (isLocalhost) {
-        // Check if localhost is already in allowedOrigins
-        const localhostAllowed = allowedOrigins.some(o => {
-            if (o === '*' || o === origin) return true;
-            if (o.endsWith('*')) {
-                const prefix = o.slice(0, -1);
-                return origin && origin.startsWith(prefix);
-            }
-            return false;
-        });
-        
-        // If localhost not explicitly allowed, add wildcard or the specific origin
-        if (!localhostAllowed) {
-            effectiveOrigins = ['*']; // Allow all for localhost development
-        }
-    }
-    
-    // Use framework CORS headers (returns Headers object, convert to Record)
-    // CRITICAL: Trust the framework's createCORSHeaders - it already handles all CORS logic correctly
-    // Do NOT manually set Access-Control-Allow-Origin as it causes duplicate headers
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: effectiveOrigins,
-        credentials: true, // Allow credentials for authenticated requests
-    });
-    
-    // Convert Headers to Record<string, string>
-    const headers: Record<string, string> = {};
-    corsHeaders.forEach((value, key) => {
-        headers[key] = value;
-    });
-    
-    // The framework's createCORSHeaders already sets all required CORS headers
-    // Only add fallback headers if framework didn't set them (shouldn't happen, but safety check)
-    if (!headers['Access-Control-Allow-Methods']) {
-        headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
-    }
-    if (!headers['Access-Control-Allow-Headers']) {
-        headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token';
-    }
-    if (!headers['Access-Control-Max-Age']) {
-        headers['Access-Control-Max-Age'] = '86400';
-    }
-    
-    return headers;
 }
 
 /**
@@ -177,7 +115,7 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
             status: 401,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...getCorsHeaders(env, request),
+                ...getCorsHeadersRecord(env, request),
             },
         });
     }
@@ -197,7 +135,7 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
             status: 401,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...getCorsHeaders(env, request),
+                ...getCorsHeadersRecord(env, request),
             },
         });
     }
@@ -222,7 +160,7 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
             status: 401,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...getCorsHeaders(env, request),
+                ...getCorsHeadersRecord(env, request),
             },
         });
     }
@@ -242,7 +180,7 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
     const response = new Response(JSON.stringify(healthData), {
         headers: { 
             'Content-Type': 'application/json',
-            ...getCorsHeaders(env, request),
+            ...getCorsHeadersRecord(env, request),
         },
     });
     
@@ -301,7 +239,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
             status: 404,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...getCorsHeaders(env, request),
+                ...getCorsHeadersRecord(env, request),
             },
         });
     } catch (error: any) {
@@ -313,7 +251,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
                 status: error.status,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...getCorsHeaders(env, request),
+                    ...getCorsHeadersRecord(env, request),
                 },
             });
         }
@@ -330,7 +268,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
                 status: 500,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...getCorsHeaders(env, request),
+                    ...getCorsHeadersRecord(env, request),
                 },
             });
         }
@@ -346,7 +284,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
             status: 500,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...getCorsHeaders(env, request),
+                ...getCorsHeadersRecord(env, request),
             },
         });
     }
@@ -360,7 +298,7 @@ export default {
         // CRITICAL: Handle CORS preflight FIRST, before any routing
         // This ensures OPTIONS requests always get CORS headers, even if route doesn't match
         if (request.method === 'OPTIONS') {
-            const corsHeaders = getCorsHeaders(env, request);
+            const corsHeaders = getCorsHeadersRecord(env, request);
             console.log('[Worker] OPTIONS preflight request:', {
                 url: request.url,
                 origin: request.headers.get('Origin'),

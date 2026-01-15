@@ -3,10 +3,12 @@
  * 
  * Cloudflare Worker entry point for Twitch API proxy service
  * Wraps the router.js module to provide the fetch handler interface
+ * 
+ * @version 2.1.0 - Uses standardized CORS from api-framework
  */
 
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import type { ExecutionContext } from '@strixun/types';
+import { getCorsHeaders } from './utils/cors.js';
 import { route } from './router';
 
 /**
@@ -32,19 +34,14 @@ interface Env {
  */
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const corsHeaders = getCorsHeaders(env, request);
+    
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
-      const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-      });
-      return new Response(null, { 
-        status: 204,
-        headers: Object.fromEntries(corsHeaders.entries())
-      });
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
 
     // Route to appropriate handler (router handles CORS headers in responses)
     return route(request, env);
   },
 };
-

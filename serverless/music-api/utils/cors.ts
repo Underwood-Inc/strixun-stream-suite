@@ -1,51 +1,39 @@
 /**
- * CORS utility functions for Music API
+ * CORS Utilities for Music API
+ * 
+ * Re-exports standardized CORS from API framework.
+ * Uses env.ALLOWED_ORIGINS for production, no fallbacks.
  */
 
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { getCorsHeaders as frameworkGetCorsHeaders } from '@strixun/api-framework/enhanced';
 
+interface Env {
+    ALLOWED_ORIGINS?: string;
+    ENVIRONMENT?: string;
+    [key: string]: any;
+}
+
+/**
+ * Get CORS headers for cross-origin requests
+ * Uses API framework with ALLOWED_ORIGINS from env
+ * 
+ * @param env - Worker environment (must have ALLOWED_ORIGINS in production)
+ * @param request - HTTP request
+ * @returns CORS headers as Record for spread syntax
+ */
 export function getCorsHeaders(env: Env, request: Request): Record<string, string> {
-  const origin = request.headers.get('Origin');
-  const allowedOrigins = env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
-  
-  const isLocalhost = origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'));
-  
-  let effectiveOrigins = allowedOrigins.length > 0 ? allowedOrigins : ['*'];
-  
-  if (isLocalhost) {
-    const localhostAllowed = allowedOrigins.some(o => {
-      if (o === '*' || o === origin) return true;
-      if (o.endsWith('*')) {
-        const prefix = o.slice(0, -1);
-        return origin && origin.startsWith(prefix);
-      }
-      return false;
-    });
+    const headers = frameworkGetCorsHeaders(env, request, null);
     
-    if (!localhostAllowed) {
-      effectiveOrigins = ['*'];
-    }
-  }
-  
-  const corsHeaders = createCORSHeaders(request, {
-    allowedOrigins: effectiveOrigins,
-    credentials: true,
-  });
-  
-  const headers: Record<string, string> = {};
-  corsHeaders.forEach((value, key) => {
-    headers[key] = value;
-  });
-  
-  if (!headers['Access-Control-Allow-Methods']) {
-    headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
-  }
-  if (!headers['Access-Control-Allow-Headers']) {
-    headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With';
-  }
-  if (!headers['Access-Control-Max-Age']) {
-    headers['Access-Control-Max-Age'] = '86400';
-  }
-  
-  return headers;
+    // Add security headers
+    headers.set('X-Content-Type-Options', 'nosniff');
+    headers.set('X-Frame-Options', 'DENY');
+    headers.set('X-XSS-Protection', '1; mode=block');
+    headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    
+    // Convert to Record for spread syntax compatibility
+    const record: Record<string, string> = {};
+    headers.forEach((value, key) => {
+        record[key] = value;
+    });
+    return record;
 }

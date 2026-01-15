@@ -4,12 +4,12 @@
  * Dedicated worker for idle game API endpoints
  * Handles all game-related operations with JWT authentication
  * 
- * @version 2.0.0 - Migrated to use shared API framework
+ * @version 2.1.0 - Uses standardized CORS from api-framework
  */
 
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import type { ExecutionContext } from '@strixun/types';
 import { createError } from './utils/errors.js';
+import { getCorsHeaders } from './utils/cors.js';
 import { handleGameRoutes } from './router/game-routes.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 
@@ -18,6 +18,8 @@ import { wrapWithEncryption } from '@strixun/api-framework';
  * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health
  */
 async function handleHealth(env: any, request: Request): Promise<Response> {
+    const corsHeaders = getCorsHeaders(env, request);
+    
     // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
     // ONLY check HttpOnly cookie - NO fallbacks, NO Authorization header
     const cookieHeader = request.headers.get('Cookie');
@@ -29,14 +31,11 @@ async function handleHealth(env: any, request: Request): Promise<Response> {
             detail: 'JWT token is required for encryption/decryption. Please authenticate with HttpOnly cookie.',
             instance: request.url
         };
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        });
         return new Response(JSON.stringify(errorResponse), {
             status: 401,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...corsHeaders,
             },
         });
     }
@@ -51,14 +50,11 @@ async function handleHealth(env: any, request: Request): Promise<Response> {
             detail: 'JWT token is required for encryption/decryption. Please authenticate with HttpOnly cookie.',
             instance: request.url
         };
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        });
         return new Response(JSON.stringify(errorResponse), {
             status: 401,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...corsHeaders,
             },
         });
     }
@@ -104,12 +100,11 @@ async function handleHealth(env: any, request: Request): Promise<Response> {
  */
 export default {
     async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+        const corsHeaders = getCorsHeaders(env, request);
+        
         // Handle CORS preflight
         if (request.method === 'OPTIONS') {
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
-            return new Response(null, { headers: Object.fromEntries(corsHeaders.entries()) });
+            return new Response(null, { status: 204, headers: corsHeaders });
         }
 
         const url = new URL(request.url);
@@ -133,14 +128,11 @@ export default {
 
             // 404 for unknown routes
             const rfcError = createError(request, 404, 'Not Found', 'The requested endpoint was not found');
-            const corsHeaders404 = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders404.entries()),
+                    ...corsHeaders,
                 },
             });
         } catch (error: any) {
@@ -154,14 +146,11 @@ export default {
                     'Server Configuration Error',
                     'JWT_SECRET environment variable is required. Please contact the administrator.'
                 );
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-                });
                 return new Response(JSON.stringify(rfcError), {
                     status: 500,
                     headers: {
                         'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
+                        ...corsHeaders,
                     },
                 });
             }
@@ -172,17 +161,13 @@ export default {
                 'Internal Server Error',
                 env.ENVIRONMENT === 'development' ? error.message : 'An internal server error occurred'
             );
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
             return new Response(JSON.stringify(rfcError), {
                 status: 500,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
+                    ...corsHeaders,
                 },
             });
         }
     },
 };
-

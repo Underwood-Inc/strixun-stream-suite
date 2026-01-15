@@ -4,12 +4,15 @@
  * Cloudflare Worker for URL shortening with OTP authentication integration
  * Provides free URL shortening service with user authentication
  * 
- * @version 2.0.0 - Modular architecture
+ * @version 2.1.0 - Uses standardized CORS from api-framework
  */
 
-import { createCORSMiddleware } from '@strixun/api-framework/enhanced';
 import { initializeServiceTypes, type ExecutionContext } from '@strixun/types';
+import { getCorsHeaders } from './utils/cors.js';
 import { createRouter } from './router/routes.js';
+
+// Initialize service types
+initializeServiceTypes();
 
 /**
  * Request handler
@@ -19,23 +22,19 @@ async function handleRequest(request: Request, env: any, ctx: ExecutionContext):
   return router(request, env);
 }
 
-// Initialize service types
-initializeServiceTypes();
-
-// Create CORS middleware
-const corsMiddleware = createCORSMiddleware({});
-
 /**
  * Main request handler with CORS support
  */
 export default {
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+    const corsHeaders = getCorsHeaders(env, request);
+    
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
-      return corsMiddleware(request, async () => new Response(null, { status: 204 }));
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
     
-    // Handle request with CORS
-    return corsMiddleware(request, async (req) => handleRequest(req, env, ctx));
+    // Handle request
+    return handleRequest(request, env, ctx);
   },
 };

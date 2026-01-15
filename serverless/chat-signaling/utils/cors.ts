@@ -1,50 +1,43 @@
 /**
- * CORS Utilities
+ * CORS Utilities for Chat Signaling
  * 
- * CORS header generation for Chat Signaling worker with dynamic origin whitelist
- * @module utils/cors
+ * Re-exports standardized CORS from API framework.
+ * Uses env.ALLOWED_ORIGINS for production, no fallbacks.
  */
 
+import { getCorsHeaders as frameworkGetCorsHeaders } from '@strixun/api-framework/enhanced';
 import type { Env, CorsHeaders } from '../types';
 
 /**
- * Get CORS headers with dynamic origin whitelist
+ * Get CORS headers for cross-origin requests
+ * Uses API framework with ALLOWED_ORIGINS from env
  * 
- * Security:
- * - If ALLOWED_ORIGINS is set, only allows listed origins
- * - If ALLOWED_ORIGINS is not set, allows all origins (development only!)
- * - Always includes security headers (nosniff, frame options, etc.)
- * 
- * @param env - Worker environment
- * @param request - Incoming request
- * @returns CORS headers object
+ * @param env - Worker environment (must have ALLOWED_ORIGINS in production)
+ * @param request - HTTP request
+ * @returns CORS headers as CorsHeaders type
  */
 export function getCorsHeaders(env: Env, request: Request): CorsHeaders {
-  const origin = request.headers.get('Origin');
-  
-  // Get allowed origins from environment (comma-separated)
-  const allowedOrigins = env.ALLOWED_ORIGINS 
-    ? env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) 
-    : [];
-  
-  // Determine allowed origin
-  // If no origins configured, allow all (for development only)
-  // In production, you MUST set ALLOWED_ORIGINS via: wrangler secret put ALLOWED_ORIGINS
-  const allowOrigin = allowedOrigins.length > 0 
-    ? (origin && allowedOrigins.includes(origin) ? origin : null)
-    : '*'; // Fallback for development - NEVER use in production!
-  
-  return {
-    'Access-Control-Allow-Origin': allowOrigin || 'null',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-ID, X-Requested-With, X-CSRF-Token',
-    'Access-Control-Allow-Credentials': allowOrigin !== '*' ? 'true' : 'false',
-    'Access-Control-Max-Age': '86400',
-    // Security headers
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-    'X-XSS-Protection': '1; mode=block',
-    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
-  };
+    const headers = frameworkGetCorsHeaders(env, request, null);
+    
+    // Add security headers
+    headers.set('X-Content-Type-Options', 'nosniff');
+    headers.set('X-Frame-Options', 'DENY');
+    headers.set('X-XSS-Protection', '1; mode=block');
+    headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'");
+    
+    // Convert to CorsHeaders type for compatibility
+    const record: CorsHeaders = {
+        'Access-Control-Allow-Origin': headers.get('Access-Control-Allow-Origin') || 'null',
+        'Access-Control-Allow-Methods': headers.get('Access-Control-Allow-Methods') || 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': headers.get('Access-Control-Allow-Headers') || 'Content-Type, Authorization, X-Device-ID, X-Requested-With, X-CSRF-Token',
+        'Access-Control-Allow-Credentials': headers.get('Access-Control-Allow-Credentials') || 'true',
+        'Access-Control-Max-Age': headers.get('Access-Control-Max-Age') || '86400',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'X-XSS-Protection': '1; mode=block',
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+        'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+    };
+    return record;
 }
