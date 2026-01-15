@@ -263,7 +263,7 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
                     detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
                     instance: request.url
                 };
-                const corsHeaders = getCorsHeaders(env, request);
+                const corsHeaders = getCorsHeadersRecord(env, request);
                 return new Response(JSON.stringify(errorResponse), {
                     status: 401,
                     headers: {
@@ -277,7 +277,7 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             const { encryptBinaryWithJWT } = await import('@strixun/api-framework');
             const bodyBytes = await response.arrayBuffer();
             const encryptedBody = await encryptBinaryWithJWT(new Uint8Array(bodyBytes), jwtToken);
-            const corsHeaders = getCorsHeaders(env, request);
+            const corsHeaders = getCorsHeadersRecord(env, request);
             return new Response(encryptedBody, {
                 status: response.status,
                 headers: {

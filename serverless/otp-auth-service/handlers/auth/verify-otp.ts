@@ -4,7 +4,7 @@
  * Handles OTP verification, user creation, and JWT token generation
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getOtpCacheHeaders } from '../../utils/cache-headers.js';
 import { hashEmail, constantTimeEquals } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
@@ -140,7 +140,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             }), {
                 status: 400,
                 headers: { 
-                    ...getCorsHeaders(env, request), 
+                    ...getCorsHeadersRecord(env, request), 
                     'Content-Type': 'application/problem+json',
                 },
             });
@@ -161,7 +161,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             }), {
                 status: 400,
                 headers: { 
-                    ...getCorsHeaders(env, request), 
+                    ...getCorsHeadersRecord(env, request), 
                     'Content-Type': 'application/problem+json',
                 },
             });
@@ -224,7 +224,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             }), {
                 status: 429,
                 headers: { 
-                    ...getCorsHeaders(env, request), 
+                    ...getCorsHeadersRecord(env, request), 
                     'Content-Type': 'application/problem+json',
                 },
             });
@@ -262,7 +262,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             return new Response(JSON.stringify(errorData), {
                 status: 401,
                 headers: { 
-                    ...getCorsHeaders(env, request), 
+                    ...getCorsHeadersRecord(env, request), 
                     'Content-Type': 'application/problem+json',
                 },
             });
@@ -291,7 +291,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             }), {
                 status: 500,
                 headers: {
-                    ...getCorsHeaders(env, request),
+                    ...getCorsHeadersRecord(env, request),
                     'Content-Type': 'application/problem+json',
                 },
             });
@@ -404,7 +404,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         
         return new Response(JSON.stringify(tokenResponse), {
             headers: { 
-                ...getCorsHeaders(env, request), 
+                ...getCorsHeadersRecord(env, request), 
                 ...getOtpCacheHeaders(),
                 'Content-Type': 'application/json',
                 'Set-Cookie': cookieValue,
