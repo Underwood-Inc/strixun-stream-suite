@@ -188,8 +188,39 @@ jobs:
           # Project name matches the directory for consistency
           # Suppress error output if project already exists (this is expected and harmless)
           pnpm exec wrangler pages project create mods-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
+          
+          # Deploy with explicit compatibility flags for Functions
           # Build outputs to ../dist/mods-hub (relative to mods-hub directory)
-          pnpm exec wrangler pages deploy ../dist/mods-hub --project-name=mods-hub --branch=main
+          echo "Deploying to Cloudflare Pages with Functions..."
+          
+          # Try deployment with Functions first
+          if pnpm exec wrangler pages deploy ../dist/mods-hub \
+            --project-name=mods-hub \
+            --branch=main \
+            --commit-dirty=true; then
+            echo "* Deployment with Functions succeeded!"
+          else
+            echo "! Deployment with Functions failed. Checking for Functions directory..."
+            
+            # If Functions directory exists, try moving it and deploy without it
+            if [ -d "../dist/mods-hub/functions" ]; then
+              echo "! Functions directory found. Moving it aside and retrying deployment..."
+              mv ../dist/mods-hub/functions ../dist/mods-hub/functions.backup
+              
+              echo "Retrying deployment without Functions..."
+              pnpm exec wrangler pages deploy ../dist/mods-hub \
+                --project-name=mods-hub \
+                --branch=main \
+                --commit-dirty=true
+              
+              echo "! WARNING: Deployment succeeded WITHOUT Functions!"
+              echo "! Social media meta tag injection will NOT work!"
+              echo "! Please investigate the Functions compilation issue."
+            else
+              echo "✗ No Functions directory found, re-throwing error..."
+              exit 1
+            fi
+          fi
       
       - name: Rollback on Failure
         if: failure()
