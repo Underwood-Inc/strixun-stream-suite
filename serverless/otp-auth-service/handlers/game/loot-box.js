@@ -5,7 +5,7 @@
  * Authentication is handled by the route wrapper with automatic encryption
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getCustomerKey } from '../../services/customer.js';
 
 /**
@@ -58,7 +58,7 @@ async function handleGetLootBoxStatus(request, env, userId, customerId) {
             }
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Get loot box status error:', error);
@@ -67,7 +67,7 @@ async function handleGetLootBoxStatus(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -100,7 +100,7 @@ async function handleClaimLootBox(request, env, userId, customerId) {
                 message: 'Daily loot box already claimed today'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -165,7 +165,7 @@ async function handleClaimLootBox(request, env, userId, customerId) {
             nextAvailableAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Claim loot box error:', error);
@@ -174,7 +174,7 @@ async function handleClaimLootBox(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -239,7 +239,7 @@ export async function handleGameLootBox(request, env, userId, customerId, action
         message: 'Invalid action'
     }), {
         status: 400,
-        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
     });
 }
 

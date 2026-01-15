@@ -5,7 +5,7 @@
  * Authentication is handled by the route wrapper with automatic encryption
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getCustomerKey } from '../../services/customer.js';
 
 /**
@@ -25,7 +25,7 @@ async function handleGetCharacter(request, env, userId, customerId) {
                 message: 'characterId query parameter is required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -39,7 +39,7 @@ async function handleGetCharacter(request, env, userId, customerId) {
                 message: 'Character not found'
             }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -48,7 +48,7 @@ async function handleGetCharacter(request, env, userId, customerId) {
             character
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Get character error:', error);
@@ -57,7 +57,7 @@ async function handleGetCharacter(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -79,7 +79,7 @@ async function handleCreateCharacter(request, env, userId, customerId) {
                 message: 'name and appearance are required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -139,7 +139,7 @@ async function handleCreateCharacter(request, env, userId, customerId) {
             character
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Create character error:', error);
@@ -148,7 +148,7 @@ async function handleCreateCharacter(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -170,7 +170,7 @@ async function handleUpdateAppearance(request, env, userId, customerId) {
                 message: 'characterId and appearance are required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -184,7 +184,7 @@ async function handleUpdateAppearance(request, env, userId, customerId) {
                 message: 'Character not found'
             }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -224,7 +224,7 @@ async function handleUpdateAppearance(request, env, userId, customerId) {
             }
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Update appearance error:', error);
@@ -233,7 +233,7 @@ async function handleUpdateAppearance(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -255,7 +255,7 @@ export async function handleGameCharacter(request, env, userId, customerId, acti
         message: 'Invalid action'
     }), {
         status: 400,
-        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
     });
 }
 

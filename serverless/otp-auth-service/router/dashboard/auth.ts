@@ -3,7 +3,7 @@
  * Shared authentication and authorization utilities for dashboard routes
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { verifyApiKey } from '../../services/api-key.js';
 import { verifyJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
@@ -123,7 +123,7 @@ export async function handleAdminRoute(
                 code: 'AUTHENTICATION_REQUIRED'
             }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             }), 
             customerId: null 
         };
@@ -165,7 +165,7 @@ export async function handleAdminOrSuperAdminRoute(
                 code: 'AUTHENTICATION_REQUIRED'
             }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             }),
             customerId: null
         };
@@ -183,7 +183,7 @@ export async function handleAdminOrSuperAdminRoute(
                 code: 'FORBIDDEN'
             }), {
                 status: 403,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             }),
             customerId: auth.customerId
         };

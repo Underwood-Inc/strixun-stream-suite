@@ -8,7 +8,7 @@
  * Some routes require super-admin authentication (for system-level operations)
  */
 
-import { getCorsHeaders } from '../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../utils/cors.js';
 import { requireSuperAdmin } from '../utils/super-admin.js';
 // CRITICAL: wrapWithEncryption removed - main router handles ALL encryption (avoids double-encryption)
 // @ts-ignore - JS handlers don't have type declarations
@@ -104,7 +104,7 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
             return {
                 response: new Response(JSON.stringify({ error: 'Authentication required' }), {
                     status: 401,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 }),
                 customerId: null
             };
@@ -148,7 +148,7 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
             return {
                 response: new Response(JSON.stringify({ error: 'Authentication required' }), {
                     status: 401,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 }),
                 customerId: null
             };
@@ -179,7 +179,7 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
             return {
                 response: new Response(JSON.stringify({ error: 'Authentication required' }), {
                     status: 401,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 }),
                 customerId: null
             };
@@ -201,7 +201,7 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
             return {
                 response: new Response(JSON.stringify({ error: 'Authentication required' }), {
                     status: 401,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 }),
                 customerId: null
             };
@@ -223,7 +223,7 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
             return {
                 response: new Response(JSON.stringify({ error: 'Authentication required' }), {
                     status: 401,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 }),
                 customerId: null
             };

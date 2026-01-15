@@ -43,3 +43,16 @@ export function getCorsHeaders(env: Env, request: Request, customer: Customer | 
     
     return headers;
 }
+
+/**
+ * Convert Headers to Record<string, string> for spread syntax
+ * CRITICAL: Headers objects cannot be spread directly - they must be converted first
+ */
+export function getCorsHeadersRecord(env: Env, request: Request, customer: Customer | null = null): Record<string, string> {
+    const headers = getCorsHeaders(env, request, customer);
+    const record: Record<string, string> = {};
+    headers.forEach((value, key) => {
+        record[key] = value;
+    });
+    return record;
+}

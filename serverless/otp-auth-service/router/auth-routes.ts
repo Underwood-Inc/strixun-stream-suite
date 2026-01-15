@@ -3,7 +3,7 @@
  * Handles authentication endpoints (may require API key for multi-tenant)
  */
 
-import { getCorsHeaders } from '../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../utils/cors.js';
 // getCorsHeaders is already imported above
 import { getCustomerCached } from '../utils/cache.js';
 import { getCustomer } from '../services/customer.js';
@@ -213,7 +213,7 @@ export async function handleAuthRoutes(
         return {
             response: new Response(JSON.stringify({ error: 'Invalid or revoked API key' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             }),
             customerId: null
         };
@@ -229,7 +229,7 @@ export async function handleAuthRoutes(
         return {
             response: new Response(JSON.stringify({ error: 'Customer mismatch: JWT and API key must belong to the same customer entity' }), {
                 status: 403,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             }),
             customerId: null
         };
@@ -347,7 +347,7 @@ export async function handleAuthRoutes(
             return { 
                 response: new Response(JSON.stringify({ error: 'IP address not allowed' }), {
                     status: 403,
-                    headers: { ...getCorsHeaders(env, request, customer), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request, customer), 'Content-Type': 'application/json' },
                 }), 
                 customerId 
             };

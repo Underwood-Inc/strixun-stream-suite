@@ -4,7 +4,7 @@
  * CRITICAL: All endpoints use /customer/ prefix (not /user/)
  */
 
-import { getCorsHeaders } from '../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../utils/cors.js';
 import { verifyJWT, getJWTSecret } from '../utils/crypto.js';
 import * as customerHandlers from '../handlers/customer/displayName.js';
 import * as twitchHandlers from '../handlers/customer/twitch.js';
@@ -85,7 +85,7 @@ async function handleCustomerRoute(
                 code: 'AUTHENTICATION_REQUIRED'
             }), {
                 status: auth.status || 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             }),
             customerId: null
         };
@@ -244,7 +244,7 @@ export async function handleCustomerRoutes(
             return {
                 response: new Response(JSON.stringify({ error: 'Unauthorized' }), {
                     status: 401,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 }),
                 customerId: null,
             };
@@ -258,7 +258,7 @@ export async function handleCustomerRoutes(
                 return {
                     response: new Response(JSON.stringify({ error: 'Customer not found' }), {
                         status: 404,
-                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                        headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                     }),
                     customerId: auth.customerId,
                 };
@@ -268,7 +268,7 @@ export async function handleCustomerRoutes(
             return {
                 response: new Response(JSON.stringify(customer), {
                     status: 200,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 }),
                 customerId: auth.customerId,
             };
@@ -277,7 +277,7 @@ export async function handleCustomerRoutes(
             return {
                 response: new Response(JSON.stringify({ error: 'Failed to fetch customer data' }), {
                     status: 500,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 }),
                 customerId: auth.customerId,
             };
@@ -309,7 +309,7 @@ export async function handleCustomerRoutes(
             return {
                 response: new Response(JSON.stringify({ error: 'Failed to reach customer API' }), {
                     status: 503,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 }),
                 customerId: null
             };

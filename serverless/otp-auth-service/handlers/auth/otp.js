@@ -3,7 +3,7 @@
  * Handles OTP request and verification
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import {
     generateOTP,
     hashEmail,
@@ -366,7 +366,7 @@ export async function handleRequestOTP(request, env, customerId = null) {
             expiresIn: 600,
             remaining: rateLimit.remaining
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('OTP request error:', {

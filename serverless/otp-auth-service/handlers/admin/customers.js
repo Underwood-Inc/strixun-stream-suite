@@ -3,7 +3,7 @@
  * Handles customer profile and status management
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getCustomer, storeCustomer } from '../../services/customer.js';
 
 /**
@@ -16,7 +16,7 @@ export async function handleUpdateCustomerStatus(request, env, customerId, newSt
         if (!customer) {
             return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -28,7 +28,7 @@ export async function handleUpdateCustomerStatus(request, env, customerId, newSt
                 validStatuses 
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -51,7 +51,7 @@ export async function handleUpdateCustomerStatus(request, env, customerId, newSt
             statusChangedAt: customer.statusChangedAt,
             message: `Customer status updated to ${newStatus}`
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({
@@ -59,7 +59,7 @@ export async function handleUpdateCustomerStatus(request, env, customerId, newSt
             message: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }

@@ -3,7 +3,7 @@
  * Access Service integration for role management
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { authenticateRequest, type RouteResult } from './auth.js';
 
 interface Env {
@@ -27,7 +27,7 @@ export async function handleRolesRoutes(
                     code: 'AUTHENTICATION_REQUIRED'
                 }), {
                     status: 401,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 }), 
                 customerId: null 
             };
@@ -47,7 +47,7 @@ export async function handleRolesRoutes(
                     code: 'CUSTOMER_NOT_FOUND'
                 }), {
                     status: 404,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 }),
                 customerId: auth.customerId
             };
@@ -56,7 +56,7 @@ export async function handleRolesRoutes(
         return {
             response: new Response(JSON.stringify({ roles: authorization.roles }), {
                 status: 200,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             }),
             customerId: auth.customerId
         };

@@ -3,7 +3,7 @@
  * Handles all route matching and dispatch to appropriate handlers
  */
 
-import { getCorsHeaders } from './utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from './utils/cors.js';
 import { trackError, trackResponseTime } from './services/analytics.js';
 import { sendWebhook } from './services/webhooks.js';
 import { getPlanLimits } from './utils/validation.js';
@@ -200,7 +200,7 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         if (!response) {
             response = new Response(JSON.stringify({ error: 'Not found' }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -317,12 +317,12 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             await checkErrorRateAlert(customerId, env);
         }
         
-        const errorResponse = new Response(JSON.stringify({ 
+        const errorResponse = new Response(JSON.stringify({
             error: 'Internal server error',
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
         
         // Track response time even for errors

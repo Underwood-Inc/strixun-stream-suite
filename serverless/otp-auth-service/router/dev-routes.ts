@@ -23,7 +23,7 @@
  * This code path is NEVER reached in production deployments.
  */
 
-import { getCorsHeaders } from '../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../utils/cors.js';
 import { hashEmail } from '../utils/crypto.js';
 
 interface Env {
@@ -109,7 +109,7 @@ async function handleGetOTP(request: Request, env: Env): Promise<Response> {
             message: 'Dev endpoints are only available when ENVIRONMENT is set to "test" or "development" with test API keys'
         }), {
             status: 403,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 
@@ -123,7 +123,7 @@ async function handleGetOTP(request: Request, env: Env): Promise<Response> {
                 example: '/dev/otp?email=user@example.com'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -133,7 +133,7 @@ async function handleGetOTP(request: Request, env: Env): Promise<Response> {
                 error: 'Invalid email format' 
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -149,7 +149,7 @@ async function handleGetOTP(request: Request, env: Env): Promise<Response> {
                 email: email.toLowerCase().trim()
             }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -159,7 +159,7 @@ async function handleGetOTP(request: Request, env: Env): Promise<Response> {
             expiresIn: '10 minutes',
             note: 'This endpoint is only available in test/development mode'
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error: any) {
         console.error('[Dev Routes] Error getting OTP:', error);
@@ -168,7 +168,7 @@ async function handleGetOTP(request: Request, env: Env): Promise<Response> {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }

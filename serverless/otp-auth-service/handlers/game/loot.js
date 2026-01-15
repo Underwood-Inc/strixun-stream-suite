@@ -5,7 +5,7 @@
  * Authentication is handled by the route wrapper with automatic encryption
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getCustomerKey } from '../../services/customer.js';
 
 /**
@@ -25,7 +25,7 @@ async function handleGenerateLoot(request, env, userId, customerId) {
                 message: 'lootTableId is required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -42,7 +42,7 @@ async function handleGenerateLoot(request, env, userId, customerId) {
                     message: 'Loot table not found'
                 }), {
                     status: 404,
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 });
             }
             return generateLootItem(defaultLootTable, options, env, request);
@@ -56,7 +56,7 @@ async function handleGenerateLoot(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -102,7 +102,7 @@ async function handleGetLootTables(request, env, userId, customerId) {
             lootTables
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Get loot tables error:', error);
@@ -111,7 +111,7 @@ async function handleGetLootTables(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -166,7 +166,7 @@ async function generateLootItem(lootTable, options, env, request) {
         item: generatedItem
     }), {
         status: 200,
-        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
     });
 }
 
@@ -360,7 +360,7 @@ export async function handleGameLoot(request, env, userId, customerId, action) {
         message: 'Invalid action'
     }), {
         status: 400,
-        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
     });
 }
 
