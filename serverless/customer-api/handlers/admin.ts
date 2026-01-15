@@ -131,8 +131,7 @@ export async function handleGetCustomerDetails(
     auth: AuthResult,
     customerId: string
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
     });
 
     try {
@@ -203,8 +202,7 @@ export async function handleUpdateCustomer(
     auth: AuthResult,
     customerId: string
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
     });
 
     try {
@@ -301,8 +299,7 @@ export async function handleListAllCustomers(
     env: Env,
     auth: AuthResult
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
     });
 
     try {

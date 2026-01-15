@@ -193,8 +193,7 @@ export async function handleFixVariantCurrentVersions(
         const duration = Date.now() - startTime;
         console.log(`[FixVariantVersions] Migration complete (${duration}ms)`, result);
         
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         
         return new Response(JSON.stringify({
@@ -222,8 +221,7 @@ export async function handleFixVariantCurrentVersions(
             error instanceof Error ? error.message : 'Unknown error'
         );
         
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         
         return new Response(JSON.stringify(rfcError), {

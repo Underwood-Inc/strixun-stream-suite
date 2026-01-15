@@ -26,8 +26,7 @@ export async function handleListVariantVersions(
         const versionIds = await env.MODS_KV.get(variantVersionsListKey, { type: 'json' }) as string[] | null;
 
         if (!versionIds || versionIds.length === 0) {
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify({ versions: [] }), {
                 status: 200,
@@ -51,8 +50,7 @@ export async function handleListVariantVersions(
             }
         }
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
 
         return new Response(JSON.stringify({ versions }), {
@@ -70,8 +68,7 @@ export async function handleListVariantVersions(
             'Internal Server Error',
             'Failed to list variant versions'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

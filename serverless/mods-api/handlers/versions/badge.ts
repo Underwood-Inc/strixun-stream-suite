@@ -487,8 +487,7 @@ export async function handleBadge(
             isPublic: !jwtToken,
         });
         
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             credentials: true, // Allow credentials for authenticated badge requests
         });
         

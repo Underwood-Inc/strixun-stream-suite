@@ -326,8 +326,7 @@ export async function handleUpdateModStatus(
             await env.MODS_KV.put(modCustomerKey, JSON.stringify(mod));
         }
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify({ mod }), {
             status: 200,
@@ -344,8 +343,7 @@ export async function handleUpdateModStatus(
             'Failed to Update Status',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while updating mod status'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,
@@ -528,8 +526,7 @@ export async function handleAddReviewComment(
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
         }
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify({ comment }), {
             status: 200,
@@ -546,8 +543,7 @@ export async function handleAddReviewComment(
             'Failed to Add Comment',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while adding comment'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

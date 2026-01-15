@@ -334,7 +334,7 @@ export async function wrapWithEncryption(
       };
       
       const corsHeaders = request ? await import('@strixun/api-framework/enhanced').then(m => 
-        m.createCORSHeaders(request, { allowedOrigins: ['*'] })
+        m.createCORSHeaders(request, { credentials: true, allowedOrigins: ['*'] })
       ) : new Headers();
       
       return {

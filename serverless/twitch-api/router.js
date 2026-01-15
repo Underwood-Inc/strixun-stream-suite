@@ -237,6 +237,7 @@ export async function route(request, env) {
         // Not found
         const rfcError404 = createError(request, 404, 'Not Found', 'The requested endpoint was not found');
         const corsHeaders404 = createCORSHeaders(request, {
+            credentials: true,
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError404), {
@@ -256,6 +257,7 @@ export async function route(request, env) {
                 'JWT_SECRET environment variable is required. Please contact the administrator.'
             );
             const corsHeaders = createCORSHeaders(request, {
+                credentials: true,
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {

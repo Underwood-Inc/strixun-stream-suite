@@ -67,8 +67,7 @@ export async function handleDownloadVariant(
 
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -83,8 +82,7 @@ export async function handleDownloadVariant(
         const variant = mod.variants?.find(v => v.variantId === variantId);
         if (!variant) {
             const rfcError = createError(request, 404, 'Variant Not Found', 'The requested variant was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -99,8 +97,7 @@ export async function handleDownloadVariant(
         // Get the current (latest) version of the variant
         if (!variant.currentVersionId) {
             const rfcError = createError(request, 404, 'No Version Available', 'This variant has no versions available');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -119,8 +116,7 @@ export async function handleDownloadVariant(
         
         if (!variantVersion) {
             const rfcError = createError(request, 404, 'Version Not Found', 'The current version of this variant was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -154,8 +150,7 @@ export async function handleDownloadVariant(
         if (!encryptedFile) {
             console.error('[VariantDownload] File not found in R2:', { r2Key });
             const rfcError = createError(request, 404, 'File Not Found', 'The requested variant file was not found in storage');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -185,8 +180,7 @@ export async function handleDownloadVariant(
             
             if (!sharedKey || sharedKey.length < 32) {
                 const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 500,
@@ -216,8 +210,7 @@ export async function handleDownloadVariant(
                     // Check if error is about unsupported version (might be JWT-encrypted or unencrypted)
                     if (errorMsg.includes('Unsupported binary encryption version')) {
                         const rfcError = createError(request, 400, 'Invalid Encryption Format', `Variant file is not encrypted with shared key encryption. The file appears to be encrypted with a different method (JWT encryption is no longer supported) or is not encrypted at all. Please re-upload the variant file with shared key encryption. Error: ${errorMsg}`);
-                        const corsHeaders = createCORSHeaders(request, {
-                            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                         });
                         return new Response(JSON.stringify(rfcError), {
                             status: 400,
@@ -229,8 +222,7 @@ export async function handleDownloadVariant(
                     }
                     // Other decryption errors (wrong key, corrupted data, etc.)
                     const rfcError = createError(request, 500, 'Decryption Failed', `Failed to decrypt variant file with shared key: ${errorMsg}`);
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                     });
                     return new Response(JSON.stringify(rfcError), {
                         status: 500,
@@ -243,8 +235,7 @@ export async function handleDownloadVariant(
             } else {
                 // Legacy JSON encrypted format or unencrypted - not supported
                 const rfcError = createError(request, 400, 'Unsupported Format', 'Legacy JSON encryption format is not supported. Variant file must be re-uploaded with shared key encryption (binary format v4 or v5). JWT encryption is no longer supported.');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 400,
@@ -282,8 +273,7 @@ export async function handleDownloadVariant(
                 customMetadata
             });
             const rfcError = createError(request, 500, 'Internal Server Error', 'File metadata (originalFileName or originalContentType) not found in R2 customMetadata');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 500,
@@ -332,8 +322,7 @@ export async function handleDownloadVariant(
             modDownloadCount: mod.downloadCount
         });
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             exposedHeaders: ['Content-Disposition', 'Content-Type', 'Content-Length'],
         });
 
@@ -363,8 +352,7 @@ export async function handleDownloadVariant(
             'Internal Server Error',
             env.ENVIRONMENT === 'development' ? error.message : 'Failed to download variant file'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

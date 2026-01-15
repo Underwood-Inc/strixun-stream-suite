@@ -405,8 +405,7 @@ export async function handleListR2Files(
             }
         }
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
 
         return new Response(JSON.stringify({
@@ -430,8 +429,7 @@ export async function handleListR2Files(
             'Failed to List R2 Files',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while listing R2 files'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,
@@ -703,8 +701,7 @@ export async function handleDetectDuplicates(
         // Sort duplicate groups by total wasted space (descending)
         duplicateGroups.sort((a, b) => b.totalSize - a.totalSize);
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
 
         return new Response(JSON.stringify({
@@ -738,8 +735,7 @@ export async function handleDetectDuplicates(
                 ? errorMessage 
                 : (isTimeout ? 'The duplicate detection scan timed out. Try again or contact support.' : 'An error occurred while detecting duplicates')
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: isTimeout ? 504 : 500,
@@ -810,8 +806,7 @@ export async function handleDeleteR2File(
             const body = await request.json() as { keys: string[]; force?: boolean };
             if (!body.keys || !Array.isArray(body.keys)) {
                 const rfcError = createError(request, 400, 'Invalid Request', 'keys array is required');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 400,
@@ -868,8 +863,7 @@ export async function handleDeleteR2File(
                 }
             }
 
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
 
             const protectedCount = results.filter(r => r.protected).length;
@@ -893,8 +887,7 @@ export async function handleDeleteR2File(
         // Handle single delete
         if (!key) {
             const rfcError = createError(request, 400, 'Invalid Request', 'File key is required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -919,8 +912,7 @@ export async function handleDeleteR2File(
                     'Protected File',
                     protectionCheck.reason || 'This thumbnail is associated with an existing mod and cannot be deleted'
                 );
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 403,
@@ -937,8 +929,7 @@ export async function handleDeleteR2File(
         const file = await env.MODS_R2.get(key);
         if (!file) {
             const rfcError = createError(request, 404, 'File Not Found', 'The requested file was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -962,8 +953,7 @@ export async function handleDeleteR2File(
             },
         });
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
 
         return new Response(JSON.stringify({
@@ -986,8 +976,7 @@ export async function handleDeleteR2File(
             'Failed to Delete R2 File',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while deleting the file'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,
@@ -1017,8 +1006,7 @@ export async function handleSetDeletionTimestamp(
         
         if (!body.timestamp || typeof body.timestamp !== 'number') {
             const rfcError = createError(request, 400, 'Invalid Request', 'timestamp (number) is required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -1033,8 +1021,7 @@ export async function handleSetDeletionTimestamp(
         const file = await env.MODS_R2.get(key);
         if (!file) {
             const rfcError = createError(request, 404, 'File Not Found', 'The requested file was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -1058,8 +1045,7 @@ export async function handleSetDeletionTimestamp(
             },
         });
         
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         
         return new Response(JSON.stringify({
@@ -1082,8 +1068,7 @@ export async function handleSetDeletionTimestamp(
             'Failed to Set Deletion Timestamp',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while setting the timestamp'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

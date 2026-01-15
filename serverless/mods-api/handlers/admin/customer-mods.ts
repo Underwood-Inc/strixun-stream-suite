@@ -115,8 +115,7 @@ export async function handleGetCustomerMods(
             pageSize,
         };
         
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         
         return new Response(JSON.stringify(response), {
@@ -128,8 +127,7 @@ export async function handleGetCustomerMods(
         });
     } catch (error: any) {
         console.error('Admin get customer mods error:', error);
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         const rfcError = createError(
             request,

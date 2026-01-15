@@ -53,8 +53,7 @@ export async function handleApproveCustomer(
         
         console.log('[Admin] Customer approval via Authorization Service:', { customerId, roles: updatedRoles });
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify({ success: true, customerId }), {
             status: 200,
@@ -71,8 +70,7 @@ export async function handleApproveCustomer(
             'Failed to Approve Customer',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while approving customer'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,
@@ -128,8 +126,7 @@ export async function handleRevokeCustomer(
         
         console.log('[Admin] Customer revocation via Authorization Service:', { customerId, roles: updatedRoles });
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify({ success: true, customerId }), {
             status: 200,
@@ -146,8 +143,7 @@ export async function handleRevokeCustomer(
             'Failed to Revoke Customer',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while revoking customer'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,
@@ -176,8 +172,7 @@ export async function handleListApprovedUsers(
         const approvedUsers: string[] = [];
         console.log('[Admin] List approved uploaders - Access Service query needed');
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify({ approvedUsers }), {
             status: 200,
@@ -194,8 +189,7 @@ export async function handleListApprovedUsers(
             'Failed to List Approved Users',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while listing approved users'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

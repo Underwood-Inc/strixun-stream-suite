@@ -63,8 +63,7 @@ export async function handleVerifyVersion(
 
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -78,8 +77,7 @@ export async function handleVerifyVersion(
         // Check visibility
         if (mod.visibility === 'private' && mod.authorId !== auth?.customerId) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -117,8 +115,7 @@ export async function handleVerifyVersion(
         const normalizedModModId = normalizeModId(mod.modId);
         if (!version || normalizedVersionModId !== normalizedModModId) {
             const rfcError = createError(request, 404, 'Version Not Found', 'The requested version was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -134,8 +131,7 @@ export async function handleVerifyVersion(
         
         if (!encryptedFile) {
             const rfcError = createError(request, 404, 'File Not Found', 'The requested file was not found in storage');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -161,8 +157,7 @@ export async function handleVerifyVersion(
                 const cookieHeader = request.headers.get('Cookie');
                 if (!cookieHeader) {
                     const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and verify files. Please authenticate with HttpOnly cookie.');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                     });
                     return new Response(JSON.stringify(rfcError), {
                         status: 401,
@@ -177,8 +172,7 @@ export async function handleVerifyVersion(
                 const authCookie = cookies.find(c => c.startsWith('auth_token='));
                 if (!authCookie) {
                     const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and verify files. Please authenticate with HttpOnly cookie.');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                     });
                     return new Response(JSON.stringify(rfcError), {
                         status: 401,
@@ -215,8 +209,7 @@ export async function handleVerifyVersion(
             } catch (error) {
                 console.error('[Verify] File decryption error:', error);
                 const rfcError = createError(request, 500, 'Decryption Failed', 'Failed to decrypt file for verification. Please ensure you are authenticated.');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 500,
@@ -250,8 +243,7 @@ export async function handleVerifyVersion(
             strixunVerified: isValid, // Strixun verification marker
         };
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(verificationResult, null, 2), {
             status: isValid ? 200 : 400,
@@ -268,8 +260,7 @@ export async function handleVerifyVersion(
             'Failed to Verify Version',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while verifying the version'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

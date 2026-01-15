@@ -42,8 +42,7 @@ export async function handleGetSettings(
             settings.uploadsEnabled = true;
         }
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
 
         return new Response(JSON.stringify(settings), {
@@ -56,8 +55,7 @@ export async function handleGetSettings(
     } catch (error) {
         console.error('[GetSettings] Error:', error);
         const rfcError = createError(request, 500, 'Internal Server Error', 'Failed to retrieve settings');
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,
@@ -86,8 +84,7 @@ export async function handleUpdateSettings(
         if (updateData.allowedFileExtensions) {
             if (!Array.isArray(updateData.allowedFileExtensions)) {
                 const rfcError = createError(request, 400, 'Invalid Input', 'allowedFileExtensions must be an array');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 400,
@@ -102,8 +99,7 @@ export async function handleUpdateSettings(
             for (const ext of updateData.allowedFileExtensions) {
                 if (typeof ext !== 'string' || !ext.startsWith('.')) {
                     const rfcError = createError(request, 400, 'Invalid Input', `Invalid extension format: ${ext}. Extensions must start with a dot (e.g., .lua)`);
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                     });
                     return new Response(JSON.stringify(rfcError), {
                         status: 400,
@@ -142,8 +138,7 @@ export async function handleUpdateSettings(
         // Save to KV
         await env.MODS_KV.put(SETTINGS_KEY, JSON.stringify(updatedSettings));
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
 
         return new Response(JSON.stringify(updatedSettings), {
@@ -156,8 +151,7 @@ export async function handleUpdateSettings(
     } catch (error) {
         console.error('[UpdateSettings] Error:', error);
         const rfcError = createError(request, 500, 'Internal Server Error', 'Failed to update settings');
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

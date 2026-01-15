@@ -24,6 +24,7 @@ async function handleGameRoute(handler, request, env, auth) {
     if (!auth) {
         const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required. Please provide a valid JWT token.');
         const corsHeaders = createCORSHeaders(request, {
+            credentials: true,
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return {
