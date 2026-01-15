@@ -1,11 +1,16 @@
 /**
  * API Keys Service
  * Handles API key management and SSO configuration
+ * 
+ * Uses HttpOnly cookie authentication - credentials: 'include' sends the cookie automatically
  */
 
-import { getAuthHeaders } from './authConfig';
-
 const BASE_URL = import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
+
+/** Default headers for API requests */
+const defaultHeaders = {
+    'Content-Type': 'application/json',
+};
 
 // SSO Isolation Mode
 export type SSOIsolationMode = 'none' | 'selective' | 'complete';
@@ -49,13 +54,13 @@ export interface APIKeySSOConfigResponse {
 export async function listAPIKeys(): Promise<APIKeysListResponse> {
     const response = await fetch(`${BASE_URL}/auth/api-keys`, {
         method: 'GET',
-        headers: await getAuthHeaders(),
-        credentials: 'include' // Include cookies for HttpOnly auth_token
+        headers: defaultHeaders,
+        credentials: 'include' // HttpOnly cookie sent automatically
     });
     
     if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || `Failed to list API keys: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(errorData.error || `Failed to list API keys: ${response.statusText}`);
     }
     
     return response.json();
@@ -67,13 +72,13 @@ export async function listAPIKeys(): Promise<APIKeysListResponse> {
 export async function getAPIKeySSOConfig(keyId: string): Promise<APIKeySSOConfigResponse> {
     const response = await fetch(`${BASE_URL}/auth/api-key/${keyId}/sso-config`, {
         method: 'GET',
-        headers: await getAuthHeaders(),
+        headers: defaultHeaders,
         credentials: 'include'
     });
     
     if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || `Failed to get SSO config: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(errorData.error || `Failed to get SSO config: ${response.statusText}`);
     }
     
     return response.json();
@@ -88,17 +93,14 @@ export async function updateAPIKeySSOConfig(
 ): Promise<{ success: boolean; keyId: string; ssoConfig?: SSOConfig }> {
     const response = await fetch(`${BASE_URL}/auth/api-key/${keyId}/sso-config`, {
         method: 'PUT',
-        headers: {
-            ...(await getAuthHeaders()),
-            'Content-Type': 'application/json'
-        },
+        headers: defaultHeaders,
         credentials: 'include',
         body: JSON.stringify(ssoConfig)
     });
     
     if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || `Failed to update SSO config: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(errorData.error || `Failed to update SSO config: ${response.statusText}`);
     }
     
     return response.json();
@@ -117,13 +119,13 @@ export async function runAPIKeysSSOMigration(): Promise<{
 }> {
     const response = await fetch(`${BASE_URL}/migrations/api-keys-sso`, {
         method: 'POST',
-        headers: await getAuthHeaders(),
+        headers: defaultHeaders,
         credentials: 'include'
     });
     
     if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || `Failed to run migration: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(errorData.error || `Failed to run migration: ${response.statusText}`);
     }
     
     return response.json();

@@ -30,8 +30,8 @@ export function LoginPage() {
     // If customer already has a session, they'll be redirected automatically
     useEffect(() => {
         // Check if customer is already authenticated via HttpOnly cookie
-        checkAuth().catch(error => {
-            console.debug('[LoginPage] Auth check failed (non-critical):', error);
+        checkAuth().catch(() => {
+            // Non-critical - user may not be logged in yet
         });
     }, [checkAuth]); // Only run once on mount
 

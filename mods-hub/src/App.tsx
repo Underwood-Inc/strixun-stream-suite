@@ -37,8 +37,8 @@ export function App() {
     // Check authentication status on app initialization
     // HttpOnly cookie is sent automatically with /auth/me request
     useEffect(() => {
-        checkAuth().catch(error => {
-            console.debug('[App] Auth check failed (non-critical):', error);
+        checkAuth().catch(() => {
+            // Non-critical - user may not be logged in
         });
     }, [checkAuth]); // Only run once on mount
 

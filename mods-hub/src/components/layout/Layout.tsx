@@ -52,8 +52,8 @@ export function Layout({ children }: LayoutProps) {
     // Note: This is a secondary call - App.tsx also calls checkAuth on initialization
     // The Zustand adapter handles deduplication to prevent concurrent calls
     useEffect(() => {
-        checkAuth().catch(error => {
-            console.debug('[Layout] Auth check failed (non-critical):', error);
+        checkAuth().catch(() => {
+            // Non-critical - user may not be logged in
         });
     }, [checkAuth]); // Only run once on mount
 

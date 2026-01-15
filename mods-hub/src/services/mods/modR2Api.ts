@@ -11,6 +11,27 @@ import type {
 import { sharedClientConfig } from '../authConfig';
 import { API_BASE_URL } from './modsApi';
 
+/** Raw file info from API (uploaded is string, not Date) */
+interface R2FileInfoRaw {
+    key: string;
+    size: number;
+    uploaded: string;
+    contentType?: string;
+    customMetadata?: Record<string, string>;
+    isOrphaned?: boolean;
+    associatedModId?: string;
+    associatedVersionId?: string;
+    associatedData?: R2FileAssociatedData;
+}
+
+/** Duplicate group from API */
+interface DuplicateGroupRaw {
+    files: R2FileInfoRaw[];
+    count: number;
+    totalSize: number;
+    recommendedKeep?: string;
+}
+
 const api = createAPIClient({
     ...sharedClientConfig,
     baseURL: API_BASE_URL,
@@ -30,22 +51,12 @@ export async function listR2Files(options?: { limit?: number }): Promise<{
         }
         const queryString = params.toString() ? `?${params.toString()}` : '';
         const response = await api.get<{
-            files: Array<{
-                key: string;
-                size: number;
-                uploaded: string;
-                contentType?: string;
-                customMetadata?: Record<string, string>;
-                isOrphaned?: boolean;
-                associatedModId?: string;
-                associatedVersionId?: string;
-                associatedData?: R2FileAssociatedData;
-            }>;
+            files: R2FileInfoRaw[];
             total: number;
         }>(`/admin/r2/files${queryString}`);
         return {
             ...response.data,
-            files: response.data.files.map(file => ({
+            files: response.data.files.map((file: R2FileInfoRaw) => ({
                 ...file,
                 uploaded: new Date(file.uploaded),
             })),
@@ -86,44 +97,19 @@ export async function detectDuplicates(): Promise<{
                 duplicateGroups: number;
                 duplicateWastedSize: number;
             };
-            duplicateGroups: Array<{
-                files: Array<{
-                    key: string;
-                    size: number;
-                    uploaded: string;
-                    contentType?: string;
-                    customMetadata?: Record<string, string>;
-                    isOrphaned?: boolean;
-                    associatedModId?: string;
-                    associatedVersionId?: string;
-                    associatedData?: R2FileAssociatedData;
-                }>;
-                count: number;
-                totalSize: number;
-                recommendedKeep?: string;
-            }>;
-            orphanedFiles: Array<{
-                key: string;
-                size: number;
-                uploaded: string;
-                contentType?: string;
-                customMetadata?: Record<string, string>;
-                isOrphaned?: boolean;
-                associatedModId?: string;
-                associatedVersionId?: string;
-                associatedData?: R2FileAssociatedData;
-            }>;
+            duplicateGroups: DuplicateGroupRaw[];
+            orphanedFiles: R2FileInfoRaw[];
         }>('/admin/r2/duplicates');
         return {
             summary: response.data.summary,
-            duplicateGroups: response.data.duplicateGroups.map(group => ({
+            duplicateGroups: response.data.duplicateGroups.map((group: DuplicateGroupRaw) => ({
                 ...group,
-                files: group.files.map(file => ({
+                files: group.files.map((file: R2FileInfoRaw) => ({
                     ...file,
                     uploaded: new Date(file.uploaded),
                 })),
             })),
-            orphanedFiles: response.data.orphanedFiles.map(file => ({
+            orphanedFiles: response.data.orphanedFiles.map((file: R2FileInfoRaw) => ({
                 ...file,
                 uploaded: new Date(file.uploaded),
             })),
