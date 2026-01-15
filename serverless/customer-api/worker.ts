@@ -104,6 +104,7 @@ export default {
         // Handle CORS preflight
         if (request.method === 'OPTIONS') {
             const corsHeaders = createCORSHeaders(request, {
+                credentials: true,
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(null, { headers: Object.fromEntries(corsHeaders.entries()) });
