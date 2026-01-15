@@ -390,6 +390,8 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         const isProduction = env.ENVIRONMENT === 'production';
         
         // Create cookie for each root domain
+        // CRITICAL: SameSite=Lax works for subdomain SSO (mods.idling.app → auth.idling.app)
+        // For production, use Secure flag to enforce HTTPS
         const cookies = cookieDomains.map(domain => {
             const cookieParts = isProduction ? [
                 `auth_token=${tokenResponse.token}`,
@@ -397,7 +399,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
                 'Path=/',
                 'HttpOnly',
                 'Secure',
-                'SameSite=None', // CRITICAL for cross-site SSO
+                'SameSite=Lax',
                 `Max-Age=${tokenResponse.expires_in}`
             ] : [
                 `auth_token=${tokenResponse.token}`,
