@@ -565,8 +565,9 @@ jobs:
             pnpm exec wrangler deploy --env development
           else
             # CRITICAL: mods-api uses default deployment (NOT --env production)
-            # Default deployment IS production for mods-api (unlike url-shortener)
-            pnpm exec wrangler deploy --env=""
+            # Default deployment IS production for mods-api
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
+            pnpm exec wrangler deploy
           fi
       
       - name: Rollback on Failure
@@ -673,7 +674,8 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            pnpm exec wrangler deploy --env=""
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
+            pnpm exec wrangler deploy
           fi
       
       - name: Rollback on Failure
@@ -773,9 +775,10 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            pnpm exec wrangler deploy --env=""
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
+            pnpm exec wrangler deploy
           fi
-      
+
       - name: Rollback on Failure
         if: failure()
         run: |
@@ -851,9 +854,10 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            pnpm exec wrangler deploy --env=""
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
+            pnpm exec wrangler deploy
           fi
-      
+
       - name: Rollback on Failure
         if: failure()
         run: |
@@ -920,7 +924,8 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            pnpm exec wrangler deploy --env=""
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
+            pnpm exec wrangler deploy
           fi
       
       - name: Rollback on Failure
@@ -1008,9 +1013,10 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            pnpm exec wrangler deploy --env=""
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
+            pnpm exec wrangler deploy
           fi
-      
+
       - name: Rollback on Failure
         if: failure()
         run: |

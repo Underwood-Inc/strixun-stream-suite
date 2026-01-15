@@ -106,13 +106,13 @@
     User->>Auth: Verify OTP code
     Auth->>KV: Validate OTP
     Auth->>Auth: Generate JWT token
-    Auth->>User: Set HttpOnly Cookie<br/>Domain=.idling.app<br/>Path=/<br/>Secure; SameSite=Lax
+    Auth->>User: Set HttpOnly Cookie (Domain=.idling.app)
     User->>Mods: Authenticated!
     
     Note over User,KV: User visits second app - already logged in!
     User->>Short: Visit s.idling.app
     Short->>User: Check cookie
-    User->>Short: HttpOnly Cookie sent<br/>automatically by browser
+    User->>Short: Cookie sent automatically
     Short->>Auth: Validate token (/auth/me)
     Auth->>KV: Verify session
     Auth-->>Short: Customer info
@@ -121,7 +121,7 @@
     Note over User,KV: User visits third app - still logged in!
     User->>Stream: Visit streamkit.idling.app
     Stream->>User: Check cookie
-    User->>Stream: HttpOnly Cookie sent<br/>automatically by browser
+    User->>Stream: Cookie sent automatically
     Stream->>Auth: Validate token (/auth/me)
     Auth->>KV: Verify session
     Auth-->>Stream: Customer info
