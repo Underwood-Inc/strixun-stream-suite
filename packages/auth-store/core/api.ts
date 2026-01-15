@@ -132,6 +132,8 @@ export async function fetchCustomerInfo(
         const authClient = createAPIClient({
             baseURL: apiUrl,
             timeout: 10000,
+            // CRITICAL: Include credentials to send HttpOnly cookies
+            credentials: 'include' as RequestCredentials,
             // No auth config needed - cookie is sent automatically
             cache: {
                 enabled: false, // CRITICAL: Never cache /auth/me
@@ -179,6 +181,8 @@ export async function fetchCustomerInfo(
             const customerClient = createAPIClient({
                 baseURL: customerApiUrl,
                 timeout: 10000,
+                // CRITICAL: Include credentials to send HttpOnly cookies
+                credentials: 'include' as RequestCredentials,
                 cache: {
                     enabled: false,
                 },

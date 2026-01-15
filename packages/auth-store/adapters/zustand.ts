@@ -47,7 +47,8 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 const authClient = createAPIClient({
                     baseURL: apiUrl,
                     timeout: 5000,
-                    // Cookie is sent automatically
+                    // CRITICAL: Include credentials to send HttpOnly cookies
+                    credentials: 'include' as RequestCredentials,
                 });
                 
                 // Call logout endpoint - this clears the HttpOnly cookie

@@ -450,9 +450,7 @@ export async function handleAuthRoutes(
         return { response: responseWithCors, customerId };
     }
     if (path === '/auth/me' && request.method === 'GET') {
-        console.log('[AuthRoutes] /auth/me - Calling handleGetMe');
         const handlerResponse = await authHandlers.handleGetMe(request, env);
-        console.log('[AuthRoutes] /auth/me - handleGetMe returned status:', handlerResponse.status);
         // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
         return { response: handlerResponse, customerId };
     }
@@ -474,14 +472,6 @@ export async function handleAuthRoutes(
         // CRITICAL: JWT is ALWAYS required for encryption (security requirement)
         // If JWT auth failed, customerId will be null and request will fail (as it should)
         const customerIdToPass = jwtAuth ? jwtAuth.customerId : null;
-        console.log(`[AuthRoutes] /auth/quota - Authentication details:`, {
-            hasJwtAuth: !!jwtAuth,
-            hasApiKeyAuth: !!apiKeyAuth,
-            customerId: customerIdToPass,
-            hasJwtToken: !!(jwtToken && isJWT),
-            authHeader: request.headers.get('Authorization') ? request.headers.get('Authorization')?.substring(0, 30) + '...' : null,
-            xApiKeyHeader: request.headers.get('X-OTP-API-Key') ? request.headers.get('X-OTP-API-Key')?.substring(0, 30) + '...' : null
-        });
         const handlerResponse = await authHandlers.handleGetQuota(request, env, customerIdToPass);
         // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
         return { response: handlerResponse, customerId: customerIdToPass };
