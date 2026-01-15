@@ -803,6 +803,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../../packages/api-framework
+      '@strixun/error-utils':
+        specifier: workspace:*
+        version: link:../../packages/error-utils
       '@strixun/service-client':
         specifier: workspace:*
         version: link:../../packages/service-client
@@ -837,6 +840,9 @@ importers:
       '@strixun/e2e-helpers':
         specifier: workspace:*
         version: link:../../packages/e2e-helpers
+      '@strixun/error-utils':
+        specifier: workspace:*
+        version: link:../../packages/error-utils
       '@strixun/service-client':
         specifier: workspace:*
         version: link:../../packages/service-client
@@ -1135,6 +1141,9 @@ importers:
       '@strixun/e2e-helpers':
         specifier: workspace:*
         version: link:../../packages/e2e-helpers
+      '@strixun/error-utils':
+        specifier: workspace:*
+        version: link:../../packages/error-utils
       '@strixun/service-client':
         specifier: workspace:*
         version: link:../../packages/service-client
