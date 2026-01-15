@@ -92,7 +92,6 @@ async function authenticateJWT(
     
     // Check cookie first (primary - HttpOnly SSO)
     const cookieHeader = request.headers.get('Cookie');
-    console.log('[AuthRoutes] authenticateJWT - Cookie header:', cookieHeader ? 'present' : 'missing');
     if (cookieHeader) {
         const cookies = cookieHeader.split(';').map(c => c.trim());
         const authCookie = cookies.find(c => c.startsWith('auth_token='));
@@ -385,32 +384,23 @@ export async function handleAuthRoutes(
     
     // Check cookie first (primary - HttpOnly SSO)
     const cookieHeader = request.headers.get('Cookie');
-    console.log('[AuthRoutes] JWT extraction for encryption - Cookie header:', cookieHeader ? 'present' : 'missing', 'path:', path);
     if (cookieHeader) {
         const cookies = cookieHeader.split(';').map(c => c.trim());
         const authCookie = cookies.find(c => c.startsWith('auth_token='));
         if (authCookie) {
             jwtToken = authCookie.substring('auth_token='.length).trim();
-            console.log('[AuthRoutes] JWT extraction for encryption - Token from cookie:', jwtToken ? jwtToken.substring(0, 20) + '...' : 'empty');
-        } else {
-            console.log('[AuthRoutes] JWT extraction for encryption - No auth_token cookie found');
         }
-    } else {
-        console.log('[AuthRoutes] JWT extraction for encryption - No cookie header, NO FALLBACKS');
     }
     
     // Check if the token is actually a JWT (not an API key)
     const isJWT = jwtToken && !jwtToken.startsWith('otp_live_sk_') && !jwtToken.startsWith('otp_test_sk_');
-    console.log('[AuthRoutes] JWT extraction for encryption - isJWT:', isJWT, 'jwtAuth present:', !!jwtAuth);
-    
+
     // Build auth object for encryption wrapper
     // CRITICAL: JWT is ALWAYS required for encryption (security requirement)
     // If JWT is not present or invalid, encryption will fail (as it should)
     const authForEncryption = (jwtToken && isJWT && jwtAuth)
-        ? { userId: 'anonymous', customerId: jwtAuth.customerId, jwtToken } 
+        ? { userId: 'anonymous', customerId: jwtAuth.customerId, jwtToken }
         : null;
-    
-    console.log('[AuthRoutes] authForEncryption built:', authForEncryption ? 'YES (has token)' : 'NO (null)', 'for path:', path);
     
     // Attach customerId to request context by wrapping handlers
     // Note: AUTH_ENDPOINTS_NO_JWT and isAuthEndpointNoJWT are already declared above (lines 162-163)

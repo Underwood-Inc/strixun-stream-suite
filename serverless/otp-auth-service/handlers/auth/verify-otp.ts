@@ -382,47 +382,54 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         // Pass keyId for inter-tenant SSO scoping
         const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request, keyId);
         
-        // Set HttpOnly cookies for ALL root domains in ALLOWED_ORIGINS
-        // SECURITY: HttpOnly prevents XSS, Secure ensures HTTPS-only, SameSite=None allows cross-site
-        // CRITICAL: Multiple cookies enable SSO across different root domains (idling.app, short.army, etc.)
-        const { getCookieDomains } = await import('../../utils/cookie-domains.js');
-        const cookieDomains = getCookieDomains(env, null); // Pass customer if available
+        // Set HttpOnly cookie for current domain only
+        // CRITICAL: Browser rejects Set-Cookie for domains that don't match response origin
+        // Example: Response from auth.idling.app can only set cookie for .idling.app, NOT .short.army
         const isProduction = env.ENVIRONMENT === 'production';
         
-        // Create cookie for each root domain
-        // CRITICAL: SameSite=Lax works for subdomain SSO (mods.idling.app → auth.idling.app)
-        // For production, use Secure flag to enforce HTTPS
-        const cookies = cookieDomains.map(domain => {
-            const cookieParts = isProduction ? [
-                `auth_token=${tokenResponse.token}`,
-                `Domain=${domain}`,
-                'Path=/',
-                'HttpOnly',
-                'Secure',
-                'SameSite=Lax',
-                `Max-Age=${tokenResponse.expires_in}`
-            ] : [
-                `auth_token=${tokenResponse.token}`,
-                `Domain=${domain}`,
-                'Path=/',
-                'HttpOnly',
-                'SameSite=Lax',
-                `Max-Age=${tokenResponse.expires_in}`
-            ];
-            return cookieParts.join('; ');
+        // Extract current request's root domain
+        const url = new URL(request.url);
+        const hostname = url.hostname;
+        
+        // Determine cookie domain based on current hostname
+        let cookieDomain: string;
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+            cookieDomain = 'localhost';
+        } else {
+            // Extract root domain (last 2 parts: example.com from sub.example.com)
+            const parts = hostname.split('.');
+            const rootDomain = parts.slice(-2).join('.');
+            cookieDomain = `.${rootDomain}`;
+        }
+        
+        // Create single cookie for current domain
+        const cookieParts = isProduction ? [
+            `auth_token=${tokenResponse.token}`,
+            `Domain=${cookieDomain}`,
+            'Path=/',
+            'HttpOnly',
+            'Secure',
+            'SameSite=Lax',
+            `Max-Age=${tokenResponse.expires_in}`
+        ] : [
+            `auth_token=${tokenResponse.token}`,
+            `Domain=${cookieDomain}`,
+            'Path=/',
+            'HttpOnly',
+            'SameSite=Lax',
+            `Max-Age=${tokenResponse.expires_in}`
+        ];
+        
+        const cookieValue = cookieParts.join('; ');
+        
+        return new Response(JSON.stringify(tokenResponse), {
+            headers: {
+                ...getCorsHeadersRecord(env, request),
+                ...getOtpCacheHeaders(),
+                'Content-Type': 'application/json',
+                'Set-Cookie': cookieValue,
+            },
         });
-        
-        // Build headers with multiple Set-Cookie entries
-        const headers = new Headers({
-            ...getCorsHeadersRecord(env, request),
-            ...getOtpCacheHeaders(),
-            'Content-Type': 'application/json',
-        });
-        
-        // Add each cookie as separate Set-Cookie header
-        cookies.forEach(cookie => headers.append('Set-Cookie', cookie));
-        
-        return new Response(JSON.stringify(tokenResponse), { headers });
     } catch (error: any) {
         console.error('[OTP Verify] Error:', error);
         console.error('[OTP Verify] Stack:', error?.stack);
