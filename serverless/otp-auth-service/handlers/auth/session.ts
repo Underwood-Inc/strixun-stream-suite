@@ -218,17 +218,27 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
         // A2/SSO requirement: logout must work even if the session already expired.
         const isProduction = env.ENVIRONMENT === 'production';
         const cookieDomain = isProduction ? '.idling.app' : 'localhost';
-        const cookieSecure = isProduction ? 'Secure; ' : '';
 
-        const clearCookieValue = [
+        // CRITICAL: Must match the SameSite attribute used when setting the cookie
+        // Production uses SameSite=None for cross-site SSO, dev uses Lax
+        const clearCookieParts = isProduction ? [
             'auth_token=',
             `Domain=${cookieDomain}`,
             'Path=/',
             'HttpOnly',
-            cookieSecure,
+            'Secure',
+            'SameSite=None',
+            'Max-Age=0'
+        ] : [
+            'auth_token=',
+            `Domain=${cookieDomain}`,
+            'Path=/',
+            'HttpOnly',
             'SameSite=Lax',
-            'Max-Age=0' // Expire immediately
-        ].join('; ');
+            'Max-Age=0'
+        ];
+        
+        const clearCookieValue = clearCookieParts.join('; ');
 
         // ONLY check HttpOnly cookie - NO Authorization header fallback
         const cookieHeader = request.headers.get('Cookie');

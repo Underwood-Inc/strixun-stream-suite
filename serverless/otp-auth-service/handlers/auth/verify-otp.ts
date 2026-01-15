@@ -383,21 +383,29 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request, keyId);
         
         // Set HttpOnly cookie for automatic authentication across all *.idling.app domains
-        // SECURITY: HttpOnly prevents XSS, Secure ensures HTTPS-only, SameSite=Lax prevents CSRF
+        // SECURITY: HttpOnly prevents XSS, Secure ensures HTTPS-only, SameSite=None allows cross-site
         const isProduction = env.ENVIRONMENT === 'production';
         // CRITICAL: For SSO to work in development, set Domain=localhost to share cookies across ports
         // In production, use .idling.app to share across subdomains
         const cookieDomain = isProduction ? '.idling.app' : 'localhost';
-        const cookieSecure = isProduction ? 'Secure; ' : ''; // Only set Secure in production (HTTPS)
         
-        const cookieParts = [
+        // CRITICAL: SameSite=None is REQUIRED for cross-site SSO (mods.idling.app → auth.idling.app)
+        // SameSite=None REQUIRES Secure flag (even in dev, but dev should be http so we use Lax there)
+        const cookieParts = isProduction ? [
             `auth_token=${tokenResponse.token}`,
-            `Domain=${cookieDomain}`, // Set domain for SSO (localhost in dev, .idling.app in prod)
+            `Domain=${cookieDomain}`,
             'Path=/',
             'HttpOnly',
-            cookieSecure,
-            'SameSite=Lax',
-            `Max-Age=${tokenResponse.expires_in}` // 7 hours (25200 seconds)
+            'Secure',
+            'SameSite=None', // CRITICAL for cross-site SSO
+            `Max-Age=${tokenResponse.expires_in}`
+        ] : [
+            `auth_token=${tokenResponse.token}`,
+            `Domain=${cookieDomain}`,
+            'Path=/',
+            'HttpOnly',
+            'SameSite=Lax', // Lax for localhost dev
+            `Max-Age=${tokenResponse.expires_in}`
         ];
         
         const cookieValue = cookieParts.join('; ');
