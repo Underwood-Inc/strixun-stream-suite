@@ -26,6 +26,9 @@ export interface CORSWithLocalhostOptions extends CORSOptions {
 /**
  * Get effective allowed origins with localhost support
  * Automatically allows localhost in development mode
+ * 
+ * CRITICAL: When credentials mode is used (which is default for our services),
+ * we MUST echo back the exact origin, not use '*'. This function ensures that.
  */
 function getEffectiveAllowedOrigins(
     request: Request,
@@ -38,8 +41,10 @@ function getEffectiveAllowedOrigins(
     // If localhost is detected and we're in dev mode, always allow it
     const isLocalhost = origin && (origin.includes('localhost') || origin.includes('127.0.0.1'));
     
-    // If we have explicit allowedOrigins, use them
-    if (options.allowedOrigins) {
+    // If we have explicit allowedOrigins with actual values, use them
+    if (options.allowedOrigins && 
+        (typeof options.allowedOrigins === 'function' || 
+         (Array.isArray(options.allowedOrigins) && options.allowedOrigins.length > 0))) {
         // If localhost in dev and not explicitly allowed, create a function that allows it
         if (isLocalhost && !isProduction && allowLocalhostInDev) {
             const explicitOrigins = Array.isArray(options.allowedOrigins) 
@@ -81,12 +86,14 @@ function getEffectiveAllowedOrigins(
     
     // No explicit origins configured
     if (isProduction) {
-        // Production: deny cross-origin (return empty array - no origins allowed)
+        // Production WITHOUT ALLOWED_ORIGINS = configuration error
+        // Log error and return empty array - CORS will fail as it should
+        console.error('[CORS] CRITICAL: No ALLOWED_ORIGINS configured in production! CORS will fail. Set the ALLOWED_ORIGINS environment variable.');
         return [];
-    } else {
-        // Development: allow all (including localhost)
-        return ['*'];
     }
+    
+    // Development only: allow all origins for local testing
+    return ['*'];
 }
 
 /**
@@ -128,6 +135,8 @@ export function getCorsHeaders(
     request: Request,
     customer?: { config?: { allowedOrigins?: string[] }; [key: string]: any } | null
 ): Headers {
+    const requestOrigin = request.headers.get('Origin');
+    
     // Get allowed origins from customer config or env
     let allowedOrigins: string[] = [];
     
@@ -135,6 +144,29 @@ export function getCorsHeaders(
         allowedOrigins = customer.config.allowedOrigins;
     } else if (env.ALLOWED_ORIGINS) {
         allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+    }
+    
+    // Debug logging for CORS issues
+    if (env.ENVIRONMENT === 'production' && allowedOrigins.length === 0) {
+        console.error('[CORS] CRITICAL: env.ALLOWED_ORIGINS is not set!', {
+            environment: env.ENVIRONMENT,
+            hasAllowedOrigins: !!env.ALLOWED_ORIGINS,
+            allowedOriginsValue: env.ALLOWED_ORIGINS ? `${env.ALLOWED_ORIGINS.substring(0, 50)}...` : 'undefined',
+            requestOrigin,
+        });
+    }
+    
+    // Check if origin is in allowed list
+    const originAllowed = allowedOrigins.length === 0 || 
+        allowedOrigins.includes('*') || 
+        (requestOrigin && allowedOrigins.includes(requestOrigin));
+    
+    if (!originAllowed && requestOrigin) {
+        console.warn('[CORS] Origin not in allowed list:', {
+            requestOrigin,
+            allowedOriginsCount: allowedOrigins.length,
+            firstFewAllowed: allowedOrigins.slice(0, 3),
+        });
     }
     
     // Create CORS headers with localhost support

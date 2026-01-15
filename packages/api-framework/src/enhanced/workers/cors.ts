@@ -39,6 +39,10 @@ function isOriginAllowed(origin: string, allowedOrigins: string[] | ((origin: st
 
 /**
  * Create CORS headers
+ * 
+ * CRITICAL: When credentials mode is enabled, we CANNOT use '*' as the origin.
+ * Browsers require the exact origin to be echoed back when credentials are included.
+ * See: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSNotSupportingCredentials
  */
 export function createCORSHeaders(
   request: Request,
@@ -48,25 +52,45 @@ export function createCORSHeaders(
   const headers = new Headers();
 
   const origin = request.headers.get('Origin');
+  let originAllowed = false;
 
   // Handle allowed origins
-  if (origin && isOriginAllowed(origin, opts.allowedOrigins)) {
-    headers.set('Access-Control-Allow-Origin', origin);
-    
-    if (opts.credentials) {
-      headers.set('Access-Control-Allow-Credentials', 'true');
-    }
-  } else if (Array.isArray(opts.allowedOrigins) && opts.allowedOrigins.includes('*')) {
-    headers.set('Access-Control-Allow-Origin', '*');
-  } else if (typeof opts.allowedOrigins === 'function') {
-    // Function-based origin checking - handled separately
-    const origin = request.headers.get('Origin');
-    if (origin && opts.allowedOrigins(origin)) {
+  if (origin) {
+    // Check if origin is explicitly allowed
+    if (isOriginAllowed(origin, opts.allowedOrigins)) {
       headers.set('Access-Control-Allow-Origin', origin);
+      originAllowed = true;
+    } 
+    // If wildcard '*' is in allowed origins AND credentials is requested,
+    // we MUST echo back the exact origin (browsers reject '*' with credentials)
+    else if (Array.isArray(opts.allowedOrigins) && opts.allowedOrigins.includes('*')) {
+      if (opts.credentials) {
+        // With credentials, echo back the exact origin instead of '*'
+        headers.set('Access-Control-Allow-Origin', origin);
+        originAllowed = true;
+      } else {
+        // Without credentials, '*' is fine
+        headers.set('Access-Control-Allow-Origin', '*');
+        originAllowed = true;
+      }
     }
+    // Function-based origin checking
+    else if (typeof opts.allowedOrigins === 'function' && opts.allowedOrigins(origin)) {
+      headers.set('Access-Control-Allow-Origin', origin);
+      originAllowed = true;
+    }
+  } else if (Array.isArray(opts.allowedOrigins) && opts.allowedOrigins.includes('*') && !opts.credentials) {
+    // No origin header but wildcard allowed (non-credentialed request)
+    headers.set('Access-Control-Allow-Origin', '*');
+    originAllowed = true;
   }
 
-  // Handle preflight requests
+  // Set credentials header if origin was allowed and credentials are enabled
+  if (originAllowed && opts.credentials) {
+    headers.set('Access-Control-Allow-Credentials', 'true');
+  }
+
+  // Handle preflight requests - ALWAYS set these for OPTIONS
   if (request.method === 'OPTIONS') {
     headers.set('Access-Control-Allow-Methods', opts.allowedMethods.join(', '));
     headers.set('Access-Control-Allow-Headers', opts.allowedHeaders.join(', '));
@@ -133,5 +157,42 @@ export function createCORSMiddleware(options: CORSOptions = {}) {
       headers: newHeaders,
     });
   };
+}
+
+/**
+ * Production CORS helper for Cloudflare Workers
+ * Reads ALLOWED_ORIGINS from env - NO wildcards, NO localhost magic
+ */
+export function getCorsHeaders(
+    env: { ALLOWED_ORIGINS?: string; [key: string]: any },
+    request: Request,
+    customer?: { config?: { allowedOrigins?: string[] }; [key: string]: any } | null
+): Headers {
+    // Get allowed origins: customer config > env.ALLOWED_ORIGINS
+    let allowedOrigins: string[] = [];
+    
+    if (customer?.config?.allowedOrigins && customer.config.allowedOrigins.length > 0) {
+        allowedOrigins = customer.config.allowedOrigins;
+    } else if (env.ALLOWED_ORIGINS) {
+        allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(o => o.length > 0);
+    }
+    
+    // No ALLOWED_ORIGINS = log error
+    if (allowedOrigins.length === 0) {
+        console.error('[CORS] ERROR: ALLOWED_ORIGINS not configured! Set the ALLOWED_ORIGINS secret.');
+    }
+    
+    return createCORSHeaders(request, {
+        allowedOrigins,
+        allowedHeaders: [
+            'Content-Type',
+            'Authorization',
+            'X-OTP-API-Key',
+            'X-Requested-With',
+            'X-CSRF-Token',
+            'X-Dashboard-Request',
+        ],
+        credentials: true,
+    });
 }
 

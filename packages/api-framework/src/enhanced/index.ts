@@ -63,15 +63,17 @@ export {
   createErrorLegendMiddleware,
 } from './errors';
 
-// Workers - CORS utilities
+// Workers - CORS utilities (production)
 export {
   createCORSMiddleware,
   createCORSHeaders,
   handleCORSPreflight,
+  getCorsHeaders,
 } from './workers/cors';
 
+// Workers - CORS with localhost (development only)
 export {
-  getCorsHeaders,
+  getCorsHeaders as getCorsHeadersWithLocalhost,
   createCORSHeaders as createCORSHeadersWithLocalhost,
   handleCORSPreflight as handleCORSPreflightWithLocalhost,
 } from './workers/cors-with-localhost';
