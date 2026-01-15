@@ -12,6 +12,23 @@ const defaultHeaders = {
     'Content-Type': 'application/json',
 };
 
+/**
+ * API Error response - covers both simple and RFC 7807 formats used by auth service
+ * Simple: { error: 'message', message?: 'details' }
+ * RFC 7807: { type, title, status, detail }
+ */
+interface ApiErrorResponse {
+    error?: string;
+    message?: string;
+    detail?: string;  // RFC 7807 format
+    title?: string;   // RFC 7807 format
+}
+
+/** Extract error message from API error response */
+function getErrorMessage(errorData: ApiErrorResponse, fallback: string): string {
+    return errorData.error || errorData.detail || errorData.title || fallback;
+}
+
 // SSO Isolation Mode
 export type SSOIsolationMode = 'none' | 'selective' | 'complete';
 
@@ -59,8 +76,8 @@ export async function listAPIKeys(): Promise<APIKeysListResponse> {
     });
     
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: response.statusText }));
-        throw new Error(errorData.error || `Failed to list API keys: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+        throw new Error(getErrorMessage(errorData, `Failed to list API keys: ${response.statusText}`));
     }
     
     return response.json();
@@ -77,8 +94,8 @@ export async function getAPIKeySSOConfig(keyId: string): Promise<APIKeySSOConfig
     });
     
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: response.statusText }));
-        throw new Error(errorData.error || `Failed to get SSO config: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+        throw new Error(getErrorMessage(errorData, `Failed to get SSO config: ${response.statusText}`));
     }
     
     return response.json();
@@ -99,8 +116,8 @@ export async function updateAPIKeySSOConfig(
     });
     
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: response.statusText }));
-        throw new Error(errorData.error || `Failed to update SSO config: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+        throw new Error(getErrorMessage(errorData, `Failed to update SSO config: ${response.statusText}`));
     }
     
     return response.json();
@@ -124,8 +141,8 @@ export async function runAPIKeysSSOMigration(): Promise<{
     });
     
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: response.statusText }));
-        throw new Error(errorData.error || `Failed to run migration: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+        throw new Error(getErrorMessage(errorData, `Failed to run migration: ${response.statusText}`));
     }
     
     return response.json();
