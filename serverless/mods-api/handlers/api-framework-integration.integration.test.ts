@@ -186,9 +186,9 @@ describe('API Framework Integration Tests', () => {
             
             expect(isLocalhost).toBe(true);
             
-            const headers = createCORSHeadersWithLocalhost(
-                new Request('http://127.0.0.1:5173/admin', { headers: { 'Origin': origin } }),
-                { ALLOWED_ORIGINS: 'https://mods.idling.app' }
+            const headers = getCorsHeaders(
+                { ALLOWED_ORIGINS: 'https://mods.idling.app' },
+                new Request('http://127.0.0.1:5173/admin', { headers: { 'Origin': origin } })
             );
             const allowOrigin = headers.get('Access-Control-Allow-Origin');
             
