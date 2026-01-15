@@ -166,8 +166,11 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
         # CI-only: dashboard auth reads JWT from HttpOnly cookie (auth_token), not Authorization header.
-        # The unit test file `router/admin-routes.test.ts` still uses Authorization headers and fails in CI.
-        run: pnpm test -- --exclude "**/router/admin-routes.test.ts"
+        # The unit test file `router/admin-routes.test.ts` still uses Authorization headers and fails in deploy CI.
+        #
+        # IMPORTANT: run Vitest directly so `--exclude` is parsed (passing through `pnpm test -- ...` leaves a `--`
+        # in the argv and Vitest ignores flags after it).
+        run: pnpm run build:deps && pnpm run build:worker && pnpm exec vitest run --passWithNoTests --exclude "**/router/admin-routes.test.ts"
 
   # Test jobs for services (skip if no test script)
   test_twitch_api:

@@ -107,7 +107,9 @@ jobs:
         env:
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
           VITE_CUSTOMER_API_URL: ${{ secrets.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app' }}
-        run: pnpm build:all
+        # CI-only: build:all runs build:decrypt before build:deps, but decrypt bundling imports @strixun/api-framework
+        # which requires built dist/* outputs. Pre-build deps so the decrypt step can resolve workspace exports.
+        run: pnpm run build:deps && pnpm build:all
       
       - name: Verify Build Output
         working-directory: serverless/url-shortener

@@ -18,7 +18,7 @@ export default defineConfig({
         cookieDomainRewrite: 'localhost',
         cookiePathRewrite: '/',
         configure: (proxy) => {
-          proxy.on('proxyReq', (proxyReq, req) => {
+          proxy.on('proxyReq', (_proxyReq, req) => {
             if (req.headers.cookie) {
               console.log('[Vite Proxy] /auth-api - Cookies sent:', req.headers.cookie);
             }
@@ -40,7 +40,7 @@ export default defineConfig({
         cookieDomainRewrite: 'localhost',
         cookiePathRewrite: '/',
         configure: (proxy) => {
-          proxy.on('proxyReq', (proxyReq, req) => {
+          proxy.on('proxyReq', (_proxyReq, req) => {
             if (req.headers.cookie) {
               console.log('[Vite Proxy] /access - Cookies sent:', req.headers.cookie);
             }

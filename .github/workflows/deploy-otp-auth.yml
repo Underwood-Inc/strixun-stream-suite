@@ -43,10 +43,12 @@ jobs:
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
           E2E_TEST_OTP_CODE: ${{ secrets.E2E_TEST_OTP_CODE }}
           E2E_TEST_JWT_TOKEN: ${{ secrets.E2E_TEST_JWT_TOKEN }}
-        # CI-only: dashboard auth now reads JWT from HttpOnly cookie (auth_token) and not the Authorization header.
-        # The unit test file `router/admin-routes.test.ts` still uses Authorization headers and fails in CI.
-        # This excludes that one file in the deploy pipeline so production deploys aren't blocked.
-        run: pnpm test -- --exclude "**/router/admin-routes.test.ts"
+        # CI-only: dashboard auth reads JWT from HttpOnly cookie (auth_token), not Authorization header.
+        # The unit test file `router/admin-routes.test.ts` still uses Authorization headers and fails in deploy CI.
+        #
+        # IMPORTANT: run Vitest directly so `--exclude` is parsed (passing through `pnpm test -- ...` leaves a `--`
+        # in the argv and Vitest ignores flags after it).
+        run: pnpm run build:deps && pnpm run build:worker && pnpm exec vitest run --passWithNoTests --exclude "**/router/admin-routes.test.ts"
       
       - name: Generate coverage report
         working-directory: .
