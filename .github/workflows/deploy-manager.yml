@@ -589,16 +589,12 @@ jobs:
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
             echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
           fi
-          # CRITICAL: ALLOWED_ORIGINS is required for CORS - use default if secret not set
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
-            if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            else
-              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            fi
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+            echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
           fi
           if [ -n "${{ secrets.MODS_PUBLIC_URL }}" ]; then
             echo "${{ secrets.MODS_PUBLIC_URL }}" | pnpm exec wrangler secret put MODS_PUBLIC_URL $ENV_FLAG || true
@@ -705,16 +701,12 @@ jobs:
           if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
             echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL $ENV_FLAG || true
           fi
-          # CRITICAL: ALLOWED_ORIGINS is required for CORS - use default if secret not set
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
-            if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            else
-              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            fi
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+            echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
             echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true
@@ -803,16 +795,12 @@ jobs:
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
             echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
           fi
-          # CRITICAL: ALLOWED_ORIGINS is required for CORS - use default if secret not set
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
-            if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            else
-              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            fi
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+            echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
             echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true
@@ -954,16 +942,12 @@ jobs:
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
             echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
           fi
-          # CRITICAL: ALLOWED_ORIGINS is required for CORS - use default if secret not set
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
-            if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            else
-              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            fi
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+            echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
           fi
         continue-on-error: true
 
@@ -1046,15 +1030,12 @@ jobs:
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
             echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
           fi
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
-            if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            else
-              echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            fi
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+            echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
             echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true

@@ -135,13 +135,13 @@ jobs:
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
             echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env production || echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET
           fi
-          # CRITICAL: ALLOWED_ORIGINS is required for CORS - use default if secret not set
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
           # NOTE: mods-api uses default deployment (not --env production), so secrets go to default worker
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
           else
-            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
-            echo "https://mods.idling.app,https://auth.idling.app,https://access.idling.app,https://access-api.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+            echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
           fi
           if [ -n "${{ secrets.MODS_PUBLIC_URL }}" ]; then
             echo "${{ secrets.MODS_PUBLIC_URL }}" | pnpm exec wrangler secret put MODS_PUBLIC_URL || true

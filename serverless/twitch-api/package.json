@@ -6,7 +6,7 @@
   "packageManager": "pnpm@9.15.1",
   "type": "module",
   "scripts": {
-    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build",
+    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build",
     "build:worker": "esbuild worker.ts --bundle --format=esm --outfile=dist/worker.js --platform=node --external:cloudflare:* --external:node:*",
     "predeploy": "pnpm run build:worker",
     "pretest": "pnpm run build:deps && pnpm run build:worker",
@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@strixun/api-framework": "workspace:*",
+    "@strixun/error-utils": "workspace:*",
     "@strixun/types": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/service-client": "workspace:*"

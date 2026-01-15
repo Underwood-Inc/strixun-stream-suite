@@ -5,6 +5,8 @@
  * Uses HttpOnly cookie authentication - credentials: 'include' sends the cookie automatically
  */
 
+import { extractErrorMessage } from '@strixun/error-utils';
+
 const BASE_URL = import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
 
 /** Default headers for API requests */
@@ -13,20 +15,11 @@ const defaultHeaders = {
 };
 
 /**
- * API Error response - covers both simple and RFC 7807 formats used by auth service
- * Simple: { error: 'message', message?: 'details' }
- * RFC 7807: { type, title, status, detail }
+ * Extract error message from API response body
+ * Uses @strixun/error-utils for consistent error handling
  */
-interface ApiErrorResponse {
-    error?: string;
-    message?: string;
-    detail?: string;  // RFC 7807 format
-    title?: string;   // RFC 7807 format
-}
-
-/** Extract error message from API error response */
-function getErrorMessage(errorData: ApiErrorResponse, fallback: string): string {
-    return errorData.error || errorData.detail || errorData.title || fallback;
+function getErrorMessage(errorData: unknown, fallback: string): string {
+    return extractErrorMessage(errorData) || fallback;
 }
 
 // SSO Isolation Mode
@@ -76,7 +69,7 @@ export async function listAPIKeys(): Promise<APIKeysListResponse> {
     });
     
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(getErrorMessage(errorData, `Failed to list API keys: ${response.statusText}`));
     }
     
@@ -94,7 +87,7 @@ export async function getAPIKeySSOConfig(keyId: string): Promise<APIKeySSOConfig
     });
     
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(getErrorMessage(errorData, `Failed to get SSO config: ${response.statusText}`));
     }
     
@@ -116,7 +109,7 @@ export async function updateAPIKeySSOConfig(
     });
     
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(getErrorMessage(errorData, `Failed to update SSO config: ${response.statusText}`));
     }
     
@@ -141,7 +134,7 @@ export async function runAPIKeysSSOMigration(): Promise<{
     });
     
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(getErrorMessage(errorData, `Failed to run migration: ${response.statusText}`));
     }
     

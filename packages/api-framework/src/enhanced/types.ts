@@ -125,7 +125,8 @@ export interface RFC7807Error {
   title: string;
   status: number;
   detail: string;
-  instance: string;
+  instance?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any; // Additional fields (rate_limit_details, etc.)
 }
 
