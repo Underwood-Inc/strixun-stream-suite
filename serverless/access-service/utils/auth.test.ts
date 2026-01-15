@@ -21,6 +21,7 @@ describe('Access Service Authentication', () => {
             JWT_SECRET: 'test-jwt-secret',
             ACCESS_KV: {} as any,
             ACCESS_SERVICE_URL: 'http://localhost:8795',
+            ALLOWED_ORIGINS: 'http://localhost:8795,http://localhost:3000',
         };
     });
 

@@ -34,6 +34,7 @@ describe('Access Service Integration Tests', () => {
                 SERVICE_API_KEY,
                 ACCESS_SERVICE_URL: 'http://localhost:8795',
                 ENVIRONMENT: 'test',
+                ALLOWED_ORIGINS: 'http://localhost:8795,http://localhost:3000',
             },
         });
 
@@ -318,6 +319,9 @@ describe('Access Service Integration Tests', () => {
         it('should handle OPTIONS preflight', async () => {
             const response = await mf.dispatchFetch('http://localhost:8795/access/test', {
                 method: 'OPTIONS',
+                headers: {
+                    'Origin': 'http://localhost:3000',
+                },
             });
 
             expect(response.status).toBe(204);

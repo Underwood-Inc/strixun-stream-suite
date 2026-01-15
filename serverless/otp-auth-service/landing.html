@@ -2187,6 +2187,24 @@ export default LoginForm;</code></pre>
                         <li><strong>POST /auth/refresh</strong> - Refresh expiring JWT token</li>
                     </ul>
 
+                    <h5>SSO Configuration Endpoints</h5>
+                    <p style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
+                        Manage API key-level SSO configuration for inter-tenant session sharing:
+                    </p>
+                    <ul>
+                        <li><strong>GET /auth/api-keys</strong> - List all API keys with SSO configuration</li>
+                        <li><strong>GET /auth/api-key/:keyId/sso-config</strong> - Get SSO configuration for a specific API key</li>
+                        <li><strong>PUT /auth/api-key/:keyId/sso-config</strong> - Update SSO configuration for an API key</li>
+                    </ul>
+                    <p style="margin-top: var(--spacing-sm); color: var(--text-secondary); font-size: 0.875rem;">
+                        <strong>SSO Isolation Modes:</strong>
+                    </p>
+                    <ul style="font-size: 0.875rem; color: var(--text-secondary);">
+                        <li><code>none</code> - Global SSO enabled (default) - sessions shared across all customer's API keys</li>
+                        <li><code>selective</code> - Sessions shared only with specified API keys in <code>allowedKeyIds</code></li>
+                        <li><code>complete</code> - Complete isolation - sessions not shared with any other keys</li>
+                    </ul>
+
                     <h5>Public Endpoints</h5>
                     <ul>
                         <li><strong>POST /signup</strong> - Public customer signup</li>
@@ -2457,6 +2475,64 @@ flowchart LR
 </div>
                     </div>
 
+                    <h4>Inter-Tenant SSO Configuration (API Key Level)</h4>
+                    <p>
+                        For organizations with multiple applications (API keys), you can configure how authentication sessions are shared between them.
+                        This allows building custom SSO ecosystems where different apps can optionally share user sessions.
+                    </p>
+                    <div class="mermaid-container">
+                        <div class="mermaid">
+graph TB
+    subgraph Customer["Customer: Acme Corp"]
+        Key1["`**API Key A**<br/>mods.acme.com<br/>isolationMode: none`"]
+        Key2["`**API Key B**<br/>app.acme.com<br/>isolationMode: none`"]
+        Key3["`**API Key C**<br/>admin.acme.com<br/>isolationMode: selective<br/>allowedKeyIds: [A, B]`"]
+        Key4["`**API Key D**<br/>internal.acme.com<br/>isolationMode: complete`"]
+    end
+    
+    Session1["`**User Session**<br/>Created on Key A`"]
+    
+    Key1 -->|"`✓ Global SSO`"| Session1
+    Key2 -->|"`✓ Global SSO`"| Session1
+    Key3 -->|"`✓ Selective SSO`"| Session1
+    Key4 -.->|"`✗ Isolated`"| Session1
+    
+    Note1["`**SSO Modes:**<br/>• none = Share with ALL keys<br/>• selective = Share with specific keys<br/>• complete = No sharing`"]
+    
+    classDef keyStyle fill:#252017,stroke:#edae49,stroke-width:3px,color:#f9f9f9
+    classDef sessionStyle fill:#1a1611,stroke:#28a745,stroke-width:3px,color:#f9f9f9
+    classDef noteStyle fill:#1a1611,stroke:#6495ed,stroke-width:2px,color:#f9f9f9
+    classDef customerStyle fill:#0f0e0b,stroke:#3d3627,stroke-width:2px,color:#f9f9f9
+    
+    class Key1,Key2,Key3,Key4 keyStyle
+    class Session1 sessionStyle
+    class Note1 noteStyle
+    class Customer customerStyle
+</div>
+                    </div>
+                    <p>
+                        <strong>SSO Isolation Modes:</strong>
+                    </p>
+                    <ul>
+                        <li><strong><code>none</code> (default)</strong> - Global SSO enabled. Sessions created with this API key can be used by ALL other API keys owned by the same customer. Best for unified ecosystems.</li>
+                        <li><strong><code>selective</code></strong> - Selective SSO. Sessions are only shared with API keys listed in <code>allowedKeyIds</code>. Useful for grouping related apps.</li>
+                        <li><strong><code>complete</code></strong> - Complete isolation. Sessions are NOT shared with any other API keys. Use for sensitive admin apps or when complete separation is required.</li>
+                    </ul>
+                    <p>
+                        <strong>Configuration Example:</strong>
+                    </p>
+                    <pre><code class="language-json">// PUT /auth/api-key/:keyId/sso-config
+{
+  "isolationMode": "selective",
+  "allowedKeyIds": ["key_abc123", "key_def456"],
+  "globalSsoEnabled": false
+}</code></pre>
+                    <p style="margin-top: var(--spacing-md); color: var(--text-secondary);">
+                        <strong>Note:</strong> API keys are for tenant/organization identification, NOT for user authentication. 
+                        JWT tokens (in HttpOnly cookies) handle actual user authentication. SSO config only controls whether 
+                        JWT sessions can be validated across different API keys owned by the same customer.
+                    </p>
+
                     <h4>Storage</h4>
                     <ul>
                         <li><strong>Cloudflare KV</strong> - OTP codes, customer sessions, customer data (tenant-isolated)</li>
@@ -2545,7 +2621,7 @@ flowchart LR
             </div>
             <div class="accordion-content">
                 <div class="accordion-body">
-                    <h4>Token Storage</h4>
+                    <h4>Token Storage (HttpOnly Cookie SSO)</h4>
                     <ul>
                         <li><strong>Web Apps:</strong> MUST use HttpOnly cookies (set automatically by auth service)</li>
                         <li><strong>Mobile Apps:</strong> Use secure storage (Keychain/Keystore)</li>
@@ -2553,17 +2629,46 @@ flowchart LR
                     </ul>
                     <p><strong>⚠ CRITICAL:</strong> For web applications, tokens are ONLY stored in HttpOnly cookies set by the auth service. Never manually store JWT tokens in localStorage or sessionStorage - this exposes your application to XSS attacks.</p>
 
+                    <h4>SSO Cookie Security Attributes</h4>
+                    <p>The authentication cookie set by <code>/auth/verify-otp</code> includes these security attributes:</p>
+                    <ul>
+                        <li><strong><code>HttpOnly</code></strong> - Prevents JavaScript access (XSS protection)</li>
+                        <li><strong><code>Secure</code></strong> - Only transmitted over HTTPS</li>
+                        <li><strong><code>SameSite=Lax</code></strong> - CSRF protection while allowing navigation</li>
+                        <li><strong><code>Domain=.idling.app</code></strong> - Shared across all subdomains for SSO</li>
+                        <li><strong><code>Path=/</code></strong> - Available to all routes</li>
+                        <li><strong><code>Max-Age=25200</code></strong> - 7-hour expiration (matches JWT)</li>
+                    </ul>
+                    <p style="margin-top: var(--spacing-sm); color: var(--text-secondary);">
+                        <strong>Implementation Note:</strong> Always use <code>credentials: 'include'</code> in fetch requests to send cookies automatically:
+                    </p>
+                    <pre><code class="language-javascript">// Correct: Cookie sent automatically
+fetch('https://auth.idling.app/auth/me', {
+  credentials: 'include'
+});
+
+// WRONG: Cookie not sent
+fetch('https://auth.idling.app/auth/me');</code></pre>
+
                     <h4>HTTPS Only</h4>
-                    <p>Always use HTTPS in production. The API only accepts HTTPS connections.</p>
+                    <p>Always use HTTPS in production. The API only accepts HTTPS connections. The <code>Secure</code> cookie attribute ensures tokens are never transmitted over unencrypted connections.</p>
 
                     <h4>CORS Configuration</h4>
-                    <p>Configure allowed origins in your customer settings to prevent unauthorized access.</p>
+                    <p>Configure allowed origins in your customer settings to prevent unauthorized access. For SSO to work across subdomains, ensure all participating domains are listed as allowed origins.</p>
 
                     <h4>IP Allowlisting</h4>
                     <p>For additional security, configure IP allowlists in customer settings.</p>
 
                     <h4>Token Refresh</h4>
-                    <p>Implement automatic token refresh before expiration to maintain seamless customer experience.</p>
+                    <p>Implement automatic token refresh before expiration to maintain seamless customer experience. The <code>/auth/refresh</code> endpoint also sets a new HttpOnly cookie with the refreshed token.</p>
+
+                    <h4>Logout and Session Invalidation</h4>
+                    <p>Calling <code>POST /auth/logout</code> (with <code>credentials: 'include'</code>) will:</p>
+                    <ul>
+                        <li>Clear the HttpOnly cookie (sets <code>Max-Age=0</code>)</li>
+                        <li>Invalidate the session server-side</li>
+                        <li>Log out from ALL apps sharing the SSO cookie (same domain)</li>
+                    </ul>
                 </div>
             </div>
         </div>

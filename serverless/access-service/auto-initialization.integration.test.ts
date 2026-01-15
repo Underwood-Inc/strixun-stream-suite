@@ -27,6 +27,7 @@ describe('Access Service Auto-Initialization', () => {
       vars: {
         SERVICE_API_KEY,
         ENVIRONMENT: 'test',
+        ALLOWED_ORIGINS: 'http://localhost:8795,http://localhost:3000',
       },
     });
 
