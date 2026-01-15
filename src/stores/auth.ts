@@ -203,11 +203,16 @@ async function checkAuthFromCookie(): Promise<boolean> {
       };
       
       saveAuthState(authenticatedCustomer);
-      console.log('[Auth] ✓ Session restored from HttpOnly cookie for customer:', authenticatedCustomer.email);
+      console.log('[Auth] Session restored from HttpOnly cookie', {
+        customerId: authenticatedCustomer.customerId,
+        hasDisplayName: Boolean(authenticatedCustomer.displayName),
+        isSuperAdmin: authenticatedCustomer.isSuperAdmin,
+        authApiUrl: apiUrl,
+      });
       return true;
     } else {
       // No customer data returned - not authenticated (401/403) - this is expected
-      console.debug('[Auth] No customer data from /auth/me - not authenticated');
+      console.debug('[Auth] No customer data from /auth/me - not authenticated', { authApiUrl: apiUrl });
       saveAuthState(null);
       return false;
     }

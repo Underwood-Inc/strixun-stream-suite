@@ -38,22 +38,21 @@ export function getAuthApiUrl(config?: AuthStoreConfig): string {
         return config.authApiUrl;
     }
     
-    // Priority 2: Window env (for E2E tests)
+    // Priority 2: Development detection
+    // CRITICAL: On localhost, ALWAYS use the Vite proxy path to ensure cookie SSO works across ports.
+    // Do not allow env/config injection to override localhost defaults.
+    if (isDevelopment()) {
+        return '/auth-api';
+    }
+    
+    // Priority 3: Window env (for E2E tests)
     if (typeof window !== 'undefined' && (window as any).VITE_AUTH_API_URL) {
         return (window as any).VITE_AUTH_API_URL;
     }
     
-    // Priority 3: Vite env (for builds)
+    // Priority 4: Vite env (for builds)
     if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
         return import.meta.env.VITE_AUTH_API_URL;
-    }
-    
-    // Priority 4: Development detection
-    // CRITICAL: On localhost, ALWAYS use the Vite proxy path to ensure cookie SSO works across ports.
-    // Never call window.getOtpAuthApiUrl() on localhost, as it can return a direct worker URL and bypass the proxy.
-    if (isDevelopment()) {
-        // Prefer Vite proxy for SSO (shares cookies across ports)
-        return '/auth-api';
     }
     
     // Priority 5: Window config (injected during build)
@@ -82,20 +81,21 @@ export function getCustomerApiUrl(config?: AuthStoreConfig): string {
         return config.customerApiUrl;
     }
     
-    // Priority 2: Vite env (for builds)
+    // Priority 2: Development detection
+    // CRITICAL: On localhost, ALWAYS use the Vite proxy path to ensure cookie SSO works across ports.
+    // Do not allow env/config injection to override localhost defaults.
+    if (isDevelopment()) {
+        return '/customer-api';
+    }
+    
+    // Priority 3: Vite env (for builds)
     if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CUSTOMER_API_URL) {
         return import.meta.env.VITE_CUSTOMER_API_URL;
     }
     
-    // Priority 3: Window env (for E2E tests)
+    // Priority 4: Window env (for E2E tests)
     if (typeof window !== 'undefined' && (window as any).VITE_CUSTOMER_API_URL) {
         return (window as any).VITE_CUSTOMER_API_URL;
-    }
-    
-    // Priority 4: Development detection
-    if (isDevelopment()) {
-        // Use Vite proxy for SSO (shares cookies across ports)
-        return '/customer-api';
     }
     
     // Priority 5: Production default
