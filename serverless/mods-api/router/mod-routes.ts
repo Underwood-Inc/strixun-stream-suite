@@ -4,7 +4,7 @@
  */
 
 import { createError } from '../utils/errors.js';
-import { createCORSHeadersWithLocalhost } from '../utils/cors.js';
+import { getCorsHeaders } from '../utils/cors.js';
 import { handleListMods } from '../handlers/mods/list.js';
 import { handleGetModDetail } from '../handlers/mods/detail.js';
 import { handleUploadMod } from '../handlers/mods/upload.js';
@@ -29,7 +29,7 @@ async function createErrorResponse(
     auth: { customerId: string; jwtToken: string } | null = null
 ): Promise<RouteResult> {
     const rfcError = createError(request, status, title, detail);
-    const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+    const corsHeaders = getCorsHeaders(env, request);
     const errorResponse = new Response(JSON.stringify(rfcError), {
         status,
         headers: {
@@ -117,7 +117,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         if (pathSegments.length === 0 && request.method === 'POST') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to upload mods');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                const corsHeaders = getCorsHeaders(env, request);
                 const errorResponse = new Response(JSON.stringify(rfcError), {
                     status: 401,
                     headers: {
@@ -148,7 +148,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 requireJWT: authForEncryption ? true : false
             });
             // Ensure CORS headers are preserved after encryption
-            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const corsHeaders = getCorsHeaders(env, request);
             const finalHeaders = new Headers(encryptedResult.response.headers);
             for (const [key, value] of corsHeaders.entries()) {
                 finalHeaders.set(key, value);
@@ -215,7 +215,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                const corsHeaders = getCorsHeaders(env, request);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -243,7 +243,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                const corsHeaders = getCorsHeaders(env, request);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -286,7 +286,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                const corsHeaders = getCorsHeaders(env, request);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -352,7 +352,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                const corsHeaders = getCorsHeaders(env, request);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -444,7 +444,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Response is already decrypted by handler (file was encrypted at rest with shared key, decrypted on-the-fly)
             // Downloads use shared key encryption, not JWT encryption, so we don't wrap with JWT encryption
             // Ensure CORS headers are preserved (handler already sets them, but ensure they're present)
-            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const corsHeaders = getCorsHeaders(env, request);
             const finalHeaders = new Headers(response.headers);
             for (const [key, value] of corsHeaders.entries()) {
                 finalHeaders.set(key, value);
@@ -525,7 +525,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Response is already decrypted by handler (file was encrypted at rest with shared key, decrypted on-the-fly)
             // Downloads use shared key encryption, not JWT encryption, so we don't wrap with JWT encryption
             // Ensure CORS headers are preserved (handler already sets them, but ensure they're present)
-            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const corsHeaders = getCorsHeaders(env, request);
             const finalHeaders = new Headers(response.headers);
             for (const [key, value] of corsHeaders.entries()) {
                 finalHeaders.set(key, value);

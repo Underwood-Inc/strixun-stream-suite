@@ -7,7 +7,7 @@
  * Admin management endpoint is separate: PUT /admin/settings (super admin only)
  */
 
-import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
+import { getCorsHeaders } from '../../utils/cors.js';
 import { getAllowedFileExtensions } from '../admin/settings.js';
 import type { Env } from '../../worker.js';
 
@@ -39,7 +39,7 @@ export async function handleGetSettings(
         const settingsData = await env.MODS_KV.get(SETTINGS_KEY, { type: 'json' }) as AdminSettings | null;
         const uploadsEnabled = settingsData?.uploadsEnabled ?? true; // Default to enabled
         
-        const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+        const corsHeaders = getCorsHeaders(env, request);
         
         return new Response(JSON.stringify({
             allowedFileExtensions,
@@ -54,7 +54,7 @@ export async function handleGetSettings(
     } catch (error) {
         console.error('[Settings] Failed to get settings:', error);
         
-        const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+        const corsHeaders = getCorsHeaders(env, request);
         return new Response(JSON.stringify({
             error: 'Internal Server Error',
             message: 'Failed to get settings',

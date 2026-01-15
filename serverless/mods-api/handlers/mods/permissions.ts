@@ -5,7 +5,7 @@
  */
 
 import { createError } from '../../utils/errors.js';
-import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
+import { getCorsHeaders } from '../../utils/cors.js';
 import { getCustomerPermissionInfo } from '../../utils/admin.js';
 import type { Env } from '../../worker.js';
 import type { AuthResult } from '../../utils/auth.js';
@@ -29,7 +29,7 @@ export async function handleGetCustomerPermissions(
             hasUploadPermission: permissionInfo.hasUploadPermission,
         });
         
-        const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+        const corsHeaders = getCorsHeaders(env, request);
         
         const responseData = {
             customerId: auth.customerId,
@@ -59,7 +59,7 @@ export async function handleGetCustomerPermissions(
             'Internal Server Error',
             'Failed to check customer permissions'
         );
-        const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+        const corsHeaders = getCorsHeaders(env, request);
         return new Response(JSON.stringify(rfcError), {
             status: 500,
             headers: {

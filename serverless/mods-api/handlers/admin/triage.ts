@@ -3,11 +3,10 @@
  * Handles mod status changes and review management
  */
 
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import { isAdmin as checkIsAdmin } from '../../utils/admin.js';
-import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
+import { getCorsHeaders } from '../../utils/cors.js';
 import type { ModMetadata, ModStatus, ModStatusHistory, ModReviewComment, ModVersion } from '../../types/mod.js';
 
 /**
@@ -100,9 +99,7 @@ export async function handleUpdateModStatus(
                 globalModKey: modId
             });
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
+            const corsHeaders = getCorsHeaders(env, request);
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
                 headers: {
@@ -128,7 +125,7 @@ export async function handleUpdateModStatus(
                 const cookieHeader = request.headers.get('Cookie');
                 if (!cookieHeader) {
                     const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to decrypt request body. Please authenticate with HttpOnly cookie.');
-                    const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                    const corsHeaders = getCorsHeaders(env, request);
                     return new Response(JSON.stringify(rfcError), {
                         status: 401,
                         headers: {
@@ -142,7 +139,7 @@ export async function handleUpdateModStatus(
                 const authCookie = cookies.find(c => c.startsWith('auth_token='));
                 if (!authCookie) {
                     const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to decrypt request body. Please authenticate with HttpOnly cookie.');
-                    const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                    const corsHeaders = getCorsHeaders(env, request);
                     return new Response(JSON.stringify(rfcError), {
                         status: 401,
                         headers: {
@@ -158,7 +155,7 @@ export async function handleUpdateModStatus(
                 // Validate token before decryption
                 if (!token || token.length < 10) {
                     const rfcError = createError(request, 401, 'Unauthorized', 'Invalid JWT token provided');
-                    const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                    const corsHeaders = getCorsHeaders(env, request);
                     return new Response(JSON.stringify(rfcError), {
                         status: 401,
                         headers: {
@@ -171,7 +168,7 @@ export async function handleUpdateModStatus(
                 // Validate encrypted data structure before decryption
                 if (!body || typeof body !== 'object' || !('encrypted' in body) || !('data' in body)) {
                     const rfcError = createError(request, 400, 'Invalid Request', 'Encrypted request body has invalid structure');
-                    const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                    const corsHeaders = getCorsHeaders(env, request);
                     return new Response(JSON.stringify(rfcError), {
                         status: 400,
                         headers: {
@@ -190,9 +187,7 @@ export async function handleUpdateModStatus(
         } catch (error: any) {
             console.error('[UpdateModStatus] Failed to parse request body:', error);
             const rfcError = createError(request, 400, 'Invalid Request', 'Failed to parse request body. ' + (error.message || ''));
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
+            const corsHeaders = getCorsHeaders(env, request);
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
                 headers: {
@@ -209,9 +204,7 @@ export async function handleUpdateModStatus(
         const validStatuses: ModStatus[] = ['pending', 'approved', 'changes_requested', 'denied', 'draft', 'published', 'archived'];
         if (!validStatuses.includes(newStatus)) {
             const rfcError = createError(request, 400, 'Invalid Status', `Status must be one of: ${validStatuses.join(', ')}`);
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
+            const corsHeaders = getCorsHeaders(env, request);
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
                 headers: {
@@ -418,9 +411,7 @@ export async function handleAddReviewComment(
 
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
+            const corsHeaders = getCorsHeaders(env, request);
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
                 headers: {
@@ -451,9 +442,7 @@ export async function handleAddReviewComment(
 
         if (!isAdmin && !isUploader) {
             const rfcError = createError(request, 403, 'Forbidden', 'Only admins and the mod author can add comments');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
+            const corsHeaders = getCorsHeaders(env, request);
             return new Response(JSON.stringify(rfcError), {
                 status: 403,
                 headers: {
@@ -470,9 +459,7 @@ export async function handleAddReviewComment(
                 note: 'Rejecting comment - customerId is required for display name lookups'
             });
             const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for adding review comments. Please ensure your account has a valid customer association.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
+            const corsHeaders = getCorsHeaders(env, request);
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
                 headers: {
@@ -486,9 +473,7 @@ export async function handleAddReviewComment(
         const commentData = await request.json() as { content: string };
         if (!commentData.content || commentData.content.trim().length === 0) {
             const rfcError = createError(request, 400, 'Invalid Comment', 'Comment content is required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
+            const corsHeaders = getCorsHeaders(env, request);
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
                 headers: {

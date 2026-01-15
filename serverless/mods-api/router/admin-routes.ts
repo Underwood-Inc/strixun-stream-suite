@@ -7,7 +7,7 @@
  */
 
 import { wrapWithEncryption } from '@strixun/api-framework';
-import { createCORSHeadersWithLocalhost } from '../utils/cors.js';
+import { getCorsHeaders } from '../utils/cors.js';
 import { protectAdminRoute, type RouteProtectionEnv } from '@strixun/api-framework';
 import { verifyJWT } from '../utils/auth.js';
 import { createError } from '../utils/errors.js';
@@ -226,7 +226,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'migrate' && pathSegments[2] === 'dry-run' && request.method === 'POST') {
             const { dryRunVariantMigration } = await import('../scripts/migrate-variants-to-versions.js');
             const stats = await dryRunVariantMigration(env);
-            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const corsHeaders = getCorsHeaders(env, request);
             const headers: Record<string, string> = {};
             corsHeaders.forEach((value, key) => {
                 headers[key] = value;
@@ -247,7 +247,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'migrate' && pathSegments[2] === 'run' && request.method === 'POST') {
             const { migrateAllVariantsToVersions } = await import('../scripts/migrate-variants-to-versions.js');
             const stats = await migrateAllVariantsToVersions(env);
-            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const corsHeaders = getCorsHeaders(env, request);
             const headers: Record<string, string> = {};
             corsHeaders.forEach((value, key) => {
                 headers[key] = value;
@@ -269,7 +269,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
     } catch (error: any) {
         console.error('Admin routes error:', error);
         const rfcError = createError(request, 500, 'Internal Server Error', 'An error occurred while processing the admin request');
-        const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+        const corsHeaders = getCorsHeaders(env, request);
         const headers: Record<string, string> = {};
         corsHeaders.forEach((value, key) => {
             headers[key] = value;
