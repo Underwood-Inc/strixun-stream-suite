@@ -448,7 +448,7 @@ export async function getCustomerRoles(
     
     try {
         // Call Access Service directly to get customer roles
-        const accessServiceUrl = env.ACCESS_SERVICE_URL || 'http://localhost:8791';
+        const accessServiceUrl = env.ACCESS_SERVICE_URL || 'http://localhost:8795';
         const url = `${accessServiceUrl}/access/${customerId}`;
         
         const headers: Record<string, string> = {
@@ -490,7 +490,7 @@ export async function isSuperAdminByCustomerId(
     
     try {
         // Call Access Service directly to check for super-admin role
-        const accessServiceUrl = env.ACCESS_SERVICE_URL || 'http://localhost:8791';
+        const accessServiceUrl = env.ACCESS_SERVICE_URL || 'http://localhost:8795';
         const url = `${accessServiceUrl}/access/${customerId}`;
         
         const headers: Record<string, string> = {

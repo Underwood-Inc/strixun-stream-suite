@@ -29,17 +29,18 @@
     window.addEventListener('auth:no-customer-account', handleNoCustomerAccount as EventListener);
     
     // Check authentication with timeout
+    // CRITICAL: HttpOnly cookie SSO means we cannot read a token client-side.
+    // Session restore must call a cookie-authenticated endpoint.
     const authCheck = async () => {
       try {
-        if (apiClient.getToken()) {
-          // Token exists, load customer data
-          isAuthenticated = true;
-          await loadCustomer();
-        }
+        await loadCustomer();
+        isAuthenticated = customer !== null;
       } catch (error) {
         console.error('Auth check failed:', error);
         apiClient.setToken(null);
         isAuthenticated = false;
+        customer = null;
+        userRoles = [];
       } finally {
         loading = false;
       }
@@ -68,6 +69,8 @@
       }
     } catch (error: any) {
       console.error('Failed to load customer:', error);
+      customer = null;
+      userRoles = [];
       
       // Check if error is "no customer account"
       const errorMessage = error?.message || error?.toString() || '';

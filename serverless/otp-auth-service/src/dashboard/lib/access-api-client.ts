@@ -7,7 +7,7 @@ import { createAPIClient } from '@strixun/api-framework/client';
 import type { RoleDefinition, PermissionDefinition } from './types.js';
 
 // Access Service URL - direct connection
-// In dev mode, Vite proxy handles /access → localhost:8791
+// In dev mode, Vite proxy handles /access → localhost:8795
 // In production, we call access-api.idling.app directly
 const ACCESS_SERVICE_URL = typeof window !== 'undefined' 
   ? (window.location.hostname === 'localhost' ? window.location.origin : 'https://access-api.idling.app')

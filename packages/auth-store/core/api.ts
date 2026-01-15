@@ -48,16 +48,18 @@ export function getAuthApiUrl(config?: AuthStoreConfig): string {
         return import.meta.env.VITE_AUTH_API_URL;
     }
     
-    // Priority 4: Window config (injected during build)
-    if (typeof window !== 'undefined' && (window as any).getOtpAuthApiUrl) {
-        const url = (window as any).getOtpAuthApiUrl();
-        if (url) return url;
-    }
-    
-    // Priority 5: Development detection
+    // Priority 4: Development detection
+    // CRITICAL: On localhost, ALWAYS use the Vite proxy path to ensure cookie SSO works across ports.
+    // Never call window.getOtpAuthApiUrl() on localhost, as it can return a direct worker URL and bypass the proxy.
     if (isDevelopment()) {
         // Prefer Vite proxy for SSO (shares cookies across ports)
         return '/auth-api';
+    }
+    
+    // Priority 5: Window config (injected during build)
+    if (typeof window !== 'undefined' && (window as any).getOtpAuthApiUrl) {
+        const url = (window as any).getOtpAuthApiUrl();
+        if (url) return url;
     }
     
     // Priority 6: Production default

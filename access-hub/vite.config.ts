@@ -32,7 +32,7 @@ export default defineConfig({
         },
       },
       '/access': {
-        target: 'http://localhost:8791', // Access Service port
+        target: 'http://localhost:8795', // Access Service port
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path, // Keep the /access path

@@ -54,6 +54,7 @@
   },
   "dependencies": {
     "@strixun/ad-carousel": "workspace:*",
+    "@strixun/auth-store": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/error-mapping": "workspace:*",
     "@strixun/otp-login": "workspace:*",

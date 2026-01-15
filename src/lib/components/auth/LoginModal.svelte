@@ -53,7 +53,8 @@
     if (isLocalhost) {
       // NEVER fall back to production when on localhost
       // NEVER call window.getOtpAuthApiUrl() - it might have cached production URL
-      return 'http://localhost:8787';
+      // Use Vite proxy to avoid CORS/cookie issues across apps
+      return '/auth-api';
     }
     
     // Priority 1: VITE_AUTH_API_URL (set by playwright config for E2E tests, same as mods-hub)

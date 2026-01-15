@@ -9,7 +9,7 @@ import type { Readable, Writable } from 'svelte/store';
 import { derived, get, writable } from 'svelte/store';
 import type { AuthenticatedCustomer } from '@strixun/auth-store';
 import { secureFetch } from '../core/services/encryption';
-import { fetchCustomerInfo, decodeJWTPayload } from '@strixun/auth-store/core/api';
+import { fetchCustomerInfo, decodeJWTPayload, getAuthApiUrl } from '@strixun/auth-store/core/api';
 import { getCookie, deleteCookie } from '@strixun/auth-store/core/utils';
 import { storage } from '../modules/storage';
 
@@ -138,15 +138,14 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
   }
 }
 
-import { getAuthApiUrl as getAuthApiUrlShared } from '@strixun/otp-auth-service/shared';
-
 /**
  * Get OTP Auth API URL
- * Uses shared utility for consistency across all apps
+ * CRITICAL: Stream Suite must NOT depend on OTP auth service worker packages for URL resolution.
+ * Use the auth-store helper (which resolves /auth-api on localhost).
  */
 function getOtpAuthApiUrl(): string {
   if (typeof window === 'undefined') return '';
-  return getAuthApiUrlShared();
+  return getAuthApiUrl();
 }
 
 /**

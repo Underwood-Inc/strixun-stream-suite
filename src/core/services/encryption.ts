@@ -135,16 +135,23 @@ export async function isEncryptionEnabled(): Promise<boolean> {
  * No offline decrypt: this will fail if the session is expired/invalid.
  */
 export async function fetchSessionDek(): Promise<string> {
-  // Prefer injected helper if present (keeps consistency across apps)
+  // CRITICAL: On localhost, always use the Vite proxy path to avoid CORS/cookie issues across ports.
+  // Never call window.getOtpAuthApiUrl() on localhost (it can be cached/stale and can bypass proxy).
   let authApiUrl = '';
-  if (typeof window !== 'undefined' && (window as any).getOtpAuthApiUrl) {
+  const isLocalhost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      (typeof import.meta !== 'undefined' && (import.meta.env?.DEV || import.meta.env?.MODE === 'development')));
+
+  if (isLocalhost) {
+    authApiUrl = '/auth-api';
+  } else if (typeof window !== 'undefined' && (window as any).getOtpAuthApiUrl) {
     const url = (window as any).getOtpAuthApiUrl();
     if (typeof url === 'string') authApiUrl = url;
   }
-  if (!authApiUrl) {
-    // Dev default: use Vite proxy path convention used across apps
-    authApiUrl = '/auth-api';
-  }
+
+  if (!authApiUrl) authApiUrl = '/auth-api';
 
   const response = await fetch(`${authApiUrl}/auth/encryption/dek`, {
     method: 'GET',

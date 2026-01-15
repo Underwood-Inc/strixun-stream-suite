@@ -107,6 +107,16 @@ export default defineConfig({
           });
         },
       },
+      '/signup': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/signup/verify': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+        secure: false,
+      },
       '/admin': {
         target: 'http://localhost:8787',
         changeOrigin: true,
@@ -138,7 +148,7 @@ export default defineConfig({
         },
       },
       '/access': {
-        target: 'http://localhost:8791',  // Access Service - DIRECT!
+        target: 'http://localhost:8795',  // Access Service
         changeOrigin: true,
         secure: false,
         // CRITICAL: Forward cookies for HttpOnly cookie authentication

@@ -213,7 +213,7 @@ export default defineConfig({
         },
       },
       '/customer-api': {
-        target: 'http://localhost:8788',
+        target: 'http://localhost:8790',
         changeOrigin: true,
         secure: false,
         // CRITICAL: Forward cookies for HttpOnly cookie SSO
