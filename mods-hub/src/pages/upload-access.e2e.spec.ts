@@ -197,50 +197,24 @@ test.describe('Upload Access After Login', () => {
       }
     }, { timeout: 5000 });
     
-    // Extract token and verify it has customerId in JWT payload
+    // Verify customer info is available via /auth/me API
     // With HttpOnly cookies, tokens are not accessible via JavaScript
-    // Get customer info from /auth/me API call instead
     const tokenInfo = await page.evaluate(async () => {
       try {
         const response = await fetch('/auth-api/auth/me', { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
-          // Return customer info from API response
           return {
-            customerId: data.customerId,
-            isSuperAdmin: data.isSuperAdmin || false,
-            // Token is in HttpOnly cookie, not accessible
+            hasToken: true,
+            hasCustomerIdInJWT: !!data.customerId,
+            customerIdFromJWT: data.customerId || null,
+            customerIdFromUser: data.customerId || null
           };
         }
       } catch {
         // Ignore errors
       }
-      return null;
-    });
-    
-    // Legacy code for JWT decoding (not used with HttpOnly cookies)
-    if (false) {
-      // This code path is never executed with HttpOnly cookies
-      const parts = 'dummy'.split('.');
-      if (parts.length === 3) {
-        const payloadB64 = parts[1];
-        const payload = JSON.parse(
-          atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
-        );
-              
-              return {
-                hasToken: true,
-                hasCustomerIdInJWT: !!payload?.customerId,
-                customerIdFromJWT: payload?.customerId || null,
-                customerIdFromUser: customer?.customerId || null
-              };
-            }
-          }
-        }
-      } catch (e) {
-        return { error: String(e) };
-      }
-      return { hasToken: false };
+      return { hasToken: false, hasCustomerIdInJWT: false, customerIdFromJWT: null, customerIdFromUser: null };
     });
     
     expect(tokenInfo.hasToken).toBe(true);

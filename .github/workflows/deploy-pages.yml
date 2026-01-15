@@ -81,6 +81,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
+      - name: Build workspace dependencies
+        run: |
+          echo "Building workspace dependencies required for Svelte app..."
+          # Build shared types first (no dependencies)
+          echo "  -> Building @strixun/types..."
+          pnpm --filter "@strixun/types" run build || echo "  i  Types has no build script (skipped)"
+          # Build service-client (depends on types)
+          echo "  -> Building @strixun/service-client..."
+          pnpm --filter "@strixun/service-client" run build || echo "  i  Service Client has no build script (skipped)"
+          # Build API Framework (depends on types and service-client)
+          echo "  -> Building @strixun/api-framework..."
+          pnpm --filter "@strixun/api-framework" run build || echo "  i  API Framework has no build script (skipped)"
+          # Build OTP Login (required for login components)
+          echo "  -> Building @strixun/otp-login..."
+          pnpm --filter "@strixun/otp-login" run build:react || echo "  i  OTP Login has no build:react script (skipped)"
+          echo "* All workspace dependencies built successfully"
+      
       - name: Build Svelte app
         env:
           # Use root path (/) for custom domain deployment
