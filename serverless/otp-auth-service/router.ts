@@ -25,6 +25,8 @@ import type { ExecutionContext } from '@strixun/types';
 const NO_JWT_REQUIRED_PATHS = [
     '/auth/request-otp',
     '/auth/verify-otp',      // ⚠ CRITICAL - Returns JWT token
+    '/auth/restore-session', // Legacy endpoint - reads HttpOnly cookie
+    '/auth/me',              // Reads HttpOnly cookie
     '/signup',
     '/signup/verify',
     '/track/email-open',     // Email clients can't send headers

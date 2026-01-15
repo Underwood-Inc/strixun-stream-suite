@@ -397,14 +397,14 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
                 'Path=/',
                 'HttpOnly',
                 'Secure',
-                'SameSite=None', // CRITICAL for cross-site SSO
+                'SameSite=Lax', // Lax allows same-site subdomain SSO
                 `Max-Age=${tokenResponse.expires_in}`
             ] : [
                 `auth_token=${tokenResponse.token}`,
                 `Domain=${domain}`,
                 'Path=/',
                 'HttpOnly',
-                'SameSite=Lax', // Lax for localhost dev
+                'SameSite=Lax',
                 `Max-Age=${tokenResponse.expires_in}`
             ];
             return cookieParts.join('; ');
