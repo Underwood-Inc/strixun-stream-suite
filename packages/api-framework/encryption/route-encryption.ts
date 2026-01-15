@@ -246,8 +246,8 @@ export const DEFAULT_ENCRYPTION_POLICIES: RouteEncryptionPolicy[] = [
     strategy: 'none', // Don't encrypt - client needs to read the JWT token
   },
   {
-    pattern: '/auth/restore-session',
-    strategy: 'none', // Don't encrypt - client needs to read the JWT token (chicken-and-egg: token is IN the response)
+    pattern: '/auth/me',
+    strategy: 'none', // Don't encrypt - uses HttpOnly cookie authentication
   },
   {
     pattern: '/auth/**',
