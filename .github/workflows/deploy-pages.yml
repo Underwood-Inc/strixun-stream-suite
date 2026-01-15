@@ -93,6 +93,9 @@ jobs:
           # Build API Framework (depends on types and service-client)
           echo "  -> Building @strixun/api-framework..."
           pnpm --filter "@strixun/api-framework" run build || echo "  i  API Framework has no build script (skipped)"
+          # Build Auth Store (depends on api-framework)
+          echo "  -> Building @strixun/auth-store..."
+          pnpm --filter "@strixun/auth-store" run build || echo "  i  Auth Store has no build script (skipped)"
           # Build OTP Login (required for login components)
           echo "  -> Building @strixun/otp-login..."
           pnpm --filter "@strixun/otp-login" run build:react || echo "  i  OTP Login has no build:react script (skipped)"
