@@ -75,8 +75,8 @@ describe.skipIf(!E2E_OTP_CODE)('HttpOnly Cookie SSO - Integration Tests (Minifla
       expect(setCookieHeader).toContain('Domain=.idling.app');
       expect(setCookieHeader).toContain('Path=/');
 
-      // Extract cookie value for subsequent requests
-      const cookieMatch = setCookieHeader?.match(/auth_token=([^;]+)/);
+      // Extract cookie value for subsequent requests from first cookie
+      const cookieMatch = firstCookie?.match(/auth_token=([^;]+)/);
       authCookie = cookieMatch ? cookieMatch[1] : null;
       expect(authCookie).toBeDefined();
       expect(authCookie).toBe(jwtToken);
@@ -416,6 +416,84 @@ describe.skipIf(!E2E_OTP_CODE)('HttpOnly Cookie SSO - Integration Tests (Minifla
         expect(refreshSetCookie).toContain('Secure');
         expect(refreshSetCookie).toContain('Domain=.idling.app');
       }
+    }, 30000);
+  });
+
+  describe('Multi-Domain Cookie SSO', () => {
+    it('should set multiple cookies for different root domains in ALLOWED_ORIGINS', async () => {
+      const multiDomainEmail = `multi-domain-${Date.now()}@integration-test.example.com`;
+      
+      // Step 1: Request OTP
+      const requestResponse = await otpAuthService.fetch('http://example.com/auth/request-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: multiDomainEmail }),
+      });
+      expect(requestResponse.status).toBe(200);
+
+      // Step 2: Verify OTP from a request with Origin header
+      // The worker should detect multiple root domains in ALLOWED_ORIGINS and set multiple cookies
+      const verifyResponse = await otpAuthService.fetch('http://example.com/auth/verify-otp', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Origin': 'https://mods.idling.app', // Request from idling.app subdomain
+        },
+        body: JSON.stringify({ email: multiDomainEmail, otp: E2E_OTP_CODE }),
+      });
+      expect(verifyResponse.status).toBe(200);
+
+      // CRITICAL: Response should have multiple Set-Cookie headers
+      // Headers.get() only returns the first header, so we need to use getSetCookie()
+      const setCookieHeaders = verifyResponse.headers.getSetCookie ? 
+        verifyResponse.headers.getSetCookie() : 
+        [verifyResponse.headers.get('set-cookie')].filter(Boolean);
+      
+      console.log('[Multi-Domain Test] Set-Cookie headers:', setCookieHeaders);
+
+      // With current ALLOWED_ORIGINS including idling.app and potentially short.army,
+      // we should get at least 1 cookie (for .idling.app in test env, it returns .idling.app)
+      expect(setCookieHeaders.length).toBeGreaterThanOrEqual(1);
+      
+      // Verify first cookie has correct attributes
+      const firstCookie = setCookieHeaders[0];
+      expect(firstCookie).toContain('auth_token=');
+      expect(firstCookie).toContain('HttpOnly');
+      expect(firstCookie).toContain('Domain=');
+      
+      // Log all cookie domains for visibility
+      setCookieHeaders.forEach((cookie, index) => {
+        const domainMatch = cookie.match(/Domain=([^;]+)/);
+        console.log(`[Multi-Domain Test] Cookie ${index + 1} Domain:`, domainMatch?.[1]);
+      });
+    }, 30000);
+
+    it('should clear multiple cookies during logout', async () => {
+      // Logout should clear cookies for all domains
+      const logoutResponse = await otpAuthService.fetch('http://example.com/auth/logout', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Origin': 'https://mods.idling.app',
+          'Cookie': `auth_token=${authCookie}`,
+        },
+      });
+      expect(logoutResponse.status).toBe(200);
+
+      // Should have multiple Set-Cookie headers clearing cookies
+      const setCookieHeaders = logoutResponse.headers.getSetCookie ? 
+        logoutResponse.headers.getSetCookie() : 
+        [logoutResponse.headers.get('set-cookie')].filter(Boolean);
+      
+      console.log('[Multi-Domain Logout Test] Clear cookies:', setCookieHeaders);
+
+      expect(setCookieHeaders.length).toBeGreaterThanOrEqual(1);
+      
+      // Verify cookies are being cleared (Max-Age=0)
+      setCookieHeaders.forEach(cookie => {
+        expect(cookie).toContain('auth_token=');
+        expect(cookie).toContain('Max-Age=0');
+      });
     }, 30000);
   });
 

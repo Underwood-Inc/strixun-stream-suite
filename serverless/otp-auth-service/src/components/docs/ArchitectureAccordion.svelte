@@ -92,8 +92,9 @@
   const ssoFlowDiagram = `sequenceDiagram
     participant User as User Browser
     participant Mods as mods.idling.app
-    participant Short as s.idling.app
-    participant Stream as streamkit.idling.app
+    participant Access as access.idling.app
+    participant Customer as customer.idling.app
+    participant Game as game.idling.app
     participant Auth as auth.idling.app
     participant KV as Cloudflare KV
     
@@ -110,22 +111,31 @@
     User->>Mods: Authenticated!
     
     Note over User,KV: User visits second app - already logged in!
-    User->>Short: Visit s.idling.app
-    Short->>User: Check cookie
-    User->>Short: Cookie sent automatically
-    Short->>Auth: Validate token (/auth/me)
+    User->>Access: Visit access.idling.app
+    Access->>User: Check cookie
+    User->>Access: Cookie sent automatically
+    Access->>Auth: Validate token (/auth/me)
     Auth->>KV: Verify session
-    Auth-->>Short: Customer info
-    Short->>User: Authenticated! (No login needed)
+    Auth-->>Access: Customer info
+    Access->>User: Authenticated! (No login needed)
     
     Note over User,KV: User visits third app - still logged in!
-    User->>Stream: Visit streamkit.idling.app
-    Stream->>User: Check cookie
-    User->>Stream: Cookie sent automatically
-    Stream->>Auth: Validate token (/auth/me)
+    User->>Customer: Visit customer.idling.app
+    Customer->>User: Check cookie
+    User->>Customer: Cookie sent automatically
+    Customer->>Auth: Validate token (/auth/me)
     Auth->>KV: Verify session
-    Auth-->>Stream: Customer info
-    Stream->>User: Authenticated! (No login needed)`;
+    Auth-->>Customer: Customer info
+    Customer->>User: Authenticated! (No login needed)
+    
+    Note over User,KV: Any additional .idling.app subdomain works the same!
+    User->>Game: Visit game.idling.app
+    Game->>User: Check cookie
+    User->>Game: Cookie sent automatically
+    Game->>Auth: Validate token (/auth/me)
+    Auth->>KV: Verify session
+    Auth-->>Game: Customer info
+    Game->>User: Authenticated! (No login needed)`;
 
   // SSO Cookie Security diagram
   const ssoCookieSecurityDiagram = `graph TB
@@ -223,8 +233,19 @@
   <strong>Apps Using This SSO:</strong>
 </p>
 <ul>
+  <li><strong>idling.app</strong> / <strong>www.idling.app</strong> - Main Landing Page</li>
   <li><strong>mods.idling.app</strong> - Mod Management Hub</li>
-  <li><strong>s.idling.app</strong> / <strong>shorten.idling.app</strong> - URL Shortener Service</li>
+  <li><strong>mods-api.idling.app</strong> - Mod API Service</li>
+  <li><strong>auth.idling.app</strong> - Authentication Service</li>
+  <li><strong>access.idling.app</strong> - Access Hub</li>
+  <li><strong>access-api.idling.app</strong> - Access API Service</li>
+  <li><strong>api.idling.app</strong> - Core API Gateway</li>
+  <li><strong>customer.idling.app</strong> - Customer Portal</li>
+  <li><strong>customer-api.idling.app</strong> - Customer API Service</li>
+  <li><strong>game.idling.app</strong> - Game Application</li>
+  <li><strong>chat.idling.app</strong> - Chat Service</li>
+  <li><strong>s.idling.app</strong> / <strong>short.idling.app</strong> / <strong>shorten.idling.app</strong> - URL Shortener Service</li>
+  <li><strong>short.army</strong> - External URL Shortener Domain</li>
   <li><strong>streamkit.idling.app</strong> - Stream Suite (OBS overlays, widgets)</li>
   <li><strong>design.idling.app</strong> - Component Library (Storybook)</li>
   <li><strong>docs.idling.app</strong> - Documentation &amp; API Reference</li>

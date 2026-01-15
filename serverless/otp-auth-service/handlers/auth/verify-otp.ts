@@ -382,42 +382,45 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         // Pass keyId for inter-tenant SSO scoping
         const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request, keyId);
         
-        // Set HttpOnly cookie for automatic authentication across all *.idling.app domains
+        // Set HttpOnly cookies for ALL root domains in ALLOWED_ORIGINS
         // SECURITY: HttpOnly prevents XSS, Secure ensures HTTPS-only, SameSite=None allows cross-site
+        // CRITICAL: Multiple cookies enable SSO across different root domains (idling.app, short.army, etc.)
+        const { getCookieDomains } = await import('../../utils/cookie-domains.js');
+        const cookieDomains = getCookieDomains(env, null); // Pass customer if available
         const isProduction = env.ENVIRONMENT === 'production';
-        // CRITICAL: For SSO to work in development, set Domain=localhost to share cookies across ports
-        // In production, use .idling.app to share across subdomains
-        const cookieDomain = isProduction ? '.idling.app' : 'localhost';
         
-        // CRITICAL: SameSite=None is REQUIRED for cross-site SSO (mods.idling.app → auth.idling.app)
-        // SameSite=None REQUIRES Secure flag (even in dev, but dev should be http so we use Lax there)
-        const cookieParts = isProduction ? [
-            `auth_token=${tokenResponse.token}`,
-            `Domain=${cookieDomain}`,
-            'Path=/',
-            'HttpOnly',
-            'Secure',
-            'SameSite=None', // CRITICAL for cross-site SSO
-            `Max-Age=${tokenResponse.expires_in}`
-        ] : [
-            `auth_token=${tokenResponse.token}`,
-            `Domain=${cookieDomain}`,
-            'Path=/',
-            'HttpOnly',
-            'SameSite=Lax', // Lax for localhost dev
-            `Max-Age=${tokenResponse.expires_in}`
-        ];
-        
-        const cookieValue = cookieParts.join('; ');
-        
-        return new Response(JSON.stringify(tokenResponse), {
-            headers: { 
-                ...getCorsHeadersRecord(env, request), 
-                ...getOtpCacheHeaders(),
-                'Content-Type': 'application/json',
-                'Set-Cookie': cookieValue,
-            },
+        // Create cookie for each root domain
+        const cookies = cookieDomains.map(domain => {
+            const cookieParts = isProduction ? [
+                `auth_token=${tokenResponse.token}`,
+                `Domain=${domain}`,
+                'Path=/',
+                'HttpOnly',
+                'Secure',
+                'SameSite=None', // CRITICAL for cross-site SSO
+                `Max-Age=${tokenResponse.expires_in}`
+            ] : [
+                `auth_token=${tokenResponse.token}`,
+                `Domain=${domain}`,
+                'Path=/',
+                'HttpOnly',
+                'SameSite=Lax', // Lax for localhost dev
+                `Max-Age=${tokenResponse.expires_in}`
+            ];
+            return cookieParts.join('; ');
         });
+        
+        // Build headers with multiple Set-Cookie entries
+        const headers = new Headers({
+            ...getCorsHeadersRecord(env, request),
+            ...getOtpCacheHeaders(),
+            'Content-Type': 'application/json',
+        });
+        
+        // Add each cookie as separate Set-Cookie header
+        cookies.forEach(cookie => headers.append('Set-Cookie', cookie));
+        
+        return new Response(JSON.stringify(tokenResponse), { headers });
     } catch (error: any) {
         console.error('[OTP Verify] Error:', error);
         console.error('[OTP Verify] Stack:', error?.stack);

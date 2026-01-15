@@ -214,58 +214,74 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
  */
 export async function handleLogout(request: Request, env: Env): Promise<Response> {
     try {
-        // Always clear the HttpOnly cookie (idempotent logout).
+        // Always clear ALL HttpOnly cookies (one for each root domain).
         // A2/SSO requirement: logout must work even if the session already expired.
+        const { getCookieDomains } = await import('../../utils/cookie-domains.js');
+        const cookieDomains = getCookieDomains(env, null);
         const isProduction = env.ENVIRONMENT === 'production';
-        const cookieDomain = isProduction ? '.idling.app' : 'localhost';
 
-        // CRITICAL: Must match the SameSite attribute used when setting the cookie
-        // Production uses SameSite=None for cross-site SSO, dev uses Lax
-        const clearCookieParts = isProduction ? [
-            'auth_token=',
-            `Domain=${cookieDomain}`,
-            'Path=/',
-            'HttpOnly',
-            'Secure',
-            'SameSite=None',
-            'Max-Age=0'
-        ] : [
-            'auth_token=',
-            `Domain=${cookieDomain}`,
-            'Path=/',
-            'HttpOnly',
-            'SameSite=Lax',
-            'Max-Age=0'
-        ];
-        
-        const clearCookieValue = clearCookieParts.join('; ');
+        // Create clear cookie for each domain
+        const clearCookies = cookieDomains.map(domain => {
+            const clearCookieParts = isProduction ? [
+                'auth_token=',
+                `Domain=${domain}`,
+                'Path=/',
+                'HttpOnly',
+                'Secure',
+                'SameSite=None',
+                'Max-Age=0'
+            ] : [
+                'auth_token=',
+                `Domain=${domain}`,
+                'Path=/',
+                'HttpOnly',
+                'SameSite=Lax',
+                'Max-Age=0'
+            ];
+            return clearCookieParts.join('; ');
+        });
 
         // ONLY check HttpOnly cookie - NO Authorization header fallback
         const cookieHeader = request.headers.get('Cookie');
         if (!cookieHeader) {
+            const headers = new Headers({
+                ...getCorsHeadersRecord(env, request),
+                'Content-Type': 'application/json',
+            });
+            clearCookies.forEach(cookie => headers.append('Set-Cookie', cookie));
             return new Response(JSON.stringify({ success: true, message: 'Logged out (no active session)' }), {
                 status: 200,
-                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json', 'Set-Cookie': clearCookieValue },
+                headers,
             });
         }
-        
+
         const cookies = cookieHeader.split(';').map(c => c.trim());
         const authCookie = cookies.find(c => c.startsWith('auth_token='));
         if (!authCookie) {
+            const headers = new Headers({
+                ...getCorsHeadersRecord(env, request),
+                'Content-Type': 'application/json',
+            });
+            clearCookies.forEach(cookie => headers.append('Set-Cookie', cookie));
             return new Response(JSON.stringify({ success: true, message: 'Logged out (no auth cookie)' }), {
                 status: 200,
-                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json', 'Set-Cookie': clearCookieValue },
+                headers,
             });
         }
-        
+
         const token = authCookie.substring('auth_token='.length).trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
-        
+
         if (!payload) {
+            const headers = new Headers({
+                ...getCorsHeadersRecord(env, request),
+                'Content-Type': 'application/json',
+            });
+            clearCookies.forEach(cookie => headers.append('Set-Cookie', cookie));
             return new Response(JSON.stringify({ success: true, message: 'Logged out (invalid/expired token)' }), {
                 status: 200,
-                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json', 'Set-Cookie': clearCookieValue },
+                headers,
             });
         }
         
@@ -301,16 +317,16 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             console.log(`[Logout] ✓ Deleted session for customer: ${customerId}`);
         }
         
-        return new Response(JSON.stringify({ 
+        const headers = new Headers({
+            ...getCorsHeadersRecord(env, request),
+            'Content-Type': 'application/json',
+        });
+        clearCookies.forEach(cookie => headers.append('Set-Cookie', cookie));
+        
+        return new Response(JSON.stringify({
             success: true,
             message: 'Logged out successfully'
-        }), {
-            headers: { 
-                ...getCorsHeadersRecord(env, request), 
-                'Content-Type': 'application/json',
-                'Set-Cookie': clearCookieValue,
-            },
-        });
+        }), { headers });
     } catch (error: any) {
         return new Response(JSON.stringify({ 
             error: 'Failed to logout',
