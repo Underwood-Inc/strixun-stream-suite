@@ -228,7 +228,7 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
                 'Path=/',
                 'HttpOnly',
                 'Secure',
-                'SameSite=Lax',
+                'SameSite=None',
                 'Max-Age=0'
             ] : [
                 'auth_token=',

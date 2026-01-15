@@ -397,7 +397,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
                 'Path=/',
                 'HttpOnly',
                 'Secure',
-                'SameSite=Lax', // Lax allows same-site subdomain SSO
+                'SameSite=None', // CRITICAL for cross-site SSO
                 `Max-Age=${tokenResponse.expires_in}`
             ] : [
                 `auth_token=${tokenResponse.token}`,
