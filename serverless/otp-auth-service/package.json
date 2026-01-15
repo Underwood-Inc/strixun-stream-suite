@@ -38,7 +38,8 @@
     }
   },
   "scripts": {
-    "predev": "pnpm run build:worker",
+    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build",
+    "predev": "pnpm run build:deps && pnpm run build:worker",
     "dev": "concurrently -n worker,app -c yellow,cyan --kill-others-on-fail --success first \"pnpm dev:worker\" \"pnpm dev:app\"",
     "dev:worker": "wrangler dev --port 8787 --local",
     "dev:app": "vite",
@@ -56,7 +57,7 @@
     "deploy": "pnpm build && wrangler deploy",
     "deploy:prod": "pnpm build && wrangler deploy --env production",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "pretest": "pnpm run build:worker",
+    "pretest": "pnpm run build:deps && pnpm run build:worker",
     "test": "vitest run --passWithNoTests",
     "test:all": "cross-env VITEST_INTEGRATION=true vitest run --passWithNoTests",
     "test:watch": "vitest",
