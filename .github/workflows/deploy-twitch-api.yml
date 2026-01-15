@@ -60,7 +60,8 @@ jobs:
       - name: Run Twitch API Tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/twitch-api
-        run: pnpm test
+        # CI-only: build workspace deps so workspace:* package exports resolve in tests.
+        run: pnpm run build:deps && pnpm test
       
       - name: Generate coverage report
         if: steps.check_test.outputs.has_tests == 'true'
@@ -115,7 +116,8 @@ jobs:
       
       - name: Build Worker
         working-directory: serverless/twitch-api
-        run: pnpm run build:worker
+        # CI-only: ensure workspace deps are built before bundling.
+        run: pnpm run build:deps && pnpm run build:worker
         
       - name: Deploy Worker
         id: deploy

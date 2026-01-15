@@ -50,7 +50,9 @@ jobs:
       - name: Run Access Service Tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/access-service
-        run: pnpm test
+        # CI-only: ensure shared workspace packages are built before tests.
+        # This prevents missing dist/* entrypoints for workspace:* deps (api-framework, schemas, etc).
+        run: pnpm --filter "@strixun/types" run build && pnpm --filter "@strixun/service-client" run build && pnpm --filter "@strixun/schemas" run build && pnpm --filter "@strixun/api-framework" run build && pnpm test
       
       - name: Generate coverage report
         if: steps.check_test.outputs.has_tests == 'true'
@@ -105,7 +107,8 @@ jobs:
       
       - name: Build Worker
         working-directory: serverless/access-service
-        run: pnpm run build:worker
+        # CI-only: ensure workspace deps are built before bundling.
+        run: pnpm --filter "@strixun/types" run build && pnpm --filter "@strixun/service-client" run build && pnpm --filter "@strixun/schemas" run build && pnpm --filter "@strixun/api-framework" run build && pnpm run build:worker
       
       - name: Create KV Namespace (if needed)
         working-directory: serverless/access-service

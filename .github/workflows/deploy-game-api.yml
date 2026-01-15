@@ -47,7 +47,8 @@ jobs:
       - name: Run Game API Tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/game-api
-        run: pnpm test
+        # CI-only: ensure workspace deps are built so workspace:* package exports resolve.
+        run: pnpm --filter "@strixun/types" run build && pnpm --filter "@strixun/service-client" run build && pnpm --filter "@strixun/schemas" run build && pnpm --filter "@strixun/api-framework" run build && pnpm test
       
       - name: Generate coverage report
         if: steps.check_test.outputs.has_tests == 'true'
@@ -102,7 +103,8 @@ jobs:
       
       - name: Build Worker
         working-directory: serverless/game-api
-        run: pnpm run build:worker
+        # CI-only: ensure workspace deps are built before bundling.
+        run: pnpm --filter "@strixun/types" run build && pnpm --filter "@strixun/service-client" run build && pnpm --filter "@strixun/schemas" run build && pnpm --filter "@strixun/api-framework" run build && pnpm run build:worker
       
       - name: Deploy to Cloudflare Workers
         id: deploy

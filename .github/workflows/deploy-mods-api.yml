@@ -52,7 +52,8 @@ jobs:
           NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
           FILE_INTEGRITY_KEYPHRASE: ${{ secrets.FILE_INTEGRITY_KEYPHRASE }}
           MODS_ENCRYPTION_KEY: ${{ secrets.MODS_ENCRYPTION_KEY }}
-        run: pnpm test
+        # CI-only: ensure workspace deps are built so workspace:* package exports resolve.
+        run: pnpm --filter "@strixun/types" run build && pnpm --filter "@strixun/service-client" run build && pnpm --filter "@strixun/schemas" run build && pnpm --filter "@strixun/api-framework" run build && pnpm test
       
       - name: Generate coverage report
         if: steps.check_test.outputs.has_tests == 'true'
@@ -107,7 +108,8 @@ jobs:
       
       - name: Build Worker
         working-directory: serverless/mods-api
-        run: pnpm run build:worker
+        # CI-only: ensure workspace deps are built before bundling.
+        run: pnpm --filter "@strixun/types" run build && pnpm --filter "@strixun/service-client" run build && pnpm --filter "@strixun/schemas" run build && pnpm --filter "@strixun/api-framework" run build && pnpm run build:worker
       
       - name: Deploy to Cloudflare Workers
         id: deploy

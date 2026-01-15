@@ -47,7 +47,9 @@ jobs:
       - name: Run URL Shortener Tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/url-shortener
-        run: pnpm test
+        # CI-only: workspace:* deps (api-framework/types/etc) must be built so package.json "exports" resolve.
+        # Local dev uses dev:turbo; this workflow ensures production CI has built artifacts before Vitest runs.
+        run: pnpm run build:deps && pnpm test
 
       - name: Generate coverage report
         if: steps.check_test.outputs.has_tests == 'true'
