@@ -32,6 +32,34 @@
     "./svelte/StatusFlair": {
       "types": "./svelte/StatusFlair.svelte",
       "default": "./svelte/StatusFlair.svelte"
+    },
+    "./svelte/CodeBlock": {
+      "types": "./svelte/CodeBlock.svelte",
+      "default": "./svelte/CodeBlock.svelte"
+    },
+    "./svelte/MultiFileViewer": {
+      "types": "./svelte/MultiFileViewer.svelte",
+      "default": "./svelte/MultiFileViewer.svelte"
+    },
+    "./react/CodeBlock": {
+      "types": "./react/CodeBlock.tsx",
+      "default": "./react/CodeBlock.tsx"
+    },
+    "./react/MultiFileViewer": {
+      "types": "./react/MultiFileViewer.tsx",
+      "default": "./react/MultiFileViewer.tsx"
+    },
+    "./react/DataTable": {
+      "types": "./react/DataTable.tsx",
+      "default": "./react/DataTable.tsx"
+    },
+    "./svelte/DataTable": {
+      "types": "./svelte/DataTable.svelte",
+      "default": "./svelte/DataTable.svelte"
+    },
+    "./svelte/StrixunSuiteLink": {
+      "types": "./svelte/StrixunSuiteLink.svelte",
+      "default": "./svelte/StrixunSuiteLink.svelte"
     }
   },
   "scripts": {
@@ -41,9 +69,16 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.13.18",
+    "@tanstack/svelte-table": "^8.21.3",
+    "@tanstack/svelte-virtual": "^3.13.18",
+    "prismjs": "^1.29.0"
+  },
   "devDependencies": {
     "@chromatic-com/storybook": "^4.1.3",
+    "@cloudflare/workers-types": "^4.20241127.0",
     "@storybook/addon-a11y": "^8.6.15",
     "@storybook/addon-docs": "^8.6.15",
     "@storybook/addon-svelte-csf": "^5.0.10",
@@ -57,20 +92,20 @@
     "@testing-library/user-event": "^14.5.2",
     "@tsconfig/svelte": "^5.0.6",
     "@types/node": "^25.0.3",
+    "@types/prismjs": "^1.26.0",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "@types/react-window": "^1.8.8",
     "@types/styled-components": "^5.1.34",
-    "@cloudflare/workers-types": "^4.20241127.0",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "^4.0.16",
     "jsdom": "^25.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-window": "^1.8.10",
-    "styled-components": "^6.1.13",
     "sass": "^1.97.1",
     "storybook": "^8.6.15",
+    "styled-components": "^6.1.13",
     "svelte": "^5.46.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.0",
@@ -78,4 +113,3 @@
     "wrangler": "^4.54.0"
   }
 }
-

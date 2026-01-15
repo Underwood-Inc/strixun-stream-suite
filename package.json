@@ -3,7 +3,7 @@
   "version": "1.3.0",
   "description": "Strixun's Stream Suite - A comprehensive OBS Studio toolkit for animations, layouts, text cycling, and Twitch integration",
   "private": true,
-  "packageManager": "pnpm@9.15.1",
+  "packageManager": "pnpm@10.28.0",
   "type": "module",
   "scripts": {
     "build": "vite build",
@@ -12,7 +12,7 @@
     "build:all": "turbo run build --filter=./packages/* --filter=./dice-board-game --filter=./mods-hub --filter=./control-panel --filter=./serverless/*/app --filter=./serverless/*/dashboard --filter=.",
     "build:clean": "turbo run build --force",
     "dev": "pnpm build:packages && vite",
-    "dev:turbo": "turbo run dev --concurrency=15",
+    "dev:turbo": "turbo run dev --concurrency=22",
     "dev:ports": "node scripts/show-dev-ports.js",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
@@ -49,14 +49,12 @@
     "setup:cloud-ide": "node scripts/setup-cloud-ide.js",
     "test:setup-cloud-ide": "vitest run scripts/setup-cloud-ide.test.js",
     "test:setup-cloud-ide:coverage": "vitest run --coverage scripts/setup-cloud-ide.test.js",
-    "docker:dev": "docker-compose up",
-    "docker:dev:build": "docker-compose up --build",
-    "docker:dev:down": "docker-compose down",
     "storybook": "pnpm --filter @strixun/shared-components storybook",
     "build-storybook": "pnpm --filter @strixun/shared-components build-storybook"
   },
   "dependencies": {
     "@strixun/ad-carousel": "workspace:*",
+    "@strixun/auth-store": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/error-mapping": "workspace:*",
     "@strixun/otp-login": "workspace:*",
@@ -118,7 +116,9 @@
       "@react-three/drei": "^10.0.0-rc.1",
       "react-helmet-async": "^2.0.5",
       "react": "^19.0.0",
-      "react-dom": "^19.0.0"
+      "react-dom": "^19.0.0",
+      "@types/react": "^19.0.1",
+      "@types/react-dom": "^19.0.1"
     }
   }
 }

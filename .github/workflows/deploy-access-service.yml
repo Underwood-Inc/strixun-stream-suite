@@ -1,0 +1,240 @@
+name: Deploy Access Service
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'serverless/access-service/**'
+  workflow_dispatch:
+
+jobs:
+  # Test job - required before deployment (skip if no test script)
+  test:
+    runs-on: ubuntu-latest
+    name: Test Access Service
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/access-service
+        run: |
+          # Check for actual test files or vitest/jest config
+          if [ -f "vitest.config.ts" ] || [ -f "vitest.config.js" ] || [ -f "jest.config.js" ] || [ -f "jest.config.ts" ]; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          elif grep -q '"test"' package.json && ! grep -q 'Error: no test specified' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Access Service Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/access-service
+        # CI-only: ensure shared workspace packages are built before tests.
+        # This prevents missing dist/* entrypoints for workspace:* deps (api-framework, schemas, etc).
+        run: pnpm --filter "@strixun/types" run build && pnpm --filter "@strixun/service-client" run build && pnpm --filter "@strixun/schemas" run build && pnpm --filter "@strixun/api-framework" run build && pnpm test
+      
+      - name: Generate coverage report
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/access-service
+        run: pnpm test:coverage
+        continue-on-error: true
+
+      - name: Annotate coverage
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ -f "serverless/access-service/coverage/coverage-summary.json" ]; then
+            node scripts/annotate-coverage.js serverless/access-service/coverage/coverage-summary.json . "Access Service"
+          else
+            echo "::warning::Access Service coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
+
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: |
+          echo "⚠ No test script found in Access Service - skipping tests"
+          echo "::warning::Access Service has no test script - tests skipped"
+          echo "::notice::Action Required: Add test script to Access Service package.json"
+          echo "## ⚠ Access Service Tests" >> $GITHUB_STEP_SUMMARY
+          echo "No test script found - skipped (tests will be required when added)" >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    needs: test
+    if: needs.test.result == 'success' || needs.test.result == 'skipped'
+    runs-on: ubuntu-latest
+    name: Build and Deploy Access Service
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build Worker
+        working-directory: serverless/access-service
+        # CI-only: ensure workspace deps are built before bundling.
+        run: pnpm --filter "@strixun/types" run build && pnpm --filter "@strixun/service-client" run build && pnpm --filter "@strixun/schemas" run build && pnpm --filter "@strixun/api-framework" run build && pnpm run build:worker
+      
+      - name: Create KV Namespace (if needed)
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          # Create KV namespace if it doesn't exist
+          echo "Creating KV namespace ACCESS_KV (if it doesn't exist)..."
+          pnpm exec wrangler kv namespace create "ACCESS_KV" || true
+          
+          # List namespaces to verify creation and show ID
+          echo "Listing KV namespaces..."
+          pnpm exec wrangler kv namespace list || echo "Could not list namespaces"
+        continue-on-error: true
+      
+      - name: Deploy to Cloudflare Workers
+        id: deploy
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy --env=""
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "✗ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
+      
+      - name: Set Worker Secrets (if needed)
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET
+          fi
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS
+          fi
+          if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
+            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY
+          fi
+          if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
+            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE
+          fi
+          if [ -n "${{ secrets.CUSTOMER_API_URL }}" ]; then
+            echo "${{ secrets.CUSTOMER_API_URL }}" | pnpm exec wrangler secret put CUSTOMER_API_URL
+          fi
+          if [ -n "${{ secrets.SUPER_ADMIN_EMAILS }}" ]; then
+            echo "${{ secrets.SUPER_ADMIN_EMAILS }}" | pnpm exec wrangler secret put SUPER_ADMIN_EMAILS
+          fi
+        continue-on-error: true
+      
+      - name: Get KV Namespace ID
+        id: get-kv-id
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          # Extract namespace ID from wrangler.toml
+          KV_ID=$(grep -A 1 'binding = "ACCESS_KV"' wrangler.toml | grep 'id = ' | sed 's/.*id = "\([^"]*\)".*/\1/' || echo "")
+          if [ -n "$KV_ID" ] && [ "$KV_ID" != "PLACEHOLDER_ID" ]; then
+            echo "kv_id=$KV_ID" >> $GITHUB_OUTPUT
+            echo "Found KV namespace ID: $KV_ID"
+          else
+            echo "kv_id=" >> $GITHUB_OUTPUT
+            echo "⚠ Warning: KV namespace ID not found in wrangler.toml or still set to PLACEHOLDER_ID"
+            echo "Please update wrangler.toml with the actual namespace ID from: wrangler kv namespace list"
+          fi
+        continue-on-error: true
+      
+      - name: Seed Default Roles & Permissions
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          SERVICE_API_KEY: ${{ secrets.SERVICE_API_KEY }}
+        run: |
+          echo "Seeding default roles and permissions..."
+          # Get the worker URL from deployment
+          WORKER_URL="https://access-api.idling.app"
+          
+          # Seed defaults with service key authentication
+          curl -X POST "$WORKER_URL/access/seed" \
+            -H "X-Service-Key: $SERVICE_API_KEY" || echo "⚠ Seed endpoint not responding - may need manual seeding"
+        continue-on-error: true
+      
+      - name: Deployment Summary
+        run: |
+          echo "## 🔐 Access Service Deployed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The Access Service has been deployed to Cloudflare Workers." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service URL:** \`https://access.idling.app\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 API Endpoints:" >> $GITHUB_STEP_SUMMARY
+          echo "- Health: \`GET /health\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Check Permission: \`POST /access/check-permission\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Check Quota: \`POST /access/check-quota\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Get Customer Access: \`GET /access/:customerId\`" >> $GITHUB_STEP_SUMMARY
+          echo "- List Roles: \`GET /access/roles\`" >> $GITHUB_STEP_SUMMARY
+          echo "- List Permissions: \`GET /access/permissions\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Admin: Manage roles/permissions/quotas (requires X-Service-Key)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔑 Required Secrets:" >> $GITHUB_STEP_SUMMARY
+          echo "- \`JWT_SECRET\` - JWT verification (must match OTP Auth)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`SERVICE_API_KEY\` - Service-to-service auth (REQUIRED for all write operations)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ALLOWED_ORIGINS\` - CORS origins (optional)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`NETWORK_INTEGRITY_KEYPHRASE\` - Network security (optional)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          KV_ID="${{ steps.get-kv-id.outputs.kv_id }}"
+          if [ -n "$KV_ID" ]; then
+            echo "**KV Namespace ID:** \`$KV_ID\` ✓" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**⚠ Action Required:** Update \`wrangler.toml\` with the KV namespace ID from \`wrangler kv namespace list\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🌱 Post-Deployment:" >> $GITHUB_STEP_SUMMARY
+          echo "Default roles and permissions have been seeded automatically." >> $GITHUB_STEP_SUMMARY
+          echo "If seeding failed, run manually with SERVICE_API_KEY:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "curl -X POST https://access.idling.app/access/seed -H \"X-Service-Key: \$SERVICE_API_KEY\"" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+

@@ -7,8 +7,9 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
-import { isSuperAdminEmail } from '../../utils/admin.js';
+import { isSuperAdmin } from '../../utils/admin.js';
 import type { ModMetadata, ModListResponse } from '../../types/mod.js';
+import type { AuthResult } from '../../utils/auth.js';
 
 /**
  * Handle list mods request
@@ -16,7 +17,7 @@ import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 export async function handleListMods(
     request: Request,
     env: Env,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: AuthResult | null
 ): Promise<Response> {
     try {
         const url = new URL(request.url);
@@ -29,7 +30,7 @@ export async function handleListMods(
         const visibility = url.searchParams.get('visibility') || 'public'; // Default to public
 
         // Check if customer is super admin (once, not in loop)
-        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        const isAdmin = auth?.customerId ? await isSuperAdmin(auth.customerId, auth.jwtToken, env) : false;
 
         // Get all mod IDs from global public list
         // This list contains ALL public mods regardless of customer
@@ -259,7 +260,8 @@ export async function handleListMods(
         };
 
         const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            credentials: true,
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
 
         return new Response(JSON.stringify(response), {
@@ -278,7 +280,8 @@ export async function handleListMods(
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while listing mods'
         );
         const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            credentials: true,
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

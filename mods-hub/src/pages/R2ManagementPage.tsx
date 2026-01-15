@@ -15,11 +15,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 import { AdminNavigation } from '../components/admin/AdminNavigation';
-import { listR2Files, detectDuplicates, deleteR2File, bulkDeleteR2Files, type R2FileInfo } from '../services/api';
+import { listR2Files, detectDuplicates, deleteR2File, bulkDeleteR2Files, type R2FileInfo, API_BASE_URL } from '../services/mods';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import { getButtonStyles } from '../utils/buttonStyles';
 import { getBadgeStyles, getCardStyles, type BadgeType } from '../utils/sharedStyles';
-import { API_BASE_URL } from '../services/api';
 import { formatDate, formatTime } from '@strixun/shared-config/date-utils';
 
 const PageContainer = styled.div`

@@ -4,7 +4,7 @@
  * Handles OTP verification, user creation, and JWT token generation
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getOtpCacheHeaders } from '../../utils/cache-headers.js';
 import { hashEmail, constantTimeEquals } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
@@ -140,7 +140,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             }), {
                 status: 400,
                 headers: { 
-                    ...getCorsHeaders(env, request), 
+                    ...getCorsHeadersRecord(env, request), 
                     'Content-Type': 'application/problem+json',
                 },
             });
@@ -161,7 +161,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             }), {
                 status: 400,
                 headers: { 
-                    ...getCorsHeaders(env, request), 
+                    ...getCorsHeadersRecord(env, request), 
                     'Content-Type': 'application/problem+json',
                 },
             });
@@ -224,7 +224,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             }), {
                 status: 429,
                 headers: { 
-                    ...getCorsHeaders(env, request), 
+                    ...getCorsHeadersRecord(env, request), 
                     'Content-Type': 'application/problem+json',
                 },
             });
@@ -262,7 +262,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             return new Response(JSON.stringify(errorData), {
                 status: 401,
                 headers: { 
-                    ...getCorsHeaders(env, request), 
+                    ...getCorsHeadersRecord(env, request), 
                     'Content-Type': 'application/problem+json',
                 },
             });
@@ -291,7 +291,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             }), {
                 status: 500,
                 headers: {
-                    ...getCorsHeaders(env, request),
+                    ...getCorsHeadersRecord(env, request),
                     'Content-Type': 'application/problem+json',
                 },
             });
@@ -355,14 +355,79 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             lastLogin: session.lastLogin,
         };
         
+        // Extract API key ID from request (for inter-tenant SSO scoping)
+        // API keys are in X-OTP-API-Key header
+        let keyId: string | undefined = undefined;
+        const apiKeyHeader = request.headers.get('X-OTP-API-Key');
+        if (apiKeyHeader) {
+            const apiKey = apiKeyHeader.trim();
+            // Verify and extract keyId from API key
+            try {
+                const { verifyApiKey } = await import('../../services/api-key.js');
+                const apiKeyVerification = await verifyApiKey(apiKey, env);
+                if (apiKeyVerification && apiKeyVerification.customerId === session.customerId) {
+                    keyId = apiKeyVerification.keyId;
+                    console.log(`[OTP Verify] Using API key for SSO scoping:`, {
+                        keyId,
+                        customerId: session.customerId
+                    });
+                }
+            } catch (error) {
+                console.error('[OTP Verify] Failed to verify API key for SSO scoping:', error);
+                // Continue without keyId - SSO scoping is optional
+            }
+        }
+        
         // CRITICAL: This will NOT return OTP email in response body
-        const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request);
+        // Pass keyId for inter-tenant SSO scoping
+        const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request, keyId);
+        
+        // Set HttpOnly cookie for current domain only
+        // CRITICAL: Browser rejects Set-Cookie for domains that don't match response origin
+        // Example: Response from auth.idling.app can only set cookie for .idling.app, NOT .short.army
+        const isProduction = env.ENVIRONMENT === 'production';
+        
+        // Extract current request's root domain
+        const url = new URL(request.url);
+        const hostname = url.hostname;
+        
+        // Determine cookie domain based on current hostname
+        let cookieDomain: string;
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+            cookieDomain = 'localhost';
+        } else {
+            // Extract root domain (last 2 parts: example.com from sub.example.com)
+            const parts = hostname.split('.');
+            const rootDomain = parts.slice(-2).join('.');
+            cookieDomain = `.${rootDomain}`;
+        }
+        
+        // Create single cookie for current domain
+        const cookieParts = isProduction ? [
+            `auth_token=${tokenResponse.token}`,
+            `Domain=${cookieDomain}`,
+            'Path=/',
+            'HttpOnly',
+            'Secure',
+            'SameSite=Lax',
+            `Max-Age=${tokenResponse.expires_in}`
+        ] : [
+            `auth_token=${tokenResponse.token}`,
+            `Domain=${cookieDomain}`,
+            'Path=/',
+            'HttpOnly',
+            'SameSite=Lax',
+            `Max-Age=${tokenResponse.expires_in}`
+        ];
+        
+        const cookieValue = cookieParts.join('; ');
         
         return new Response(JSON.stringify(tokenResponse), {
-            headers: { 
-                ...getCorsHeaders(env, request), 
+            headers: {
+                ...getCorsHeadersRecord(env, request),
                 ...getOtpCacheHeaders(),
                 'Content-Type': 'application/json',
+                'Set-Cookie': cookieValue,
             },
         });
     } catch (error: any) {

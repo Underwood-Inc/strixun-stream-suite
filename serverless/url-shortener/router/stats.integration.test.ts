@@ -73,7 +73,7 @@ describe('Stats Endpoint Integration', () => {
       const request = new Request('https://s.idling.app/api/stats', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${mockJWTToken}`,
+          'Cookie': `auth_token=${mockJWTToken}`,
         },
       });
 
@@ -103,7 +103,7 @@ describe('Stats Endpoint Integration', () => {
       const request = new Request('https://s.idling.app/api/stats', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${mockJWTToken}`,
+          'Cookie': `auth_token=${mockJWTToken}`,
         },
       });
 
@@ -135,7 +135,7 @@ describe('Stats Endpoint Integration', () => {
       const request = new Request('https://s.idling.app/api/stats', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${mockJWTToken}`,
+          'Cookie': `auth_token=${mockJWTToken}`,
         },
       });
 
@@ -199,7 +199,7 @@ describe('Stats Endpoint Integration', () => {
       const request = new Request('https://s.idling.app/api/stats', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${mockJWTToken}`,
+          'Cookie': `auth_token=${mockJWTToken}`,
         },
       });
 

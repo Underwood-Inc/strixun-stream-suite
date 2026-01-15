@@ -3,6 +3,7 @@ import path from 'path';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  clearScreen: false, // Prevent console clearing in turbo dev mode
   plugins: [svelte({
     compilerOptions: {
       css: 'injected',
@@ -52,7 +53,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: path.resolve(__dirname, 'dist'),
+    outDir: path.resolve(__dirname, '../../dist/otp-auth-service-dashboard'),
     emptyOutDir: true,
     base: '/',
     rollupOptions: {
@@ -83,23 +84,89 @@ export default defineConfig({
   },
   server: {
     port: 5174,
+    strictPort: true,
     open: false,
     proxy: {
       '/auth': {
         target: 'http://localhost:8787',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false,
+        // CRITICAL: Forward cookies for HttpOnly cookie authentication
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) {
+              console.log('[Vite Proxy] /auth - Cookies sent:', req.headers.cookie);
+            }
+          });
+          proxy.on('proxyRes', (proxyRes) => {
+            const setCookie = proxyRes.headers['set-cookie'];
+            if (setCookie) {
+              console.log('[Vite Proxy] /auth - Set-Cookie received:', setCookie);
+            }
+          });
+        },
+      },
+      '/signup': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/signup/verify': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+        secure: false,
       },
       '/admin': {
         target: 'http://localhost:8787',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false,
+        // CRITICAL: Forward cookies for HttpOnly cookie authentication
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) {
+              console.log('[Vite Proxy] /admin - Cookies sent:', req.headers.cookie);
+            }
+          });
+        },
       },
       '/customer': {
         target: 'http://localhost:8790',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false,
+        // CRITICAL: Forward cookies for HttpOnly cookie authentication
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) {
+              console.log('[Vite Proxy] /customer - Cookies sent:', req.headers.cookie);
+            }
+          });
+        },
+      },
+      '/access': {
+        target: 'http://localhost:8795',  // Access Service
+        changeOrigin: true,
+        secure: false,
+        // CRITICAL: Forward cookies for HttpOnly cookie authentication
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) {
+              console.log('[Vite Proxy] /access - Cookies sent:', req.headers.cookie);
+            }
+          });
+        },
       },
       '/openapi.json': {
         target: 'http://localhost:8787',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false,
       }
     }
   }

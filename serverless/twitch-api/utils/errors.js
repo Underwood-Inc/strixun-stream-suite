@@ -1,29 +1,41 @@
 /**
- * Error utilities using API framework
+ * Twitch API - Error Utilities
+ * 
+ * Re-exports from @strixun/error-utils for centralized error handling.
+ * 
+ * @deprecated Import directly from '@strixun/error-utils' in new code
  */
 
-import { createRFC7807Error } from '@strixun/api-framework/enhanced';
+import {
+    createRFC7807,
+    getTypeUri,
+    getTitle,
+} from '@strixun/error-utils';
+
+// Re-export everything from error-utils for convenience
+export * from '@strixun/error-utils';
 
 /**
- * Convert Request to APIRequest
- */
-function requestToAPIRequest(request) {
-    const url = new URL(request.url);
-    return {
-        id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        method: request.method,
-        url: request.url,
-        path: url.pathname,
-        params: Object.fromEntries(url.searchParams.entries()),
-        headers: Object.fromEntries(request.headers.entries()),
-    };
-}
-
-/**
- * Create RFC 7807 error from Request
+ * Legacy createError function for backward compatibility
+ * 
+ * @deprecated Use createRFC7807 from '@strixun/error-utils' instead
  */
 export function createError(request, status, title, detail, additionalFields) {
-    const apiRequest = requestToAPIRequest(request);
-    return createRFC7807Error(apiRequest, status, title, detail, additionalFields);
-}
+    const url = new URL(request.url);
+    
+    const error = createRFC7807(status, detail, {
+        title,
+        instance: url.pathname,
+        extensions: additionalFields,
+    });
 
+    // Flatten extensions for backward compatibility with existing handlers
+    return {
+        type: error.type,
+        title: error.title,
+        status: error.status,
+        detail: error.detail,
+        instance: error.instance,
+        ...additionalFields,
+    };
+}

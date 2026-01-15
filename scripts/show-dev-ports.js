@@ -41,11 +41,27 @@ const services = [
     framework: 'React',
   },
   {
+    name: 'Access Hub',
+    location: 'access-hub',
+    port: 5178,
+    type: 'Frontend',
+    url: 'http://localhost:5178',
+    framework: 'React',
+  },
+  {
     name: 'URL Shortener App',
     location: 'serverless/url-shortener/app',
     port: 5176,
     type: 'Frontend',
     url: 'http://localhost:5176',
+    framework: 'React',
+  },
+  {
+    name: 'Dice Board Game',
+    location: 'dice-board-game',
+    port: 5179,
+    type: 'Frontend',
+    url: 'http://localhost:5179',
     framework: 'React',
   },
   // Backend Workers
@@ -84,7 +100,7 @@ const services = [
   {
     name: 'Game API',
     location: 'serverless/game-api',
-    port: 8791,
+    port: 8794,
     type: 'Backend (Worker)',
     url: null,
     framework: 'Cloudflare Worker',
@@ -105,70 +121,112 @@ const services = [
     url: null,
     framework: 'Cloudflare Worker',
   },
+  {
+    name: 'Access Service API',
+    location: 'serverless/access-service',
+    port: 8795,
+    type: 'Backend (Worker)',
+    url: null,
+    framework: 'Cloudflare Worker',
+  },
 ];
 
-function formatTable(data) {
+async function probeUrl(url, timeoutMs) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      redirect: 'manual',
+    });
+    return { ok: true, status: res.status };
+  } catch {
+    return { ok: false, status: null };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function resolveFrontendUrl(service) {
+  // Only check the exact configured port - no scanning.
+  // The old scanning approach caused false positives where a different service
+  // running at a higher port would be reported for multiple services.
+  const url = service.url;
+  const probe = await probeUrl(url, 350);
+  if (probe.ok) {
+    return { url, port: service.port, status: 'UP' };
+  }
+  return { url: service.url, port: service.port, status: 'DOWN' };
+}
+
+function padRight(value, width) {
+  const str = String(value);
+  return str.length >= width ? str.slice(0, width) : str + ' '.repeat(width - str.length);
+}
+
+async function formatTable(data) {
   const frontends = data.filter(s => s.type === 'Frontend');
   const backends = data.filter(s => s.type === 'Backend (Worker)');
 
   console.log('\n' + '='.repeat(80));
-  console.log('🚀  DEVELOPMENT SERVERS SUMMARY');
+  console.log('DEVELOPMENT SERVERS SUMMARY');
   console.log('='.repeat(80) + '\n');
 
   if (frontends.length > 0) {
-    console.log('📱  FRONTEND APPLICATIONS\n');
-    console.log('┌─────────────────────────────────────┬────────┬─────────────────────────────┐');
-    console.log('│ Application                         │ Port   │ URL                         │');
-    console.log('├─────────────────────────────────────┼────────┼─────────────────────────────┤');
-    
-    frontends.forEach(service => {
-      const name = service.name.padEnd(35);
-      const port = String(service.port).padEnd(6);
-      const url = service.url.padEnd(27);
-      console.log(`│ ${name} │ ${port} │ ${url} │`);
-    });
-    
-    console.log('└─────────────────────────────────────┴────────┴─────────────────────────────┘\n');
+    console.log('FRONTEND APPLICATIONS\n');
+    console.log(padRight('Application', 35) + ' | ' + padRight('Port', 6) + ' | ' + padRight('Status', 6) + ' | URL');
+    console.log('-'.repeat(80));
+
+    for (const service of frontends) {
+      const resolved = await resolveFrontendUrl(service);
+      console.log(
+        padRight(service.name, 35) +
+          ' | ' +
+          padRight(resolved.port, 6) +
+          ' | ' +
+          padRight(resolved.status, 6) +
+          ' | ' +
+          resolved.url
+      );
+    }
+    console.log('');
   }
 
   if (backends.length > 0) {
-    console.log('⚙️   BACKEND WORKERS\n');
-    console.log('┌──────────────────────────────────────┬────────┬──────────────────────────────┐');
-    console.log('│ Service                              │ Port   │ Framework                    │');
-    console.log('├──────────────────────────────────────┼────────┼──────────────────────────────┤');
-    
+    console.log('BACKEND WORKERS\n');
+    console.log(padRight('Service', 36) + ' | ' + padRight('Port', 6) + ' | Framework');
+    console.log('-'.repeat(80));
     backends.forEach(service => {
-      const name = service.name.padEnd(36);
-      const port = String(service.port).padEnd(6);
-      const framework = service.framework.padEnd(28);
-      console.log(`│ ${name} │ ${port} │ ${framework} │`);
+      console.log(
+        padRight(service.name, 36) +
+          ' | ' +
+          padRight(service.port, 6) +
+          ' | ' +
+          service.framework
+      );
     });
-    
-    console.log('└──────────────────────────────────────┴────────┴──────────────────────────────┘\n');
+    console.log('');
   }
 
-  console.log('💡  Quick Access:\n');
-  frontends.forEach(service => {
-    console.log(`   ${service.name.padEnd(30)} → ${service.url}`);
-  });
-  
-  // Show backend services that have web UIs
-  const backendsWithUrls = backends.filter(s => s.url);
-  if (backendsWithUrls.length > 0) {
-    backendsWithUrls.forEach(service => {
-      console.log(`   ${service.name.padEnd(30)} → ${service.url}`);
-    });
+  console.log('Quick access:\n');
+  for (const service of frontends) {
+    const resolved = await resolveFrontendUrl(service);
+    console.log('  ' + padRight(service.name, 30) + ' -> ' + resolved.url);
   }
 
   console.log('\n' + '='.repeat(80));
-  console.log(`✓  Total: ${frontends.length} frontend(s) + ${backends.length} backend worker(s) = ${data.length} service(s)`);
+  console.log(`Total: ${frontends.length} frontend(s) + ${backends.length} backend worker(s) = ${data.length} service(s)`);
   console.log('='.repeat(80) + '\n');
 }
 
 // Run if called directly
 if (import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/')) || 
     import.meta.url.includes('show-dev-ports.js')) {
-  formatTable(services);
+  formatTable(services).catch((err) => {
+    console.error('Failed to render dev ports summary:', err);
+    process.exitCode = 1;
+  });
 }
 
 export { services, formatTable };

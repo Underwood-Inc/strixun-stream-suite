@@ -23,7 +23,7 @@
  * This code path is NEVER reached in production deployments.
  */
 
-import { getCorsHeaders } from '../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../utils/cors.js';
 import { hashEmail } from '../utils/crypto.js';
 
 interface Env {
@@ -69,16 +69,18 @@ function isDevModeEnabled(env: Env): boolean {
         return false; // PRODUCTION: Always returns false here
     }
     
-    // ADDITIONAL SAFETY: Also require test Resend API key
+    // ADDITIONAL SAFETY: If RESEND_API_KEY is provided, it MUST be a test key
+    // This prevents accidentally using a real production key in dev mode
+    // BUT: If no RESEND_API_KEY is provided, that's OK - OTPs will be console logged
     // Production keys never start with 're_test_' (that's a test key prefix)
-    // This provides defense in depth - even if ENVIRONMENT check fails, this also fails
     // PRODUCTION: resendKey will be a real key (e.g., 're_abc123...') -> returns false
-    if (!resendKey || typeof resendKey !== 'string' || !resendKey.startsWith('re_test_')) {
+    if (resendKey && typeof resendKey === 'string' && !resendKey.startsWith('re_test_')) {
+        // Has a key, but it's not a test key - reject (might be production key)
         return false; // PRODUCTION: Always returns false here (real keys don't start with 're_test_')
     }
     
-    // Both checks passed - we're in test/development mode
-    // PRODUCTION: This line is NEVER reached
+    // ENVIRONMENT check passed, and either no RESEND_API_KEY or it's a test key
+    // PRODUCTION: This line is NEVER reached (envMode='production' fails first check)
     return true;
 }
 
@@ -107,7 +109,7 @@ async function handleGetOTP(request: Request, env: Env): Promise<Response> {
             message: 'Dev endpoints are only available when ENVIRONMENT is set to "test" or "development" with test API keys'
         }), {
             status: 403,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 
@@ -121,7 +123,7 @@ async function handleGetOTP(request: Request, env: Env): Promise<Response> {
                 example: '/dev/otp?email=user@example.com'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -131,7 +133,7 @@ async function handleGetOTP(request: Request, env: Env): Promise<Response> {
                 error: 'Invalid email format' 
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -147,7 +149,7 @@ async function handleGetOTP(request: Request, env: Env): Promise<Response> {
                 email: email.toLowerCase().trim()
             }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -157,7 +159,7 @@ async function handleGetOTP(request: Request, env: Env): Promise<Response> {
             expiresIn: '10 minutes',
             note: 'This endpoint is only available in test/development mode'
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error: any) {
         console.error('[Dev Routes] Error getting OTP:', error);
@@ -166,7 +168,7 @@ async function handleGetOTP(request: Request, env: Env): Promise<Response> {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }

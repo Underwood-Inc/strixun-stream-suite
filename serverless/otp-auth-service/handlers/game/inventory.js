@@ -5,7 +5,7 @@
  * Authentication is handled by the route wrapper with automatic encryption
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getCustomerKey } from '../../services/customer.js';
 
 /**
@@ -25,7 +25,7 @@ async function handleGetInventory(request, env, userId, customerId) {
                 message: 'characterId query parameter is required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -52,7 +52,7 @@ async function handleGetInventory(request, env, userId, customerId) {
             equipment
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Get inventory error:', error);
@@ -61,7 +61,7 @@ async function handleGetInventory(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -83,7 +83,7 @@ async function handleAddItem(request, env, userId, customerId) {
                 message: 'characterId and item are required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -104,7 +104,7 @@ async function handleAddItem(request, env, userId, customerId) {
                 message: 'No space in inventory'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -144,7 +144,7 @@ async function handleAddItem(request, env, userId, customerId) {
             inventory
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Add item error:', error);
@@ -153,7 +153,7 @@ async function handleAddItem(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -176,7 +176,7 @@ async function handleRemoveItem(request, env, userId, customerId) {
                 message: 'itemId and characterId query parameters are required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -190,7 +190,7 @@ async function handleRemoveItem(request, env, userId, customerId) {
                 message: 'Inventory not found'
             }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -202,7 +202,7 @@ async function handleRemoveItem(request, env, userId, customerId) {
                 message: 'Item not found in inventory'
             }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -229,7 +229,7 @@ async function handleRemoveItem(request, env, userId, customerId) {
             inventory
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Remove item error:', error);
@@ -238,7 +238,7 @@ async function handleRemoveItem(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -260,7 +260,7 @@ async function handleEquipItem(request, env, userId, customerId) {
                 message: 'characterId, itemId, and slot are required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -290,7 +290,7 @@ async function handleEquipItem(request, env, userId, customerId) {
             equipment
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Equip item error:', error);
@@ -299,7 +299,7 @@ async function handleEquipItem(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -323,7 +323,7 @@ export async function handleGameInventory(request, env, userId, customerId, acti
         message: 'Invalid action'
     }), {
         status: 400,
-        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
     });
 }
 

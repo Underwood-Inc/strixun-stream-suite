@@ -4,7 +4,7 @@
  * NOTE: These endpoints require super-admin authentication
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { hashEmail } from '../../utils/crypto.js';
 import { hashIP } from '../../services/rate-limit.js';
 
@@ -68,7 +68,7 @@ export async function handleClearRateLimit(request, env, customerId = null) {
                 detail: 'Either email address or IP address is required to clear rate limit. IP will be auto-detected from request if not provided.'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -78,7 +78,7 @@ export async function handleClearRateLimit(request, env, customerId = null) {
             cleared: cleared,
             detectedIp: ip || null
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Clear rate limit error:', error);
@@ -87,7 +87,7 @@ export async function handleClearRateLimit(request, env, customerId = null) {
             detail: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }

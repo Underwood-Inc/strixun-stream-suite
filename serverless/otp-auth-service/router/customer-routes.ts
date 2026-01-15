@@ -4,7 +4,7 @@
  * CRITICAL: All endpoints use /customer/ prefix (not /user/)
  */
 
-import { getCorsHeaders } from '../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../utils/cors.js';
 import { verifyJWT, getJWTSecret } from '../utils/crypto.js';
 import * as customerHandlers from '../handlers/customer/displayName.js';
 import * as twitchHandlers from '../handlers/customer/twitch.js';
@@ -26,6 +26,7 @@ interface AuthResult {
     error?: string;
     customerId?: string;
     email?: string;
+    jwtToken?: string;
 }
 
 interface RouteResult {
@@ -35,15 +36,23 @@ interface RouteResult {
 
 /**
  * Authenticate request using JWT token
+ * ONLY checks HttpOnly cookie - NO Authorization header fallback
  */
 async function authenticateRequest(request: Request, env: Env): Promise<AuthResult> {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return { authenticated: false, status: 401, error: 'Authorization header required' };
+    // ONLY check HttpOnly cookie - NO Authorization header fallback
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) {
+        return { authenticated: false, status: 401, error: 'Authentication required. Please authenticate with HttpOnly cookie.' };
+    }
+
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    if (!authCookie) {
+        return { authenticated: false, status: 401, error: 'Authentication required. Please authenticate with HttpOnly cookie.' };
     }
 
     // CRITICAL: Trim token to ensure it matches the token used for encryption
-    const token = authHeader.substring(7).trim();
+    const token = authCookie.substring('auth_token='.length).trim();
     const jwtSecret = getJWTSecret(env);
     const payload = await verifyJWT(token, jwtSecret);
 
@@ -55,6 +64,7 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
         authenticated: true,
         customerId: payload.customerId || payload.userId || payload.sub,
         email: payload.email,
+        jwtToken: token,
     };
 }
 
@@ -75,7 +85,7 @@ async function handleCustomerRoute(
                 code: 'AUTHENTICATION_REQUIRED'
             }), {
                 status: auth.status || 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             }),
             customerId: null
         };
@@ -85,10 +95,8 @@ async function handleCustomerRoute(
     const handlerResponse = await handler(request, env);
 
     // If JWT token is present, encrypt the response (automatic E2E encryption)
-    // CRITICAL: Trim token to ensure it matches the token used for decryption
-    // The frontend trims tokens, so we must trim here too to prevent token hash mismatches
-    const authHeader = request.headers.get('Authorization');
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
+    // CRITICAL: Use JWT token from auth result (already extracted from HttpOnly cookie)
+    const token = auth.jwtToken || null;
     
     if (token && token.length >= 10 && handlerResponse.ok) {
         try {
@@ -228,6 +236,84 @@ export async function handleCustomerRoutes(
             env,
             auth
         );
+    }
+    
+    // Handle /customer/me - use standard fetchCustomerByCustomerId utility like everywhere else
+    if (path === '/customer/me' && request.method === 'GET') {
+        if (!auth?.customerId) {
+            return {
+                response: new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                    status: 401,
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: null,
+            };
+        }
+
+        try {
+            const { fetchCustomerByCustomerId } = await import('@strixun/api-framework');
+            const customer = await fetchCustomerByCustomerId(auth.customerId, env);
+
+            if (!customer) {
+                return {
+                    response: new Response(JSON.stringify({ error: 'Customer not found' }), {
+                        status: 404,
+                        headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
+                    }),
+                    customerId: auth.customerId,
+                };
+            }
+
+            // Return customer data with displayName (email already stripped by customer-api)
+            return {
+                response: new Response(JSON.stringify(customer), {
+                    status: 200,
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: auth.customerId,
+            };
+        } catch (error) {
+            console.error('[CustomerRoutes] Failed to fetch customer data:', error);
+            return {
+                response: new Response(JSON.stringify({ error: 'Failed to fetch customer data' }), {
+                    status: 500,
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: auth.customerId,
+            };
+        }
+    }
+    
+    // PROXY: Forward any other unhandled /customer/* routes to customer-api service
+    if (path.startsWith('/customer')) {
+        try {
+            const customerApiUrl = env.CUSTOMER_API_URL || 'https://customer-api.idling.app';
+            const targetUrl = new URL(path, customerApiUrl);
+            
+            // Forward the request with auth headers
+            const headers = new Headers(request.headers);
+            
+            const proxyResponse = await fetch(targetUrl.toString(), {
+                method: request.method,
+                headers: headers,
+                body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.clone().arrayBuffer() : undefined,
+            });
+            
+            // Return the proxied response
+            return {
+                response: proxyResponse,
+                customerId: auth?.customerId || null
+            };
+        } catch (error) {
+            console.error('[Customer Routes] Proxy to customer-api failed:', error);
+            return {
+                response: new Response(JSON.stringify({ error: 'Failed to reach customer API' }), {
+                    status: 503,
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: null
+            };
+        }
     }
     
     return null; // Route not matched

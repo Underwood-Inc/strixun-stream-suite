@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../stores/auth';
+import { useAuthStore, type AuthStore } from '../../stores/auth';
 import { useUploadPermission } from '../../hooks/useUploadPermission';
 import { useDrafts } from '../../hooks/useMods';
 import { colors, spacing, media } from '../../theme';
@@ -196,7 +196,7 @@ export function Header() {
     // Use shallow comparison selector to prevent unnecessary re-renders
     // This ensures the component updates when session is restored
     const { customer, isAuthenticated, isSuperAdmin, logout } = useAuthStore(
-        useShallow(state => ({
+        useShallow((state: AuthStore) => ({
             customer: state.customer,
             isAuthenticated: state.isAuthenticated,
             isSuperAdmin: state.isSuperAdmin,

@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as apiModule from './api.js';
+import * as apiModule from './mods/index.js';
 import { createAPIClient, encryptBinaryWithJWT, APIClient } from '@strixun/api-framework/client';
 
 // Mock fetch globally

@@ -4,6 +4,7 @@
     "module": "ESNext",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
+    "noEmit": false,
     "resolveJsonModule": true,
     "allowJs": true,
     "checkJs": false,
@@ -17,12 +18,13 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "types": ["@cloudflare/workers-types"],
-    "outDir": "../../dist/api-framework",
-    // Note: TypeScript outDir uses relative paths, which is fine for tsconfig
+    "outDir": "./dist",
     "rootDir": ".",
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "incremental": true,
+    "composite": true
   },
   "include": [
     "**/*.ts",

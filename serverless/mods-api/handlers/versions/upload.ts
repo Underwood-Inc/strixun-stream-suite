@@ -8,13 +8,14 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
-import { isEmailAllowed } from '../../utils/auth.js';
-import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
+import { calculateStrixunHash } from '../../utils/hash.js';
 import { MAX_VERSION_FILE_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { checkUploadQuota, trackUpload } from '../../utils/upload-quota.js';
-import { isSuperAdminEmail } from '../../utils/admin.js';
+import { isSuperAdmin } from '../../utils/admin.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion, VersionUploadRequest } from '../../types/mod.js';
+import type { Env } from '../../worker.js';
+import type { AuthResult } from '../../utils/auth.js';
 
 /**
  * Generate unique version ID
@@ -25,12 +26,15 @@ function generateVersionId(): string {
 
 /**
  * Handle upload version request
+ * UNIFIED SYSTEM: Supports both main mod versions and variant versions
+ * @param variantId - Optional variant ID for variant versions, null/undefined for main mod versions
  */
 export async function handleUploadVersion(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: AuthResult,
+    variantId?: string | null
 ): Promise<Response> {
     try {
         // Check if uploads are globally enabled
@@ -38,8 +42,7 @@ export async function handleUploadVersion(
         const uploadsEnabled = await areUploadsEnabled(env);
         if (!uploadsEnabled) {
             const rfcError = createError(request, 503, 'Uploads Disabled', 'Mod uploads are currently disabled globally. Please try again later.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 503,
@@ -49,30 +52,15 @@ export async function handleUploadVersion(
                 },
             });
         }
-        // Check email whitelist
-        if (!isEmailAllowed(auth.email, env)) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Your email address is not authorized to upload mod versions');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
+        // All authenticated users can upload versions for their own mods (authorization check happens below)
 
         // CRITICAL: Validate customerId is present - required for data scoping and display name lookups
         if (!auth.customerId) {
             console.error('[UploadVersion] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
-                email: auth.email,
                 note: 'Rejecting version upload - customerId is required for data scoping and display name lookups'
             });
             const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod version uploads. Please ensure your account has a valid customer association.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -91,8 +79,7 @@ export async function handleUploadVersion(
 
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -106,8 +93,7 @@ export async function handleUploadVersion(
         // Check authorization
         if (mod.authorId !== auth.customerId) {
             const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to upload versions for this mod');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 403,
@@ -119,26 +105,22 @@ export async function handleUploadVersion(
         }
 
         // Check upload quota (skip for super admins)
-        const isSuperAdmin = await isSuperAdminEmail(auth.email, env);
-        if (!isSuperAdmin) {
-            const quotaCheck = await checkUploadQuota(auth.customerId, env);
+        const isSuper = await isSuperAdmin(auth.customerId, auth.jwtToken, env);
+        if (!isSuper) {
+            const quotaCheck = await checkUploadQuota(auth.customerId, env, auth.jwtToken);
             if (!quotaCheck.allowed) {
-                const quotaMessage = quotaCheck.reason === 'daily_quota_exceeded'
-                    ? `Daily upload limit exceeded. You have uploaded ${quotaCheck.usage.daily} of ${quotaCheck.quota.maxUploadsPerDay} allowed uploads today.`
-                    : `Monthly upload limit exceeded. You have uploaded ${quotaCheck.usage.monthly} of ${quotaCheck.quota.maxUploadsPerMonth} allowed uploads this month.`;
+                const quotaMessage = `Upload quota exceeded. Limit: ${quotaCheck.limit}, Remaining: ${quotaCheck.remaining}. Resets at ${new Date(quotaCheck.resetAt).toLocaleString()}.`;
                 
                 const rfcError = createError(request, 429, 'Upload Quota Exceeded', quotaMessage);
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 429,
                     headers: {
                         'Content-Type': 'application/problem+json',
-                        'X-Quota-Limit-Daily': quotaCheck.quota.maxUploadsPerDay.toString(),
-                        'X-Quota-Remaining-Daily': Math.max(0, quotaCheck.quota.maxUploadsPerDay - quotaCheck.usage.daily).toString(),
-                        'X-Quota-Limit-Monthly': quotaCheck.quota.maxUploadsPerMonth.toString(),
-                        'X-Quota-Remaining-Monthly': Math.max(0, quotaCheck.quota.maxUploadsPerMonth - quotaCheck.usage.monthly).toString(),
+                        'X-Quota-Limit': quotaCheck.limit.toString(),
+                        'X-Quota-Remaining': quotaCheck.remaining.toString(),
+                        'X-Quota-Reset': quotaCheck.resetAt,
                         ...Object.fromEntries(corsHeaders.entries()),
                     },
                 });
@@ -151,8 +133,7 @@ export async function handleUploadVersion(
         
         if (!file) {
             const rfcError = createError(request, 400, 'File Required', 'File is required for version upload');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -172,8 +153,7 @@ export async function handleUploadVersion(
                 'File Too Large',
                 sizeValidation.error || `File size exceeds maximum allowed size of ${MAX_VERSION_FILE_SIZE / (1024 * 1024)}MB`
             );
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 413,
@@ -208,8 +188,7 @@ export async function handleUploadVersion(
                 'Invalid File Type', 
                 `File type "${fileExtension}" is not allowed. Allowed extensions: ${allowedExtensions.join(', ')}`
             );
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -230,8 +209,7 @@ export async function handleUploadVersion(
         
         if (!sharedKey || sharedKey.length < 32) {
             const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 500,
@@ -253,8 +231,7 @@ export async function handleUploadVersion(
         
         if (!isBinaryEncrypted && !isLegacyEncrypted) {
             const rfcError = createError(request, 400, 'File Must Be Encrypted', 'Files must be encrypted before upload for security. Please ensure the file is encrypted.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -295,8 +272,7 @@ export async function handleUploadVersion(
             console.error('File decryption error during upload:', error);
             const errorMsg = error instanceof Error ? error.message : String(error);
             const rfcError = createError(request, 400, 'Decryption Failed', `Failed to decrypt uploaded file. All files must be encrypted with the shared encryption key. ${errorMsg}`);
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -311,8 +287,7 @@ export async function handleUploadVersion(
         const metadataJson = formData.get('metadata') as string | null;
         if (!metadataJson) {
             const rfcError = createError(request, 400, 'Metadata Required', 'Metadata is required for version upload');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -328,8 +303,7 @@ export async function handleUploadVersion(
         // Validate required fields
         if (!metadata.version) {
             const rfcError = createError(request, 400, 'Validation Error', 'Version is required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -347,9 +321,13 @@ export async function handleUploadVersion(
         // SECURITY: Store encrypted file in R2 as-is (already encrypted by client)
         // Files are decrypted on-the-fly during download
         // Use normalized modId for R2 key consistency
+        // UNIFIED SYSTEM: Support both main mod and variant paths
         // Strip leading dot from fileExtension for R2 key (fileExtension includes the dot from validation)
         const extensionForR2 = fileExtension.startsWith('.') ? fileExtension.substring(1) : fileExtension || 'zip';
-        const r2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/${versionId}.${extensionForR2}`);
+        const r2Path = variantId 
+            ? `mods/${normalizedModId}/variants/${variantId}/versions/${versionId}.${extensionForR2}`
+            : `mods/${normalizedModId}/${versionId}.${extensionForR2}`;
+        const r2Key = getCustomerR2Key(auth.customerId, r2Path);
         
         // Store encrypted file data as-is (binary or JSON format)
         let encryptedFileBytes: Uint8Array;
@@ -378,12 +356,13 @@ export async function handleUploadVersion(
             customMetadata: addR2SourceMetadata({
                 modId,
                 versionId,
+                ...(variantId && { variantId }), // Add variantId if present
                 uploadedBy: auth.customerId,
                 uploadedAt: now,
                 encrypted: 'true', // Mark as encrypted
                 encryptionFormat: encryptionFormat, // 'binary-v4' or 'json-v3'
                 originalFileName,
-                originalContentType: 'application/zip', // Original file type
+                originalContentType: file.type || 'application/octet-stream', // Use actual file type from upload
                 sha256: fileHash, // Hash of decrypted file for verification
             }, env, request),
         });
@@ -394,9 +373,11 @@ export async function handleUploadVersion(
             : `https://pub-${(env.MODS_R2 as any).id}.r2.dev/${r2Key}`;
 
         // Create version metadata
+        // UNIFIED SYSTEM: ModVersion supports both main mod and variant versions via variantId field
         const version: ModVersion = {
             versionId,
             modId,
+            variantId: variantId || null, // null for main mod versions, variantId for variant versions
             version: metadata.version,
             changelog: metadata.changelog || '',
             fileSize: fileSize, // Use calculated size from decrypted data
@@ -411,31 +392,60 @@ export async function handleUploadVersion(
         };
 
         // Store version in KV (customer scope)
+        // UNIFIED SYSTEM: All versions (main mod and variant) stored with same key pattern
         const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
         await env.MODS_KV.put(versionKey, JSON.stringify(version));
 
-        // Add version to mod's version list (customer scope)
-        const versionsListKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}_versions`);
-        const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
-        const updatedVersionsList = [...(versionsList || []), versionId];
-        await env.MODS_KV.put(versionsListKey, JSON.stringify(updatedVersionsList));
+        // Add version to appropriate version list (customer scope)
+        // UNIFIED SYSTEM: Variant versions go to variant-specific list, main mod versions to mod list
+        if (variantId) {
+            // Variant version: store in variant's version list
+            const variantVersionsListKey = getCustomerKey(auth.customerId, `variant_${variantId}_versions`);
+            const variantVersionsList = await env.MODS_KV.get(variantVersionsListKey, { type: 'json' }) as string[] | null;
+            const updatedVariantVersionsList = [...(variantVersionsList || []), versionId];
+            await env.MODS_KV.put(variantVersionsListKey, JSON.stringify(updatedVariantVersionsList));
+            
+            // NOTE: We do NOT update variant's currentVersionId here
+            // This is handled by the calling code (update.ts) which manages mod metadata
+            // Separating concerns prevents race conditions and KV synchronization issues
+            console.log('[UploadVersion] Variant version created:', {
+                variantId,
+                versionId,
+                note: 'currentVersionId will be updated by caller'
+            });
+        } else {
+            // Main mod version: store in mod's version list
+            const versionsListKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}_versions`);
+            const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
+            const updatedVersionsList = [...(versionsList || []), versionId];
+            await env.MODS_KV.put(versionsListKey, JSON.stringify(updatedVersionsList));
 
-        // Update mod's latest version and updatedAt (customer scope)
-        mod.latestVersion = metadata.version;
-        mod.updatedAt = now;
-        await env.MODS_KV.put(modKey, JSON.stringify(mod));
+            // Update mod's latest version and updatedAt (customer scope)
+            mod.latestVersion = metadata.version;
+            mod.updatedAt = now;
+            await env.MODS_KV.put(modKey, JSON.stringify(mod));
+        }
 
         // Also update in global scope if mod is public
         if (mod.visibility === 'public') {
             const globalModKey = `mod_${normalizedModId}`;
             const globalVersionKey = `version_${versionId}`;
-            const globalVersionsListKey = `mod_${normalizedModId}_versions`;
             
             await env.MODS_KV.put(globalVersionKey, JSON.stringify(version));
             
-            const globalVersionsList = await env.MODS_KV.get(globalVersionsListKey, { type: 'json' }) as string[] | null;
-            const updatedGlobalVersionsList = [...(globalVersionsList || []), versionId];
-            await env.MODS_KV.put(globalVersionsListKey, JSON.stringify(updatedGlobalVersionsList));
+            if (variantId) {
+                // Variant version: update global variant list
+                const globalVariantVersionsListKey = `variant_${variantId}_versions`;
+                const globalVariantVersionsList = await env.MODS_KV.get(globalVariantVersionsListKey, { type: 'json' }) as string[] | null;
+                const updatedGlobalVariantVersionsList = [...(globalVariantVersionsList || []), versionId];
+                await env.MODS_KV.put(globalVariantVersionsListKey, JSON.stringify(updatedGlobalVariantVersionsList));
+            } else {
+                // Main mod version: update global mod list
+                const globalVersionsListKey = `mod_${normalizedModId}_versions`;
+                const globalVersionsList = await env.MODS_KV.get(globalVersionsListKey, { type: 'json' }) as string[] | null;
+                const updatedGlobalVersionsList = [...(globalVersionsList || []), versionId];
+                await env.MODS_KV.put(globalVersionsListKey, JSON.stringify(updatedGlobalVersionsList));
+            }
             
             // Update global mod metadata
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
@@ -443,11 +453,10 @@ export async function handleUploadVersion(
 
         // Track successful upload (skip for super admins)
         if (!isSuperAdmin) {
-            await trackUpload(auth.customerId, env);
+            await trackUpload(auth.customerId, env, auth.jwtToken);
         }
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify({ version }), {
             status: 201,
@@ -464,8 +473,7 @@ export async function handleUploadVersion(
             'Failed to Upload Version',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while uploading the version'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,
@@ -475,16 +483,5 @@ export async function handleUploadVersion(
             },
         });
     }
-}
-
-interface Env {
-    MODS_KV: KVNamespace;
-    MODS_R2: R2Bucket;
-    MODS_PUBLIC_URL?: string;
-    MODS_ENCRYPTION_KEY?: string;
-    ALLOWED_EMAILS?: string;
-    ALLOWED_ORIGINS?: string;
-    ENVIRONMENT?: string;
-    [key: string]: any;
 }
 

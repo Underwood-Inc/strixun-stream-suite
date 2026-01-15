@@ -3,7 +3,7 @@
  * Handles all route matching and dispatch to appropriate handlers
  */
 
-import { getCorsHeaders } from './utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from './utils/cors.js';
 import { trackError, trackResponseTime } from './services/analytics.js';
 import { sendWebhook } from './services/webhooks.js';
 import { getPlanLimits } from './utils/validation.js';
@@ -13,6 +13,8 @@ import { handleDashboardRoutes } from './router/dashboard-routes.js';
 import { handleAuthRoutes } from './router/auth-routes.js';
 import { handleCustomerRoutes } from './router/customer-routes.js';
 import { handleGameRoutes } from './router/game-routes.js';
+import { handleSSOConfigRoutes } from './router/sso-config-routes.js';
+import { handleMigrationRoutes } from './router/migration-routes.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 import type { ExecutionContext } from '@strixun/types';
 
@@ -23,12 +25,14 @@ import type { ExecutionContext } from '@strixun/types';
 const NO_JWT_REQUIRED_PATHS = [
     '/auth/request-otp',
     '/auth/verify-otp',      // ⚠ CRITICAL - Returns JWT token
-    '/auth/restore-session',
+    '/auth/me',              // Reads HttpOnly cookie for SSO
     '/signup',
     '/signup/verify',
     '/track/email-open',     // Email clients can't send headers
     '/assets/',              // Static assets (CSS, JS, images) - must be public
     '/dashboard',            // Dashboard SPA - assets served via /assets/ but dashboard itself is public
+    '/openapi.json',         // OpenAPI spec for Swagger UI - must be public
+    '/health',               // Health check endpoints - must be public
     '/',                     // Landing page for first-time visitors
     ''
 ];
@@ -76,7 +80,14 @@ async function checkErrorRateAlert(customerId: string, env: any): Promise<void> 
 export async function route(request: Request, env: any, ctx?: ExecutionContext): Promise<Response> {
     const startTime = performance.now();
     const url = new URL(request.url);
-    const path = url.pathname;
+    // Dev-proxy normalization:
+    // Some frontend apps call the auth worker through a Vite proxy mounted at /auth-api.
+    // When they accidentally hit the worker directly (or proxy doesn't rewrite), the worker receives /auth-api/* paths.
+    // Normalize this so SSO works consistently across all apps in dev.
+    let path = url.pathname;
+    if (path.startsWith('/auth-api/')) {
+        path = path.substring('/auth-api'.length);
+    }
     let customerId: string | null = null;
     let endpoint = path.split('/').pop() || 'unknown';
     
@@ -147,11 +158,50 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             }
         }
         
+        // Try SSO configuration routes (requires authentication)
+        if (!response) {
+            const ssoConfigResult = await handleSSOConfigRoutes(request, path, env, customerId);
+            if (ssoConfigResult) {
+                customerId = ssoConfigResult.customerId;
+                response = ssoConfigResult.response;
+            }
+        }
+        
+        // Try migration routes (requires super admin authentication)
+        if (!response) {
+            // Extract isSuperAdmin from JWT payload if available
+            let isSuperAdmin = false;
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    const token = authCookie.substring('auth_token='.length).trim();
+                    try {
+                        const { verifyJWT, getJWTSecret } = await import('./utils/crypto.js');
+                        const jwtSecret = getJWTSecret(env);
+                        const payload = await verifyJWT(token, jwtSecret);
+                        if (payload && payload.isSuperAdmin === true) {
+                            isSuperAdmin = true;
+                        }
+                    } catch (error) {
+                        // JWT verification failed - not super admin
+                    }
+                }
+            }
+            
+            const migrationResult = await handleMigrationRoutes(request, path, env, customerId, isSuperAdmin);
+            if (migrationResult) {
+                customerId = migrationResult.customerId;
+                response = migrationResult.response;
+            }
+        }
+        
         // 404 for unknown routes
         if (!response) {
             response = new Response(JSON.stringify({ error: 'Not found' }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -162,10 +212,19 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         }
         
         // CRITICAL: Handle JWT encryption requirements per route
-        // Extract JWT token from request for encryption
+        // Extract JWT token from HttpOnly cookie ONLY - NO Authorization header fallback
         // CRITICAL: Trim token to ensure it matches the token used for decryption
-        const authHeader = request.headers.get('Authorization');
-        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
+        let jwtToken: string | null = null;
+        let isHttpOnlyCookie = false;
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+                jwtToken = authCookie.substring('auth_token='.length).trim();
+                isHttpOnlyCookie = true; // JWT from HttpOnly cookie (browser request)
+            }
+        }
         const authForEncryption = jwtToken ? { userId: 'anonymous', customerId, jwtToken } : null;
         
         // Check if this endpoint should NOT require JWT
@@ -205,7 +264,7 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
                     detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
                     instance: request.url
                 };
-                const corsHeaders = getCorsHeaders(env, request);
+                const corsHeaders = getCorsHeadersRecord(env, request);
                 return new Response(JSON.stringify(errorResponse), {
                     status: 401,
                     headers: {
@@ -219,7 +278,7 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             const { encryptBinaryWithJWT } = await import('@strixun/api-framework');
             const bodyBytes = await response.arrayBuffer();
             const encryptedBody = await encryptBinaryWithJWT(new Uint8Array(bodyBytes), jwtToken);
-            const corsHeaders = getCorsHeaders(env, request);
+            const corsHeaders = getCorsHeadersRecord(env, request);
             return new Response(encryptedBody, {
                 status: response.status,
                 headers: {
@@ -232,13 +291,22 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         }
         
         // For JSON responses or non-required JWT, use wrapWithEncryption
+        // CRITICAL FIX: Disable encryption for browser requests with HttpOnly cookies
+        // (JavaScript can't access HttpOnly cookies to decrypt, and HTTPS already protects data in transit)
+        // When passing null for auth, we MUST set requireJWT: false (otherwise encryption middleware rejects)
+        const authForEncryptionParam = isHttpOnlyCookie ? null : authForEncryption;
+        const requireJWT = authForEncryptionParam ? shouldRequireJWT : false;
+        
         const encryptedResult = await wrapWithEncryption(
             response,
-            authForEncryption,
+            authForEncryptionParam, // Pass null to disable encryption for HttpOnly cookies
             request,
             env,
-            { requireJWT: shouldRequireJWT }
+            { 
+                requireJWT
+            }
         );
+        
         return encryptedResult.response;
     } catch (error: any) {
         console.error('Request handler error:', error);
@@ -250,12 +318,12 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             await checkErrorRateAlert(customerId, env);
         }
         
-        const errorResponse = new Response(JSON.stringify({ 
+        const errorResponse = new Response(JSON.stringify({
             error: 'Internal server error',
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
         
         // Track response time even for errors
@@ -265,16 +333,13 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         }
         
         // Apply encryption to error responses (but don't require JWT for errors)
-        // CRITICAL: Trim token to ensure it matches the token used for decryption
-        const authHeader = request.headers.get('Authorization');
-        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
-        const authForEncryption = jwtToken ? { userId: 'anonymous', customerId, jwtToken } : null;
+        // CRITICAL: Never encrypt error responses (frontend needs to read them)
         const encryptedError = await wrapWithEncryption(
             errorResponse,
-            authForEncryption,
+            null, // Never encrypt errors - frontend must be able to read them
             request,
             env,
-            { requireJWT: false } // Don't require JWT for error responses
+            { requireJWT: false } // Don't require JWT for error responses (already false, but explicit)
         );
         return encryptedError.response;
     } finally {

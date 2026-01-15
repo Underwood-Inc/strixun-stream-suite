@@ -8,7 +8,7 @@
  * Only import what we need directly from jwt-encryption.js
  */
 
-import { encryptWithJWT } from '../../../encryption/jwt-encryption.js';
+import { encryptWithJWT } from '../../../encryption/jwt-encryption';
 import type { E2EEncryptionConfig } from '../types';
 import type { APIRequest, APIResponse } from '../../types';
 

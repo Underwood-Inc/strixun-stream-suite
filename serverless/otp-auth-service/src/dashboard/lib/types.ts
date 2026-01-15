@@ -4,6 +4,9 @@
  * CRITICAL: We ONLY have Customer entities - NO "customer" entity exists
  */
 
+// Re-export types from Access Service (single source of truth)
+export type { RoleDefinition, PermissionDefinition } from '@strixun/access-service';
+
 export interface Customer {
   customerId: string;
   email: string;
@@ -93,4 +96,3 @@ export interface ErrorAnalytics {
     timestamp: string;
   }>;
 }
-

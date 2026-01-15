@@ -25,16 +25,26 @@ interface Env {
  */
 export async function handleGetPreferences(request: Request, env: Env): Promise<Response> {
   try {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Authorization header required' }), {
+    // ONLY check HttpOnly cookie - NO Authorization header fallback
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) {
+      return new Response(JSON.stringify({ error: 'Authentication required. Please authenticate with HttpOnly cookie.' }), {
+        status: 401,
+        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+      });
+    }
+
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    if (!authCookie) {
+      return new Response(JSON.stringify({ error: 'Authentication required. Please authenticate with HttpOnly cookie.' }), {
         status: 401,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
       });
     }
 
     // CRITICAL: Trim token to ensure it matches the token used for encryption
-    const token = authHeader.substring(7).trim();
+    const token = authCookie.substring('auth_token='.length).trim();
     const jwtSecret = getJWTSecret(env);
     const payload = await verifyJWT(token, jwtSecret);
 
@@ -106,16 +116,26 @@ export async function handleGetPreferences(request: Request, env: Env): Promise<
  */
 export async function handleUpdatePreferences(request: Request, env: Env): Promise<Response> {
   try {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Authorization header required' }), {
+    // ONLY check HttpOnly cookie - NO Authorization header fallback
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) {
+      return new Response(JSON.stringify({ error: 'Authentication required. Please authenticate with HttpOnly cookie.' }), {
+        status: 401,
+        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+      });
+    }
+
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    if (!authCookie) {
+      return new Response(JSON.stringify({ error: 'Authentication required. Please authenticate with HttpOnly cookie.' }), {
         status: 401,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
       });
     }
 
     // CRITICAL: Trim token to ensure it matches the token used for encryption
-    const token = authHeader.substring(7).trim();
+    const token = authCookie.substring('auth_token='.length).trim();
     const jwtSecret = getJWTSecret(env);
     const payload = await verifyJWT(token, jwtSecret);
 

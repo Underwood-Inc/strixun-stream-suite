@@ -24,7 +24,7 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig): Middleware {
     }
 
     // CRITICAL: Check for explicitly passed token in metadata FIRST
-    // This ensures that when a token is explicitly passed (e.g., from restoreSession),
+    // This ensures that when a token is explicitly passed (e.g., from fetchCustomerInfo),
     // it takes precedence and both Authorization header and metadata.token use the same token
     if (!request.metadata) {
       request.metadata = {};
@@ -32,7 +32,7 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig): Middleware {
     
     let tokenToUse: string | null = null;
     
-    // Priority 1: Explicitly passed token in metadata (for session restore, fetchUserInfo, etc.)
+    // Priority 1: Explicitly passed token in metadata (for fetchCustomerInfo, etc.)
     if (request.metadata.token && typeof request.metadata.token === 'string' && request.metadata.token.trim().length > 0) {
       const rawMetadataToken = request.metadata.token;
       tokenToUse = rawMetadataToken.trim();

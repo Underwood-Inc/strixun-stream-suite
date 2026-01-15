@@ -1,0 +1,232 @@
+﻿
+> @strixun/auth-store@1.0.0 test C:\Users\mamop\Documents\source fade script plugin\packages\auth-store
+> vitest run --passWithNoTests "core/api.test.ts"
+
+
+ RUN  v4.0.16 C:/Users/mamop/Documents/source fade script plugin/packages/auth-store
+
+node.exe : stderr | core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should return null when no token in 
+cookie
+At C:\Users\mamop\AppData\Roaming\npm\pnpm.ps1:24 char:5
++     & "node$exe"  "$basedir/node_modules/pnpm/bin/pnpm.cjs" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (stderr | core/a...token in cookie:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[Auth] Failed to fetch customer info: Cannot read properties of undefined (reading 'status')
+
+stderr | core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should call /auth/me with credentials
+[Auth] Failed to fetch customer info: Cannot read properties of undefined (reading 'get')
+
+stderr | core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should return null on 401 unauthorized
+[Auth] Failed to fetch customer info: Cannot read properties of undefined (reading 'get')
+
+stderr | core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should return null on network error
+[Auth] Failed to fetch customer info: Network error
+
+stderr | core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should handle missing displayName
+[Auth] Failed to fetch customer info: Cannot read properties of undefined (reading 'get')
+
+stderr | core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should handle undefined displayName explicitly
+[Auth] Failed to fetch customer info: Cannot read properties of undefined (reading 'get')
+
+stderr | core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should handle 500 server error
+[Auth] Failed to fetch customer info: Cannot read properties of undefined (reading 'get')
+
+stderr | core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should use provided authApiUrl from config
+[Auth] Failed to fetch customer info: Cannot read properties of undefined (reading 'get')
+
+stderr | core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should use default authApiUrl when config not 
+provided
+[Auth] Failed to fetch customer info: Cannot read properties of undefined (reading 'get')
+
+ Γ¥» core/api.test.ts (15 tests | 5 failed) 1448ms
+       Γ£ô should decode valid JWT payload 3ms
+       Γ£ô should return null for invalid JWT (not 3 parts) 0ms
+       Γ£ô should return null for malformed base64 0ms
+       Γ£ô should handle JWT with URL-safe base64 (- and _) 0ms
+       Γ£ô should extract CSRF token from JWT 0ms
+       Γ£ô should handle empty JWT payload 2ms
+       Γ£ô should return null when no token in cookie  1363ms
+       ├ù should call /auth/me with credentials 36ms
+       Γ£ô should return null on 401 unauthorized 4ms
+       Γ£ô should return null on network error 8ms
+       ├ù should handle missing displayName 8ms
+       ├ù should handle undefined displayName explicitly 4ms
+       Γ£ô should handle 500 server error 2ms
+       ├ù should use provided authApiUrl from config 7ms
+       ├ù should use default authApiUrl when config not provided 5ms
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 5 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should call /auth/me with credentials
+AssertionError: expected "vi.fn()" to be called with arguments: [ ΓÇª(2) ]
+
+Received: 
+
+  1st vi.fn() call:
+
+  [
+-   "https://auth.idling.app/auth/me",
+-   ObjectContaining {
+-     "credentials": "include",
++   "https://localhost/auth-api/auth/me",
++   {
++     "body": undefined,
++     "headers": Headers {},
+      "method": "GET",
++     "signal": AbortSignal {
++       Symbol(kEvents): Map {},
++       Symbol(events.maxEventTargetListeners): 0,
++       Symbol(events.maxEventTargetListenersWarned): false,
++       Symbol(kHandlers): Map {},
++       Symbol(kAborted): false,
++       Symbol(kReason): undefined,
++       Symbol(kComposite): false,
++     },
+    },
+  ]
+
+
+Number of calls: 1
+
+ Γ¥» core/api.test.ts:117:34
+    115|             const result = await fetchCustomerInfo(mockConfig);
+    116|             
+    117|             expect(global.fetch).toHaveBeenCalledWith(
+       |                                  ^
+    118|                 'https://auth.idling.app/auth/me',
+    119|                 expect.objectContaining({
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/5]ΓÄ»
+
+ FAIL  core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should handle missing displayName
+AssertionError: expected null to deeply equal { customerId: 'cust_123', ΓÇª(2) }
+
+- Expected: 
+{
+  "customerId": "cust_123",
+  "displayName": null,
+  "isSuperAdmin": false,
+}
+
++ Received: 
+null
+
+ Γ¥» core/api.test.ts:168:28
+    166|             const result = await fetchCustomerInfo(mockConfig);
+    167|             
+    168|             expect(result).toEqual({
+       |                            ^
+    169|                 customerId: 'cust_123',
+    170|                 displayName: null,
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[2/5]ΓÄ»
+
+ FAIL  core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should handle undefined displayName explicitly
+AssertionError: expected undefined to be null
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ Γ¥» core/api.test.ts:190:41
+    188|             const result = await fetchCustomerInfo(mockConfig);
+    189|             
+    190|             expect(result?.displayName).toBeNull();
+       |                                         ^
+    191|         });
+    192| 
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[3/5]ΓÄ»
+
+ FAIL  core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should use provided authApiUrl from config
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 10 passed (15)
+   Start at  17:46:26
+   Duration  2.98s (transform 1.40s, setup 0ms, import 348ms, tests 1.45s, environment 1ms)
+
+ΓÇëELIFECYCLEΓÇë Test failed. See above for more details.
+AssertionError: expected "vi.fn()" to be called with arguments: [ ΓÇª(2) ]
+
+Received: 
+
+  1st vi.fn() call:
+
+  [
+-   "http://localhost:8787/auth/me",
+-   Any<Object>,
++   "https://localhost/auth-api/auth/me",
++   {
++     "body": undefined,
++     "headers": Headers {},
++     "method": "GET",
++     "signal": AbortSignal {
++       Symbol(kEvents): Map {},
++       Symbol(events.maxEventTargetListeners): 0,
++       Symbol(events.maxEventTargetListenersWarned): false,
++       Symbol(kHandlers): Map {},
++       Symbol(kAborted): false,
++       Symbol(kReason): undefined,
++       Symbol(kComposite): false,
++     },
++   },
+  ]
+
+
+Number of calls: 1
+
+ Γ¥» core/api.test.ts:225:34
+    223|             await fetchCustomerInfo(customConfig);
+    224|             
+    225|             expect(global.fetch).toHaveBeenCalledWith(
+       |                                  ^
+    226|                 'http://localhost:8787/auth/me',
+    227|                 expect.any(Object)
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[4/5]ΓÄ»
+
+ FAIL  core/api.test.ts > Auth Store Core API > fetchCustomerInfo > should use default authApiUrl when config not 
+provided
+AssertionError: expected "vi.fn()" to be called with arguments: [ ΓÇª(2) ]
+
+Received: 
+
+  1st vi.fn() call:
+
+  [
+-   "https://auth.idling.app/auth/me",
+-   Any<Object>,
++   "https://localhost/auth-api/auth/me",
++   {
++     "body": undefined,
++     "headers": Headers {},
++     "method": "GET",
++     "signal": AbortSignal {
++       Symbol(kEvents): Map {},
++       Symbol(events.maxEventTargetListeners): 0,
++       Symbol(events.maxEventTargetListenersWarned): false,
++       Symbol(kHandlers): Map {},
++       Symbol(kAborted): false,
++       Symbol(kReason): undefined,
++       Symbol(kComposite): false,
++     },
++   },
+  ]
+
+
+Number of calls: 1
+
+ Γ¥» core/api.test.ts:246:34
+    244|             await fetchCustomerInfo();
+    245|             
+    246|             expect(global.fetch).toHaveBeenCalledWith(
+       |                                  ^
+    247|                 'https://auth.idling.app/auth/me',
+    248|                 expect.any(Object)
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[5/5]ΓÄ»
+

@@ -18,6 +18,7 @@ import { handleDashboardRoutes } from './dashboard-routes.js';
 vi.mock('../utils/super-admin.js', () => ({
     requireSuperAdmin: vi.fn(),
     verifySuperAdmin: vi.fn(),
+    isAdminOrSuperAdmin: vi.fn().mockResolvedValue(true), // Added for admin/super-admin checks
 }));
 
 vi.mock('../utils/crypto.js', () => ({
@@ -44,7 +45,7 @@ vi.mock('../handlers/admin.js', () => ({
     handleGetOnboarding: vi.fn().mockResolvedValue(new Response(JSON.stringify({ onboarding: {} }), { status: 200 })),
     handleUpdateOnboarding: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
     handleTestOTP: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
-    handleListCustomers: vi.fn().mockResolvedValue(new Response(JSON.stringify({ customers: [] }), { status: 200 })),
+    // handleListCustomers removed - moved to customer-api
     handleExportCustomerData: vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {} }), { status: 200 })),
     handleDeleteCustomerData: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
     handleGetAuditLogs: vi.fn().mockResolvedValue(new Response(JSON.stringify({ logs: [] }), { status: 200 })),
@@ -202,31 +203,8 @@ describe('OTP Auth Service Admin Routes', () => {
             expect(handleGetAnalytics).toHaveBeenCalledWith(request, mockEnv, 'cust_123');
         });
 
-        it('should match GET /admin/customers route and invoke handler when authenticated', async () => {
-            const { requireSuperAdmin } = await import('../utils/super-admin.js');
-            const { verifyJWT } = await import('../utils/crypto.js');
-            const { handleListCustomers } = await import('../handlers/admin.js');
-            
-            vi.mocked(requireSuperAdmin).mockResolvedValue(null);
-            vi.mocked(verifyJWT).mockResolvedValue({ 
-                customerId: 'cust_123', 
-                email: 'admin@example.com' 
-            } as any);
-
-            const request = new Request('https://api.example.com/admin/customers', {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer admin-token',
-                },
-            });
-
-            const result = await handleDashboardRoutes(request, '/admin/customers', mockEnv);
-
-            expect(result).not.toBeNull();
-            expect(result?.response.status).toBe(200);
-            // Verify the correct handler was called
-            expect(handleListCustomers).toHaveBeenCalledWith(request, mockEnv, 'cust_123');
-        });
+        // NOTE: GET /admin/customers has been moved to customer-api for proper separation of concerns
+        // OTP-auth-service no longer handles customer listing
 
         it('should match GET /admin/config route and invoke handler when authenticated', async () => {
             const { requireSuperAdmin } = await import('../utils/super-admin.js');
@@ -293,7 +271,7 @@ describe('OTP Auth Service Admin Routes', () => {
             } as any);
 
             const request = new Request('https://api.example.com/admin/customers/customer-123/export', {
-                method: 'GET',
+                method: 'POST', // Fixed: Route expects POST, not GET
                 headers: {
                     'Authorization': 'Bearer admin-token',
                 },

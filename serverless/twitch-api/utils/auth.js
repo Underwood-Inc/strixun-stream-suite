@@ -56,12 +56,32 @@ export function getJWTSecret(env) {
  * @returns {Promise<{userId: string, email: string}|null>} User info or null if not authenticated
  */
 export async function authenticateRequest(request, env, requireCsrf = false) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token = null;
+    
+    // PRIORITY 1: Check HttpOnly cookie (browser requests)
+    const cookieHeader = request.headers.get('Cookie');
+    if (cookieHeader) {
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        
+        if (authCookie) {
+            token = authCookie.substring('auth_token='.length).trim();
+        }
+    }
+    
+    // PRIORITY 2: Check Authorization header (service-to-service calls)
+    if (!token) {
+        const authHeader = request.headers.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring('Bearer '.length).trim();
+        }
+    }
+    
+    // No authentication provided
+    if (!token) {
         return null;
     }
     
-    const token = authHeader.substring(7);
     const jwtSecret = getJWTSecret(env);
     const payload = await verifyJWT(token, jwtSecret);
     
@@ -88,7 +108,8 @@ export async function authenticateRequest(request, env, requireCsrf = false) {
     
     return {
         userId: payload.userId || payload.sub,
-        email: payload.email
+        email: payload.email,
+        jwtToken: token // Include JWT token for encryption
     };
 }
 

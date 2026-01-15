@@ -4,18 +4,42 @@
   "description": "Shared, framework-agnostic authentication store for all Strixun projects",
   "private": true,
   "type": "module",
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./index.ts",
-    "./zustand": "./adapters/zustand.ts",
-    "./svelte": "./adapters/svelte.ts",
-    "./core": "./core/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./zustand": {
+      "types": "./dist/adapters/zustand.d.ts",
+      "default": "./dist/adapters/zustand.js"
+    },
+    "./svelte": {
+      "types": "./dist/adapters/svelte.d.ts",
+      "default": "./dist/adapters/svelte.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "default": "./dist/core/index.js"
+    },
+    "./core/api": {
+      "types": "./dist/core/api.d.ts",
+      "default": "./dist/core/api.js"
+    },
+    "./core/utils": {
+      "types": "./dist/core/utils.d.ts",
+      "default": "./dist/core/utils.js"
+    },
+    "./core/types": {
+      "types": "./dist/core/types.d.ts",
+      "default": "./dist/core/types.js"
+    }
   },
   "files": [
-    "*.ts",
-    "adapters/**/*.ts",
-    "core/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
     "*.md"
   ],
   "dependencies": {
@@ -34,6 +58,8 @@
     }
   },
   "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests"

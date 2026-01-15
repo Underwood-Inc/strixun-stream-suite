@@ -3,7 +3,7 @@
  * Handles domain verification endpoints for email sending
  */
 
-import { getCorsHeaders } from '../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../utils/cors.js';
 import { generateVerificationToken } from '../utils/validation.js';
 import { getCustomer, storeCustomer } from '../services/customer.js';
 
@@ -63,7 +63,7 @@ export async function handleRequestDomainVerification(request, env, customerId) 
         if (!domain || !/^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/.test(domain)) {
             return new Response(JSON.stringify({ error: 'Valid domain name required' }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -98,7 +98,7 @@ export async function handleRequestDomainVerification(request, env, customerId) 
             dnsRecord,
             instructions: `Add a TXT record to your DNS with name "_otpauth-verify.${domain}" and value "${token}". Then call POST /admin/domains/${domain}/verify to check verification.`
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({
@@ -106,7 +106,7 @@ export async function handleRequestDomainVerification(request, env, customerId) 
             message: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -127,7 +127,7 @@ export async function handleGetDomainStatus(request, env, domain) {
                 status: 'not_started'
             }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -139,7 +139,7 @@ export async function handleGetDomainStatus(request, env, domain) {
             verifiedAt: verificationData.verifiedAt || null,
             expiresAt: verificationData.expiresAt
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({
@@ -147,7 +147,7 @@ export async function handleGetDomainStatus(request, env, domain) {
             message: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -167,7 +167,7 @@ export async function handleVerifyDomain(request, env, customerId, domain) {
                 domain
             }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -175,7 +175,7 @@ export async function handleVerifyDomain(request, env, customerId, domain) {
         if (verificationData.customerId !== customerId) {
             return new Response(JSON.stringify({ error: 'Forbidden' }), {
                 status: 403,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -188,7 +188,7 @@ export async function handleVerifyDomain(request, env, customerId, domain) {
                 verifiedAt: verificationData.verifiedAt,
                 message: 'Domain is already verified'
             }), {
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -199,7 +199,7 @@ export async function handleVerifyDomain(request, env, customerId, domain) {
                 domain
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -233,7 +233,7 @@ export async function handleVerifyDomain(request, env, customerId, domain) {
                 verifiedAt: verificationData.verifiedAt,
                 message: 'Domain verified successfully'
             }), {
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         } else {
             return new Response(JSON.stringify({
@@ -243,7 +243,7 @@ export async function handleVerifyDomain(request, env, customerId, domain) {
                 message: 'DNS record not found or token mismatch. Please check your DNS configuration.'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
     } catch (error) {
@@ -252,7 +252,7 @@ export async function handleVerifyDomain(request, env, customerId, domain) {
             message: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }

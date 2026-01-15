@@ -12,11 +12,12 @@
  * - Optimized for performance
  */
 
-import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { AdvancedSearchInput } from '@strixun/search-query-parser/react';
-import { VirtualizedTable, type Column } from '@strixun/virtualized-table';
+import { DataTable, type DataTableColumn } from '@strixun/shared-components/react/DataTable';
+import { ActionMenu, type ActionMenuItem } from '@strixun/shared-components/react/ActionMenu';
 import { AdminNavigation } from '../components/admin/AdminNavigation';
 import { AdminStats } from '../components/admin/AdminStats';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
@@ -43,8 +44,7 @@ const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${spacing.md};
-  min-height: calc(100vh - 120px);
-  height: 100%;
+  height: calc(100vh - 120px);
   overflow: hidden;
 `;
 
@@ -132,13 +132,6 @@ const StatusBadge = styled.span<{ status: ModStatus }>`
   ${({ status }) => getBadgeStyles(getStatusBadgeType(status))}
 `;
 
-const ActionGroup = styled.div`
-  display: flex;
-  gap: ${spacing.xs};
-  flex-wrap: wrap;
-  align-items: center;
-`;
-
 const StyledLink = styled(Link)`
   color: ${colors.accent};
   text-decoration: none;
@@ -168,21 +161,11 @@ const Error = styled.div`
 `;
 
 const TableContainer = styled.div`
-  flex: 1 1 auto;
-  min-height: 400px;
+  flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  position: relative;
-  
-  /* Ensure table container takes available space */
-  @media (max-height: 800px) {
-    min-height: 300px;
-  }
-  
-  @media (max-height: 600px) {
-    min-height: 200px;
-  }
+  min-height: 0; /* Critical for flex child to shrink properly */
 `;
 
 const TestSection = styled.div`
@@ -228,13 +211,11 @@ const GameContainer = styled.div`
 export function AdminPanel() {
     const [statusFilter, setStatusFilter] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState<string>('');
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [bulkActionModalOpen, setBulkActionModalOpen] = useState(false);
     const [bulkAction, setBulkAction] = useState<ModStatus | 'delete' | null>(null);
     const [modToDelete, setModToDelete] = useState<{ modId: string; title: string } | null>(null);
-    const [tableHeight, setTableHeight] = useState<number>(600);
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const [testSectionOpen, setTestSectionOpen] = useState(false);
     const gameContainerRef = useRef<HTMLDivElement>(null);
@@ -306,34 +287,11 @@ export function AdminPanel() {
         
         const filtered = mods;
         
-        // Sort mods
-        const sorted = [...filtered];
-        if (sortConfig) {
-            sorted.sort((a, b) => {
-                const aVal = a[sortConfig.key as keyof ModMetadata];
-                const bVal = b[sortConfig.key as keyof ModMetadata];
-                
-                // Handle null/undefined values
-                if (aVal == null && bVal == null) return 0;
-                if (aVal == null) return 1;
-                if (bVal == null) return -1;
-                
-                let comparison = 0;
-                if (aVal < bVal) comparison = -1;
-                if (aVal > bVal) comparison = 1;
-                
-                return sortConfig.direction === 'asc' ? comparison : -comparison;
-            });
-        }
-        
-        console.log('[AdminPanel] Final result:', { filteredCount: filtered.length, sortedCount: sorted.length });
-        return { filteredMods: filtered, sortedMods: sorted };
-    }, [data, statusFilter, searchQuery, sortConfig, isLoading, error]);
+        // Sorting is now handled by TanStack Table internally
+        console.log('[AdminPanel] Final result:', { filteredCount: filtered.length });
+        return { filteredMods: filtered, sortedMods: filtered };
+    }, [data, statusFilter, searchQuery, isLoading, error]);
 
-    // Handle sort
-    const handleSort = useCallback((key: string, direction: 'asc' | 'desc') => {
-        setSortConfig({ key, direction });
-    }, []);
 
     // Handle status change
     const handleStatusChange = useCallback(async (modId: string, newStatus: ModStatus, reason?: string) => {
@@ -391,156 +349,108 @@ export function AdminPanel() {
     }, [sortedMods]);
 
     // Table columns definition
-    const columns: Column<ModMetadata>[] = useMemo(() => [
+    const columns: DataTableColumn<ModMetadata>[] = useMemo(() => [
         {
-            key: 'title',
-            label: 'Title',
-            width: '300px',
-            sortable: true,
-            render: (mod) => (
-                <StyledLink to={`/${mod.slug}`}>
-                    {mod.title}
+            id: 'title',
+            accessorKey: 'title',
+            header: 'Title',
+            size: 300,
+            enableSorting: true,
+            cell: ({ row }) => (
+                <StyledLink to={`/${row.slug}`}>
+                    {row.title}
                 </StyledLink>
             ),
         },
         {
-            key: 'authorDisplayName',
-            label: 'Author',
-            width: '200px',
-            sortable: true,
-            render: (mod) => mod.authorDisplayName || 'Unknown User',
+            id: 'authorDisplayName',
+            accessorKey: 'authorDisplayName',
+            header: 'Author',
+            size: 200,
+            enableSorting: true,
+            cell: ({ row }) => row.authorDisplayName || 'Unknown User',
         },
         {
-            key: 'status',
-            label: 'Status',
-            width: '120px',
-            sortable: true,
-            render: (mod) => <StatusBadge status={mod.status}>{mod.status}</StatusBadge>,
+            id: 'status',
+            accessorKey: 'status',
+            header: 'Status',
+            size: 120,
+            enableSorting: true,
+            cell: ({ row }) => <StatusBadge status={row.status}>{row.status}</StatusBadge>,
         },
         {
-            key: 'category',
-            label: 'Category',
-            width: '120px',
-            sortable: true,
+            id: 'category',
+            accessorKey: 'category',
+            header: 'Category',
+            size: 120,
+            enableSorting: true,
         },
         {
-            key: 'downloadCount',
-            label: 'Downloads',
-            width: '100px',
-            sortable: true,
-            render: (mod) => mod.downloadCount.toLocaleString(),
+            id: 'downloadCount',
+            accessorKey: 'downloadCount',
+            header: 'Downloads',
+            size: 100,
+            enableSorting: true,
+            cell: ({ row }) => row.downloadCount.toLocaleString(),
         },
         {
-            key: 'createdAt',
-            label: 'Created',
-            width: '120px',
-            sortable: true,
-            render: (mod) => new Date(mod.createdAt).toLocaleDateString(),
+            id: 'createdAt',
+            accessorKey: 'createdAt',
+            header: 'Created',
+            size: 120,
+            enableSorting: true,
+            cell: ({ row }) => new Date(row.createdAt).toLocaleDateString(),
         },
         {
-            key: 'actions',
-            label: 'Actions',
-            width: '400px',
-            render: (mod) => (
-                <ActionGroup>
-                    <Button
-                        $variant="primary"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleStatusChange(mod.modId, 'approved');
-                        }}
-                        disabled={updateStatus.isPending || mod.status === 'approved'}
-                    >
-                        Approve
-                    </Button>
-                    <Button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleStatusChange(mod.modId, 'changes_requested');
-                        }}
-                        disabled={updateStatus.isPending || mod.status === 'changes_requested'}
-                    >
-                        Request Changes
-                    </Button>
-                    <Button
-                        $variant="danger"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleStatusChange(mod.modId, 'denied');
-                        }}
-                        disabled={updateStatus.isPending || mod.status === 'denied'}
-                    >
-                        Deny
-                    </Button>
-                    <Button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(`/${mod.slug}/review`, '_blank');
-                        }}
-                    >
-                        Review
-                    </Button>
-                    <Button
-                        $variant="danger"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(mod.modId, mod.title);
-                        }}
-                        disabled={deleteMod.isPending}
-                    >
-                        Delete
-                    </Button>
-                </ActionGroup>
-            ),
+            id: 'actions',
+            header: 'Actions',
+            size: 80,
+            cell: ({ row }) => {
+                const menuItems: ActionMenuItem[] = [
+                    {
+                        key: 'review',
+                        label: 'Review',
+                        icon: '👁',
+                        onClick: () => window.open(`/${row.slug}/review`, '_blank'),
+                    },
+                    {
+                        key: 'approve',
+                        label: 'Approve',
+                        icon: '✓',
+                        onClick: () => handleStatusChange(row.modId, 'approved'),
+                        disabled: updateStatus.isPending || row.status === 'approved',
+                        variant: 'primary',
+                    },
+                    {
+                        key: 'changes',
+                        label: 'Request Changes',
+                        icon: '✎',
+                        onClick: () => handleStatusChange(row.modId, 'changes_requested'),
+                        disabled: updateStatus.isPending || row.status === 'changes_requested',
+                    },
+                    {
+                        key: 'deny',
+                        label: 'Deny',
+                        icon: '✗',
+                        onClick: () => handleStatusChange(row.modId, 'denied'),
+                        disabled: updateStatus.isPending || row.status === 'denied',
+                        variant: 'danger',
+                    },
+                    {
+                        key: 'delete',
+                        label: 'Delete Permanently',
+                        icon: '🗑',
+                        onClick: () => handleDeleteClick(row.modId, row.title),
+                        disabled: deleteMod.isPending,
+                        variant: 'danger',
+                    },
+                ];
+                
+                return <ActionMenu items={menuItems} />;
+            },
         },
     ], [handleStatusChange, handleDeleteClick, updateStatus, deleteMod]);
 
-    // Calculate table height based on available space
-    // CRITICAL: Use viewport height and measure actual rendered elements
-    useEffect(() => {
-        const updateTableHeight = () => {
-            const viewportHeight = window.innerHeight;
-            
-            // Use the table container ref to measure available space
-            // This is more accurate than estimating element heights
-            if (tableContainerRef.current) {
-                const containerRect = tableContainerRef.current.getBoundingClientRect();
-                const containerTop = containerRect.top;
-                const availableHeight = viewportHeight - containerTop - 40; // 40px bottom padding
-                
-                // Minimum height of 300px, ensure it doesn't exceed viewport
-                const calculatedHeight = Math.max(300, Math.min(availableHeight, viewportHeight - 100));
-                setTableHeight(calculatedHeight);
-            } else {
-                // Fallback: estimate based on typical layout
-                // Main nav: ~80px, Admin nav: ~50px, Page header: ~100px, Stats: ~120px, Toolbar: ~60px
-                const estimatedReserved = 410;
-                const calculatedHeight = Math.max(300, viewportHeight - estimatedReserved);
-                setTableHeight(calculatedHeight);
-            }
-        };
-
-        // Initial calculation after DOM is ready
-        const timeoutId = setTimeout(updateTableHeight, 100);
-        
-        // Listen for window resize
-        window.addEventListener('resize', updateTableHeight);
-        
-        // Use ResizeObserver to detect when container position changes
-        let resizeObserver: ResizeObserver | null = null;
-        if (tableContainerRef.current && typeof ResizeObserver !== 'undefined') {
-            resizeObserver = new ResizeObserver(updateTableHeight);
-            resizeObserver.observe(tableContainerRef.current);
-        }
-        
-        return () => {
-            clearTimeout(timeoutId);
-            window.removeEventListener('resize', updateTableHeight);
-            if (resizeObserver && tableContainerRef.current) {
-                resizeObserver.unobserve(tableContainerRef.current);
-            }
-        };
-    }, [data]); // Recalculate when data changes (affects layout)
 
     if (isLoading) return <Loading>Loading mods...</Loading>;
     if (error) return <Error>Failed to load mods: {(error as Error).message}</Error>;
@@ -553,8 +463,7 @@ export function AdminPanel() {
         statusFilter,
         searchQuery,
         sortedModsCount: sortedMods.length,
-        filteredModsCount: filteredMods.length,
-        tableHeight
+        filteredModsCount: filteredMods.length
     });
 
     const selectedCount = selectedIds.size;
@@ -636,27 +545,22 @@ export function AdminPanel() {
             </Toolbar>
 
             <TableContainer ref={tableContainerRef}>
-                {sortedMods.length > 0 ? (
-                    <VirtualizedTable
-                        data={sortedMods}
-                        columns={columns}
-                        height={tableHeight}
-                        rowHeight={56}
-                        getItemId={(mod) => mod.modId}
-                        sortConfig={sortConfig}
-                        onSort={handleSort}
-                        selectedIds={selectedIds}
-                        onSelectionChange={setSelectedIds}
-                        colors={colors}
-                    />
-                ) : (
-                    <Loading>
-                        {searchQuery.trim() 
-                            ? `No mods found matching "${searchQuery}"${statusFilter ? ` with status: ${statusFilter}` : ''}`
-                            : `No mods found${statusFilter ? ` with status: ${statusFilter}` : ''}`
-                        }
-                    </Loading>
-                )}
+                <DataTable
+                    data={sortedMods}
+                    columns={columns}
+                    rowHeight={56}
+                    getRowId={(mod) => mod.modId}
+                    enableSorting={true}
+                    enableSelection={true}
+                    enableVirtualization={true}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    emptyMessage={searchQuery.trim() 
+                        ? `No mods found matching "${searchQuery}"${statusFilter ? ` with status: ${statusFilter}` : ''}`
+                        : `No mods found${statusFilter ? ` with status: ${statusFilter}` : ''}`
+                    }
+                    colors={colors}
+                />
             </TableContainer>
 
             <ConfirmationModal

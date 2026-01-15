@@ -34,7 +34,10 @@ export function loadE2ETestOTPCode(): string | null {
       const devVars = readFileSync(devVarsPath, 'utf-8');
       const match = devVars.match(/E2E_TEST_OTP_CODE\s*=\s*["']?([^"'\n\r]+)["']?/);
       if (match && match[1]) {
-        return match[1].trim();
+        const otpCode = match[1].trim();
+        // CRITICAL: Set in process.env so Miniflare workers can access it
+        process.env.E2E_TEST_OTP_CODE = otpCode;
+        return otpCode;
       }
     } catch (error) {
       console.warn(`[OTP Code Loader] Warning: Could not read .dev.vars file at ${devVarsPath}:`, error);
@@ -68,3 +71,6 @@ export function assertE2ETestOTPCode(): string | null {
   
   return otpCode;
 }
+
+// Auto-load E2E_TEST_OTP_CODE when this module is imported (for vitest setupFiles)
+loadE2ETestOTPCode();

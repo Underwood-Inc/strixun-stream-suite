@@ -10,6 +10,7 @@ import { authenticateRequest } from '../utils/auth.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 import { handleGetCustomer, handleGetCustomerByEmail, handleCreateCustomer, handleUpdateCustomer } from '../handlers/customer.js';
 import { handleGetPreferences, handleUpdatePreferences, handleUpdateDisplayName } from '../handlers/preferences.js';
+import { handleListAllCustomers, handleGetCustomerDetails, handleUpdateCustomer as handleAdminUpdateCustomer } from '../handlers/admin.js';
 
 interface Env {
     CUSTOMER_KV: KVNamespace;
@@ -39,13 +40,24 @@ async function handleCustomerRoute(
     // Get handler response
     const handlerResponse = await handler(request, env, auth);
 
+    // Detect if request is from browser (HttpOnly cookie auth)
+    const cookieHeader = request.headers.get('Cookie');
+    const hasHttpOnlyCookie = cookieHeader?.includes('auth_token=') || false;
+    
+    // CRITICAL: Disable encryption for browser requests (HttpOnly cookies)
+    // Browsers can't access HttpOnly cookies to decrypt responses
+    // For service-to-service calls (Authorization header), encryption is enabled
+    const authForEncryption = hasHttpOnlyCookie ? null : auth;
+
     // Use shared middleware for encryption and integrity headers
     // This automatically:
-    // - Encrypts responses if JWT token is present
+    // - Encrypts responses if JWT token is present (service-to-service only)
     // - Adds integrity headers for internal calls
+    // - For browser requests: passes null to disable encryption
     // CRITICAL: Allow service-to-service calls without JWT (needed for OTP auth service)
-    return await wrapWithEncryption(handlerResponse, auth, request, env, {
-        allowServiceCallsWithoutJWT: true
+    return await wrapWithEncryption(handlerResponse, authForEncryption, request, env, {
+        allowServiceCallsWithoutJWT: true,
+        requireJWT: authForEncryption ? true : false // Only require JWT if we have auth to encrypt with
     });
 }
 
@@ -54,6 +66,97 @@ async function handleCustomerRoute(
  * Uses reusable API architecture with automatic encryption
  */
 export async function handleCustomerRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
+    // Handle /admin/* routes first (more specific)
+    if (path.startsWith('/admin/')) {
+        // Admin routes require JWT authentication + super-admin role check via access-service
+        const auth = await authenticateRequest(request, env);
+        
+        if (!auth || !auth.customerId) {
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+            });
+            return {
+                response: new Response(JSON.stringify({
+                    error: 'Authentication required',
+                    detail: 'Admin endpoints require JWT authentication'
+                }), {
+                    status: 401,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                }),
+                customerId: null
+            };
+        }
+        
+        // Check if customer has super-admin role via access-service
+        const { AccessClient } = await import('../../shared/access-client.js');
+        
+        console.log('[CustomerRoutes] Checking super-admin with JWT:', {
+            hasJwtToken: !!auth.jwtToken,
+            jwtLength: auth.jwtToken?.length,
+            accessUrl: env.ACCESS_SERVICE_URL,
+            customerId: auth.customerId
+        });
+        
+        const accessClient = new AccessClient(env, {
+            jwtToken: auth.jwtToken, // Pass JWT token for authentication (REQUIRED)
+        });
+        
+        const isSuperAdmin = await accessClient.isSuperAdmin(auth.customerId!);
+        
+        if (!isSuperAdmin) {
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+            });
+            return {
+                response: new Response(JSON.stringify({
+                    error: 'Forbidden',
+                    detail: 'Super-admin role required for admin endpoints'
+                }), {
+                    status: 403,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                }),
+                customerId: null
+            };
+        }
+        
+        // Route admin endpoints
+        if (path === '/admin/customers' && request.method === 'GET') {
+            return await handleCustomerRoute(handleListAllCustomers, request, env, auth);
+        }
+        
+        // GET /admin/customers/:customerId - Get customer details
+        const adminCustomerIdMatch = path.match(/^\/admin\/customers\/([^\/]+)$/);
+        if (adminCustomerIdMatch && request.method === 'GET') {
+            const customerId = adminCustomerIdMatch[1];
+            return await handleCustomerRoute(
+                (req, e, a) => handleGetCustomerDetails(req, e, a, customerId),
+                request,
+                env,
+                auth
+            );
+        }
+        
+        // PUT /admin/customers/:customerId - Update customer
+        if (adminCustomerIdMatch && request.method === 'PUT') {
+            const customerId = adminCustomerIdMatch[1];
+            return await handleCustomerRoute(
+                (req, e, a) => handleAdminUpdateCustomer(req, e, a, customerId),
+                request,
+                env,
+                auth
+            );
+        }
+        
+        // Admin route not found
+        return null;
+    }
+    
     // Only handle /customer/* routes (or root if this is dedicated customer worker)
     // Allow /customer (without trailing slash) for POST requests
     if (!path.startsWith('/customer/') && path !== '/' && path !== '/customer') {
@@ -73,7 +176,6 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
     if (!auth) {
         // Create a minimal auth object for internal calls
         auth = {
-            userId: 'service',
             customerId: null,
             jwtToken: '', // No JWT for service calls
         };
@@ -186,10 +288,19 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
                 ...Object.fromEntries(corsHeaders.entries()),
             },
         });
+        // Detect if request is from browser (HttpOnly cookie auth)
+        const cookieHeader = request.headers.get('Cookie');
+        const hasHttpOnlyCookie = cookieHeader?.includes('auth_token=') || false;
+        
+        // For HttpOnly cookie requests, pass null to disable encryption
+        // For service-to-service calls, pass auth (might be null, which is fine with allowServiceCallsWithoutJWT)
+        const authForEncryption = hasHttpOnlyCookie ? null : (auth as any);
+        
         // Use wrapWithEncryption to ensure integrity headers are added for internal calls
         // CRITICAL: Allow service-to-service calls without JWT (needed for OTP auth service)
-        return await wrapWithEncryption(errorResponse, auth, request, env, {
-            allowServiceCallsWithoutJWT: true
+        return await wrapWithEncryption(errorResponse, authForEncryption, request, env, {
+            allowServiceCallsWithoutJWT: true,
+            requireJWT: authForEncryption ? true : false
         });
     }
 }

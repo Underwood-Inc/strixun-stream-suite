@@ -1,0 +1,61 @@
+# Access Service - Cloudflare Worker Configuration
+# Handles access control decisions, roles, permissions, and quotas
+# Service-agnostic: works for ANY service (mods, customer, analytics, etc.)
+
+name = "strixun-access-service"
+main = "dist/worker.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables (secrets should be set via wrangler secret put)
+# DO NOT put actual secrets here - use wrangler CLI:
+#   wrangler secret put JWT_SECRET          # REQUIRED: JWT signing secret (must match OTP auth service)
+#   wrangler secret put SERVICE_API_KEY     # REQUIRED: API key for service-to-service authentication
+#   wrangler secret put SUPER_ADMIN_API_KEY # REQUIRED: API key for super admin access
+#   wrangler secret put ALLOWED_ORIGINS     # OPTIONAL: Comma-separated CORS origins (recommended for production)
+
+# Production environment (default)
+[vars]
+ENVIRONMENT = "production"
+
+# Production KV Namespace for access control data
+[[kv_namespaces]]
+binding = "ACCESS_KV"
+id = "ee3fee37d3d74ffdb7ebeeae4b0d86ff"
+
+[[kv_namespaces]]
+binding = "OTP_AUTH_KV"
+id = "680c9dbe86854c369dd23e278abb41f9"
+
+# Production routes - API backend at access-api.idling.app
+# Frontend UI will be at access.idling.app (Cloudflare Pages)
+[[routes]]
+pattern = "access-api.idling.app/*"
+zone_name = "idling.app"
+
+# Development environment (uses shared KV namespaces for local testing)
+[env.development]
+
+[env.development.vars]
+ENVIRONMENT = "development"
+ACCESS_SERVICE_URL = "http://localhost:8795"
+
+# Development KV Namespace (shares production namespace for local testing)
+[[env.development.kv_namespaces]]
+binding = "ACCESS_KV"
+id = "ee3fee37d3d74ffdb7ebeeae4b0d86ff"
+
+[[env.development.kv_namespaces]]
+binding = "OTP_AUTH_KV"
+id = "680c9dbe86854c369dd23e278abb41f9"
+
+# Observability Configuration
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true

@@ -66,18 +66,14 @@ test.describe('Upload Access After Login', () => {
       { timeout: 10000 }
     );
     
-    // Wait for auth state to be persisted
-    await page.waitForFunction(() => {
+    // Wait for authentication to be established (verify via API call)
+    await page.waitForFunction(async () => {
       try {
-        const authStorage = localStorage.getItem('auth-storage');
-        if (authStorage) {
-          const parsed = JSON.parse(authStorage);
-          return !!(parsed?.customer?.token);
-        }
+        const response = await fetch('/auth-api/auth/me', { credentials: 'include' });
+        return response.ok;
       } catch {
         return false;
       }
-      return false;
     }, { timeout: 5000 });
     
     // Step 2: Collect console errors before navigating to upload
@@ -109,19 +105,18 @@ test.describe('Upload Access After Login', () => {
     
     expect(tokenMismatchErrors.length).toBe(0);
     
-    // Step 5: Verify customer association is present
-    const authState = await page.evaluate(() => {
+    // Step 5: Verify customer association is present (via API call)
+    const authState = await page.evaluate(async () => {
       try {
-        const authStorage = localStorage.getItem('auth-storage');
-        if (authStorage) {
-          const parsed = JSON.parse(authStorage);
-          const customer = parsed?.customer;
+        const response = await fetch('/auth-api/auth/me', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
           return {
-            hasUser: !!customer,
-            hasToken: !!customer?.token,
-            hasCustomerId: !!customer?.customerId,
-            customerId: customer?.customerId || null,
-            tokenLength: customer?.token?.length || 0
+            hasUser: !!data.customerId,
+            hasToken: true, // With HttpOnly cookies, token is in cookie, not accessible
+            hasCustomerId: !!data.customerId,
+            customerId: data.customerId || null,
+            tokenLength: 0 // With HttpOnly cookies, token is in cookie, not accessible
           };
         }
       } catch {
@@ -193,50 +188,33 @@ test.describe('Upload Access After Login', () => {
       { timeout: 10000 }
     );
     
-    await page.waitForFunction(() => {
+    await page.waitForFunction(async () => {
       try {
-        const authStorage = localStorage.getItem('auth-storage');
-        if (authStorage) {
-          const parsed = JSON.parse(authStorage);
-          return !!(parsed?.customer?.token);
-        }
+        const response = await fetch('/auth-api/auth/me', { credentials: 'include' });
+        return response.ok;
       } catch {
         return false;
       }
-      return false;
     }, { timeout: 5000 });
     
-    // Extract token and verify it has customerId in JWT payload
-    const tokenInfo = await page.evaluate(() => {
+    // Verify customer info is available via /auth/me API
+    // With HttpOnly cookies, tokens are not accessible via JavaScript
+    const tokenInfo = await page.evaluate(async () => {
       try {
-        const authStorage = localStorage.getItem('auth-storage');
-        if (authStorage) {
-          const parsed = JSON.parse(authStorage);
-          const customer = parsed?.customer;
-          const token = customer?.token;
-          
-          if (token) {
-            // Decode JWT payload
-            const parts = token.split('.');
-            if (parts.length === 3) {
-              const payloadB64 = parts[1];
-              const payload = JSON.parse(
-                atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
-              );
-              
-              return {
-                hasToken: true,
-                hasCustomerIdInJWT: !!payload?.customerId,
-                customerIdFromJWT: payload?.customerId || null,
-                customerIdFromUser: customer?.customerId || null
-              };
-            }
-          }
+        const response = await fetch('/auth-api/auth/me', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          return {
+            hasToken: true,
+            hasCustomerIdInJWT: !!data.customerId,
+            customerIdFromJWT: data.customerId || null,
+            customerIdFromUser: data.customerId || null
+          };
         }
-      } catch (e) {
-        return { error: String(e) };
+      } catch {
+        // Ignore errors
       }
-      return { hasToken: false };
+      return { hasToken: false, hasCustomerIdInJWT: false, customerIdFromJWT: null, customerIdFromUser: null };
     });
     
     expect(tokenInfo.hasToken).toBe(true);
@@ -248,15 +226,14 @@ test.describe('Upload Access After Login', () => {
     await page.waitForTimeout(2000);
     
     // Verify customerId is available in user object (either from /auth/me or extracted from JWT)
-    const finalAuthState = await page.evaluate(() => {
+    const finalAuthState = await page.evaluate(async () => {
       try {
-        const authStorage = localStorage.getItem('auth-storage');
-        if (authStorage) {
-          const parsed = JSON.parse(authStorage);
-          const customer = parsed?.customer;
+        const response = await fetch('/auth-api/auth/me', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
           return {
-            hasCustomerId: !!customer?.customerId,
-            customerId: customer?.customerId || null
+            hasCustomerId: !!data.customerId,
+            customerId: data.customerId || null
           };
         }
       } catch {

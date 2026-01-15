@@ -191,7 +191,7 @@ async function createTestMod(
   const response = await fetch(`${TEST_CONFIG.API_URL}/mods`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Cookie': `auth_token=${token}`,
       // DO NOT set Content-Type - browser sets it automatically for multipart/form-data
     },
     body: formData,
@@ -221,7 +221,7 @@ async function createTestMod(
     const statusResponse = await fetch(`${TEST_CONFIG.API_URL}/admin/mods/${modId}/status`, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ status: 'published' }),
@@ -311,7 +311,7 @@ test.describe('Mod Download - Public Access', () => {
     const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
     const authenticatedResponse = await request.get(downloadUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -354,7 +354,7 @@ test.describe('Mod Download - Public Access', () => {
     const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
     const authenticatedResponse = await request.get(downloadUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -370,7 +370,7 @@ test.describe('Mod Download - Public Access', () => {
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -438,7 +438,7 @@ test.describe('Mod Download - Private/Draft Access Control', () => {
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${privateMod.slug}/versions/${privateMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -460,7 +460,7 @@ test.describe('Mod Download - Private/Draft Access Control', () => {
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/non-existent-private-mod/versions/non-existent-version/download`;
     const response = await request.get(downloadUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -522,7 +522,7 @@ test.describe('Mod Download - Error Handling', () => {
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -554,7 +554,7 @@ test.describe('Mod Download - CORS and Headers', () => {
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -575,7 +575,7 @@ test.describe('Mod Download - CORS and Headers', () => {
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -597,7 +597,7 @@ test.describe('Mod Download - CORS and Headers', () => {
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -624,7 +624,7 @@ test.describe('File Integrity Badge - Verification', () => {
     const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge`;
     const response = await request.get(badgeUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -660,7 +660,7 @@ test.describe('File Integrity Badge - Verification', () => {
     const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge`;
     const response = await request.get(badgeUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -685,7 +685,7 @@ test.describe('File Integrity Badge - Verification', () => {
     const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge`;
     const response = await request.get(badgeUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -716,7 +716,7 @@ test.describe('File Integrity Badge - Verification', () => {
       const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge?style=${style}`;
       const response = await request.get(badgeUrl, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Cookie': `auth_token=${token}`,
         },
         timeout: TEST_CONFIG.API_TIMEOUT,
       });
@@ -761,7 +761,7 @@ test.describe('File Integrity Badge - Verification', () => {
     const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
     const authenticatedResponse = await request.get(badgeUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -778,7 +778,7 @@ test.describe('File Integrity Badge - Verification', () => {
     const verifyUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/verify`;
     const verifyResponse = await request.get(verifyUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -793,7 +793,7 @@ test.describe('File Integrity Badge - Verification', () => {
     const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge`;
     const badgeResponse = await request.get(badgeUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -821,7 +821,7 @@ test.describe('File Integrity Badge - Verification', () => {
     const badgeUrl = `${TEST_CONFIG.API_URL}/mods/non-existent-mod/versions/non-existent-version/badge`;
     const response = await request.get(badgeUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -836,7 +836,7 @@ test.describe('File Integrity Badge - Verification', () => {
     const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/non-existent-version/badge`;
     const response = await request.get(badgeUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
@@ -852,7 +852,7 @@ test.describe('File Integrity Badge - Verification', () => {
     const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge?style=invalid`;
     const response = await request.get(badgeUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Cookie': `auth_token=${token}`,
       },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });

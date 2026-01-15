@@ -12,7 +12,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/auth';
-import * as api from '../services/api';
+import * as api from '../services/mods';
 
 /**
  * Hook to check upload permission
@@ -24,20 +24,18 @@ import * as api from '../services/api';
 export function useUploadPermission() {
     const { customer, isAuthenticated } = useAuthStore();
     
-    // Ensure we have a valid token before making the request
-    const hasValidToken = isAuthenticated && !!customer?.token && customer.token.trim().length > 0;
+    // CRITICAL: With HttpOnly cookies, we can't check for token
+    // Just check if authenticated - cookie is sent automatically
+    const canMakeRequest = isAuthenticated && !!customer?.customerId;
     
     const { data, isLoading, error } = useQuery({
-        queryKey: ['uploadPermission', customer?.customerId, customer?.token ? 'has-token' : 'no-token'],
+        queryKey: ['uploadPermission', customer?.customerId],
         queryFn: async () => {
-            // Double-check token before making request
-            if (!customer?.token) {
-                throw new Error('No authentication token available');
-            }
+            // With HttpOnly cookies, API client sends cookie automatically
             const result = await api.checkUploadPermission();
             return result;
         },
-        enabled: hasValidToken && !!customer?.customerId,
+        enabled: canMakeRequest,
         staleTime: 5 * 60 * 1000, // Cache for 5 minutes
         retry: (failureCount, error) => {
             // Don't retry on 401 errors (authentication failures)

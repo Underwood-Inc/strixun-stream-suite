@@ -15,8 +15,8 @@
  * ```
  */
 
-import type { APIClient } from './src/client.js';
-import type { APIResponse } from './src/types.js';
+import type { APIClient } from './src/client';
+import type { APIResponse } from './src/types';
 
 /**
  * Mock API Client for testing

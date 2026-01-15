@@ -111,6 +111,8 @@ export class APIClient {
         syncOnReconnect: config.offline?.syncOnReconnect ?? true,
         retryOnReconnect: config.offline?.retryOnReconnect ?? true,
       },
+      // CRITICAL: Default to 'include' for HttpOnly cookie support
+      credentials: config.credentials || 'include',
       auth: config.auth || {},
       errorHandler: config.errorHandler || (async () => {}),
       plugins: config.plugins || [],
@@ -424,6 +426,8 @@ export class APIClient {
         headers,
         body,
         signal: req.signal,
+        // CRITICAL: Include credentials if configured (for HttpOnly cookies)
+        credentials: this.config.credentials,
       };
 
       // Create timeout controller if needed

@@ -12,12 +12,14 @@
  * 3. Adding type definitions for mods
  */
 
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import type { ExecutionContext } from '@strixun/types';
+import type { ExecutionContext } from '@cloudflare/workers-types';
 import { createError } from './utils/errors.js';
+import { getCorsHeadersRecord } from './utils/cors.js';
 import { handleModRoutes } from './router/mod-routes.js';
 import { handleAdminRoutes } from './router/admin-routes.js';
 import { handleR2Cleanup } from './handlers/admin/r2-cleanup.js';
+import { MigrationRunner } from '../shared/migration-runner.js';
+import { migrations } from './migrations/index.js';
 
 /**
  * Route configuration interface
@@ -58,65 +60,39 @@ function parseRoutes(env: Env): RouteConfig[] {
 }
 
 /**
- * Get CORS headers (temporary - will be replaced by framework)
+ * Auto-run migrations on startup
+ * 
+ * SAFE FOR PRODUCTION: Idempotent
+ * - Tracks which migrations have been run
+ * - Skips duplicates automatically
+ * - Only runs new/pending migrations
+ * - Runs on ALL environments (dev + production)
+ * 
+ * This ensures database schema/data is always up-to-date on every deploy.
  */
-function getCorsHeaders(env: Env, request: Request): Record<string, string> {
-    const origin = request.headers.get('Origin');
-    const allowedOrigins = env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
+async function autoRunMigrations(env: Env): Promise<void> {
+    const envName = env.ENVIRONMENT || 'production';
+    console.log(`[ModsAPI] 🔄 Checking for pending migrations in ${envName}...`);
     
-    // Always allow localhost for development (even in production mode)
-    // This ensures local development works without needing to configure ALLOWED_ORIGINS
-    const isLocalhost = origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'));
-    
-    // If no origins configured, allow all (including localhost)
-    // If localhost is detected, always allow it (for development)
-    let effectiveOrigins = allowedOrigins.length > 0 ? allowedOrigins : ['*'];
-    
-    // Always allow localhost for development (even if not in allowedOrigins)
-    if (isLocalhost) {
-        // Check if localhost is already in allowedOrigins
-        const localhostAllowed = allowedOrigins.some(o => {
-            if (o === '*' || o === origin) return true;
-            if (o.endsWith('*')) {
-                const prefix = o.slice(0, -1);
-                return origin && origin.startsWith(prefix);
-            }
-            return false;
-        });
+    try {
+        const runner = new MigrationRunner(env.MODS_KV, 'mods');
+        const result = await runner.runPending(migrations, env);
         
-        // If localhost not explicitly allowed, add wildcard or the specific origin
-        if (!localhostAllowed) {
-            effectiveOrigins = ['*']; // Allow all for localhost development
+        if (result.ran.length > 0) {
+            console.log(`[ModsAPI] ✅ Ran ${result.ran.length} migrations:`, result.ran);
         }
+        
+        if (result.skipped.length > 0) {
+            console.log(`[ModsAPI] ⏭️  Skipped ${result.skipped.length} migrations (already run)`);
+        }
+        
+        if (result.ran.length === 0 && result.skipped.length === 0) {
+            console.log(`[ModsAPI] ✓ No migrations to run`);
+        }
+    } catch (error) {
+        console.error(`[ModsAPI] ❌ Failed to run migrations in ${envName}:`, error);
+        // Don't throw - migration failure shouldn't break the service
     }
-    
-    // Use framework CORS headers (returns Headers object, convert to Record)
-    // CRITICAL: Trust the framework's createCORSHeaders - it already handles all CORS logic correctly
-    // Do NOT manually set Access-Control-Allow-Origin as it causes duplicate headers
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: effectiveOrigins,
-        credentials: true, // Allow credentials for authenticated requests
-    });
-    
-    // Convert Headers to Record<string, string>
-    const headers: Record<string, string> = {};
-    corsHeaders.forEach((value, key) => {
-        headers[key] = value;
-    });
-    
-    // The framework's createCORSHeaders already sets all required CORS headers
-    // Only add fallback headers if framework didn't set them (shouldn't happen, but safety check)
-    if (!headers['Access-Control-Allow-Methods']) {
-        headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
-    }
-    if (!headers['Access-Control-Allow-Headers']) {
-        headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token';
-    }
-    if (!headers['Access-Control-Max-Age']) {
-        headers['Access-Control-Max-Age'] = '86400';
-    }
-    
-    return headers;
 }
 
 /**
@@ -124,17 +100,14 @@ function getCorsHeaders(env: Env, request: Request): Record<string, string> {
  * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health
  */
 async function handleHealth(env: Env, request: Request): Promise<Response> {
-    // Extract JWT token from request
-    const authHeader = request.headers.get('Authorization');
-    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-    
-    // CRITICAL SECURITY: JWT is required for encryption/decryption
-    if (!jwtToken) {
+    // ONLY check HttpOnly cookie - NO fallbacks, NO Authorization header
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) {
         const errorResponse = {
             type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
             title: 'Unauthorized',
             status: 401,
-            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            detail: 'JWT token is required for encryption/decryption. Please authenticate with HttpOnly cookie.',
             instance: request.url
         };
         
@@ -142,18 +115,55 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
             status: 401,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...getCorsHeaders(env, request),
+                ...getCorsHeadersRecord(env, request),
             },
         });
     }
+    
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    if (!authCookie) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please authenticate with HttpOnly cookie.',
+            instance: request.url
+        };
+        
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...getCorsHeadersRecord(env, request),
+            },
+        });
+    }
+    
+    const jwtToken = authCookie.substring('auth_token='.length).trim();
     
     // Authenticate request to get auth object for encryption
     const { authenticateRequest } = await import('./utils/auth.js');
     const auth = await authenticateRequest(request, env);
     
-    // If authentication fails, still require JWT for encryption (even if invalid)
-    // We'll use the raw token for encryption
-    const authForEncryption = auth || { jwtToken, customerId: null };
+    // If authentication fails, return error since JWT is required
+    if (!auth) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'Invalid JWT token. Please provide a valid JWT token in the Authorization header.',
+            instance: request.url
+        };
+        
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...getCorsHeadersRecord(env, request),
+            },
+        });
+    }
     
     const routes = parseRoutes(env);
     const healthData = { 
@@ -170,21 +180,38 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
     const response = new Response(JSON.stringify(healthData), {
         headers: { 
             'Content-Type': 'application/json',
-            ...getCorsHeaders(env, request),
+            ...getCorsHeadersRecord(env, request),
         },
     });
     
-    // Wrap with encryption (will encrypt with JWT token)
-    const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
+    // Wrap with encryption - but disable for HttpOnly cookie auth (browser can't decrypt)
+    // (JavaScript can't access HttpOnly cookies to decrypt, and HTTPS already protects data in transit)
+    const encryptedResult = await wrapWithEncryption(response, null, request, env, {
+        requireJWT: false // Pass null to disable encryption for HttpOnly cookies
+    });
     return encryptedResult.response;
 }
 
 /**
  * Main request handler with API framework
  */
+// Track if migrations have been run (per worker instance)
+let migrationsRun = false;
+
 async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // Auto-run migrations on first request (idempotent, safe for production)
+    // Use ctx.waitUntil to run async without blocking the request
+    if (!migrationsRun) {
+        migrationsRun = true;
+        ctx.waitUntil(autoRunMigrations(env));
+    }
+    
     const url = new URL(request.url);
-    const path = url.pathname;
+    // Dev-proxy normalization: allow apps to call through /mods-api/* without 404s
+    let path = url.pathname;
+    if (path.startsWith('/mods-api/')) {
+        path = path.substring('/mods-api'.length);
+    }
 
     try {
         // Health check (only at /health, not at root to allow root-level mod routes)
@@ -212,7 +239,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
             status: 404,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...getCorsHeaders(env, request),
+                ...getCorsHeadersRecord(env, request),
             },
         });
     } catch (error: any) {
@@ -224,7 +251,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
                 status: error.status,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...getCorsHeaders(env, request),
+                    ...getCorsHeadersRecord(env, request),
                 },
             });
         }
@@ -241,7 +268,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
                 status: 500,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...getCorsHeaders(env, request),
+                    ...getCorsHeadersRecord(env, request),
                 },
             });
         }
@@ -257,7 +284,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
             status: 500,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...getCorsHeaders(env, request),
+                ...getCorsHeadersRecord(env, request),
             },
         });
     }
@@ -271,7 +298,7 @@ export default {
         // CRITICAL: Handle CORS preflight FIRST, before any routing
         // This ensures OPTIONS requests always get CORS headers, even if route doesn't match
         if (request.method === 'OPTIONS') {
-            const corsHeaders = getCorsHeaders(env, request);
+            const corsHeaders = getCorsHeadersRecord(env, request);
             console.log('[Worker] OPTIONS preflight request:', {
                 url: request.url,
                 origin: request.headers.get('Origin'),
@@ -308,7 +335,7 @@ export default {
 /**
  * Environment interface for TypeScript
  */
-interface Env {
+export interface Env {
     // KV Namespaces
     MODS_KV: KVNamespace;
     
@@ -317,7 +344,7 @@ interface Env {
     
     // Environment variables
     JWT_SECRET?: string; // REQUIRED: JWT signing secret (must match OTP auth service)
-    ALLOWED_EMAILS?: string; // REQUIRED: Comma-separated list of allowed email addresses for upload/management
+    FILE_INTEGRITY_KEYPHRASE?: string; // OPTIONAL: Keyphrase for file integrity hashing
     ALLOWED_ORIGINS?: string; // OPTIONAL: Comma-separated CORS origins (recommended for production)
     ENVIRONMENT?: string;
     MODS_PUBLIC_URL?: string; // OPTIONAL: Public URL for R2 bucket (if using custom domain)

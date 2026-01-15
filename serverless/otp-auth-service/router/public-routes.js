@@ -45,57 +45,17 @@ export async function handlePublicRoutes(request, path, env) {
         return dashboardResponse;
     }
     
-    // Serve OpenAPI spec - requires JWT encryption
+    // Serve OpenAPI spec - publicly accessible (it's just documentation)
     if (path === '/openapi.json' && request.method === 'GET') {
-        // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
-        // Get JWT token from request
-        const authHeader = request.headers.get('Authorization');
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
-        
-        if (!jwtToken) {
-            const errorResponse = {
-                type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
-                title: 'Unauthorized',
-                status: 401,
-                detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
-                instance: request.url
-            };
-            const corsHeaders = getCorsHeaders(env, request);
-            return new Response(JSON.stringify(errorResponse), {
-                status: 401,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...corsHeaders,
-                },
-            });
-        }
-
-        try {
-            const response = new Response(JSON.stringify(openApiSpec, null, 2), {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Cache-Control': 'public, max-age=3600',
-                },
-            });
-            
-            // Wrap with encryption
-            const { wrapWithEncryption } = await import('@strixun/api-framework');
-            const authForEncryption = { userId: 'anonymous', customerId: null, jwtToken };
-            const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
-            return encryptedResult.response;
-        } catch (error) {
-            const errorResponse = new Response(JSON.stringify({ error: 'Failed to load OpenAPI spec' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' },
-            });
-            
-            // Wrap error response with encryption
-            const { wrapWithEncryption } = await import('@strixun/api-framework');
-            const authForEncryption = { userId: 'anonymous', customerId: null, jwtToken };
-            const encryptedError = await wrapWithEncryption(errorResponse, authForEncryption, request, env, { requireJWT: false });
-            return encryptedError.response;
-        }
+        const corsHeaders = getCorsHeaders(env, request);
+        return new Response(JSON.stringify(openApiSpec, null, 2), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'public, max-age=3600',
+                ...corsHeaders,
+            },
+        });
     }
     
     // Public endpoints (no auth required, but responses should be encrypted if JWT provided)

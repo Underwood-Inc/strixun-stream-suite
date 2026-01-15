@@ -23,78 +23,36 @@ const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL
 
 export function LoginPage() {
     const navigate = useNavigate();
-    const { setCustomer, restoreSession } = useAuthStore();
+    const { checkAuth } = useAuthStore();
 
-    // Restore session from backend on mount (same as main app)
-    // This enables cross-application session sharing for the same device
+    // Check authentication status on mount (HttpOnly cookie SSO)
+    // This enables cross-application session sharing
     // If customer already has a session, they'll be redirected automatically
     useEffect(() => {
-        // Always try to restore - it will check if restoration is needed
-        restoreSession().catch(error => {
-            console.debug('[LoginPage] Session restoration failed (non-critical):', error);
+        // Check if customer is already authenticated via HttpOnly cookie
+        checkAuth().catch(() => {
+            // Non-critical - user may not be logged in yet
         });
-    }, [restoreSession]); // Only run once on mount
+    }, [checkAuth]); // Only run once on mount
 
-    const handleLoginSuccess = async (data: LoginSuccessData) => {
-        // Decode JWT to extract isSuperAdmin from payload (matching main app)
-        let isSuperAdmin = false;
+    const handleLoginSuccess = async (_data: LoginSuccessData) => {
+        // CRITICAL: After OTP login, the backend sets an HttpOnly cookie
+        // We immediately call checkAuth() to validate the cookie and fetch customer info
+        console.log('[Login] ✓ OTP verification successful, validating HttpOnly cookie session...');
+        
         try {
-            const token = data.token;
-            if (token) {
-                const parts = token.split('.');
-                if (parts.length === 3) {
-                    const payloadB64 = parts[1];
-                    const payload = JSON.parse(
-                        atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
-                    );
-                    isSuperAdmin = payload?.isSuperAdmin === true;
-                }
+            const authSuccess = await checkAuth();
+            if (authSuccess) {
+                console.log('[Login] ✓ HttpOnly cookie session validated');
+                navigate('/');
+            } else {
+                console.error('[Login] ✗ HttpOnly cookie session validation failed');
+                handleLoginError('Session validation failed. Please try again.');
             }
         } catch (error) {
-            console.warn('[Login] Failed to decode JWT for super admin status:', error);
+            console.error('[Login] ✗ Error validating session:', error);
+            handleLoginError('Session validation error. Please try again.');
         }
-
-        // Calculate expiration (matching main app)
-        let expiresAt: string;
-        if (data.expiresAt) {
-            // expiresAt can be a number (timestamp) or string (ISO)
-            expiresAt = typeof data.expiresAt === 'number' 
-                ? new Date(data.expiresAt).toISOString()
-                : data.expiresAt;
-        } else {
-            // Default to 7 hours (matching backend token expiration)
-            expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString();
-        }
-
-        // Store customer data - ensure all required fields are present (matching main app)
-        // CRITICAL: OTP Auth returns customerId, not userId
-        const customerId = data.customerId || data.customerId; // Support both field names for backwards compatibility
-        if (!customerId || !data.email || !data.token) {
-            console.error('[Login] Missing required customer data:', data);
-            handleLoginError('Invalid login response: missing required fields');
-            return;
-        }
-
-        // Set authentication - CRITICAL: Trim token to ensure it matches the token used for encryption on backend
-        const customerData = {
-            customerId: customerId,
-            email: data.email,
-            displayName: data.displayName || undefined,
-            token: data.token.trim(), // Trim token to prevent hash mismatches
-            expiresAt: expiresAt,
-            isSuperAdmin: isSuperAdmin,
-        };
-
-        setCustomer(customerData);
-
-        console.log('[Login] ✓ Customer authenticated:', customerData.email, 'Token expires at:', expiresAt);
-
-        // Don't call fetchCustomerInfo immediately after login - let the Layout component handle it
-        // This avoids token mismatch issues that can occur when calling it too quickly after login
-        // The Layout component's restoreSession will fetch customer info when it mounts, which gives
-        // the store time to fully update and ensures the token is properly set
-
-        navigate('/');
     };
 
     const handleLoginError = (error: string) => {

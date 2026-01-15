@@ -5,8 +5,13 @@
   "type": "module",
   "main": "worker.ts",
   "scripts": {
+    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/schemas build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build",
+    "predev": "pnpm run build:deps && pnpm run build:worker",
     "dev": "wrangler dev --port 8790 --local",
+    "predeploy": "pnpm run build:deps && pnpm run build:worker",
     "deploy": "wrangler deploy",
+    "build:worker": "esbuild worker.ts --bundle --format=esm --outfile=dist/worker.js --platform=node --external:cloudflare:* --external:node:*",
+    "pretest": "pnpm run build:deps && pnpm run build:worker",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests"
@@ -21,16 +26,19 @@
   "license": "ISC",
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241106.0",
+    "esbuild": "^0.24.0",
     "typescript": "^5.6.3",
     "vitest": "^4.0.16",
     "wrangler": "^4.54.0"
   },
   "dependencies": {
     "@strixun/api-framework": "workspace:*",
+    "@strixun/error-utils": "workspace:*",
     "@strixun/types": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/otp-auth-service": "workspace:*",
-    "@strixun/schemas": "workspace:*"
+    "@strixun/schemas": "workspace:*",
+    "@strixun/service-client": "workspace:*"
   }
 }
 

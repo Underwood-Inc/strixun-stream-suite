@@ -29,7 +29,8 @@ export async function loadDashboardAssets(): Promise<AssetMap> {
     if (dashboardAssetsLoaded) return dashboardAssets;
     dashboardAssetsLoaded = true;
     try {
-        const dashboardModule = await import('../dashboard-assets.js');
+        // CRITICAL: The build script creates landing-page-assets.js which contains BOTH landing page AND dashboard assets
+        const dashboardModule = await import('../landing-page-assets.js');
         dashboardAssets = dashboardModule.default as AssetMap;
         
         // Log for debugging in production
@@ -40,13 +41,13 @@ export async function loadDashboardAssets(): Promise<AssetMap> {
             const sampleKeys = Object.keys(dashboardAssets).slice(0, 5);
             console.log(`[Assets] Sample asset keys: ${sampleKeys.join(', ')}`);
         } else {
-            console.warn('[Assets] dashboard-assets.js loaded but default export is null/undefined');
+            console.warn('[Assets] landing-page-assets.js loaded but default export is null/undefined');
         }
     } catch (e) {
         // Dashboard not built yet - will proxy to dev server in dev mode
         const errorMessage = e instanceof Error ? e.message : String(e);
-        console.error('[Assets] Failed to load dashboard-assets.js:', errorMessage);
-        console.error('[Assets] This usually means the dashboard was not built. Run: pnpm build');
+        console.error('[Assets] Failed to load landing-page-assets.js:', errorMessage);
+        console.error('[Assets] This usually means the assets were not built. Run: pnpm build');
         dashboardAssets = null;
     }
     return dashboardAssets;
@@ -363,11 +364,11 @@ pnpm dev</code></pre>
         }
     }
     
-    // Production: serve dashboard assets from dashboard-assets.js
+    // Production: serve dashboard assets from landing-page-assets.js
     // The dashboard handles routing client-side, so /dashboard serves index.html
     const assets = await loadDashboardAssets();
     if (!assets) {
-        console.error('[Dashboard] Assets not loaded - dashboard-assets.js failed to load');
+        console.error('[Dashboard] Assets not loaded - landing-page-assets.js failed to load');
         return new Response('Dashboard not built. Run: pnpm build', {
             status: 503,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'text/plain' },

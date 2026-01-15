@@ -5,14 +5,16 @@ import { HelmetProvider } from 'react-helmet-async';
 import { App } from './App';
 import { GlobalStyle } from './theme';
 
-// Create a query client
+// Create a query client with sane defaults to prevent infinite refetch loops
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0, // Data is immediately stale - always refetch
-      gcTime: 0, // Don't keep data in cache
-      refetchOnWindowFocus: true, // Refetch when window regains focus
-      refetchOnMount: 'always', // Always refetch when component mounts
+      staleTime: 30000, // Data stays fresh for 30 seconds
+      gcTime: 300000, // Keep data in cache for 5 minutes
+      refetchOnWindowFocus: false, // Don't refetch on window focus (prevents spam)
+      refetchOnMount: false, // Don't refetch on mount if data is fresh
+      retry: 1, // Only retry once on failure (prevents infinite retries)
+      retryDelay: 1000, // Wait 1 second before retry
     },
   },
 });

@@ -7,8 +7,8 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
-import { isSuperAdminEmail } from '../../utils/admin.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
+import type { KVNamespaceListResult } from '@cloudflare/workers-types';
 
 /**
  * Handle admin delete mod request
@@ -18,7 +18,7 @@ export async function handleAdminDeleteMod(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    _auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Route-level protection ensures user is super admin
@@ -69,14 +69,14 @@ export async function handleAdminDeleteMod(
                     }
                 }
                 if (found) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor && !found);
             
             // Fallback: search through customer lists if direct lookup failed
             if (!mod) {
                 cursor = undefined;
                 do {
-                    const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                    const listResult: KVNamespaceListResult<unknown, string> = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
                     for (const key of listResult.keys) {
                         if (key.name.endsWith('_mods_list')) {
                             // Extract customerId from key name
@@ -104,7 +104,7 @@ export async function handleAdminDeleteMod(
                         }
                     }
                     if (found) break;
-                    cursor = listResult.listComplete ? undefined : listResult.cursor;
+                    cursor = listResult.list_complete ? undefined : listResult.cursor;
                 } while (cursor && !found);
             }
         }
@@ -112,8 +112,7 @@ export async function handleAdminDeleteMod(
         if (!mod || !modKey) {
             console.error('[AdminDelete] Mod not found:', { modId, normalizedModId });
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -251,8 +250,7 @@ export async function handleAdminDeleteMod(
             await env.MODS_KV.put(adminListKey, JSON.stringify(updatedAdminList));
         }
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify({ success: true }), {
             status: 200,
@@ -269,8 +267,7 @@ export async function handleAdminDeleteMod(
             'Failed to Delete Mod',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while deleting the mod'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

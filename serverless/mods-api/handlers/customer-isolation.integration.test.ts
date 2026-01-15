@@ -181,7 +181,7 @@ describe('Customer Isolation Integration', () => {
             const requestA = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${tokenA}`,
+                    'Cookie': `auth_token=${tokenA}`,
                 },
             });
 
@@ -238,7 +238,7 @@ describe('Customer Isolation Integration', () => {
             const requestA = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${tokenA}`,
+                    'Cookie': `auth_token=${tokenA}`,
                 },
             });
 

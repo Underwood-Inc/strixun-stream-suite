@@ -16,13 +16,13 @@
  * ```
  */
 
-import type { RouteEncryptionPolicy, EncryptionContext, EncryptionResult } from './route-encryption.js';
+import type { RouteEncryptionPolicy, EncryptionContext, EncryptionResult } from './route-encryption';
 import {
   encryptResponse,
   createEncryptionContext,
   findMatchingPolicy,
   DEFAULT_ENCRYPTION_POLICIES,
-} from './route-encryption.js';
+} from './route-encryption';
 
 // ============ Types ============
 

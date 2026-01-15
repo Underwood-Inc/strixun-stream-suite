@@ -3,7 +3,7 @@
  * Handles quota and usage information endpoint
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
 import { checkQuota as checkQuotaService } from '../../services/analytics.js';
 import { getCustomerCached } from '../../utils/cache.js';
@@ -51,7 +51,7 @@ export async function handleGetQuota(request, env, customerId = null) {
             console.log(`[QuotaHandler] No valid customerId provided - JWT authentication failed`);
             return new Response(JSON.stringify({ error: 'JWT token required. Please provide a valid JWT token in the Authorization header.' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -59,7 +59,7 @@ export async function handleGetQuota(request, env, customerId = null) {
         if (!resolvedCustomerId) {
             return new Response(JSON.stringify({ error: 'Customer ID required' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -112,7 +112,7 @@ export async function handleGetQuota(request, env, customerId = null) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }

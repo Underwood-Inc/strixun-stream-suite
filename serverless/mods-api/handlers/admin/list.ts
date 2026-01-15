@@ -14,7 +14,7 @@ import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 export async function handleListAllMods(
     request: Request,
     env: Env,
-    auth: { customerId: string; customerId: string | null }
+    _auth: { customerId: string }
 ): Promise<Response> {
     try {
         const url = new URL(request.url);
@@ -98,7 +98,7 @@ export async function handleListAllMods(
                     }
                 }
             }
-            cursor = listResult.listComplete ? undefined : listResult.cursor;
+            cursor = listResult.list_complete ? undefined : listResult.cursor;
         } while (cursor);
         
         console.log('[AdminList] Collected mod IDs:', {
@@ -151,7 +151,7 @@ export async function handleListAllMods(
                         }
                     }
                     if (found) break;
-                    cursor = listResult.listComplete ? undefined : listResult.cursor;
+                    cursor = listResult.list_complete ? undefined : listResult.cursor;
                 } while (cursor && !found);
             }
             
@@ -219,8 +219,7 @@ export async function handleListAllMods(
             pageSize
         };
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
 
         return new Response(JSON.stringify(response), {
@@ -238,8 +237,7 @@ export async function handleListAllMods(
             'Failed to List Mods',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while listing mods'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

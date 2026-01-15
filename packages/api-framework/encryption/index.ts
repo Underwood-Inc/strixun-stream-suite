@@ -26,13 +26,13 @@ export {
   decryptWithJWT,
   encryptBinaryWithJWT,
   decryptBinaryWithJWT,
-} from './jwt-encryption.js';
+} from './jwt-encryption';
 
 // Shared key encryption (for mod files)
 export {
   encryptBinaryWithSharedKey,
   decryptBinaryWithSharedKey,
-} from './shared-key-encryption.js';
+} from './shared-key-encryption';
 
 // Multi-stage encryption
 export {
@@ -43,13 +43,13 @@ export {
   generateRequestKey,
   isMultiEncrypted,
   isDoubleEncrypted,
-} from './multi-stage-encryption.js';
+} from './multi-stage-encryption';
 
 // Router middleware
 export {
   createEncryptionWrapper,
   wrapWithEncryption,
-} from './middleware.js';
+} from './middleware';
 
 // Per-route encryption system (industry standard)
 export {
@@ -58,14 +58,14 @@ export {
   extractJWTToken,
   findMatchingPolicy,
   DEFAULT_ENCRYPTION_POLICIES,
-} from './route-encryption.js';
+} from './route-encryption';
 
 // Centralized encryption middleware
 export {
   applyEncryptionMiddleware,
   withEncryption,
   createServicePolicies,
-} from './encryption-middleware.js';
+} from './encryption-middleware';
 
 // Types
 export type {
@@ -75,7 +75,7 @@ export type {
   EncryptionParty,
   E2EEncryptionConfig,
   EncryptionWrapperOptions,
-} from './types.js';
+} from './types';
 
 // Route encryption types
 export type {
@@ -83,15 +83,15 @@ export type {
   RouteEncryptionPolicy,
   EncryptionContext,
   EncryptionResult,
-} from './route-encryption.js';
+} from './route-encryption';
 
 export type {
   EncryptionMiddlewareOptions,
-} from './encryption-middleware.js';
+} from './encryption-middleware';
 
 // Re-export RouteResult and AuthResult for convenience
 export type {
   RouteResult,
   AuthResult,
-} from './middleware.js';
+} from './middleware';
 

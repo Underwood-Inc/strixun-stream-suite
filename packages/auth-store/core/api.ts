@@ -1,12 +1,36 @@
 /**
  * Core API functions for auth store
  * Framework-agnostic API calls that work across all implementations
+ * 
+ * SIMPLIFIED: HttpOnly cookie-based authentication
+ * - No IP restoration
+ * - No localStorage
+ * - Cookies handle everything
  */
 
-import type { AuthenticatedCustomer, AuthStoreConfig } from './types.js';
+import type { AuthStoreConfig } from './types';
+
+/**
+ * Check if running in development/localhost
+ */
+function isDevelopment(): boolean {
+    if (typeof window === 'undefined') return false;
+    
+    return window.location.hostname === 'localhost' || 
+           window.location.hostname === '127.0.0.1' ||
+           (typeof import.meta !== 'undefined' && (import.meta.env?.DEV || import.meta.env?.MODE === 'development'));
+}
 
 /**
  * Get OTP Auth API URL from config or environment
+ * 
+ * Priority:
+ * 1. Config override (authApiUrl)
+ * 2. Window.VITE_AUTH_API_URL (for E2E tests)
+ * 3. import.meta.env.VITE_AUTH_API_URL (for builds)
+ * 4. window.getOtpAuthApiUrl() (from config.js)
+ * 5. If localhost: '/auth-api' (Vite proxy) or 'http://localhost:8787'
+ * 6. Production default: 'https://auth.idling.app'
  */
 export function getAuthApiUrl(config?: AuthStoreConfig): string {
     // Priority 1: Config override
@@ -14,360 +38,195 @@ export function getAuthApiUrl(config?: AuthStoreConfig): string {
         return config.authApiUrl;
     }
     
-    // Priority 2: Environment variable (for E2E tests)
+    // Priority 2: Development detection
+    // CRITICAL: On localhost, ALWAYS use the Vite proxy path to ensure cookie SSO works across ports.
+    // Do not allow env/config injection to override localhost defaults.
+    if (isDevelopment()) {
+        return '/auth-api';
+    }
+    
+    // Priority 3: Window env (for E2E tests)
     if (typeof window !== 'undefined' && (window as any).VITE_AUTH_API_URL) {
         return (window as any).VITE_AUTH_API_URL;
     }
     
-    // Priority 3: Vite env (for development)
+    // Priority 4: Vite env (for builds)
     if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
         return import.meta.env.VITE_AUTH_API_URL;
     }
     
-    // Priority 4: Window config (injected during build)
+    // Priority 5: Window config (injected during build)
     if (typeof window !== 'undefined' && (window as any).getOtpAuthApiUrl) {
         const url = (window as any).getOtpAuthApiUrl();
         if (url) return url;
     }
     
-    // Priority 5: Check if running on localhost (CRITICAL: NO FALLBACKS ON LOCAL)
-    if (typeof window !== 'undefined') {
-        const isLocalhost = window.location.hostname === 'localhost' || 
-                            window.location.hostname === '127.0.0.1' ||
-                            import.meta.env?.DEV ||
-                            import.meta.env?.MODE === 'development';
-        
-        if (isLocalhost) {
-            // NEVER fall back to production when on localhost
-            return 'http://localhost:8787';
-        }
-    }
-    
-    // Priority 6: Development proxy (Vite)
-    if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
-        return '/auth-api';
-    }
-    
-    // Priority 7: Production default (only if NOT on localhost)
+    // Priority 6: Production default
     return 'https://auth.idling.app';
 }
 
 /**
- * Restore session from backend based on IP address
- * This enables cross-application session sharing for the same device
- */
-export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promise<AuthenticatedCustomer | null> {
-    try {
-        const apiUrl = getAuthApiUrl(config);
-        if (!apiUrl) {
-            console.warn('[Auth] Auth API URL not configured, skipping session restoration');
-            return null;
-        }
-
-        // Use the API framework client which already handles secureFetch internally
-        const { createAPIClient } = await import('@strixun/api-framework/client');
-        const authClient = createAPIClient({
-            baseURL: apiUrl,
-            timeout: config?.sessionRestoreTimeout || 10000,
-        });
-        
-        const response = await authClient.post<{ 
-            restored: boolean; 
-            access_token?: string; 
-            token?: string; 
-            customerId: string; 
-            sub?: string; 
-            email?: string; 
-            displayName?: string | null; 
-            expiresAt?: string;
-            isSuperAdmin?: boolean;
-        }>('/auth/restore-session', {});
-
-        if (response.status !== 200 || !response.data) {
-            // Not an error - just no session found
-            if (response.status === 200 && response.data && !response.data.restored) {
-                return null;
-            } else {
-                console.warn('[Auth] Session restoration failed:', response.status);
-                return null;
-            }
-        }
-
-        const data = response.data;
-        if (data.restored && data.access_token) {
-            // Session restored! Return customer data
-            const userId = data.customerId || data.sub;
-            const email = data.email;
-            const token = data.access_token || data.token;
-            const expiresAt = data.expiresAt;
-
-            if (!userId || !email || !token || !expiresAt) {
-                console.warn('[Auth] Session restoration incomplete - missing required fields');
-                return null;
-            }
-
-            const customer: AuthenticatedCustomer = {
-                customerId: data.customerId || userId || '',
-                email,
-                displayName: data.displayName || null,
-                token,
-                expiresAt,
-                isSuperAdmin: data.isSuperAdmin || false,
-            };
-            
-            console.log('[Auth] ✓ Session restored from backend for customer:', customer.email);
-            return customer;
-        }
-
-        if (data.restored === false) {
-            console.log('[Auth] No active session found for this IP address');
-        } else {
-            console.warn('[Auth] Unexpected response format from restore-session:', { 
-                restored: data.restored, 
-                hasToken: !!data.access_token 
-            });
-        }
-
-        return null;
-    } catch (error) {
-        // Log error for debugging (session restoration is optional but we want to know if it's failing)
-        console.warn('[Auth] Session restoration error:', error instanceof Error ? error.message : String(error));
-        if (error instanceof Error && error.stack) {
-            console.debug('[Auth] Session restoration stack:', error.stack);
-        }
-        return null;
-    }
-}
-
-/**
- * Validate token with backend to check if it's blacklisted or invalid
- * Returns true if token is valid, false if invalid/blacklisted
+ * Get Customer API URL from config or environment
  * 
- * CRITICAL: This ensures we detect tokens that were blacklisted on other domains
- * 
- * If token mismatch occurs (token was refreshed/changed), this function will return false
- * and the caller should restore the session to get a fresh token.
+ * Priority:
+ * 1. Config override (customerApiUrl)
+ * 2. import.meta.env.VITE_CUSTOMER_API_URL (for builds)
+ * 3. window.VITE_CUSTOMER_API_URL (for E2E tests)
+ * 4. If localhost: '/customer-api' (Vite proxy)
+ * 5. Production default: 'https://customer-api.idling.app'
  */
-export async function validateTokenWithBackend(
-    token: string, 
-    config?: AuthStoreConfig
-): Promise<boolean> {
-    if (!config?.enableTokenValidation) {
-        return true; // Skip validation if disabled
+export function getCustomerApiUrl(config?: AuthStoreConfig): string {
+    // Priority 1: Config override
+    if (config?.customerApiUrl) {
+        return config.customerApiUrl;
     }
     
-    try {
-        const apiUrl = getAuthApiUrl(config);
-        if (!apiUrl) {
-            // If no API URL configured, skip validation (graceful degradation)
-            return true;
-        }
-
-        const { createAPIClient } = await import('@strixun/api-framework/client');
-        // CRITICAL: Create client without tokenGetter - we'll pass token explicitly in metadata
-        // This ensures the token in metadata matches the token used for Authorization header
-        const authClient = createAPIClient({
-            baseURL: apiUrl,
-            timeout: config?.tokenValidationTimeout || 5000,
-            auth: {
-                tokenGetter: () => {
-                    // Return token so Authorization header is set, but metadata.token takes precedence
-                    // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
-                    if (!token || typeof token !== 'string' || token.trim().length === 0) {
-                        return null;
-                    }
-                    return token.trim();
-                },
-            },
-            cache: {
-                enabled: false, // Never cache validation requests
-            },
-        });
-        
-        // CRITICAL: Pass token in metadata FIRST so auth middleware uses it for both Authorization header and metadata.token
-        // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
-        // Use /auth/me endpoint to validate token (returns 401 if invalid/blacklisted)
-        const trimmedToken = token.trim();
-        const response = await authClient.get('/auth/me', undefined, {
-            metadata: {
-                token: trimmedToken, // CRITICAL: Pass trimmed token in metadata FIRST - auth middleware will use this for both Authorization header and decryption
-                cache: false, // Never cache validation requests
-            },
-        });
-        
-        // 200 = valid, 401 = invalid/blacklisted
-        return response.status === 200;
-    } catch (error) {
-        // Check if this is a token mismatch error
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const isTokenMismatch = errorMessage.includes('token does not match') || 
-                                errorMessage.includes('Token mismatch') ||
-                                errorMessage.includes('decryption failed');
-        
-        if (isTokenMismatch) {
-            // Token mismatch means the stored token is stale - return false so caller can restore session
-            console.warn('[Auth] Token mismatch detected during validation - stored token is stale:', {
-                error: errorMessage,
-                note: 'The stored token does not match the token used for encryption. This usually means the token was refreshed or changed. Returning false so caller can restore the session.'
-            });
-            return false; // Token is invalid (stale)
-        }
-        
-        // Network errors or other issues - assume valid to avoid blocking initialization
-        console.warn('[Auth] Token validation failed (assuming valid):', errorMessage);
-        return true; // Assume valid to avoid blocking initialization
+    // Priority 2: Development detection
+    // CRITICAL: On localhost, ALWAYS use the Vite proxy path to ensure cookie SSO works across ports.
+    // Do not allow env/config injection to override localhost defaults.
+    if (isDevelopment()) {
+        return '/customer-api';
     }
+    
+    // Priority 3: Vite env (for builds)
+    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CUSTOMER_API_URL) {
+        return import.meta.env.VITE_CUSTOMER_API_URL;
+    }
+    
+    // Priority 4: Window env (for E2E tests)
+    if (typeof window !== 'undefined' && (window as any).VITE_CUSTOMER_API_URL) {
+        return (window as any).VITE_CUSTOMER_API_URL;
+    }
+    
+    // Priority 5: Production default
+    return 'https://customer-api.idling.app';
 }
 
 /**
- * Fetch customer info from /auth/me to get admin status, displayName, and customerId
- * CRITICAL: Disable caching for this endpoint - we always need fresh customer data
- * Also handles undefined cached values gracefully
+ * Get token from HttpOnly cookie
+ * This is read-only - we can't access the cookie value in JS (HttpOnly)
+ * But we can check if it exists by making an API call
+ */
+// Note: getTokenFromCookie is not used - HttpOnly cookies are sent automatically
+// This function is kept for reference but not called
+
+/**
+ * Fetch customer info from /auth/me and /customer/me to get admin status, displayName, and customerId
+ * CRITICAL: Cookie is sent automatically with request
  * 
- * NOTE: /auth/me returns encrypted responses that need to be decrypted with the JWT token
- * 
- * If token mismatch occurs (token was refreshed/changed), this function will return null
- * and the caller should restore the session to get a fresh token.
+ * NOTE: /auth/me returns JWT payload data only (no displayName)
+ * We need to call /customer/me to get displayName from Customer API
  */
 export async function fetchCustomerInfo(
-    token: string,
+    _token: string | null, // Ignored - cookie is used instead
     config?: AuthStoreConfig
 ): Promise<{ isSuperAdmin: boolean; displayName?: string | null; customerId: string } | null> {
-    // CRITICAL: Validate token exists before making request
-    if (!token || typeof token !== 'string' || token.trim().length === 0) {
-        console.error('[Auth] fetchCustomerInfo called with invalid token:', { 
-            hasToken: !!token, 
-            tokenType: typeof token, 
-            tokenLength: token?.length 
-        });
-        return null;
+    const apiUrl = getAuthApiUrl(config);
+    
+    if (!apiUrl) {
+        throw new Error('Auth API URL not configured. Check VITE_AUTH_API_URL environment variable.');
     }
     
     try {
-        const apiUrl = getAuthApiUrl(config);
         const { createAPIClient } = await import('@strixun/api-framework/client');
         const authClient = createAPIClient({
             baseURL: apiUrl,
-            timeout: 10000, // Increased to 10 seconds to handle slower responses
-            auth: {
-                tokenGetter: () => {
-                    // Double-check token is still valid and trim it
-                    if (!token || typeof token !== 'string' || token.trim().length === 0) {
-                        console.warn('[Auth] tokenGetter returned invalid token');
-                        return null;
-                    }
-                    // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
-                    return token.trim();
-                },
-            },
+            timeout: 10000,
+            // CRITICAL: Include credentials to send HttpOnly cookies
+            credentials: 'include' as RequestCredentials,
+            // No auth config needed - cookie is sent automatically
             cache: {
-                enabled: false, // CRITICAL: Never cache /auth/me - always fetch fresh to avoid undefined cache hits
+                enabled: false, // CRITICAL: Never cache /auth/me
             },
         });
         
-        // CRITICAL: Pass token in metadata so the response handler can decrypt encrypted responses
-        // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
-        const rawToken = token;
-        const trimmedToken = token.trim();
-        const wasTrimmed = rawToken !== trimmedToken;
-        
-        console.log('[Auth] fetchUserInfo - Token preparation:', {
-            rawTokenLength: rawToken.length,
-            trimmedTokenLength: trimmedToken.length,
-            wasTrimmed,
-            rawTokenPrefix: rawToken.substring(0, 20) + '...',
-            trimmedTokenPrefix: trimmedToken.substring(0, 20) + '...',
-            rawTokenSuffix: '...' + rawToken.substring(rawToken.length - 10),
-            trimmedTokenSuffix: '...' + trimmedToken.substring(trimmedToken.length - 10),
-        });
-        
-        const response = await authClient.get<{ 
-            isSuperAdmin?: boolean; 
-            displayName?: string | null; 
-            customerId: string; 
-            [key: string]: any;
-        }>('/auth/me', undefined, {
-            metadata: {
-                cache: false, // Explicitly disable caching for this request
-                token: trimmedToken, // Pass trimmed token in metadata for decryption
-            },
-        });
-        
-        console.log('[Auth] /auth/me response:', { 
-            status: response.status, 
-            hasData: !!response.data,
-            dataType: typeof response.data,
-            dataKeys: response.data && typeof response.data === 'object' ? Object.keys(response.data) : null,
-            isEncrypted: response.data && typeof response.data === 'object' && 'encrypted' in response.data ? (response.data as any).encrypted : false,
-        });
-        
-        if (response.status === 200 && response.data) {
-            // Validate that we got actual data, not undefined
-            if (response.data === undefined || response.data === null) {
-                console.error('[Auth] /auth/me returned undefined/null data - this indicates a decryption or caching issue');
-                return null;
-            }
-            
-            // Check if response is still encrypted (decryption failed)
-            if (typeof response.data === 'object' && 'encrypted' in response.data && (response.data as any).encrypted === true) {
-                // This means the token we used doesn't match the token the backend used for encryption
-                // This can happen if:
-                // 1. The token was refreshed/changed on the backend
-                // 2. The stored token is stale and doesn't match the active session
-                // 3. There's a race condition where the token changed between request and response
-                const error = new Error('Token mismatch - the stored token does not match the token used for encryption. This usually means the token was refreshed or changed.');
-                (error as any).isTokenMismatch = true;
-                (error as any).requiresFreshToken = true; // Flag that we need a fresh token
-                // Use console.warn instead of console.error since this is a recoverable error that's handled gracefully
-                console.warn('[Auth] /auth/me response is still encrypted - decryption failed (token mismatch):', {
-                    tokenLength: token.length,
-                    tokenPrefix: token.substring(0, 20) + '...',
-                    hasEncryptedFlag: true,
-                    responseStatus: response.status,
-                    note: 'Token mismatch detected - the stored token does not match the token used for encryption. This will be handled automatically by restoring the session or extracting customerId from JWT.'
-                });
-                throw error;
-            }
-            
-            return {
-                isSuperAdmin: response.data.isSuperAdmin || false,
-                displayName: response.data.displayName || null,
-                customerId: response.data.customerId || '',
-            };
-        }
-        
-        console.warn('[Auth] /auth/me returned non-200 status:', response.status);
-        return null;
-    } catch (error) {
-        // Check if this is a token mismatch error
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const isTokenMismatch = (error as any)?.isTokenMismatch === true ||
-                                errorMessage.includes('token does not match') || 
-                                errorMessage.includes('Token mismatch') ||
-                                errorMessage.includes('decryption failed');
-        
-        if (isTokenMismatch) {
-            console.warn('[Auth] Token mismatch detected in fetchUserInfo - stored token is stale:', {
-                error: errorMessage,
-                note: 'The stored token does not match the token used for encryption. This usually means the token was refreshed or changed. The caller should restore the session to get a fresh token.'
+        // Step 1: Get customerId and isSuperAdmin from /auth/me
+        // Cookie is sent automatically with request
+        let authResponse;
+        try {
+            authResponse = await authClient.get<{ 
+                isSuperAdmin?: boolean; 
+                customerId: string; 
+                [key: string]: any;
+            }>('/auth/me', undefined, {
+                metadata: {
+                    cache: false, // Explicitly disable caching
+                },
             });
-            // Re-throw token mismatch errors so caller can handle them
-            const mismatchError = new Error('Token mismatch detected');
-            (mismatchError as any).isTokenMismatch = true;
-            (mismatchError as any).originalError = error;
-            throw mismatchError;
-        } else {
-            console.error('[Auth] Failed to fetch customer info:', errorMessage);
-            if (error instanceof Error && error.stack) {
-                console.debug('[Auth] fetchUserInfo error stack:', error.stack);
-            }
+        } catch (networkError) {
+            // Network errors are critical - fail fast
+            const errorMessage = networkError instanceof Error ? networkError.message : String(networkError);
+            throw new Error(`Network error checking authentication: ${errorMessage}. Check your connection and that the auth service is running at ${apiUrl}.`);
         }
-        return null;
+        
+        // 401/403 means not authenticated - this is expected, return null
+        if (authResponse.status === 401 || authResponse.status === 403) {
+            return null;
+        }
+        
+        // Other non-OK statuses are errors - fail fast
+        if (authResponse.status !== 200 || !authResponse.data) {
+            const errorText = authResponse.data ? JSON.stringify(authResponse.data) : 'Unknown error';
+            throw new Error(`Auth service returned error ${authResponse.status}: ${errorText}. Check auth service configuration.`);
+        }
+        
+        const customerId = authResponse.data.customerId;
+        const isSuperAdmin = authResponse.data.isSuperAdmin || false;
+        
+        // Step 2: Fetch displayName from Customer API
+        const customerApiUrl = getCustomerApiUrl(config);
+        
+        let displayName: string | null = null;
+        try {
+            const customerClient = createAPIClient({
+                baseURL: customerApiUrl,
+                timeout: 10000,
+                // CRITICAL: Include credentials to send HttpOnly cookies
+                credentials: 'include' as RequestCredentials,
+                cache: {
+                    enabled: false,
+                },
+            });
+            
+            const customerResponse = await customerClient.get<{
+                displayName?: string | null;
+                [key: string]: any;
+            }>('/customer/me', undefined, {
+                metadata: {
+                    cache: false,
+                },
+            });
+            
+            if (customerResponse.status === 200 && customerResponse.data) {
+                displayName = customerResponse.data.displayName || null;
+            }
+        } catch (customerError) {
+            // If Customer API call fails, we still return auth data (just without displayName)
+            console.warn('[Auth] Failed to fetch displayName from Customer API:', 
+                customerError instanceof Error ? customerError.message : String(customerError));
+        }
+        
+        return {
+            isSuperAdmin,
+            displayName,
+            customerId,
+        };
+    } catch (error) {
+        // If it's already our error, re-throw it (fail-fast)
+        if (error instanceof Error && (error.message.includes('Network error') || error.message.includes('Auth service returned error'))) {
+            throw error;
+        }
+        
+        // For other errors, wrap and throw (fail-fast)
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to fetch customer info: ${errorMessage}. Check auth service configuration.`);
     }
 }
 
 /**
  * Decode JWT payload (without verification - for extracting CSRF token and other claims)
+ * NOTE: With HttpOnly cookies, we can't access the token directly
+ * This function is kept for backward compatibility but will return null
  */
 export function decodeJWTPayload(jwt: string): { csrf?: string; isSuperAdmin?: boolean; [key: string]: unknown } | null {
     try {

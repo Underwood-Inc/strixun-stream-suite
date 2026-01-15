@@ -229,10 +229,40 @@ const DownloadCount = styled.span`
 `;
 
 interface ModListItemProps {
-    mod: ModMetadata;
+    slug: string;
+    thumbnailUrl?: string;
+    title: string;
+    authorDisplayName?: string;
+    description?: string;
+    category: string;
+    downloadCount: number;
 }
 
-export function ModListItem({ mod }: ModListItemProps) {
+/**
+ * Maps a ModMetadata object to ModListItemProps
+ * Centralizes the prop extraction logic for easier maintenance
+ */
+export function mapModToListItemProps(mod: ModMetadata): ModListItemProps {
+    return {
+        slug: mod.slug,
+        thumbnailUrl: mod.thumbnailUrl ?? undefined,
+        title: mod.title,
+        authorDisplayName: mod.authorDisplayName ?? undefined,
+        description: mod.description ?? undefined,
+        category: mod.category,
+        downloadCount: mod.downloadCount,
+    };
+}
+
+export function ModListItem({ 
+    slug,
+    thumbnailUrl,
+    title,
+    authorDisplayName,
+    description,
+    category,
+    downloadCount
+}: ModListItemProps) {
     const [thumbnailError, setThumbnailError] = useState(false);
 
     const handleThumbnailError = () => {
@@ -240,9 +270,9 @@ export function ModListItem({ mod }: ModListItemProps) {
     };
 
     return (
-        <ListItemContainer to={`/${mod.slug}`}>
+        <ListItemContainer to={`/${slug}`}>
             <ThumbnailContainer>
-                {mod.thumbnailUrl ? (
+                {thumbnailUrl ? (
                     thumbnailError ? (
                         <ThumbnailError>
                             <ErrorIcon>⚠</ErrorIcon>
@@ -250,8 +280,8 @@ export function ModListItem({ mod }: ModListItemProps) {
                         </ThumbnailError>
                     ) : (
                         <Thumbnail 
-                            src={mod.thumbnailUrl} 
-                            alt={mod.title}
+                            src={thumbnailUrl} 
+                            alt={title}
                             onError={handleThumbnailError}
                         />
                     )
@@ -263,16 +293,16 @@ export function ModListItem({ mod }: ModListItemProps) {
                 )}
             </ThumbnailContainer>
             <Content>
-                <Title>{mod.title}</Title>
+                <Title>{title}</Title>
                 <Author>
                     <AuthorLabel>by</AuthorLabel>
-                    <span>{mod.authorDisplayName || 'Unknown Author'}</span>
+                    <span>{authorDisplayName || 'Unknown Author'}</span>
                 </Author>
-                <Description>{mod.description || 'No description available'}</Description>
+                <Description>{description || 'No description available'}</Description>
             </Content>
             <Meta>
-                <Category>{mod.category}</Category>
-                <DownloadCount>{mod.downloadCount} downloads</DownloadCount>
+                <Category>{category}</Category>
+                <DownloadCount>{downloadCount} downloads</DownloadCount>
             </Meta>
         </ListItemContainer>
     );

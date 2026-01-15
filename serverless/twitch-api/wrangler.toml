@@ -2,7 +2,7 @@
 # Twitch API proxy with cloud storage, authentication, and CDN endpoints
 
 name = "strixun-twitch-api"
-main = "worker.ts"
+main = "dist/worker.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
@@ -51,9 +51,9 @@ binding = "TWITCH_CACHE"
 id = "66b9a4425cb7492fbae8f690780cd0ae"
 
 # Default routes (production)
-routes = [
-  { pattern = "api.idling.app/*", zone_name = "idling.app" }
-]
+[[routes]]
+pattern = "api.idling.app/*"
+zone_name = "idling.app"
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard ΓåÆ Workers & Pages ΓåÆ strixun-twitch-api

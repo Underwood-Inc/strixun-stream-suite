@@ -16,26 +16,26 @@ export async function handleThumbnail(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string; jwtToken?: string } | null
 ): Promise<Response> {
-    // console.log('[Thumbnail] handleThumbnail called:', { modId, hasAuth: !!auth, customerId: auth?.customerId });
+    console.log('[Thumbnail] handleThumbnail called:', { modId, hasAuth: !!auth, customerId: auth?.customerId });
     try {
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
         let mod: ModMetadata | null = null;
         const normalizedModId = normalizeModId(modId);
-        // console.log('[Thumbnail] Looking up mod by modId:', { normalizedModId, original: modId });
+        console.log('[Thumbnail] Looking up mod by modId:', { normalizedModId, original: modId });
         
         // Check authenticated user's customer scope first
         if (auth?.customerId) {
             const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-            // console.log('[Thumbnail] Checking authenticated customer scope:', { customerModKey });
+            console.log('[Thumbnail] Checking authenticated customer scope:', { customerModKey });
             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
         }
         
         // Fall back to global scope if not found
         if (!mod) {
             const globalModKey = `mod_${normalizedModId}`;
-            // console.log('[Thumbnail] Checking global scope:', { globalModKey });
+            console.log('[Thumbnail] Checking global scope:', { globalModKey });
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
         }
         
@@ -55,17 +55,14 @@ export async function handleThumbnail(
                     if (key.name.endsWith(`_mod_${normalizedModId}`)) {
                         mod = await env.MODS_KV.get(key.name, { type: 'json' }) as ModMetadata | null;
                         if (mod) {
-                            // Extract customerId from key name - match everything between "customer_" and "_mod_"
-                            const match = key.name.match(/^customer_(.+)_mod_/);
-                            const customerId = match ? match[1] : null;
-                            // console.log('[Thumbnail] Found mod by modId in customer scope:', { customerId, modId: mod.modId, key: key.name });
+                            // console.log('[Thumbnail] Found mod by modId in customer scope:', { modId: mod.modId, key: key.name });
                             found = true;
                             break;
                         }
                     }
                 }
                 if (found) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor && !found);
         }
         
@@ -74,8 +71,7 @@ export async function handleThumbnail(
         if (!mod) {
             console.error('[Thumbnail] Mod not found:', { modId });
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -88,8 +84,25 @@ export async function handleThumbnail(
 
         // CRITICAL: Enforce visibility and status filtering
         // Thumbnails are often loaded as images without auth, so we need to be more permissive
-        const { isSuperAdminEmail } = await import('../../utils/admin.js');
-        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        
+        // Extract JWT token from auth object or from cookie (required for admin check)
+        let jwtToken: string | null = null;
+        if (auth && 'jwtToken' in auth && auth.jwtToken) {
+            jwtToken = auth.jwtToken;
+        } else {
+            // Fallback: extract from cookie if not in auth object
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    jwtToken = authCookie.substring('auth_token='.length).trim();
+                }
+            }
+        }
+        
+        const { isAdmin: checkIsAdmin } = await import('../../utils/admin.js');
+        const isAdmin = auth?.customerId && jwtToken ? await checkIsAdmin(auth.customerId, jwtToken, env) : false;
         const isAuthor = mod.authorId === auth?.customerId;
         const modVisibility = mod.visibility || 'public';
         const modStatus = mod.status || 'published';
@@ -97,8 +110,7 @@ export async function handleThumbnail(
         // Visibility check: private mods only visible to author or admin
         if (modVisibility === 'private' && !isAuthor && !isAdmin) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -118,8 +130,7 @@ export async function handleThumbnail(
         if (modStatus === 'draft' && !isAuthor && !isAdmin) {
             // Draft mods are not ready for public viewing
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -134,8 +145,7 @@ export async function handleThumbnail(
             const isPublicPending = modVisibility === 'public';
             if (!isPublicPending && (!isAuthor && !isAdmin)) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 404,
@@ -151,8 +161,7 @@ export async function handleThumbnail(
         if (!mod.thumbnailUrl) {
             console.error('[Thumbnail] Mod has no thumbnailUrl:', { modId: mod.modId, slug: mod.slug });
             const rfcError = createError(request, 404, 'Thumbnail Not Found', 'This mod does not have a thumbnail');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -370,8 +379,7 @@ export async function handleThumbnail(
                 triedExtensions: extensions 
             });
             const rfcError = createError(request, 404, 'Thumbnail Not Found', 'Thumbnail file not found in storage');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -383,18 +391,22 @@ export async function handleThumbnail(
         }
 
         // EXCEPTION: Allow public browsing (no JWT required) for thumbnails
-        // Get JWT token from request (optional for public access)
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || null;
-
-        // Encrypt with JWT if token is present, otherwise return unencrypted for public browsing
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        // JWT token already extracted above for admin check - reuse it here for encryption detection
+        
+        // CRITICAL: Detect if request is from a browser (HttpOnly cookie) or service-to-service (Authorization header)
+        // Browser requests should NOT be encrypted because JavaScript can't access HttpOnly cookies to decrypt
+        const cookieHeader = request.headers.get('Cookie');
+        const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+        
+        // Only encrypt for service-to-service calls (Authorization header), not for browser requests (HttpOnly cookie)
+        const shouldEncrypt = jwtToken && !isHttpOnlyCookie;
+        
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         const headers = new Headers(Object.fromEntries(corsHeaders.entries()));
         
-        if (jwtToken) {
-            // Encrypt image binary with JWT if token is present
+        if (shouldEncrypt) {
+            // Encrypt image binary with JWT for service-to-service calls only
             // CRITICAL: Only read the stream when we need to encrypt it
             const imageBytes = await thumbnail.arrayBuffer();
             const imageArray = new Uint8Array(imageBytes);
@@ -412,9 +424,9 @@ export async function handleThumbnail(
                 headers,
             });
         } else {
-            // Return unencrypted for public browsing
+            // Return unencrypted for browser requests (HttpOnly cookie) or public browsing
             // CRITICAL: Use thumbnail.body directly without reading it first (stream can only be read once)
-            // console.log('[Thumbnail] Serving unencrypted thumbnail for public browsing:', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
+            // console.log('[Thumbnail] Serving unencrypted thumbnail for browser/public browsing:', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType, isHttpOnlyCookie });
             headers.set('Content-Type', thumbnail.httpMetadata?.contentType || 'image/png');
             headers.set('X-Encrypted', 'false'); // Flag to indicate unencrypted response
             headers.set('Content-Length', thumbnail.size.toString());
@@ -432,8 +444,7 @@ export async function handleThumbnail(
             'Failed to Load Thumbnail',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while loading the thumbnail'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

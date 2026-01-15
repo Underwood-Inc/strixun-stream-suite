@@ -392,27 +392,18 @@ export async function authenticateCustomer(
 
 /**
  * Make authenticated API request
+ * Uses HttpOnly cookies - cookies are sent automatically with credentials: 'include'
  */
 export async function authenticatedRequest(
   page: Page,
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  // Get auth token from localStorage or cookies
-  const token = await page.evaluate(() => {
-    return localStorage.getItem('auth_token') || 
-           localStorage.getItem('jwt_token') ||
-           document.cookie.match(/auth_token=([^;]+)/)?.[1];
-  });
-  
-  const headers = new Headers(options.headers);
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-  
-  return fetch(url, {
+  // HttpOnly cookies are sent automatically with credentials: 'include'
+  // No need to manually extract token or set Authorization header
+  return page.request.get(url, {
     ...options,
-    headers,
+    // Playwright automatically includes cookies from the page context
   });
 }
 

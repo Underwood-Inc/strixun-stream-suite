@@ -6,7 +6,6 @@
 
 import { createJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
-import { storeIPSessionMapping } from '../../services/ip-session-index.js';
 import { getClientIP } from '../../utils/ip.js';
 import { createFingerprintHash } from '@strixun/api-framework';
 
@@ -84,13 +83,15 @@ function generateJWTId(): string {
  * @param customerId - Customer ID (MANDATORY)
  * @param env - Worker environment
  * @param request - HTTP request (optional, for IP tracking)
+ * @param keyId - API key ID (optional, for inter-tenant SSO scoping)
  * @returns OAuth 2.0 token response (DOES NOT include OTP email)
  */
 export async function createAuthToken(
     customer: Customer,
     customerId: string,
     env: Env,
-    request?: Request
+    request?: Request,
+    keyId?: string
 ): Promise<TokenResponse> {
     // FAIL-FAST: customerId is MANDATORY
     if (!customerId) {
@@ -119,18 +120,63 @@ export async function createAuthToken(
     // Generate CSRF token for this session
     const csrfToken = generateCSRFToken();
     
-    // Check if user is a super admin
-    const { isSuperAdminEmail } = await import('../../utils/super-admin.js');
-    const isSuperAdmin = await isSuperAdminEmail(emailLower, env);
-    
     // FAIL-FAST: Require customerId - MANDATORY
     if (!customerId) {
         throw new Error('Customer ID is MANDATORY for JWT creation. Customer account must be created before token generation.');
     }
     
+    // AUTHORIZATION SERVICE INTEGRATION: Ensure customer has roles/permissions provisioned
+    // This is called on every login to auto-provision new customers with default roles
+    // Idempotent - safe to call multiple times (skips if already provisioned)
+    try {
+        const { ensureCustomerAccess } = await import('../../../shared/access-migration-helpers.js');
+        await ensureCustomerAccess(customerId, emailLower, env);
+    } catch (error) {
+        console.error('[JWT] Failed to provision customer authorization:', error);
+        // Don't throw - authorization provisioning failure shouldn't break login
+        // Customer will still get JWT, but may have permission issues until manually provisioned
+    }
+    
+    // Check if customer is a super admin (via Access Service)
+    const { isSuperAdmin: checkSuperAdmin } = await import('../../utils/super-admin.js');
+    const isSuperAdmin = await checkSuperAdmin(customerId, env);
+    
     // FAIL-FAST: Ensure customerId matches
     if (customer.customerId !== customerId) {
         throw new Error(`Customer ID mismatch: expected ${customerId}, got ${customer.customerId}`);
+    }
+    
+    // Retrieve SSO config for the API key (if provided)
+    // This enables inter-tenant SSO validation
+    let ssoScope: string[] = [];
+    if (keyId) {
+        try {
+            const { getApiKeyById } = await import('../../services/api-key-management.js');
+            const keyData = await getApiKeyById(customerId, keyId, env);
+            
+            if (keyData && keyData.ssoConfig) {
+                const ssoConfig = keyData.ssoConfig;
+                
+                // Build SSO scope based on isolation mode
+                if (ssoConfig.isolationMode === 'none' && ssoConfig.globalSsoEnabled) {
+                    // Global SSO: session can be used by ALL customer's keys
+                    ssoScope = ['*']; // Wildcard means all keys for this customer
+                } else if (ssoConfig.isolationMode === 'selective') {
+                    // Selective SSO: session can be used by specific keys
+                    ssoScope = [keyId, ...ssoConfig.allowedKeyIds];
+                } else if (ssoConfig.isolationMode === 'complete') {
+                    // Complete isolation: session ONLY for this key
+                    ssoScope = [keyId];
+                }
+            } else {
+                // No SSO config: default to key-only scope (complete isolation)
+                ssoScope = [keyId];
+            }
+        } catch (error) {
+            console.error(`[JWT Creation] Failed to retrieve SSO config for keyId ${keyId}:`, error);
+            // Fail-safe: default to key-only scope
+            ssoScope = keyId ? [keyId] : [];
+        }
     }
     
     // JWT Standard Claims (RFC 7519) + OAuth 2.0 + Custom
@@ -154,6 +200,10 @@ export async function createAuthToken(
         customerId: customerId, // MANDATORY - the ONLY identifier
         csrf: csrfToken, // CSRF token included in JWT
         isSuperAdmin: isSuperAdmin, // Super admin status
+        
+        // Inter-Tenant SSO Claims (Multi-Tenant Architecture)
+        keyId: keyId || null, // API key ID (for tenant identification)
+        ssoScope: ssoScope, // Keys that can use this session (for SSO validation)
     };
     
     // Log JWT creation for debugging
@@ -179,24 +229,8 @@ export async function createAuthToken(
     
     await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(sessionData), { expirationTtl: 25200 }); // 7 hours (matches token expiration)
     
-    // Store IP-to-session mapping for cross-application session discovery
-    // This enables SSO - other apps can discover this session by IP address
-    if (clientIP !== 'unknown') {
-        await storeIPSessionMapping(
-            clientIP,
-            customerId, // Use customerId, not userId
-            customerId,
-            sessionKey,
-            expiresAt.toISOString(),
-            emailLower, // OTP email - used internally only for IP mapping
-            env
-        );
-        // CRITICAL: Do NOT log OTP email - it's sensitive data
-        console.log(`[JWT Creation] ✓ Created session and IP mapping for customer: ${customerId} from IP: ${clientIP}`);
-    } else {
-        // CRITICAL: Do NOT log OTP email - it's sensitive data
-        console.warn(`[JWT Creation] ⚠ Created session but could not create IP mapping (IP unknown) for customer: ${customerId}. SSO will not work for this session.`);
-    }
+    // CRITICAL: Do NOT log OTP email - it's sensitive data
+    console.log(`[JWT Creation] ✓ Created session for customer: ${customerId} from IP: ${clientIP}`);
     
     // OAuth 2.0 Token Response (RFC 6749 Section 5.1)
     // CRITICAL: DO NOT return OTP email in response - it's sensitive data

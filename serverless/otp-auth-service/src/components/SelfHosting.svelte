@@ -1,9 +1,13 @@
+<script lang="ts">
+  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
+</script>
+
 <section class="self-hosting" id="self-hosting">
   <div class="self-hosting-content">
-    <h2>Outgrown the Free Tier? We've Got You Covered </h2>
+    <h2>Outgrown the <StatusFlair status="in-testing">Free Tier</StatusFlair>? We've Got You Covered </h2>
     <p class="self-hosting-subtitle">
       Great news! This application is completely open-source on GitHub, so you can self-host with unlimited rate limits. 
-      Or sit tight—subscription tiers with enhanced limits are coming soon.
+      Or sit tight—<StatusFlair status="wip">subscription tiers with enhanced limits</StatusFlair> are coming soon.
     </p>
     
     <div class="self-hosting-grid">
@@ -21,16 +25,18 @@
           <li>Deploy anywhere (Cloudflare, AWS, GCP, etc.)</li>
         </ul>
         <div class="card-cta">
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn btn-github">
+          <a href="https://github.com/Underwood-Inc/strixun-stream-suite/tree/master/serverless/otp-auth-service" target="_blank" rel="noopener noreferrer" class="btn btn-github">
             <span> ★ </span> View on GitHub
           </a>
         </div>
       </div>
 
       <div class="self-hosting-card">
-        <h3>★ Subscription Tiers <span class="coming-soon-badge">Coming Soon</span></h3>
+        <StatusFlair status="wip">
+          <h3>★ Subscription Tiers <span class="coming-soon-badge">Coming Soon</span></h3>
+        </StatusFlair>
         <p>
-          Don't want to manage infrastructure? Subscription tiers with enhanced rate limits are on the way. 
+          Don't want to manage infrastructure? <StatusFlair status="wip">Subscription tiers with enhanced rate limits</StatusFlair> are on the way. 
           Get notified when they launch and keep using our managed service.
         </p>
         <ul>
@@ -69,15 +75,17 @@
     </div>
 
     <div class="self-hosting-cta">
-      <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+      <a href="https://github.com/Underwood-Inc/strixun-stream-suite" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
         <svg class="star-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
         </svg>
         Star on GitHub
       </a>
-      <a href="#code-examples" class="btn btn-secondary">
-        Continue with Free Tier
-      </a>
+      <StatusFlair status="in-testing">
+        <a href="#code-examples" class="btn btn-secondary">
+          Continue with Free Tier
+        </a>
+      </StatusFlair>
     </div>
   </div>
 </section>

@@ -15,9 +15,10 @@
  *   currentDisplayName="Order Fierce"
  *   onUpdate={(newName) => console.log('Updated to:', newName)}
  *   apiEndpoint="/customer/display-name"
- *   authToken={token}
  * />
  * ```
+ * 
+ * Authentication is handled automatically via HttpOnly cookies
  */
 
 import { useState, useCallback } from 'react';
@@ -193,8 +194,6 @@ interface DisplayNameEditorProps {
   onUpdate: (newDisplayName: string) => void | Promise<void>;
   /** API endpoint for updating display name (e.g., '/customer/display-name') */
   apiEndpoint: string;
-  /** Authentication token for API requests */
-  authToken: string | null;
   /** Optional: Custom API base URL (defaults to AUTH_API_URL) */
   apiBaseUrl?: string;
   /** Optional: Custom error handler */
@@ -209,7 +208,6 @@ export function DisplayNameEditor({
   currentDisplayName,
   onUpdate,
   apiEndpoint,
-  authToken,
   apiBaseUrl,
   onError,
   showHelpText = true,
@@ -275,13 +273,6 @@ export function DisplayNameEditor({
 
   // Save display name
   const handleSave = useCallback(async () => {
-    if (!authToken) {
-      const errorMsg = 'Authentication required to update display name';
-      setError(errorMsg);
-      onError?.(errorMsg);
-      return;
-    }
-
     const trimmed = displayName.trim();
     
     // Validate before sending
@@ -308,8 +299,9 @@ export function DisplayNameEditor({
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          // HttpOnly cookie is sent automatically with credentials: 'include'
         },
+        credentials: 'include', // Send HttpOnly auth_token cookie
         body: JSON.stringify({ displayName: trimmed }),
       });
 
@@ -338,7 +330,7 @@ export function DisplayNameEditor({
     } finally {
       setIsSaving(false);
     }
-  }, [displayName, currentDisplayName, authToken, apiEndpoint, getApiBaseUrl, onUpdate, onError]);
+  }, [displayName, currentDisplayName, apiEndpoint, getApiBaseUrl, onUpdate, onError]);
 
   // Cancel editing
   const handleCancel = useCallback(() => {

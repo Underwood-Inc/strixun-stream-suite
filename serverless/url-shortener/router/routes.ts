@@ -21,12 +21,24 @@ interface Env {
 /**
  * Helper to wrap handlers with automatic encryption and integrity checks
  * Uses API framework's wrapWithEncryption for proper service-to-service support
+ * CRITICAL: Disables encryption for HttpOnly cookie auth (browser can't decrypt)
  */
 async function wrapWithEncryption(handlerResponse: Response, request: Request, env: Env, auth: any = null): Promise<Response> {
   try {
+    // CRITICAL: Detect if request is using HttpOnly cookie (browser request)
+    // If yes, we must disable response encryption because JavaScript can't access HttpOnly cookies to decrypt
+    const cookieHeader = request.headers.get('Cookie');
+    const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+    
+    // For HttpOnly cookie requests, pass null to disable encryption
+    // For Authorization header requests (service-to-service), pass auth object to enable encryption
+    const authForEncryption = isHttpOnlyCookie ? null : auth;
+    
     // Use API framework's wrapWithEncryption for proper integrity headers and encryption
     const { wrapWithEncryption: apiWrapWithEncryption } = await import('@strixun/api-framework');
-    const result = await apiWrapWithEncryption(handlerResponse, auth, request, env);
+    const result = await apiWrapWithEncryption(handlerResponse, authForEncryption, request, env, {
+      requireJWT: authForEncryption ? true : false // Only require JWT if we have auth to encrypt with
+    });
     return result.response;
   } catch (error) {
     console.error('[URL Shortener] Failed to wrap with encryption:', error);
@@ -59,14 +71,15 @@ export function createRouter() {
       // Public stats endpoint - now requires JWT encryption
       if (path === '/api/stats' && request.method === 'GET') {
         const response = await handleGetStats(request, env);
-        const authHeader = request.headers.get('Authorization');
-        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-        if (!jwtToken) {
+        
+        // ONLY check HttpOnly cookie - NO fallbacks, NO Authorization header
+        const cookieHeader = request.headers.get('Cookie');
+        if (!cookieHeader) {
           const errorResponse = {
             type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
             title: 'Unauthorized',
             status: 401,
-            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            detail: 'JWT token is required for encryption/decryption. Please authenticate with HttpOnly cookie.',
             instance: request.url
           };
           const corsHeaders = getCorsHeaders(env, request);
@@ -78,6 +91,28 @@ export function createRouter() {
             },
           });
         }
+        
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        if (!authCookie) {
+          const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please authenticate with HttpOnly cookie.',
+            instance: request.url
+          };
+          const corsHeaders = getCorsHeaders(env, request);
+          return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+              'Content-Type': 'application/problem+json',
+              ...corsHeaders,
+            },
+          });
+        }
+        
+        const jwtToken = authCookie.substring('auth_token='.length).trim();
         const auth = { userId: 'anonymous', customerId: null, jwtToken };
         return await wrapWithEncryption(response, request, env, auth);
       }
@@ -85,17 +120,32 @@ export function createRouter() {
       // API endpoints (require authentication)
       if (path === '/api/create' && request.method === 'POST') {
         const response = await handleCreateShortUrl(request, env);
-        // Extract auth from response if available, otherwise null
-        const authHeader = request.headers.get('Authorization');
-        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        // Extract JWT from HttpOnly cookie ONLY - NO Authorization header fallback
+        let token: string | null = null;
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+          const cookies = cookieHeader.split(';').map(c => c.trim());
+          const authCookie = cookies.find(c => c.startsWith('auth_token='));
+          if (authCookie) {
+            token = authCookie.substring('auth_token='.length).trim();
+          }
+        }
         const auth = token ? { jwtToken: token } : null;
         return await wrapWithEncryption(response, request, env, auth);
       }
 
       if (path.startsWith('/api/info/') && request.method === 'GET') {
         const response = await handleGetUrlInfo(request, env);
-        const authHeader = request.headers.get('Authorization');
-        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        // Extract JWT from HttpOnly cookie ONLY - NO Authorization header fallback
+        let token: string | null = null;
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+          const cookies = cookieHeader.split(';').map(c => c.trim());
+          const authCookie = cookies.find(c => c.startsWith('auth_token='));
+          if (authCookie) {
+            token = authCookie.substring('auth_token='.length).trim();
+          }
+        }
         const auth = token ? { jwtToken: token } : null;
         return await wrapWithEncryption(response, request, env, auth);
       }
@@ -109,9 +159,16 @@ export function createRouter() {
             return response;
           }
           
-          // Extract auth info for encryption
-          const authHeader = request.headers.get('Authorization');
-          const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+          // Extract auth info for encryption - from HttpOnly cookie ONLY
+          let token: string | null = null;
+          const cookieHeader = request.headers.get('Cookie');
+          if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+              token = authCookie.substring('auth_token='.length).trim();
+            }
+          }
           
           // Only wrap with encryption if we have a token and response is successful
           if (token && response.status < 400) {
@@ -142,8 +199,16 @@ export function createRouter() {
 
       if (path.startsWith('/api/delete/') && request.method === 'DELETE') {
         const response = await handleDeleteUrl(request, env);
-        const authHeader = request.headers.get('Authorization');
-        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        // Extract JWT from HttpOnly cookie ONLY - NO Authorization header fallback
+        let token: string | null = null;
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+          const cookies = cookieHeader.split(';').map(c => c.trim());
+          const authCookie = cookies.find(c => c.startsWith('auth_token='));
+          if (authCookie) {
+            token = authCookie.substring('auth_token='.length).trim();
+          }
+        }
         const auth = token ? { jwtToken: token } : null;
         return await wrapWithEncryption(response, request, env, auth);
       }
@@ -151,8 +216,16 @@ export function createRouter() {
       // Get display name endpoint - uses customer API as source of truth
       if (path === '/api/display-name' && request.method === 'GET') {
         const response = await handleGetDisplayName(request, env);
-        const authHeader = request.headers.get('Authorization');
-        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        // Extract JWT from HttpOnly cookie ONLY - NO Authorization header fallback
+        let token: string | null = null;
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+          const cookies = cookieHeader.split(';').map(c => c.trim());
+          const authCookie = cookies.find(c => c.startsWith('auth_token='));
+          if (authCookie) {
+            token = authCookie.substring('auth_token='.length).trim();
+          }
+        }
         const auth = token ? { jwtToken: token } : null;
         return await wrapWithEncryption(response, request, env, auth);
       }

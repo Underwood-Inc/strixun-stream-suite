@@ -35,7 +35,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -105,7 +105,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
           
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -121,23 +121,33 @@ jobs:
       - name: Build workspace dependencies
         working-directory: .
         run: |
-          echo "🔨 Building workspace dependencies required for mods-hub..."
+          echo "Building workspace dependencies required for mods-hub..."
+          # Build shared types first (no dependencies)
+          echo "  -> Building @strixun/types..."
+          pnpm --filter "@strixun/types" run build || echo "  i  Types has no build script (skipped)"
+          # Build service-client (depends on types)
+          echo "  -> Building @strixun/service-client..."
+          pnpm --filter "@strixun/service-client" run build || echo "  i  Service Client has no build script (skipped)"
+          # Build API Framework (depends on types and service-client)
+          echo "  -> Building @strixun/api-framework..."
+          pnpm --filter "@strixun/api-framework" run build || echo "  i  API Framework has no build script (skipped)"
+          # Build Auth Store (depends on api-framework)
+          echo "  -> Building @strixun/auth-store..."
+          pnpm --filter "@strixun/auth-store" run build || echo "  i  Auth Store has no build script (skipped)"
           # Build OTP Login (required for mods-hub login page)
-          echo "  → Building @strixun/otp-login..."
-          pnpm --filter "@strixun/otp-login" run build:react || (echo "⚠  OTP Login build failed or skipped" && exit 1)
+          echo "  -> Building @strixun/otp-login..."
+          pnpm --filter "@strixun/otp-login" run build:react || (echo "!  OTP Login build failed or skipped" && exit 1)
           # Build Dice Board Game (required for mods-hub admin panel)
-          echo "  → Building @strixun/dice-board-game..."
-          pnpm --filter "@strixun/dice-board-game" run build || (echo "⚠  Dice Board Game build failed or skipped" && exit 1)
-          # Build API Framework (if it has a build script)
-          echo "  → Building @strixun/api-framework (if needed)..."
-          pnpm --filter "@strixun/api-framework" run build || echo "  ℹ  API Framework has no build script (skipped)"
-          echo "✓ All workspace dependencies built successfully"
+          echo "  -> Building @strixun/dice-board-game..."
+          pnpm --filter "@strixun/dice-board-game" run build || (echo "!  Dice Board Game build failed or skipped" && exit 1)
+          echo "* All workspace dependencies built successfully"
       
       - name: Build Mods Hub
         working-directory: mods-hub
         env:
           VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods-api.idling.app' }}
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
+          VITE_CUSTOMER_API_URL: ${{ secrets.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app' }}
           VITE_MODS_ENCRYPTION_KEY: ${{ secrets.MODS_ENCRYPTION_KEY }}
         run: |
           # Validate that MODS_ENCRYPTION_KEY is set (required for file encryption)

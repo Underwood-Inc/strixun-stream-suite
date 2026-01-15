@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModVersion, ModVariant } from '../../types/mod';
-import { downloadVersion, downloadVariant } from '../../services/api';
+import { downloadVersion, downloadVariant } from '../../services/mods';
 import { IntegrityBadge } from './IntegrityBadge';
 import { celebrateClick } from '../../utils/confetti';
 import { getButtonStyles } from '../../utils/buttonStyles';
@@ -273,11 +273,9 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
         setDownloadError(null);
 
         try {
-            // PESSIMISTIC UPDATE: Wait for download to complete before updating UI
-            if (!variant.fileName) {
-                throw new Error('Variant file name not found');
-            }
-            await downloadVariant(modSlug, variant.variantId, variant.fileName);
+            // Download variant - filename is automatically extracted from Content-Disposition header
+            // This preserves the exact filename that was originally uploaded
+            await downloadVariant(modSlug, variant.variantId);
             
             // Download successful - refetch mod data to get updated download counts
             console.log('[ModVersionList] Variant download completed, refetching mod data for updated counts');
@@ -407,6 +405,12 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                                     <span>•</span>
                                                     <span>Created: {formatDate(variant.createdAt)}</span>
                                                 </VariantMeta>
+                                                {variant.currentVersionId && (
+                                                    <IntegrityBadge 
+                                                        slug={modSlug}
+                                                        versionId={variant.currentVersionId}
+                                                    />
+                                                )}
                                             </VariantInfo>
                                             <VariantDownloadButton
                                                 onClick={(e) => {

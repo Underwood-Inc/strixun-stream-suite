@@ -7,10 +7,10 @@ import { ModManagePage } from './pages/ModManagePage';
 import { ModReviewPage } from './pages/ModReviewPage';
 import { AdminPanel } from './pages/AdminPanel';
 import { R2ManagementPage } from './pages/R2ManagementPage';
-import { CustomerManagementPage } from './pages/UserManagementPage';
-import { UserDashboardPage } from './pages/UserDashboardPage';
-import { UserProfilePage } from './pages/UserProfilePage';
-import { PublicUserProfilePage } from './pages/PublicUserProfilePage';
+import { CustomerManagementPage } from './pages/CustomerManagementPage';
+import { CustomerDashboardPage } from './pages/CustomerDashboardPage';
+import { CustomerProfilePage } from './pages/CustomerProfilePage';
+import { PublicCustomerProfilePage } from './pages/PublicCustomerProfilePage';
 import { LoginPage } from './pages/LoginPage';
 import { DraftsPage } from './pages/DraftsPage';
 import { AdminSettingsPage } from './pages/AdminSettingsPage';
@@ -32,18 +32,15 @@ function ConditionalLayout({ children }: { children: React.ReactNode }) {
 }
 
 export function App() {
-    const { restoreSession } = useAuthStore();
+    const { checkAuth } = useAuthStore();
 
-    // Restore session from backend on app initialization
-    // This enables cross-application session sharing for the same device
-    // Called early in app lifecycle, similar to main app's loadAuthState()
+    // Check authentication status on app initialization
+    // HttpOnly cookie is sent automatically with /auth/me request
     useEffect(() => {
-        // Always try to restore - it will check if restoration is needed
-        // (validates existing tokens, checks expiration, etc.)
-        restoreSession().catch(error => {
-            console.debug('[App] Session restoration failed (non-critical):', error);
+        checkAuth().catch(() => {
+            // Non-critical - user may not be logged in
         });
-    }, [restoreSession]); // Only run once on mount
+    }, [checkAuth]); // Only run once on mount
 
     return (
         <BrowserRouter>
@@ -63,7 +60,7 @@ export function App() {
                         path="/dashboard" 
                         element={
                             <ProtectedRoute>
-                                <UserDashboardPage />
+                                <CustomerDashboardPage />
                             </ProtectedRoute>
                         } 
                     />
@@ -79,7 +76,7 @@ export function App() {
                         path="/profile" 
                         element={
                             <ProtectedRoute>
-                                <UserProfilePage />
+                                <CustomerProfilePage />
                             </ProtectedRoute>
                         } 
                     />
@@ -124,7 +121,7 @@ export function App() {
                         } 
                     />
                     {/* Support both /customers/:username and /:username for customer profiles (for subdomain and non-subdomain) */}
-                    <Route path="/customers/:username" element={<PublicUserProfilePage />} />
+                    <Route path="/customers/:username" element={<PublicCustomerProfilePage />} />
                     {/* Support both /mods/:slug (for non-subdomain deployments) and /:slug (for mods. subdomain) */}
                     <Route 
                         path="/mods/:slug/review" 

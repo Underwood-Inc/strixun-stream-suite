@@ -1,9 +1,12 @@
 /**
  * URL Shortener API Client
  * TypeScript client for URL shortener API
+ * 
+ * SIMPLIFIED: HttpOnly cookie-based authentication
+ * - No localStorage token storage
+ * - Cookies sent automatically
  */
 
-// CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
 function getApiUrl(): string {
     if (typeof window === 'undefined') {
         return 'https://s.idling.app';
@@ -15,12 +18,11 @@ function getApiUrl(): string {
                         import.meta.env?.MODE === 'development';
     
     if (isLocalhost) {
-        // NEVER fall back to production when on localhost
-        // URL shortener worker runs on port 8793
-        return 'http://localhost:8793';
+        // In dev, always use the Vite proxy to avoid CORS and ensure cookies flow correctly.
+        // Vite proxy is configured for `/api` -> http://localhost:8793
+        return '';
     }
     
-    // Only use production URL if NOT on localhost
     return window.location.origin;
 }
 
@@ -63,45 +65,20 @@ export interface StatsResponse {
 }
 
 class UrlShortenerApiClient {
-    private token: string | null = null;
-
-    constructor() {
-        // Load token from localStorage
-        if (typeof window !== 'undefined') {
-            this.token = localStorage.getItem('urlShortenerToken');
-        }
-    }
-
-    setToken(token: string | null): void {
-        this.token = token;
-        if (typeof window !== 'undefined') {
-            if (token) {
-                localStorage.setItem('urlShortenerToken', token);
-            } else {
-                localStorage.removeItem('urlShortenerToken');
-            }
-        }
-    }
-
-    getToken(): string | null {
-        return this.token;
-    }
-
     private async decryptResponse<T>(response: Response): Promise<T> {
-        // Check if response is encrypted (headers are case-insensitive, but be defensive)
+        // Check if response is encrypted
         const encryptedHeader = response.headers.get('X-Encrypted') || response.headers.get('x-encrypted');
         const isEncrypted = encryptedHeader === 'true';
         
         let data: any = await response.json();
         
-        // Check if data looks encrypted (even if header check failed)
+        // Check if data looks encrypted
         const looksEncrypted = data && typeof data === 'object' && 'encrypted' in data && data.encrypted === true;
         
-        if ((isEncrypted || looksEncrypted) && this.token) {
+        if (isEncrypted || looksEncrypted) {
             // Wait for decryptWithJWT to be available (it's loaded via script tag)
             let decryptFn = (window as any).decryptWithJWT;
             
-            // Poll for decryptWithJWT if not immediately available (script might still be loading)
             if (typeof decryptFn !== 'function') {
                 console.warn('[API Client] Decryption library not loaded yet, waiting...');
                 for (let i = 0; i < 10; i++) {
@@ -115,14 +92,13 @@ class UrlShortenerApiClient {
             }
             
             if (typeof decryptFn !== 'function') {
-                console.error('[API Client] Decryption library not available after waiting. Response is encrypted but cannot decrypt.');
+                console.error('[API Client] Decryption library not available after waiting.');
                 throw new Error('Decryption library not loaded');
             }
             
             try {
-                // Trim token to ensure it matches what backend used for encryption
-                const trimmedToken = this.token.trim();
-                data = await decryptFn(data, trimmedToken);
+                // Decrypt with cookie token (token is extracted from cookie by decrypt function)
+                data = await decryptFn(data, null); // null = use cookie
             } catch (error) {
                 console.error('[API Client] Failed to decrypt response:', error);
                 throw new Error('Failed to decrypt response');
@@ -136,22 +112,13 @@ class UrlShortenerApiClient {
         endpoint: string,
         options: RequestInit = {}
     ): Promise<T> {
-        const headers = new Headers(options.headers);
-        
-        if (this.token) {
-            headers.set('Authorization', `Bearer ${this.token}`);
-        }
-
         const response = await fetch(`${API_URL}${endpoint}`, {
             ...options,
-            headers,
-            // CRITICAL: Prevent caching of API calls
-            // This ensures fresh data and prevents stale responses after deployments
+            credentials: 'include', // Send cookies
             cache: 'no-store',
         });
 
         if (response.status === 401) {
-            this.setToken(null);
             throw new Error('Unauthorized - please sign in again');
         }
 
@@ -178,18 +145,13 @@ class UrlShortenerApiClient {
         });
     }
 
-    /**
-     * Get total URL count (public endpoint, no auth required)
-     * This endpoint is service-to-service only but accessible from frontend
-     */
     async getStats(): Promise<StatsResponse> {
-        // Public endpoint - don't include auth token
         const response = await fetch(`${API_URL}/api/stats`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
             },
-            // CRITICAL: Prevent caching to ensure fresh data on each page load
+            credentials: 'include', // Send cookies
             cache: 'no-store',
         });
 
@@ -199,14 +161,6 @@ class UrlShortenerApiClient {
 
         return this.decryptResponse<StatsResponse>(response);
     }
-
-    logout(): void {
-        this.setToken(null);
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem('urlShortenerEmail');
-        }
-    }
 }
 
 export const apiClient = new UrlShortenerApiClient();
-

@@ -9,7 +9,7 @@
   import { onMount } from 'svelte';
   import { LoginModal, Tooltip } from '@components';
   import { stagger } from '../core/animations';
-  import { clearAuth, isAuthenticated, token, customer } from '../stores/auth';
+  import { clearAuth, isAuthenticated, customer } from '../stores/auth';
   import { showToast } from '../stores/toast-queue';
 
   interface ShortUrl {
@@ -78,20 +78,15 @@
       return;
     }
 
-    const authToken = $token;
-    if (!authToken) {
-      showLoginModal = true;
-      return;
-    }
-
     try {
       isLoading = true;
+      // CRITICAL: Use credentials: 'include' to send HttpOnly cookie automatically
       const response = await fetch(`${urlShortenerApiUrl}/api/list`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Send HttpOnly cookie
       });
 
       if (!response.ok) {
@@ -148,20 +143,15 @@
       return;
     }
 
-    const authToken = $token;
-    if (!authToken) {
-      showLoginModal = true;
-      return;
-    }
-
     try {
       isCreating = true;
+      // CRITICAL: Use credentials: 'include' to send HttpOnly cookie automatically
       const response = await fetch(`${urlShortenerApiUrl}/api/create`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Send HttpOnly cookie
         body: JSON.stringify({
           url: urlInput.trim(),
           customCode: customCodeInput.trim() || undefined,
@@ -211,19 +201,14 @@
       return;
     }
 
-    const authToken = $token;
-    if (!authToken) {
-      showLoginModal = true;
-      return;
-    }
-
     try {
+      // CRITICAL: Use credentials: 'include' to send HttpOnly cookie automatically
       const response = await fetch(`${urlShortenerApiUrl}/api/delete/${shortCode}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Send HttpOnly cookie
       });
 
       if (!response.ok) {

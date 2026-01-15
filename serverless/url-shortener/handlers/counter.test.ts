@@ -55,7 +55,7 @@ describe('URL Counter Logic', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-token',
+          'Cookie': 'Bearer test-token',
         },
         body: JSON.stringify({ url: 'https://example.com' }),
       });
@@ -82,7 +82,7 @@ describe('URL Counter Logic', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-token',
+          'Cookie': 'Bearer test-token',
         },
         body: JSON.stringify({ url: 'https://example.com' }),
       });
@@ -113,7 +113,7 @@ describe('URL Counter Logic', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-token',
+          'Cookie': 'Bearer test-token',
         },
         body: JSON.stringify({ url: 'https://example.com' }),
       });
@@ -149,7 +149,7 @@ describe('URL Counter Logic', () => {
       const request = new Request('https://s.idling.app/api/delete/abc123', {
         method: 'DELETE',
         headers: {
-          'Authorization': 'Bearer test-token',
+          'Cookie': 'Bearer test-token',
         },
       });
 
@@ -197,7 +197,7 @@ describe('URL Counter Logic', () => {
       const request = new Request('https://s.idling.app/api/delete/abc123', {
         method: 'DELETE',
         headers: {
-          'Authorization': 'Bearer test-token',
+          'Cookie': 'Bearer test-token',
         },
       });
 
@@ -245,7 +245,7 @@ describe('URL Counter Logic', () => {
       const request = new Request('https://s.idling.app/api/delete/abc123', {
         method: 'DELETE',
         headers: {
-          'Authorization': 'Bearer test-token',
+          'Cookie': 'Bearer test-token',
         },
       });
 
@@ -283,7 +283,7 @@ describe('URL Counter Logic', () => {
       const request = new Request('https://s.idling.app/api/delete/abc123', {
         method: 'DELETE',
         headers: {
-          'Authorization': 'Bearer test-token',
+          'Cookie': 'Bearer test-token',
         },
       });
 
@@ -323,7 +323,7 @@ describe('URL Counter Logic', () => {
       const deleteRequest = new Request('https://s.idling.app/api/delete/abc123', {
         method: 'DELETE',
         headers: {
-          'Authorization': 'Bearer test-token',
+          'Cookie': 'Bearer test-token',
         },
       });
 
@@ -366,7 +366,7 @@ describe('URL Counter Logic', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-token',
+          'Cookie': 'Bearer test-token',
         },
         body: JSON.stringify({ 
           url: 'https://new-example.com',

@@ -188,7 +188,7 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
   }
 
   function handleLogout(): void {
-    apiClient.logout();
+    // Logout is handled at the App level (clears HttpOnly cookie + local UI state)
     onLogout();
   }
 

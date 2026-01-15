@@ -18,23 +18,19 @@ import type {
 // API base URL - uses current origin (works with Vite proxy in dev, or same origin in production)
 const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
-// Create API client instance with auth token getter
+// Create API client instance with HttpOnly cookie authentication
+// CRITICAL: NO tokenGetter - HttpOnly cookies are sent automatically!
 const createClient = () => {
   return createAPIClient({
     baseURL: API_BASE_URL,
     defaultHeaders: {
       'Content-Type': 'application/json',
     },
+    // CRITICAL: HttpOnly cookie sent automatically - NO tokenGetter needed
+    credentials: 'include' as RequestCredentials,
     auth: {
-      tokenGetter: () => {
-        if (typeof window !== 'undefined') {
-          return localStorage.getItem('auth_token');
-        }
-        return null;
-      },
       onTokenExpired: () => {
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('auth_token');
           window.dispatchEvent(new CustomEvent('auth:logout'));
         }
       },
@@ -52,25 +48,24 @@ export class ApiClient {
   private api = createClient();
 
   constructor() {
-    // Client is created with token getter, so it will always read from localStorage
+    // Client is created with token getter, so it will always read from HttpOnly cookie
   }
 
-  setToken(token: string | null): void {
-    if (typeof window !== 'undefined') {
-      if (token) {
-        localStorage.setItem('auth_token', token);
-      } else {
-        localStorage.removeItem('auth_token');
-      }
-    }
-    // Recreate client to pick up new token
+  /**
+   * Set token is now a no-op - HttpOnly cookie is set by the server
+   */
+  setToken(_token: string | null): void {
+    // HttpOnly cookie is set by the server, nothing to do client-side
+    // Just recreate the client to ensure fresh config
     this.api = createClient();
   }
 
+  /**
+   * Get token - DEPRECATED: HttpOnly cookies cannot be read by JavaScript
+   * @returns null (token is in HttpOnly cookie)
+   */
   getToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth_token');
-    }
+    console.warn('[API Client] getToken() is deprecated. Token is in HttpOnly cookie and cannot be read by JavaScript.');
     return null;
   }
 
@@ -119,6 +114,15 @@ export class ApiClient {
       throw new Error(error?.detail || 'Failed to update customer');
     }
     return response.data;
+  }
+
+  async getUserRoles(_customerId: string): Promise<string[]> {
+    // Get current user's roles (customerId param kept for interface compatibility but unused)
+    const response = await this.api.get<{ roles: string[] }>('/admin/roles');
+    if (response.status !== 200 || !response.data) {
+      throw new Error(`Failed to get user roles: ${response.status}`);
+    }
+    return response.data.roles;
   }
 
   async getApiKeys(customerId: string): Promise<{ apiKeys: ApiKey[] }> {

@@ -5,7 +5,7 @@
  * Authentication is handled by the route wrapper with automatic encryption
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getCustomerKey } from '../../services/customer.js';
 
 /**
@@ -23,7 +23,7 @@ export async function handleGameSaveState(request, env, userId, customerId, acti
         message: 'Invalid action'
     }), {
         status: 400,
-        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
     });
 }
 
@@ -43,7 +43,7 @@ async function handleSaveGameState(request, env, userId, customerId) {
                 message: 'characterId and saveData are required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -67,7 +67,7 @@ async function handleSaveGameState(request, env, userId, customerId) {
             savedAt: saveState.savedAt
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Save state error:', error);
@@ -76,7 +76,7 @@ async function handleSaveGameState(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -97,7 +97,7 @@ async function handleLoadGameState(request, env, userId, customerId) {
                 message: 'characterId query parameter is required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -111,7 +111,7 @@ async function handleLoadGameState(request, env, userId, customerId) {
                 message: 'No save state found for this character'
             }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -120,7 +120,7 @@ async function handleLoadGameState(request, env, userId, customerId) {
             saveState: saveStateData
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Load state error:', error);
@@ -129,7 +129,7 @@ async function handleLoadGameState(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }

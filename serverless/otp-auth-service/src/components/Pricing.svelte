@@ -1,7 +1,6 @@
 <script lang="ts">
   import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
   import Tooltip from '@shared-components/svelte/Tooltip.svelte';
-  import ObfuscatedText from '@shared-components/svelte/ObfuscatedText.svelte';
   import InDevelopmentTooltip from './InDevelopmentTooltip.svelte';
 </script>
 
@@ -71,18 +70,18 @@
           <div class="pricing-header">
             <h3>Starter</h3>
             <div class="price">
-              <span class="amount">$<ObfuscatedText text="29" length={2} /></span>
+              <span class="amount">$29</span>
               <span class="period">/month</span>
             </div>
           </div>
           <div class="pricing-body">
             <ul class="features">
-              <li>✓ <ObfuscatedText text="10,000" length={6} /> OTP requests/month</li>
-              <li>✓ <ObfuscatedText text="500" length={3} /> requests/day</li>
+              <li>✓ 10,000 OTP requests/month</li>
+              <li>✓ 500 requests/day</li>
               <li>✓ Custom email templates</li>
               <li>✓ Webhooks</li>
               <li>✓ Email support</li>
-              <li>✓ <ObfuscatedText text="1,000" length={5} /> max customers</li>
+              <li>✓ 1,000 max customers</li>
               <li>✓ Custom domain</li>
             </ul>
             <button class="btn btn-secondary" disabled>Coming Soon</button>
@@ -109,20 +108,20 @@
           <div class="pricing-header">
             <h3>Pro</h3>
             <div class="price">
-              <span class="amount">$<ObfuscatedText text="99" length={2} /></span>
+              <span class="amount">$99</span>
               <span class="period">/month</span>
             </div>
           </div>
           <div class="pricing-body">
             <ul class="features">
-              <li>✓ <ObfuscatedText text="100,000" length={7} /> OTP requests/month</li>
-              <li>✓ <ObfuscatedText text="5,000" length={5} /> requests/day</li>
+              <li>✓ 100,000 OTP requests/month</li>
+              <li>✓ 5,000 requests/day</li>
               <li>✓ All Starter features</li>
               <li>✓ Analytics dashboard</li>
               <li>✓ Priority support</li>
-              <li>✓ <ObfuscatedText text="10,000" length={6} /> max customers</li>
+              <li>✓ 10,000 max customers</li>
               <li>✓ SSO support</li>
-              <li>✓ SLA <ObfuscatedText text="99.9" length={4} />%</li>
+              <li>✓ SLA 99.9%</li>
             </ul>
             <button class="btn btn-primary" disabled>Coming Soon</button>
           </div>
@@ -131,32 +130,47 @@
     </Tooltip>
 
     <!-- Enterprise Tier -->
-    <div class="pricing-card">
-        <div class="pricing-header">
-          <h3>Enterprise</h3>
-          <div class="price">
-            <span class="amount">Custom</span>
+    <Tooltip 
+      component={InDevelopmentTooltip}
+      componentProps={{
+        featureName: "Enterprise Plan",
+        icon: "★",
+        description: "Custom enterprise contracts are currently in development. This tier will include custom SLAs, dedicated support, and flexible billing arrangements.",
+        additionalInfo: "Contact sales for early access: support@idling.app | Expected release: Q4 2026"
+      }}
+      level="warning"
+      position="top"
+    >
+      <StatusFlair status="wip">
+        <div class="pricing-card disabled">
+          <div class="badge badge-dev">Coming Soon</div>
+          <div class="pricing-header">
+            <h3>Enterprise</h3>
+            <div class="price">
+              <span class="amount">Custom</span>
+            </div>
+          </div>
+          <div class="pricing-body">
+            <ul class="features">
+              <li>✓ Unlimited OTP requests</li>
+              <li>✓ Unlimited customers</li>
+              <li>✓ All Pro features</li>
+              <li>✓ Dedicated support</li>
+              <li>✓ Custom SLA</li>
+              <li>✓ On-premise option</li>
+              <li>✓ Custom integrations</li>
+              <li>✓ SLA 99.99%</li>
+            </ul>
+            <button class="btn btn-secondary" disabled>Contact Sales</button>
           </div>
         </div>
-        <div class="pricing-body">
-          <ul class="features">
-            <li>✓ Unlimited OTP requests</li>
-            <li>✓ Unlimited customers</li>
-            <li>✓ All Pro features</li>
-            <li>✓ Dedicated support</li>
-            <li>✓ Custom SLA</li>
-            <li>✓ On-premise option</li>
-            <li>✓ Custom integrations</li>
-            <li>✓ SLA <ObfuscatedText text="99.99" length={5} />%</li>
-          </ul>
-        <a href="mailto:support@idling.app" class="btn btn-secondary">Contact Sales</a>
-      </div>
-    </div>
+      </StatusFlair>
+    </Tooltip>
   </div>
 
   <div class="pricing-note">
     <p>
-      <strong>▹ Usage-Based Add-Ons:</strong> Need more? Pay $<ObfuscatedText text="0.001" length={5} /> per additional OTP request above your plan limit. No surprises.
+      <strong>▹ Usage-Based Add-Ons:</strong> Need more? Pay $0.001 per additional OTP request above your plan limit. No surprises.
     </p>
   </div>
 </section>
@@ -183,23 +197,42 @@
     font-size: 1.1rem;
   }
 
+  /* Mobile-first: start with 1 column */
   .pricing-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-    gap: var(--spacing-md);
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
+    align-items: stretch;
   }
 
+  /* Tablet: 2 columns */
+  @media (min-width: 769px) {
+    .pricing-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--spacing-md);
+    }
+  }
+
+  /* Desktop: 4 columns */
   @media (min-width: 1200px) {
     .pricing-grid {
       grid-template-columns: repeat(4, 1fr);
+      gap: var(--spacing-lg);
     }
   }
 
-  @media (max-width: 1199px) and (min-width: 769px) {
-    .pricing-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
+  /* Ensure all grid children stretch to equal height */
+  .pricing-grid > :global(*) {
+    display: flex;
+    height: 100%;
+  }
+
+  /* Ensure tooltip wrappers don't break layout */
+  .pricing-grid > :global(*) > :global(*) {
+    display: flex;
+    flex: 1;
+    width: 100%;
   }
 
   .pricing-card {
@@ -211,6 +244,7 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    height: 100%;
     min-width: 0;
     width: 100%;
   }
@@ -224,11 +258,12 @@
   .pricing-card.featured {
     border-color: var(--accent);
     border-width: 3px;
-    transform: scale(1.05);
+    box-shadow: 0 0 0 1px var(--accent);
   }
 
   .pricing-card.featured:hover {
-    transform: scale(1.05) translateY(-4px);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg), 0 0 0 1px var(--accent);
   }
 
   .badge {
@@ -284,6 +319,7 @@
   }
 
   .pricing-header {
+    display: block;
     text-align: center;
     margin-bottom: var(--spacing-lg);
     padding-bottom: var(--spacing-lg);
@@ -291,6 +327,7 @@
   }
 
   .pricing-header h3 {
+    display: block;
     font-size: 1.5rem;
     margin-bottom: var(--spacing-md);
     color: var(--accent);
@@ -323,14 +360,18 @@
   .features {
     list-style: none;
     padding: 0;
-    margin: 0 0 var(--spacing-xl) 0;
+    margin: 0 0 var(--spacing-md) 0;
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
   }
 
   .features li {
-    padding: var(--spacing-xs) 0;
+    padding: 0;
     color: var(--text-secondary);
     font-size: 0.875rem;
+    line-height: 1.5;
   }
 
   .btn {
@@ -390,41 +431,6 @@
     color: var(--accent);
   }
 
-  @media (max-width: 768px) {
-    .pricing {
-      padding: var(--spacing-2xl) var(--spacing-md);
-    }
-
-    .pricing-grid {
-      grid-template-columns: 1fr;
-      gap: var(--spacing-lg);
-    }
-
-    .pricing-card {
-      padding: var(--spacing-lg);
-    }
-
-    .pricing-card.featured {
-      transform: scale(1);
-    }
-
-    .pricing-card.featured:hover {
-      transform: translateY(-4px);
-    }
-
-    .pricing-card:hover {
-      transform: translateY(-2px);
-    }
-
-    .amount {
-      font-size: 2rem;
-    }
-
-    .features li {
-      font-size: 0.8rem;
-    }
-  }
-
   @media (max-width: 480px) {
     .pricing {
       padding: var(--spacing-xl) var(--spacing-sm);
@@ -453,7 +459,8 @@
       padding: var(--spacing-md);
     }
 
-    .pricing-card:hover {
+    .pricing-card:hover,
+    .pricing-card.featured:hover {
       transform: none;
     }
 
@@ -471,7 +478,6 @@
 
     .features li {
       font-size: 0.75rem;
-      padding: var(--spacing-xs) 0;
     }
 
     .btn {
@@ -489,4 +495,5 @@
       padding: var(--spacing-xs) var(--spacing-sm);
     }
   }
+
 </style>

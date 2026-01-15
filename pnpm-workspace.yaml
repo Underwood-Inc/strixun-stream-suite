@@ -20,9 +20,12 @@ packages:
   - 'packages/auth-store'
   - 'packages/asciimoji'
   - 'packages/schemas'
+  - 'packages/audio-player'
+  - 'packages/error-utils'
   - 'dice-board-game'
   - 'control-panel'
   - 'mods-hub'
+  - 'access-hub'
   - 'shared-components'
   - 'shared-config'
 

@@ -29,13 +29,10 @@ const REPO_OWNER = 'Underwood-Inc';
 const REPO_NAME = 'strixun-stream-suite';
 const WIKI_REPO_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}.wiki.git`;
 
-// Directories to migrate (finds ALL markdown files recursively)
+// Directories to migrate (ONLY PANDA_CORE documentation hub)
+// This ensures only properly organized, consolidated documentation is migrated
 const DOC_DIRS = [
-  'docs',
-  'product-docs',
-  'serverless',
-  'mods-hub',
-  'shared-components',
+  '╠═══════ PANDA_CORE ═══════╣',
 ];
 
 // Files to skip (keep only essential files in codebase)
@@ -45,9 +42,11 @@ const SKIP_PATTERNS = [
   /^dist/,
   /^\.changeset/,
   /^\.wiki-temp/,
-  /CHANGELOG\.md$/i,
-  // Keep root README.md in codebase (it's needed for GitHub repo display)
-  /^README\.md$/i,
+  // Skip consolidation tracking files (internal use only)
+  /CONSOLIDATION_INDEX\.md$/i,
+  /CONSOLIDATION_STATUS\.md$/i,
+  /MODS_API_DOCUMENTATION_CONSOLIDATION\.md$/i,
+  /MODS_API_DOCUMENTATION_UPDATE_SUMMARY\.md$/i,
 ];
 
 /**
@@ -118,9 +117,13 @@ function pathToWikiName(filePath) {
 
 /**
  * Fix relative links in markdown content for wiki context
+ * Only creates links to documents that actually exist in the migration set
  */
-function fixWikiLinks(content, currentPath) {
+function fixWikiLinks(content, currentPath, allFiles) {
   const currentDir = dirname(currentPath);
+  
+  // Create a Set of all file paths being migrated for fast lookup
+  const fileSet = new Set(allFiles.map(f => f.toLowerCase()));
   
   // Fix relative markdown links: [text](./file.md) or [text](../file.md)
   return content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, link) => {
@@ -140,9 +143,15 @@ function fixWikiLinks(content, currentPath) {
       const relativeFromRoot = relative(rootDir, resolvedPath);
       
       if (relativeFromRoot.endsWith('.md')) {
-        // Convert to wiki page name
-        const wikiName = pathToWikiName(resolvedPath);
-        return `[${text}](${wikiName})`;
+        // Only create wiki link if target file exists in migration set
+        if (fileSet.has(resolvedPath.toLowerCase()) || existsSync(resolvedPath)) {
+          const wikiName = pathToWikiName(resolvedPath);
+          return `[${text}](${wikiName})`;
+        } else {
+          // Target doesn't exist - keep original text but remove broken link
+          console.warn(`⚠ Skipping broken link: ${link} (target not found in PANDA_CORE)`);
+          return text; // Just return the text without the link
+        }
       }
     }
     
@@ -150,8 +159,15 @@ function fixWikiLinks(content, currentPath) {
     if (link.startsWith('/')) {
       const resolvedPath = join(rootDir, link.slice(1));
       if (resolvedPath.endsWith('.md')) {
-        const wikiName = pathToWikiName(resolvedPath);
-        return `[${text}](${wikiName})`;
+        // Only create wiki link if target file exists in migration set
+        if (fileSet.has(resolvedPath.toLowerCase()) || existsSync(resolvedPath)) {
+          const wikiName = pathToWikiName(resolvedPath);
+          return `[${text}](${wikiName})`;
+        } else {
+          // Target doesn't exist - keep original text but remove broken link
+          console.warn(`⚠ Skipping broken link: ${link} (target not found in PANDA_CORE)`);
+          return text; // Just return the text without the link
+        }
       }
     }
     
@@ -206,7 +222,7 @@ function copyDocsToWiki(sourceFiles, wikiDir) {
     try {
       const content = readFileSync(file, 'utf-8');
       const wikiName = pathToWikiName(file);
-      const fixedContent = fixWikiLinks(content, file);
+      const fixedContent = fixWikiLinks(content, file, sourceFiles);
       const wikiFilePath = join(wikiDir, `${wikiName}.md`);
       
       // Ensure directory exists
@@ -225,37 +241,59 @@ function copyDocsToWiki(sourceFiles, wikiDir) {
 }
 
 /**
- * Create Home page from main README
+ * Create Home page from PANDA_CORE README
  */
 function createHomePage(wikiDir) {
   try {
-    const readmePath = join(rootDir, 'README.md');
-    const readmeContent = readFileSync(readmePath, 'utf-8');
+    const pandaCoreReadmePath = join(rootDir, '╠═══════ PANDA_CORE ═══════╣', 'README.md');
+    let readmeContent = '';
     
-    const homeContent = `# Welcome to Strixun Stream Suite Documentation
+    if (existsSync(pandaCoreReadmePath)) {
+      readmeContent = readFileSync(pandaCoreReadmePath, 'utf-8');
+    }
+    
+    const homeContent = `# Strixun Stream Suite Documentation
 
 ${readmeContent}
 
 ---
 
-## ★ Documentation Index
+## ★ Documentation Categories
 
-All documentation has been automatically migrated from the codebase to this wiki. Browse the pages on the right sidebar to explore:
+This wiki contains the complete PANDA_CORE documentation hub - a consolidated, organized collection of all project documentation:
 
-- **Getting Started** - Setup and quick start guides
-- **Architecture** - System design and technical architecture
-- **API Documentation** - Complete API reference
-- **Services** - Individual service documentation
-- **Development** - Development guides and best practices
-- **Deployment** - Deployment and operations
-- **Security** - Security documentation
-- **Guides** - How-to guides and tutorials
-- **Reference** - Technical reference and specifications
-- **Product Documentation** - Product overview and business docs
+### Core Categories
+
+- **01_GETTING_STARTED** - Installation, setup, environment configuration
+- **02_ARCHITECTURE** - System architecture, design patterns, technical documentation
+- **03_DEVELOPMENT** - Development guides, code style, best practices
+- **04_DEPLOYMENT** - Deployment guides, CI/CD, operations
+- **05_SECURITY** - Security documentation, audits, encryption
+
+### Reference & Guides
+
+- **06_API_REFERENCE** - Complete API documentation
+- **07_SERVICES** - Individual service documentation
+- **08_TESTING** - Testing guides, E2E testing, test structure
+- **09_AUDITS_AND_REPORTS** - All audit reports and analysis
+- **10_GUIDES_AND_TUTORIALS** - How-to guides and tutorials
+- **11_MIGRATION_GUIDES** - Migration and upgrade documentation
+- **12_REFERENCE** - Reference docs, schemas, specifications
 
 ---
 
-*This wiki is the single source of truth for documentation. All documentation files have been migrated from the codebase.*
+## ℹ About This Wiki
+
+This wiki is automatically synchronized from the **PANDA_CORE** documentation hub in the main repository. 
+
+- **Source**: All documentation lives in the \`╠═══════ PANDA_CORE ═══════╣\` directory
+- **Single Source of Truth**: PANDA_CORE is the authoritative documentation source
+- **Auto-Sync**: Changes to PANDA_CORE markdown files automatically sync to this wiki
+- **Quality Assured**: Only properly organized, consolidated documentation is migrated
+
+---
+
+*Last synchronized: ${new Date().toISOString()}*
 `;
 
     const homePath = join(wikiDir, 'Home.md');

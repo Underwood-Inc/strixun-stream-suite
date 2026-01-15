@@ -1,0 +1,61 @@
+{
+  "name": "@strixun/audio-player",
+  "version": "1.0.0",
+  "description": "Audio-responsive music player with Howler.js, Web Audio API, and essentia.js",
+  "private": true,
+  "type": "module",
+  "main": "./core.ts",
+  "types": "./audio-player.d.ts",
+  "exports": {
+    ".": {
+      "types": "./audio-player.d.ts",
+      "default": "./core.ts"
+    },
+    "./svelte/AudioPlayer.svelte": "./svelte/AudioPlayer.svelte",
+    "./react": {
+      "types": "./react/AudioPlayer.tsx",
+      "default": "./react/AudioPlayer.tsx"
+    },
+    "./hooks": {
+      "types": "./hooks/index.ts",
+      "default": "./hooks/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "howler": "^2.2.4"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "svelte": "^5.46.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/svelte": "^4.1.2",
+    "@types/howler": "^2.2.11",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^25.0.1",
+    "svelte": "^5.46.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.16"
+  },
+  "files": [
+    "core.ts",
+    "svelte/",
+    "react/",
+    "hooks/",
+    "audio-player.d.ts",
+    "README.md"
+  ]
+}

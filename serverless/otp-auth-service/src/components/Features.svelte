@@ -21,6 +21,10 @@
       <h3><span class="feature-icon">◉</span> Easy Integration</h3>
       <p>Simple REST API that works with any framework. React, Svelte, Vue, or vanilla JavaScript—we've got you covered.</p>
     </div>
+    <div class="feature-card">
+      <h3><span class="feature-icon">◐</span> True Single Sign-On</h3>
+      <p>Login once, authenticated everywhere. HttpOnly cookies provide seamless SSO across all subdomains with enterprise-grade XSS protection.</p>
+    </div>
     <Tooltip 
       component={InTestingTooltip} 
       componentProps={{

@@ -7,8 +7,8 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
-import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
-import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
+import type { ModMetadata, ModVersion, ModDetailResponse, VariantVersion } from '../../types/mod.js';
+import type { AuthResult } from '../../utils/auth.js';
 
 /**
  * Handle get mod detail request
@@ -19,12 +19,15 @@ export async function handleGetModDetail(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: AuthResult | null
 ): Promise<Response> {
     try {
         // Check if customer is super admin (needed for filtering)
-        const { isSuperAdminEmail } = await import('../../utils/admin.js');
-        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        let isAdmin = false;
+        if (auth?.customerId) {
+            const { isSuperAdmin } = await import('../../utils/admin.js');
+            isAdmin = await isSuperAdmin(auth.customerId, auth.jwtToken, env);
+        }
         
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
         // Use modId directly - it already includes 'mod_' prefix
@@ -71,7 +74,7 @@ export async function handleGetModDetail(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
         
@@ -96,8 +99,7 @@ export async function handleGetModDetail(
                 'Mod Not Found',
                 'The requested mod was not found'
             );
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -107,9 +109,6 @@ export async function handleGetModDetail(
                 },
             });
         }
-        
-        // ✨ LAZY MIGRATION: Automatically migrate variants if needed
-        mod = await migrateModVariantsIfNeeded(mod, env);
         
         // Use mod.modId directly - no normalization needed
         const storedModId = mod.modId;
@@ -135,8 +134,7 @@ export async function handleGetModDetail(
                         'Mod Not Found',
                         'The requested mod was not found'
                     );
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                     });
                     return new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -161,8 +159,7 @@ export async function handleGetModDetail(
                         'Mod Not Found',
                         'The requested mod was not found'
                     );
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                     });
                     return new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -182,8 +179,7 @@ export async function handleGetModDetail(
                     'Mod Not Found',
                     'The requested mod was not found'
                 );
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 404,
@@ -326,13 +322,25 @@ export async function handleGetModDetail(
             });
         }
 
+        // Populate fileName for each variant from its current VariantVersion
+        if (mod.variants && mod.variants.length > 0) {
+            for (const variant of mod.variants) {
+                if (variant.currentVersionId) {
+                    const variantVersionKey = `variantversion:${variant.currentVersionId}`;
+                    const variantVersion = await env.MODS_KV.get(variantVersionKey, { type: 'json' }) as VariantVersion | null;
+                    if (variantVersion && variantVersion.fileName) {
+                        variant.fileName = variantVersion.fileName;
+                    }
+                }
+            }
+        }
+
         const response: ModDetailResponse = {
             mod,
             versions
         };
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(response), {
             status: 200,
@@ -349,8 +357,7 @@ export async function handleGetModDetail(
             'Failed to Get Mod Detail',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while fetching mod details'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

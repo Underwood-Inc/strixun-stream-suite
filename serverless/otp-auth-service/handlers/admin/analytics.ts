@@ -3,7 +3,7 @@
  * Handles analytics and metrics endpoints
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getUsage } from '../../services/analytics.js';
 
 interface Env {
@@ -127,7 +127,7 @@ export async function handleGetAnalytics(request: Request, env: Env, customerId:
         };
         
         return new Response(JSON.stringify(response), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error: any) {
         return new Response(JSON.stringify({
@@ -135,7 +135,7 @@ export async function handleGetAnalytics(request: Request, env: Env, customerId:
             message: error?.message || 'Unknown error'
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -200,7 +200,7 @@ export async function handleGetRealtimeAnalytics(request: Request, env: Env, cus
         };
         
         return new Response(JSON.stringify(response), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error: any) {
         return new Response(JSON.stringify({
@@ -208,7 +208,7 @@ export async function handleGetRealtimeAnalytics(request: Request, env: Env, cus
             message: error?.message || 'Unknown error'
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -272,7 +272,7 @@ export async function handleGetErrorAnalytics(request: Request, env: Env, custom
         };
         
         return new Response(JSON.stringify(response), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error: any) {
         return new Response(JSON.stringify({
@@ -280,7 +280,7 @@ export async function handleGetErrorAnalytics(request: Request, env: Env, custom
             message: error?.message || 'Unknown error'
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -401,7 +401,7 @@ export async function handleGetEmailAnalytics(request: Request, env: Env, custom
         };
         
         return new Response(JSON.stringify(response), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error: any) {
         return new Response(JSON.stringify({
@@ -409,7 +409,7 @@ export async function handleGetEmailAnalytics(request: Request, env: Env, custom
             message: error?.message || 'Unknown error'
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }

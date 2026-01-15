@@ -6,7 +6,7 @@
  * header that ServiceClient expects for verification.
  */
 
-import { calculateResponseIntegrity } from './integrity.js';
+import { calculateResponseIntegrity } from './integrity';
 
 /**
  * Check if a request is a service-to-service call (API key auth, not JWT)

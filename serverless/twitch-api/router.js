@@ -21,33 +21,22 @@ import { wrapWithEncryption } from '@strixun/api-framework';
  * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health
  */
 async function handleHealth(env, request) {
-    // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
-    // Get JWT token from request
-    const authHeader = request.headers.get('Authorization');
-    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-    
-    if (!jwtToken) {
-        const errorResponse = {
-            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
-            title: 'Unauthorized',
-            status: 401,
-            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
-            instance: request.url
-        };
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
-        return new Response(JSON.stringify(errorResponse), {
-            status: 401,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+    // CRITICAL: Check HttpOnly cookie FIRST, then Authorization header
+    let jwtToken = null;
+    const cookieHeader = request.headers.get('Cookie');
+    if (cookieHeader) {
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        if (authCookie) {
+            jwtToken = authCookie.substring('auth_token='.length).trim();
+        }
     }
-
-    // Create auth object for encryption
-    const authForEncryption = { userId: 'anonymous', customerId: null, jwtToken };
+    
+    // Fallback to Authorization header if no cookie
+    if (!jwtToken) {
+        const authHeader = request.headers.get('Authorization');
+        jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    }
 
     // Create health check response
     const healthData = { 
@@ -63,8 +52,18 @@ async function handleHealth(env, request) {
         },
     });
 
-    // Wrap with encryption to ensure JWT encryption is applied
-    const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
+    // CRITICAL: Detect if request is using HttpOnly cookie (browser request)
+    // If yes, we must disable response encryption because JavaScript can't access HttpOnly cookies to decrypt
+    const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+    
+    // For HttpOnly cookie requests, pass null to disable encryption
+    // For Authorization header requests (service-to-service), pass auth object to enable encryption
+    const authForEncryption = isHttpOnlyCookie ? null : (jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null);
+
+    // Wrap with encryption - disable for HttpOnly cookies
+    const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env, {
+        requireJWT: authForEncryption ? true : false
+    });
     return encryptedResult.response;
 }
 
@@ -73,7 +72,11 @@ async function handleHealth(env, request) {
  */
 export async function route(request, env) {
     const url = new URL(request.url);
-    const path = url.pathname;
+    // Dev-proxy normalization: allow apps to call through /twitch-api/* without 404s
+    let path = url.pathname;
+    if (path.startsWith('/twitch-api/')) {
+        path = path.substring('/twitch-api'.length);
+    }
 
     try {
         // Twitch API endpoints
@@ -105,41 +108,110 @@ export async function route(request, env) {
         // However, responses should still be encrypted if JWT is provided
         if (path === '/auth/request-otp' && request.method === 'POST') {
             const response = await handleRequestOTP(request, env);
-            const authHeader = request.headers.get('Authorization');
-            const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-            const auth = jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null;
+            // CRITICAL: Check HttpOnly cookie FIRST, then Authorization header
+            let jwtToken = null;
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    jwtToken = authCookie.substring('auth_token='.length).trim();
+                }
+            }
+            if (!jwtToken) {
+                const authHeader = request.headers.get('Authorization');
+                jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+            }
+            const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+            const authForEncryption = isHttpOnlyCookie ? null : (jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null);
             // Use requireJWT: false for auth endpoints that generate JWTs (temporary - needs architectural review)
-            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
+            return await wrapWithEncryption(response, authForEncryption, request, env, { requireJWT: false });
         }
         if (path === '/auth/verify-otp' && request.method === 'POST') {
             const response = await handleVerifyOTP(request, env);
-            const authHeader = request.headers.get('Authorization');
-            const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-            const auth = jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null;
+            // CRITICAL: Check HttpOnly cookie FIRST, then Authorization header
+            let jwtToken = null;
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    jwtToken = authCookie.substring('auth_token='.length).trim();
+                }
+            }
+            if (!jwtToken) {
+                const authHeader = request.headers.get('Authorization');
+                jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+            }
+            const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+            const authForEncryption = isHttpOnlyCookie ? null : (jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null);
             // Use requireJWT: false for auth endpoints that generate JWTs (temporary - needs architectural review)
-            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
+            return await wrapWithEncryption(response, authForEncryption, request, env, { requireJWT: false });
         }
         if (path === '/auth/me' && request.method === 'GET') {
             const response = await handleGetMe(request, env);
-            const authHeader = request.headers.get('Authorization');
-            const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-            const auth = jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null;
-            return await wrapWithEncryption(response, auth, request, env);
+            // CRITICAL: Check HttpOnly cookie FIRST, then Authorization header
+            let jwtToken = null;
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    jwtToken = authCookie.substring('auth_token='.length).trim();
+                }
+            }
+            if (!jwtToken) {
+                const authHeader = request.headers.get('Authorization');
+                jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+            }
+            const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+            const authForEncryption = isHttpOnlyCookie ? null : (jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
         if (path === '/auth/logout' && request.method === 'POST') {
             const response = await handleLogout(request, env);
-            const authHeader = request.headers.get('Authorization');
-            const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-            const auth = jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null;
-            return await wrapWithEncryption(response, auth, request, env);
+            // CRITICAL: Check HttpOnly cookie FIRST, then Authorization header
+            let jwtToken = null;
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    jwtToken = authCookie.substring('auth_token='.length).trim();
+                }
+            }
+            if (!jwtToken) {
+                const authHeader = request.headers.get('Authorization');
+                jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+            }
+            const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+            const authForEncryption = isHttpOnlyCookie ? null : (jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
         if (path === '/auth/refresh' && request.method === 'POST') {
             const response = await handleRefresh(request, env);
-            const authHeader = request.headers.get('Authorization');
-            const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-            const auth = jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null;
+            // CRITICAL: Check HttpOnly cookie FIRST, then Authorization header
+            let jwtToken = null;
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    jwtToken = authCookie.substring('auth_token='.length).trim();
+                }
+            }
+            if (!jwtToken) {
+                const authHeader = request.headers.get('Authorization');
+                jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+            }
+            const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+            const authForEncryption = isHttpOnlyCookie ? null : (jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null);
             // Use requireJWT: false for auth endpoints that generate JWTs (temporary - needs architectural review)
-            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
+            return await wrapWithEncryption(response, authForEncryption, request, env, { requireJWT: false });
         }
         
         // Notes/Notebook endpoints (require authentication)
@@ -165,6 +237,7 @@ export async function route(request, env) {
         // Not found
         const rfcError404 = createError(request, 404, 'Not Found', 'The requested endpoint was not found');
         const corsHeaders404 = createCORSHeaders(request, {
+            credentials: true,
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError404), {
@@ -184,6 +257,7 @@ export async function route(request, env) {
                 'JWT_SECRET environment variable is required. Please contact the administrator.'
             );
             const corsHeaders = createCORSHeaders(request, {
+                credentials: true,
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {

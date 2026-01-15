@@ -12,6 +12,61 @@ interface Env {
     [key: string]: any;
 }
 
+/**
+ * SSO Isolation Mode
+ * - 'none': No isolation - global SSO enabled for all customer's keys (default)
+ * - 'selective': Selective SSO - only communicate with specified keys
+ * - 'complete': Complete isolation - no SSO with any keys
+ */
+type SSOIsolationMode = 'none' | 'selective' | 'complete';
+
+/**
+ * SSO Communication Configuration
+ * Controls how this API key's authentication sessions can be shared
+ * with other API keys owned by the same customer.
+ * 
+ * PURPOSE: Enable customers to build their own decoupled SSO ecosystems
+ * where different API keys (representing different apps/services) can
+ * optionally share authentication sessions.
+ * 
+ * SECURITY: API keys are NOT authentication replacements - they are
+ * organizational/data separation layers. JWT handles actual authentication.
+ * SSO config only controls whether JWT sessions can be used across keys.
+ */
+interface SSOConfig {
+    /**
+     * Isolation mode for this API key
+     * - 'none': Global SSO enabled - sessions shared with ALL customer's keys
+     * - 'selective': Selective SSO - sessions shared only with allowedKeyIds
+     * - 'complete': Complete isolation - sessions NOT shared with any keys
+     */
+    isolationMode: SSOIsolationMode;
+    
+    /**
+     * Specific key IDs this key can share sessions with (when isolationMode='selective')
+     * Empty array means no keys allowed (same as 'complete' isolation)
+     * Only used when isolationMode='selective'
+     */
+    allowedKeyIds: string[];
+    
+    /**
+     * Enable global SSO across ALL customer's keys (when isolationMode='none')
+     * When true, sessions are shared across all active keys for this customer
+     * When false, falls back to selective or complete isolation
+     */
+    globalSsoEnabled: boolean;
+    
+    /**
+     * Configuration version for migration/compatibility
+     */
+    configVersion: number;
+    
+    /**
+     * Last updated timestamp
+     */
+    updatedAt: string;
+}
+
 interface ApiKeyData {
     customerId: string;
     keyId: string;
@@ -20,6 +75,11 @@ interface ApiKeyData {
     lastUsed: string | null;
     status: 'active' | 'inactive' | 'revoked';
     encryptedKey: string;
+    /**
+     * SSO communication configuration
+     * Controls inter-tenant session sharing for this API key
+     */
+    ssoConfig?: SSOConfig;
 }
 
 interface ApiKeyResult {
@@ -30,6 +90,10 @@ interface ApiKeyResult {
 interface ApiKeyVerification {
     customerId: string;
     keyId: string;
+    /**
+     * SSO configuration for session validation
+     */
+    ssoConfig?: SSOConfig;
 }
 
 /**
@@ -85,6 +149,16 @@ export async function createApiKeyForCustomer(
     const jwtSecret = getJWTSecret(env);
     const encryptedKey = await encryptData(apiKey, jwtSecret);
     
+    // Initialize default SSO config: global SSO enabled (no isolation)
+    // This allows customers to build their own SSO ecosystems by default
+    const defaultSsoConfig: SSOConfig = {
+        isolationMode: 'none',
+        allowedKeyIds: [],
+        globalSsoEnabled: true,
+        configVersion: 1,
+        updatedAt: new Date().toISOString()
+    };
+    
     // Store API key hash (for verification) and encrypted key (for retrieval)
     const apiKeyData: ApiKeyData = {
         customerId,
@@ -93,7 +167,8 @@ export async function createApiKeyForCustomer(
         createdAt: new Date().toISOString(),
         lastUsed: null,
         status: 'active',
-        encryptedKey // Store encrypted key so we can decrypt and show it later
+        encryptedKey, // Store encrypted key so we can decrypt and show it later
+        ssoConfig: defaultSsoConfig // Initialize with global SSO enabled
     };
     
     const apiKeyKey = `apikey_${apiKeyHash}`;
@@ -110,23 +185,25 @@ export async function createApiKeyForCustomer(
         });
         throw new Error('Failed to store API key in KV');
     }
-    console.log(`[ApiKeyService] API key stored successfully:`, {
-        keyId,
-        customerId,
-        hashPrefix: apiKeyHash.substring(0, 16) + '...',
-        lookupKey: apiKeyKey.substring(0, 50) + '...'
-    });
+    // console.log(`[ApiKeyService] API key stored successfully:`, {
+    //     keyId,
+    //     customerId,
+    //     hashPrefix: apiKeyHash.substring(0, 16) + '...',
+    //     lookupKey: apiKeyKey.substring(0, 50) + '...'
+    // });
     
-    // Also store key ID to hash mapping for customer (with encrypted key)
+    // Also store key ID to hash mapping for customer (with encrypted key and SSO config)
     const customerApiKeysKey = `customer_${customerId}_apikeys`;
     const existingKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) as ApiKeyData[] | null || [];
     existingKeys.push({
+        customerId,
         keyId,
         name: apiKeyData.name,
         createdAt: apiKeyData.createdAt,
         lastUsed: null,
         status: 'active',
-        encryptedKey // Store encrypted key for retrieval
+        encryptedKey, // Store encrypted key for retrieval
+        ssoConfig: defaultSsoConfig // Store SSO config for management UI
     });
     await env.OTP_AUTH_KV.put(customerApiKeysKey, JSON.stringify(existingKeys));
     
@@ -148,7 +225,7 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     
     // Validate API key format before attempting lookup
     if (!trimmedApiKey.startsWith('otp_live_sk_') && !trimmedApiKey.startsWith('otp_test_sk_')) {
-        console.log(`[ApiKeyService] Invalid API key format: ${trimmedApiKey.substring(0, 20)}...`);
+        // console.log(`[ApiKeyService] Invalid API key format: ${trimmedApiKey.substring(0, 20)}...`);
         return null;
     }
     
@@ -156,31 +233,31 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     const apiKeyKey = `apikey_${apiKeyHash}`;
     
     // DEBUG: Log the lookup attempt
-    console.log(`[ApiKeyService] Verifying API key:`, {
-        apiKeyPrefix: trimmedApiKey.substring(0, 30) + '...',
-        hashPrefix: apiKeyHash.substring(0, 16) + '...',
-        lookupKey: apiKeyKey.substring(0, 50) + '...',
-        apiKeyLength: trimmedApiKey.length
-    });
+    // console.log(`[ApiKeyService] Verifying API key:`, {
+    //     apiKeyPrefix: trimmedApiKey.substring(0, 30) + '...',
+    //     hashPrefix: apiKeyHash.substring(0, 16) + '...',
+    //     lookupKey: apiKeyKey.substring(0, 50) + '...',
+    //     apiKeyLength: trimmedApiKey.length
+    // });
     
     const keyData = await env.OTP_AUTH_KV.get(apiKeyKey, { type: 'json' }) as ApiKeyData | null;
     
     if (!keyData) {
         // Try to list all keys with similar prefix to debug
-        console.log(`[ApiKeyService] API key not found in KV:`, {
-            apiKeyPrefix: trimmedApiKey.substring(0, 30) + '...',
-            hashPrefix: apiKeyHash.substring(0, 16) + '...',
-            lookupKey: apiKeyKey.substring(0, 50) + '...',
-            reason: 'Key may not exist in KV or hash mismatch',
-            apiKeyLength: trimmedApiKey.length,
-            apiKeyFirstChars: trimmedApiKey.substring(0, 20),
-            apiKeyLastChars: trimmedApiKey.substring(Math.max(0, trimmedApiKey.length - 10))
-        });
+        // console.log(`[ApiKeyService] API key not found in KV:`, {
+        //     apiKeyPrefix: trimmedApiKey.substring(0, 30) + '...',
+        //     hashPrefix: apiKeyHash.substring(0, 16) + '...',
+        //     lookupKey: apiKeyKey.substring(0, 50) + '...',
+        //     reason: 'Key may not exist in KV or hash mismatch',
+        //     apiKeyLength: trimmedApiKey.length,
+        //     apiKeyFirstChars: trimmedApiKey.substring(0, 20),
+        //     apiKeyLastChars: trimmedApiKey.substring(Math.max(0, trimmedApiKey.length - 10))
+        // });
         return null;
     }
     
     if (keyData.status !== 'active') {
-        console.log(`[ApiKeyService] API key is not active: status=${keyData.status}, keyId=${keyData.keyId}`);
+        // console.log(`[ApiKeyService] API key is not active: status=${keyData.status}, keyId=${keyData.keyId}`);
         return null;
     }
     
@@ -205,24 +282,27 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     
     // Only allow active customers
     if (customer.status !== 'active') {
-        console.log(`[ApiKeyService] Customer is not active:`, {
-            customerId: keyData.customerId,
-            keyId: keyData.keyId,
-            status: customer.status,
-            reason: 'Customer account is not active'
-        });
+        // console.log(`[ApiKeyService] Customer is not active:`, {
+        //     customerId: keyData.customerId,
+        //     keyId: keyData.keyId,
+        //     status: customer.status,
+        //     reason: 'Customer account is not active'
+        // });
         return null;
     }
     
-    console.log(`[ApiKeyService] API key verification successful:`, {
-        customerId: keyData.customerId,
-        keyId: keyData.keyId,
-        apiKeyPrefix: trimmedApiKey.substring(0, 20) + '...'
-    });
+    // console.log(`[ApiKeyService] API key verification successful:`, {
+    //     customerId: keyData.customerId,
+    //     keyId: keyData.keyId,
+    //     apiKeyPrefix: trimmedApiKey.substring(0, 20) + '...'
+    // });
     
     return {
         customerId: keyData.customerId,
-        keyId: keyData.keyId
+        keyId: keyData.keyId,
+        ssoConfig: keyData.ssoConfig // Return SSO config for session validation
     };
 }
 
+// Export types for use in other modules
+export type { ApiKeyData, ApiKeyResult, ApiKeyVerification, SSOConfig, SSOIsolationMode };

@@ -7,10 +7,9 @@ import { useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModMetadata, ModUpdateRequest, ModCategory, ModVisibility, ModStatus, ModVariant } from '../../types/mod';
-import { nowISO } from '@strixun/shared-config/date-utils';
 import { FileUploader } from './FileUploader';
 import { GamesPicker } from './GamesPicker';
-import { useAdminSettings } from '../../hooks/useMods';
+import { useModSettings } from '../../hooks/useMods';
 import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixun/api-framework';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getBadgeStyles } from '../../utils/sharedStyles';
@@ -325,7 +324,7 @@ const RecommendationText = styled.p`
 `;
 
 export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoading }: ModManageFormProps) {
-    const { data: settings } = useAdminSettings();
+    const { data: settings } = useModSettings();
     const [title, setTitle] = useState(mod.title);
     const [description, setDescription] = useState(mod.description);
     const [category, setCategory] = useState<ModCategory>(mod.category);
@@ -484,15 +483,14 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     };
 
     const handleAddVariant = () => {
-        const now = nowISO();
         const newVariant: ModVariantWithFile = {
             variantId: `variant-${Date.now()}`,
             modId: mod.modId,
             name: '',
             description: '',
-            createdAt: now,
-            updatedAt: now,
-            currentVersionId: '',
+            createdAt: '', // Empty = NEW variant (not saved yet)
+            updatedAt: '', // Will be set when saved
+            currentVersionId: null,
             versionCount: 0,
             totalDownloads: 0,
         };
@@ -582,6 +580,38 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
+        // CRITICAL: NEW VARIANTS REQUIRE BOTH NAME AND FILE
+        // Validate new variants before submission
+        const incompleteNewVariants = variants.filter(variant => {
+            const isNew = !isPreExistingVariant(variant);
+            if (!isNew) return false; // Only check new variants
+            
+            const hasName = variant.name && variant.name.trim().length > 0;
+            const hasFile = !!variant.file || !!pendingVariantFiles[variant.variantId];
+            
+            // NEW VARIANT IS INCOMPLETE if it has one but not the other (or neither)
+            return !hasName || !hasFile;
+        });
+        
+        if (incompleteNewVariants.length > 0) {
+            const errors = incompleteNewVariants.map(v => {
+                const hasName = v.name && v.name.trim().length > 0;
+                const hasFile = !!v.file || !!pendingVariantFiles[v.variantId];
+                
+                if (!hasName && !hasFile) return `"${v.name || 'Unnamed'}" - missing name AND file`;
+                if (!hasName) return `"${v.name || 'Unnamed'}" - missing name`;
+                if (!hasFile) return `"${v.name || 'Unnamed'}" - missing file`;
+                return '';
+            }).filter(Boolean).join('\n');
+            
+            const firstIncomplete = document.querySelector('[style*="border: 2px solid"]');
+            if (firstIncomplete) {
+                firstIncomplete.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            alert(`⚠ ERROR: New variants require BOTH a name AND a file.\n\nThe following variants are incomplete:\n\n${errors}\n\nPlease complete all fields or remove the incomplete variants.`);
+            return;
+        }
+        
         // Filter out completely empty variants (not pre-existing, no name, no file)
         const validVariants = variants.filter(variant => {
             if (isPreExistingVariant(variant)) {
@@ -590,10 +620,9 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
             
             const hasName = variant.name && variant.name.trim().length > 0;
             const hasFile = !!variant.file || !!pendingVariantFiles[variant.variantId];
-            const hasExistingFile = !!variant.fileUrl || (variant.fileName && variant.fileSize !== undefined);
             
-            // Keep only if it has at least a name or a file
-            return hasName || hasFile || hasExistingFile;
+            // NEW VARIANTS: Require BOTH name AND file
+            return hasName && hasFile;
         });
         
         // Extract variant files before serializing variants
@@ -647,7 +676,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
 
             <Header>
                 <ThumbnailSection>
-                    <Label>Thumbnail</Label>
+                    <Label>Thumbnail (optional)</Label>
                     <FileUploader
                         file={thumbnailFile}
                         onFileChange={handleThumbnailFileChange}
@@ -741,48 +770,80 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                 </div>
                 {variants.length > 0 && (
                     <VariantSection>
-                        {variants.map((variant) => (
-                            <VariantItem key={variant.variantId}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Label style={{ margin: 0 }}>Variant: {variant.name || 'Unnamed'}</Label>
-                                    <Button 
-                                        type="button" 
-                                        $variant="danger" 
-                                        onClick={() => handleRemoveVariant(variant.variantId)}
-                                        style={{ padding: spacing.xs, fontSize: '0.75rem' }}
-                                    >
-                                        Remove
-                                    </Button>
-                                </div>
-                                <Input
-                                    type="text"
-                                    placeholder="Variant name"
-                                    value={variant.name || ''}
-                                    onChange={(e) => handleVariantChange(variant.variantId, 'name', e.target.value)}
-                                />
-                                <TextArea
-                                    placeholder="Variant description (optional)"
-                                    value={variant.description || ''}
-                                    onChange={(e) => handleVariantChange(variant.variantId, 'description', e.target.value)}
-                                    style={{ minHeight: '60px' }}
-                                />
-                                <FormGroup>
-                                    <Label>Variant File (optional)</Label>
-                                    <FileUploader
-                                        file={variant.file || null}
-                                        onFileChange={(file) => handleVariantFileChange(variant.variantId, file)}
-                                        maxSize={MAX_MOD_FILE_SIZE}
-                                        accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.jar,.zip,.json,.txt,.xml,.yaml,.yml'}
-                                        label="Drag and drop variant file here, or click to browse"
-                                        error={variantFileErrors[variant.variantId] || null}
-                                        disabled={isLoading}
-                                        existingFileName={!variant.file && variant.fileName ? variant.fileName : undefined}
-                                        existingFileSize={!variant.file && variant.fileSize !== undefined && !isNaN(variant.fileSize) ? variant.fileSize : undefined}
-                                        existingFileUrl={!variant.file && variant.fileUrl ? variant.fileUrl : undefined}
+                        {variants.map((variant) => {
+                            const isNew = !isPreExistingVariant(variant);
+                            const hasFile = !!variant.file || !!pendingVariantFiles[variant.variantId] || !!variant.fileName;
+                            const hasName = variant.name && variant.name.trim().length > 0;
+                            const isIncomplete = isNew && (!hasName || !hasFile);
+                            
+                            return (
+                                <VariantItem key={variant.variantId} style={{ 
+                                    border: isIncomplete ? `2px solid ${colors.warning}` : undefined,
+                                    background: isIncomplete ? `${colors.warning}10` : undefined
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Label style={{ margin: 0 }}>
+                                            Variant: {variant.name || 'Unnamed'}
+                                        </Label>
+                                        <Button 
+                                            type="button" 
+                                            $variant="danger" 
+                                            onClick={() => handleRemoveVariant(variant.variantId)}
+                                            style={{ padding: spacing.xs, fontSize: '0.75rem' }}
+                                        >
+                                            Remove
+                                        </Button>
+                                    </div>
+                                    <Input
+                                        type="text"
+                                        placeholder={isNew ? "Variant name *REQUIRED*" : "Variant name"}
+                                        value={variant.name || ''}
+                                        onChange={(e) => handleVariantChange(variant.variantId, 'name', e.target.value)}
+                                        style={{ 
+                                            borderColor: isNew && !hasName ? colors.warning : undefined 
+                                        }}
                                     />
-                                </FormGroup>
-                            </VariantItem>
-                        ))}
+                                    <TextArea
+                                        placeholder="Variant description (optional)"
+                                        value={variant.description || ''}
+                                        onChange={(e) => handleVariantChange(variant.variantId, 'description', e.target.value)}
+                                        style={{ minHeight: '60px' }}
+                                    />
+                                    <FormGroup>
+                                        <Label>
+                                            Variant File {isNew ? <span style={{ color: colors.danger }}>*REQUIRED*</span> : '(optional)'}
+                                        </Label>
+                                        <FileUploader
+                                            file={variant.file || null}
+                                            onFileChange={(file) => handleVariantFileChange(variant.variantId, file)}
+                                            maxSize={MAX_MOD_FILE_SIZE}
+                                            accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.jar,.zip,.json,.txt,.xml,.yaml,.yml'}
+                                            label={isNew ? 
+                                                "Drag and drop variant file here, or click to browse *REQUIRED*" : 
+                                                "Drag and drop variant file here, or click to browse (optional - only if uploading new version)"
+                                            }
+                                            error={variantFileErrors[variant.variantId] || (isNew && !hasFile ? 'File is required for new variants' : null)}
+                                            disabled={isLoading}
+                                            existingFileName={!variant.file && variant.fileName ? variant.fileName : undefined}
+                                            existingFileSize={!variant.file && variant.fileSize !== undefined && !isNaN(variant.fileSize) ? variant.fileSize : undefined}
+                                            existingFileUrl={!variant.file && variant.fileUrl ? variant.fileUrl : undefined}
+                                        />
+                                    </FormGroup>
+                                    {isIncomplete && (
+                                        <div style={{ 
+                                            color: colors.warning, 
+                                            fontSize: '0.875rem',
+                                            marginTop: spacing.xs,
+                                            padding: spacing.sm,
+                                            background: `${colors.warning}20`,
+                                            borderRadius: '4px'
+                                        }}>
+                                            ⚠ This variant is incomplete. Please provide both a name and a file, or remove it.
+                                        </div>
+                                    )}
+                                </VariantItem>
+                            );
+                        })}
                     </VariantSection>
                 )}
             </FormGroup>

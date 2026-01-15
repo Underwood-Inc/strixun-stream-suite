@@ -4,7 +4,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as api from '../services/api';
+import * as api from '../services/mods';
 import { useUIStore } from '../stores/ui';
 import { useAuthStore } from '../stores/auth';
 import { getUserFriendlyErrorMessage, shouldRedirectToLogin } from '../utils/error-messages';
@@ -164,7 +164,7 @@ export function useUpdateMod() {
         }) => api.updateMod(slug, updates, thumbnail, variantFiles),
         onSuccess: (data, variables) => {
             // Check if slug changed in the update
-            const newSlug = data?.mod?.slug || data?.slug;
+            const newSlug = data?.slug;
             const oldSlug = variables.slug;
             
             if (newSlug && newSlug !== oldSlug) {
@@ -178,6 +178,24 @@ export function useUpdateMod() {
             }
             
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });
+            
+            // Invalidate variant versions queries to refresh after variant file upload
+            // Use partial matching to invalidate all variant version queries for this mod
+            queryClient.invalidateQueries({ 
+                predicate: (query) => 
+                    query.queryKey[0] === 'mods' && 
+                    query.queryKey[1] === 'variant-versions' && 
+                    query.queryKey[2] === oldSlug
+            });
+            if (newSlug && newSlug !== oldSlug) {
+                queryClient.invalidateQueries({ 
+                    predicate: (query) => 
+                        query.queryKey[0] === 'mods' && 
+                        query.queryKey[1] === 'variant-versions' && 
+                        query.queryKey[2] === newSlug
+                });
+            }
+            
             addNotification({
                 message: 'Mod updated successfully!',
                 type: 'success',
@@ -209,6 +227,8 @@ export function useDeleteMod() {
                 message: 'Mod deleted successfully!',
                 type: 'success',
             });
+            // Navigate to browse page after successful deletion
+            navigate('/');
         },
         onError: (error: Error) => {
             addNotification({
@@ -437,13 +457,27 @@ export function useSubmitModRating() {
 }
 
 /**
- * Get admin settings query
+ * Get mod upload settings (authenticated users)
+ * Returns allowed file extensions and upload enabled status
  */
-export function useAdminSettings() {
+export function useModSettings() {
+    return useQuery({
+        queryKey: ['mod', 'settings'],
+        queryFn: () => api.getModSettings(),
+        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    });
+}
+
+/**
+ * Get admin settings query (super admins only)
+ * Only runs if enabled (e.g., for super admins only)
+ */
+export function useAdminSettings(options?: { enabled?: boolean }) {
     return useQuery({
         queryKey: ['admin', 'settings'],
         queryFn: () => api.getAdminSettings(),
         staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+        enabled: options?.enabled ?? true, // Only run if enabled
     });
 }
 
@@ -484,38 +518,8 @@ export function useVariantVersions(modSlug: string, variantId: string) {
 }
 
 /**
- * Upload variant version mutation
- */
-export function useUploadVariantVersion() {
-    const queryClient = useQueryClient();
-    const addNotification = useUIStore((state) => state.addNotification);
-    
-    return useMutation({
-        mutationFn: ({ modId, variantId, file, metadata }: {
-            modId: string;
-            variantId: string;
-            file: File;
-            metadata: VariantVersionUploadRequest;
-        }) => api.uploadVariantVersion(modId, variantId, file, metadata),
-        onSuccess: (_data, variables) => {
-            queryClient.invalidateQueries({ queryKey: modKeys.variantVersions(variables.modId, variables.variantId) });
-            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
-            addNotification({
-                message: 'Variant version uploaded successfully!',
-                type: 'success',
-            });
-        },
-        onError: (error: Error) => {
-            addNotification({
-                message: error.message || 'Failed to upload variant version',
-                type: 'error',
-            });
-        },
-    });
-}
-
-/**
  * Delete mod version mutation
+ * UNIFIED SYSTEM: Works for both main mod and variant versions
  */
 export function useDeleteModVersion() {
     const queryClient = useQueryClient();
@@ -534,36 +538,6 @@ export function useDeleteModVersion() {
         onError: (error: Error) => {
             addNotification({
                 message: error.message || 'Failed to delete version',
-                type: 'error',
-            });
-        },
-    });
-}
-
-/**
- * Delete variant version mutation
- */
-export function useDeleteVariantVersion() {
-    const queryClient = useQueryClient();
-    const addNotification = useUIStore((state) => state.addNotification);
-    
-    return useMutation({
-        mutationFn: ({ modId, variantId, variantVersionId }: { 
-            modId: string; 
-            variantId: string; 
-            variantVersionId: string;
-        }) => api.deleteVariantVersion(modId, variantId, variantVersionId),
-        onSuccess: (_data, variables) => {
-            queryClient.invalidateQueries({ queryKey: modKeys.variantVersions(variables.modId, variables.variantId) });
-            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
-            addNotification({
-                message: 'Variant version deleted successfully!',
-                type: 'success',
-            });
-        },
-        onError: (error: Error) => {
-            addNotification({
-                message: error.message || 'Failed to delete variant version',
                 type: 'error',
             });
         },

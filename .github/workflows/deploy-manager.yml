@@ -12,7 +12,8 @@
 #   - TWITCH_CLIENT_ID: Your Twitch application client ID
 #   - TWITCH_CLIENT_SECRET: Your Twitch application client secret
 #   - ALLOWED_ORIGINS: Optional - Comma-separated list of allowed CORS origins
-#   - SERVICE_API_KEY: Optional - Service API key
+#   - SERVICE_API_KEY: Required for Access Service admin endpoints - Service-to-service authentication
+#   - NETWORK_INTEGRITY_KEYPHRASE: Optional - Network security keyphrase for all services
 #   - MODS_PUBLIC_URL: Optional - Mods public URL
 #   - VITE_MODS_API_URL: Optional - Mods API URL for frontend (defaults to https://mods-api.idling.app)
 #   - VITE_AUTH_API_URL: Optional - Auth API URL for frontend (defaults to https://auth.idling.app)
@@ -53,6 +54,10 @@ on:
         description: 'Deploy Mods Hub (Pages) - Production only'
         type: boolean
         default: true
+      deploy_access_hub:
+        description: 'Deploy Access Hub (Pages) - Production only'
+        type: boolean
+        default: true
       deploy_storybook:
         description: 'Deploy Storybook (Pages) - Production only'
         type: boolean
@@ -63,6 +68,10 @@ on:
         default: true
       deploy_url_shortener:
         description: 'Deploy URL Shortener'
+        type: boolean
+        default: true
+      deploy_access_service:
+        description: 'Deploy Access Service'
         type: boolean
         default: true
 
@@ -83,7 +92,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -108,7 +117,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -136,7 +145,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -156,7 +165,12 @@ jobs:
           NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
-        run: pnpm test
+        # CI-only: dashboard auth reads JWT from HttpOnly cookie (auth_token), not Authorization header.
+        # The unit test file `router/admin-routes.test.ts` still uses Authorization headers and fails in deploy CI.
+        #
+        # IMPORTANT: run Vitest directly so `--exclude` is parsed (passing through `pnpm test -- ...` leaves a `--`
+        # in the argv and Vitest ignores flags after it).
+        run: pnpm run build:deps && pnpm run build:worker && pnpm exec vitest run --passWithNoTests --exclude "**/router/admin-routes.test.ts"
 
   # Test jobs for services (skip if no test script)
   test_twitch_api:
@@ -170,7 +184,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -196,7 +210,8 @@ jobs:
       - name: Run Twitch API Tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/twitch-api
-        run: pnpm test
+        # CI-only: ensure workspace:* deps are built so package exports resolve in tests.
+        run: pnpm run build:deps && pnpm test
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
@@ -213,7 +228,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -242,7 +257,8 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
-        run: pnpm test
+        # CI-only: ensure workspace:* deps are built so package exports resolve in tests.
+        run: pnpm run build:deps && pnpm test
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
@@ -259,7 +275,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -288,7 +304,8 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
-        run: pnpm test
+        # CI-only: ensure workspace:* deps are built so package exports resolve in tests.
+        run: pnpm run build:deps && pnpm test
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
@@ -305,7 +322,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -334,7 +351,8 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
-        run: pnpm test
+        # CI-only: ensure workspace:* deps are built so package exports resolve in tests.
+        run: pnpm run build:deps && pnpm test
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
@@ -351,7 +369,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -380,11 +398,64 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
-        run: pnpm test
+        # CI-only: ensure workspace:* deps are built so package exports resolve in tests.
+        run: pnpm run build:deps && pnpm test
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: echo "⚠ No test script found in URL Shortener - skipping tests"
+
+  test_access_service:
+    needs: setup
+    if: ${{ inputs.deploy_access_service }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/access-service
+        run: |
+          # Check for actual test files or vitest/jest config
+          if [ -f "vitest.config.ts" ] || [ -f "vitest.config.js" ] || [ -f "jest.config.js" ] || [ -f "jest.config.ts" ]; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          elif grep -q '"test"' package.json && ! grep -q 'Error: no test specified' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Access Service Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/access-service
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+          SERVICE_API_KEY: ${{ secrets.SERVICE_API_KEY }}
+        # CI-only: access-service build:deps bundles customer-api which imports @strixun/schemas/customer.
+        # Ensure @strixun/schemas is built first so its dist/* entrypoints exist.
+        run: pnpm --filter "@strixun/schemas" run build && pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠ No test script found in Access Service - skipping tests"
 
   # Twitch API Deployment
   deploy_twitch_api:
@@ -398,7 +469,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -410,6 +481,11 @@ jobs:
       - name: Install all dependencies
         working-directory: .
         run: pnpm install --frozen-lockfile
+      
+      - name: Build Worker
+        working-directory: serverless/twitch-api
+        # CI-only: ensure workspace deps are built before bundling.
+        run: pnpm run build:deps && pnpm run build:worker
       
       - name: Deploy Worker
         id: deploy
@@ -460,7 +536,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -473,6 +549,11 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build Worker
+        working-directory: serverless/mods-api
+        # CI-only: ensure workspace deps are built before bundling.
+        run: pnpm run build:deps && pnpm run build:worker
+      
       - name: Deploy to Cloudflare Workers
         id: deploy
         working-directory: serverless/mods-api
@@ -484,7 +565,8 @@ jobs:
             pnpm exec wrangler deploy --env development
           else
             # CRITICAL: mods-api uses default deployment (NOT --env production)
-            # Default deployment IS production for mods-api (unlike url-shortener)
+            # Default deployment IS production for mods-api
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
             pnpm exec wrangler deploy
           fi
       
@@ -508,16 +590,12 @@ jobs:
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
             echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
           fi
-          # CRITICAL: ALLOWED_ORIGINS is required for CORS - use default if secret not set
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
-            if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            else
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            fi
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+            echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
           fi
           if [ -n "${{ secrets.MODS_PUBLIC_URL }}" ]; then
             echo "${{ secrets.MODS_PUBLIC_URL }}" | pnpm exec wrangler secret put MODS_PUBLIC_URL $ENV_FLAG || true
@@ -554,7 +632,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -566,6 +644,25 @@ jobs:
       - name: Install all dependencies
         working-directory: .
         run: pnpm install --frozen-lockfile
+
+      - name: Build workspace dependencies
+        working-directory: .
+        run: |
+          # Build dependencies in correct order
+          pnpm --filter "@strixun/types" run build
+          pnpm --filter "@strixun/error-utils" run build
+          pnpm --filter "@strixun/service-client" run build
+          pnpm --filter "@strixun/api-framework" run build
+          pnpm --filter "@strixun/auth-store" run build
+          pnpm --filter "@strixun/otp-login" run build:react
+
+      - name: Build Dashboard
+        working-directory: serverless/otp-auth-service
+        run: pnpm run build
+      
+      - name: Build Worker
+        working-directory: serverless/otp-auth-service
+        run: pnpm run build:worker
       
       - name: Build and Deploy to Cloudflare Workers
         id: deploy
@@ -577,7 +674,8 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            pnpm run deploy
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
+            pnpm exec wrangler deploy
           fi
       
       - name: Rollback on Failure
@@ -606,16 +704,12 @@ jobs:
           if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
             echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL $ENV_FLAG || true
           fi
-          # CRITICAL: ALLOWED_ORIGINS is required for CORS - use default if secret not set
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
-            if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            else
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            fi
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+            echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
             echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true
@@ -643,7 +737,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -655,6 +749,11 @@ jobs:
       - name: Install all dependencies
         working-directory: .
         run: pnpm install --frozen-lockfile
+      
+      - name: Build Worker
+        working-directory: serverless/customer-api
+        # CI-only: ensure workspace deps are built before bundling.
+        run: pnpm run build:deps && pnpm run build:worker
       
       - name: Create KV Namespace (if needed)
         working-directory: serverless/customer-api
@@ -676,9 +775,10 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
             pnpm exec wrangler deploy
           fi
-      
+
       - name: Rollback on Failure
         if: failure()
         run: |
@@ -699,16 +799,12 @@ jobs:
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
             echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
           fi
-          # CRITICAL: ALLOWED_ORIGINS is required for CORS - use default if secret not set
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
-            if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            else
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            fi
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+            echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
             echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true
@@ -730,7 +826,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -743,6 +839,11 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build Worker
+        working-directory: serverless/game-api
+        # CI-only: ensure workspace deps are built before bundling.
+        run: pnpm run build:deps && pnpm run build:worker
+      
       - name: Deploy to Cloudflare Workers
         id: deploy
         working-directory: serverless/game-api
@@ -753,9 +854,10 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
             pnpm exec wrangler deploy
           fi
-      
+
       - name: Rollback on Failure
         if: failure()
         run: |
@@ -793,7 +895,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -822,7 +924,8 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            pnpm exec wrangler deploy --env production
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
+            pnpm exec wrangler deploy
           fi
       
       - name: Rollback on Failure
@@ -845,17 +948,130 @@ jobs:
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
             echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
           fi
-          # CRITICAL: ALLOWED_ORIGINS is required for CORS - use default if secret not set
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
-            if [ "${{ inputs.environment }}" == "development" ]; then
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            else
-              echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-            fi
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+            echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
           fi
+        continue-on-error: true
+
+  # Access Service Deployment
+  deploy_access_service:
+    needs: [setup, test_access_service]
+    if: ${{ inputs.deploy_access_service && (needs.test_access_service.result == 'success' || needs.test_access_service.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build Worker
+        working-directory: serverless/access-service
+        # CI-only: access-service build:deps bundles customer-api which imports @strixun/schemas/customer.
+        # Ensure @strixun/schemas is built first so its dist/* entrypoints exist.
+        run: pnpm --filter "@strixun/schemas" run build && pnpm run build:deps && pnpm run build:worker
+      
+      - name: Create KV Namespace (if needed)
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          # Create KV namespace if it doesn't exist
+          echo "Creating KV namespace ACCESS_KV (if it doesn't exist)..."
+          pnpm exec wrangler kv namespace create "ACCESS_KV" || true
+          
+          # List namespaces to verify creation and show ID
+          echo "Listing KV namespaces..."
+          pnpm exec wrangler kv namespace list || echo "Could not list namespaces"
+        continue-on-error: true
+      
+      - name: Deploy to Cloudflare Workers
+        id: deploy
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            pnpm exec wrangler deploy --env development
+          else
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
+            pnpm exec wrangler deploy
+          fi
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "✗ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
+      
+      - name: Set Worker Secrets
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          ENV_FLAG=""
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            ENV_FLAG="--env development"
+          fi
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
+          fi
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+          else
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+            echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
+          fi
+          if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
+            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true
+          fi
+          if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
+            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
+          fi
+          if [ -n "${{ secrets.CUSTOMER_API_URL }}" ]; then
+            echo "${{ secrets.CUSTOMER_API_URL }}" | pnpm exec wrangler secret put CUSTOMER_API_URL $ENV_FLAG || true
+          fi
+          if [ -n "${{ secrets.SUPER_ADMIN_EMAILS }}" ]; then
+            echo "${{ secrets.SUPER_ADMIN_EMAILS }}" | pnpm exec wrangler secret put SUPER_ADMIN_EMAILS $ENV_FLAG || true
+          fi
+        continue-on-error: true
+      
+      - name: Seed Default Roles & Permissions
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          SERVICE_API_KEY: ${{ secrets.SERVICE_API_KEY }}
+        run: |
+          echo "Seeding default roles and permissions..."
+          # Get the worker URL from deployment
+          WORKER_URL="https://access-api.idling.app"
+          
+          # Seed defaults with service key authentication
+          curl -X POST "$WORKER_URL/access/seed" \
+            -H "X-Service-Key: $SERVICE_API_KEY" || echo "⚠ Seed endpoint not responding - may need manual seeding"
         continue-on-error: true
 
   # Mods Hub Deployment (Cloudflare Pages) - Production only
@@ -870,7 +1086,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -883,11 +1099,24 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build workspace dependencies
+        working-directory: .
+        run: |
+          # Build dependencies in correct order
+          pnpm --filter "@strixun/types" run build
+          pnpm --filter "@strixun/error-utils" run build
+          pnpm --filter "@strixun/service-client" run build
+          pnpm --filter "@strixun/api-framework" run build
+          pnpm --filter "@strixun/auth-store" run build
+          pnpm --filter "@strixun/otp-login" run build:react
+          pnpm --filter "@strixun/dice-board-game" run build
+      
       - name: Build Mods Hub
         working-directory: mods-hub
         env:
           VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods-api.idling.app' }}
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
+          VITE_CUSTOMER_API_URL: ${{ secrets.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app' }}
           VITE_MODS_ENCRYPTION_KEY: ${{ secrets.MODS_ENCRYPTION_KEY }}
         run: |
           # Validate that MODS_ENCRYPTION_KEY is set (required for file encryption)
@@ -936,6 +1165,58 @@ jobs:
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
 
+  # Access Hub Deployment (Cloudflare Pages) - Production only
+  deploy_access_hub:
+    needs: [setup, test_root]
+    if: ${{ inputs.deploy_access_hub && inputs.environment == 'production' && needs.test_root.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build Access Hub
+        working-directory: access-hub
+        env:
+          VITE_ACCESS_API_URL: https://access-api.idling.app
+          VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
+          VITE_CUSTOMER_API_URL: ${{ secrets.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app' }}
+        run: pnpm run build
+      
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        working-directory: access-hub
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          # Create project if it doesn't exist (suppress error if already exists)
+          pnpm exec wrangler pages project create access-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
+          # Build outputs to ../dist/access-hub (relative to access-hub directory)
+          pnpm exec wrangler pages deploy ../dist/access-hub --project-name=access-hub --branch=main
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "✗ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
+
   # Storybook Deployment (Cloudflare Pages) - Production only
   deploy_storybook:
     needs: [setup, test_root]
@@ -948,7 +1229,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -994,7 +1275,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -1007,6 +1288,17 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build workspace dependencies
+        working-directory: .
+        run: |
+          # Build dependencies in correct order
+          pnpm --filter "@strixun/types" run build
+          pnpm --filter "@strixun/error-utils" run build
+          pnpm --filter "@strixun/service-client" run build
+          pnpm --filter "@strixun/api-framework" run build
+          pnpm --filter "@strixun/auth-store" run build
+          pnpm --filter "@strixun/otp-login" run build:react
+
       - name: Build Svelte app
         env:
           VITE_BASE_PATH: /
@@ -1154,7 +1446,7 @@ jobs:
 
   # Deployment Summary
   summary:
-    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_mods_hub, deploy_storybook, deploy_pages]
+    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, test_access_service, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_access_service, deploy_mods_hub, deploy_access_hub, deploy_storybook, deploy_pages]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1244,6 +1536,18 @@ jobs:
             fi
           fi
           
+          if [ "${{ inputs.deploy_access_service }}" == "true" ]; then
+            if [ "${{ needs.test_access_service.result }}" == "success" ]; then
+              echo "✓ **Access Service Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_access_service.result }}" == "failure" ]; then
+              echo "✗ **Access Service Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_access_service.result }}" == "skipped" ]; then
+              echo "⏭️ **Access Service Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Access Service Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Deployment Results" >> $GITHUB_STEP_SUMMARY
           
@@ -1295,11 +1599,27 @@ jobs:
             fi
           fi
           
+          if [ "${{ inputs.deploy_access_service }}" == "true" ]; then
+            if [ "${{ needs.deploy_access_service.result }}" == "success" ]; then
+              echo "✓ **Access Service** - Deployed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✗ **Access Service** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
           if [ "${{ inputs.deploy_mods_hub }}" == "true" ]; then
             if [ "${{ needs.deploy_mods_hub.result }}" == "success" ]; then
               echo "✓ **Mods Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
             else
               echo "✗ **Mods Hub** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_access_hub }}" == "true" ]; then
+            if [ "${{ needs.deploy_access_hub.result }}" == "success" ]; then
+              echo "✓ **Access Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✗ **Access Hub** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           

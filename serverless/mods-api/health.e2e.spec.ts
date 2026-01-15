@@ -18,7 +18,7 @@ test.describe('Mods API Health', () => {
     
     const response = await request.get(`${WORKER_URLS.MODS_API}/health`, {
       headers: {
-        'Authorization': `Bearer ${testJWTToken}`,
+        'Cookie': `auth_token=${testJWTToken}`,
       },
     });
     expect(response.ok()).toBeTruthy();

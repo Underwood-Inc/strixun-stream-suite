@@ -27,15 +27,36 @@ export function getJWTSecret(env) {
 }
 
 /**
- * Authenticate request using OTP auth JWT tokens
+ * Authenticate request using OTP auth JWT tokens from HttpOnly cookie
+ * CRITICAL: ONLY checks HttpOnly cookie - NO Authorization header fallback
  */
 export async function authenticateRequest(request, env) {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return { authenticated: false, status: 401, error: 'Authorization header required' };
+  let token = null;
+  
+  // PRIORITY 1: Check HttpOnly cookie (browser requests)
+  const cookieHeader = request.headers.get('Cookie');
+  if (cookieHeader) {
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    
+    if (authCookie) {
+      token = authCookie.substring('auth_token='.length).trim();
+    }
+  }
+  
+  // PRIORITY 2: Check Authorization header (service-to-service calls)
+  if (!token) {
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring('Bearer '.length).trim();
+    }
+  }
+  
+  // No authentication provided
+  if (!token) {
+    return { authenticated: false, status: 401, error: 'Authentication required' };
   }
 
-  const token = authHeader.substring(7);
   const jwtSecret = getJWTSecret(env);
   const payload = await verifyJWT(token, jwtSecret);
 
@@ -49,6 +70,7 @@ export async function authenticateRequest(request, env) {
     userId: payload.userId || payload.sub,
     email: payload.email,
     customerId: payload.customerId || payload.aud || null,
+    jwtToken: token, // Include token for encryption
   };
 }
 

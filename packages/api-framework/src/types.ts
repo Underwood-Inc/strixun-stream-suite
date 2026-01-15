@@ -212,6 +212,8 @@ export interface APIClientConfig {
     defaultTTL?: number;
   };
   offline?: OfflineConfig;
+  // CRITICAL: credentials for HttpOnly cookie authentication
+  credentials?: RequestCredentials;
   auth?: {
     tokenGetter?: () => string | null | Promise<string | null>;
     csrfTokenGetter?: () => string | null | Promise<string | null>;

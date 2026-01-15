@@ -66,6 +66,20 @@ export async function initializeApp(): Promise<void> {
       originalError('[EventBus log:cleared] Failed to clear log entries:', err);
     }
   });
+  EventBus.on('auth:required', async (data: { reason?: string; status?: number } | undefined) => {
+    try {
+      // A2: If encryption becomes locked (cookie expired), force re-auth immediately.
+      const { clearAuth } = await import('../stores/auth');
+      clearAuth();
+      addLogEntry(
+        `Authentication required (${data?.reason || 'unknown'}). Please sign in again.`,
+        'warning',
+        'AUTH'
+      );
+    } catch (err) {
+      originalError('[EventBus auth:required] Failed to handle auth required:', err);
+    }
+  });
   
   // Intercept all console calls to route through the store
   // NOTE: This must happen AFTER window.addLogEntry is set up
@@ -84,9 +98,17 @@ export async function initializeApp(): Promise<void> {
     // Notes storage is cloud-only, no initialization needed
     
     // Load authentication state (includes cross-domain session restoration)
-    const { loadAuthState, getAuthToken } = await import('../stores/auth');
-    await loadAuthState();
-    addLogEntry('Authentication state loaded', 'info', 'AUTH');
+    const { loadAuthState, isAuthenticated } = await import('../stores/auth');
+    try {
+      await loadAuthState();
+      addLogEntry('Authentication state loaded', 'info', 'AUTH');
+    } catch (error) {
+      // Critical auth error - log but don't block initialization
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLogEntry(`Authentication check failed: ${errorMessage}`, 'error', 'AUTH');
+      console.error('[Bootstrap] Critical auth error:', errorMessage);
+      // Continue initialization - app will show error or login screen
+    }
     
     // Set encryption enabled state in store (for reactive auth checks)
     await setEncryptionState();
@@ -96,25 +118,27 @@ export async function initializeApp(): Promise<void> {
     const { authCheckComplete } = await import('../stores/auth');
     authCheckComplete.set(true);
     
-    // CRITICAL: If encryption is enabled but no auth token exists, auth is required
+    // CRITICAL: If encryption is enabled but user is not authenticated, auth is required
     // The App component will reactively show AuthScreen instead of the main app
+    // Note: With HttpOnly cookies, we check isAuthenticated store instead of token
     const { isEncryptionEnabled } = await import('../core/services/encryption');
     const encryptionEnabled = await isEncryptionEnabled();
-    const authToken = getAuthToken();
+    const { get } = await import('svelte/store');
+    const authenticated = get(isAuthenticated);
     
-    if (encryptionEnabled && !authToken) {
+    if (encryptionEnabled && !authenticated) {
       // Encryption is enabled but customer is not authenticated - auth required
-      addLogEntry('⚠ AUTH REQUIRED: Encryption enabled but customer not authenticated', 'warning', 'AUTH');
+      addLogEntry('AUTH REQUIRED: Encryption enabled but customer not authenticated', 'warning', 'AUTH');
       addLogEntry('Customer must authenticate via email OTP to access the application', 'info', 'AUTH');
-      console.warn('[Bootstrap] ⚠ AUTH REQUIRED: Encryption enabled but customer not authenticated');
+      console.warn('[Bootstrap] AUTH REQUIRED: Encryption enabled but customer not authenticated');
       console.warn('[Bootstrap] Customer must authenticate via email OTP to access the application');
       
       // Continue initialization anyway - app will show AuthScreen instead of main app
       // Once customer authenticates, everything will be ready
     } else if (!encryptionEnabled) {
       addLogEntry('Encryption disabled - authentication not required', 'info', 'AUTH');
-    } else if (authToken) {
-      addLogEntry('User authenticated - encryption enabled', 'success', 'AUTH');
+    } else if (authenticated) {
+      addLogEntry('Customer authenticated - encryption enabled', 'success', 'AUTH');
     }
     
     // Initialize modules in order (even if auth is required, so app is ready when customer logs in)
@@ -122,7 +146,7 @@ export async function initializeApp(): Promise<void> {
     
     // Only complete app initialization if auth is not required
     // When auth is required, the app will show AuthScreen and initialization will continue after login
-    if (!(encryptionEnabled && !authToken)) {
+    if (!(encryptionEnabled && !authenticated)) {
       // Complete app initialization (rendering, UI state, etc.)
       await completeAppInitialization();
       

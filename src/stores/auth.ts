@@ -1,7 +1,7 @@
 /**
- * Authentication Store
+ * Authentication Store - HttpOnly Cookie SSO
  * 
- * Manages customer authentication state and token
+ * Manages customer authentication state using HttpOnly cookies for true Single Sign-On
  * CRITICAL: We ONLY have Customer entities - NO "User" entity exists
  */
 
@@ -9,6 +9,8 @@ import type { Readable, Writable } from 'svelte/store';
 import { derived, get, writable } from 'svelte/store';
 import type { AuthenticatedCustomer } from '@strixun/auth-store';
 import { secureFetch } from '../core/services/encryption';
+import { fetchCustomerInfo, decodeJWTPayload, getAuthApiUrl } from '@strixun/auth-store/core/api';
+import { getCookie, deleteCookie } from '@strixun/auth-store/core/utils';
 import { storage } from '../modules/storage';
 
 export interface TwitchAccount {
@@ -24,12 +26,13 @@ export type { AuthenticatedCustomer };
 // Store for authentication state
 export const isAuthenticated: Writable<boolean> = writable(false);
 export const customer: Writable<AuthenticatedCustomer | null> = writable(null);
-export const token: Writable<string | null> = writable(null);
 export const csrfToken: Writable<string | null> = writable(null);
+export const isSuperAdmin: Writable<boolean> = writable(false);
+// NOTE: No token store - token is in HttpOnly cookie and CANNOT be read by JavaScript
 
-// Store for encryption enabled state (set by bootstrap)
-// Default to true since encryption is enabled by default (secure default)
-export const encryptionEnabled: Writable<boolean> = writable(true);
+// Encryption enabled flag is owned by the encryption service.
+// This store exists for UI convenience (reactive gating), and is set during bootstrap.
+export const encryptionEnabled: Writable<boolean> = writable(false);
 
 // Store to track if auth check has completed
 // Starts as false - we show auth screen by default until we know auth state
@@ -63,33 +66,45 @@ export const authRequired: Readable<boolean> = derived(
 );
 
 /**
- * Save authentication state to storage
- * Stores everything in regular storage for persistence across reloads
+ * Save authentication state - DO NOT persist token to localStorage
+ * Token is stored in HttpOnly cookie on the server side for security
  * 
  * CRITICAL: Uses queueMicrotask to ensure store updates trigger reactive components
  * This fixes reactivity issues where components don't update until a manual re-render
  */
 function saveAuthState(customerData: AuthenticatedCustomer | null): void {
   if (customerData) {
-    // Store customer data in regular storage (for persistence across reloads)
-    // Token is included in customerData, so no need for separate token storage
-    storage.set('auth_customer', customerData);
-    // Clean up old auth_user storage key
+    // DO NOT store token in localStorage - it's in the HttpOnly cookie
+    // Only store non-sensitive customer info for UX (displayName, etc.)
+    const customerDataForStorage = {
+      customerId: customerData.customerId,
+      email: customerData.email,
+      displayName: customerData.displayName,
+      expiresAt: customerData.expiresAt,
+      isSuperAdmin: customerData.isSuperAdmin,
+      // Explicitly DO NOT store token
+    };
+    storage.set('auth_customer_info', customerDataForStorage);
+    
+    // Clean up old storage keys
+    storage.remove('auth_customer');
     storage.remove('auth_user');
+    storage.remove('auth_token');
     
-    // Extract CSRF token and isSuperAdmin from JWT payload
-    const payload = decodeJWTPayload(customerData.token);
-    const csrf = payload?.csrf as string | undefined;
-    const isSuperAdmin = payload?.isSuperAdmin === true;
+    // Extract CSRF token and isSuperAdmin from /auth/me response data
+    // CRITICAL: With HttpOnly cookies, JWT is inaccessible to JavaScript
+    // CSRF token and isSuperAdmin are now included in /auth/me response
+    const csrf = (customerData as any).csrf as string | undefined;
+    const isSuperAdminFromResponse = customerData.isSuperAdmin === true;
     
-    // Update customerData with isSuperAdmin from JWT if not already set
-    const updatedCustomerData = { ...customerData, isSuperAdmin: isSuperAdmin || customerData.isSuperAdmin };
+    // Update customerData with isSuperAdmin from response if not already set
+    const updatedCustomerData = { ...customerData, isSuperAdmin: isSuperAdminFromResponse || customerData.isSuperAdmin };
     
     // CRITICAL: Update stores immediately first (for synchronous reads)
     isAuthenticated.set(true);
     customer.set(updatedCustomerData);
-    token.set(customerData.token);
     csrfToken.set(csrf || null);
+    isSuperAdmin.set(customerData.isSuperAdmin || false);
     
     // CRITICAL: Then use queueMicrotask to trigger another update cycle
     // This ensures Svelte components that mounted during initialization get the updates
@@ -97,371 +112,46 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
     queueMicrotask(() => {
       isAuthenticated.set(true);
       customer.set(updatedCustomerData);
-      token.set(customerData.token);
       csrfToken.set(csrf || null);
+      isSuperAdmin.set(customerData.isSuperAdmin || false);
     });
   } else {
+    // Clean up all storage keys
+    storage.remove('auth_customer_info');
     storage.remove('auth_customer');
-    storage.remove('auth_user'); // Clean up any old storage key (legacy)
-    storage.remove('auth_token'); // Clean up any old token storage
+    storage.remove('auth_user');
+    storage.remove('auth_token');
     
     // CRITICAL: Update stores immediately first (for synchronous reads)
     isAuthenticated.set(false);
     customer.set(null);
-    token.set(null);
     csrfToken.set(null);
+    isSuperAdmin.set(false);
     
     // CRITICAL: Then use queueMicrotask to trigger another update cycle
     queueMicrotask(() => {
       isAuthenticated.set(false);
       customer.set(null);
-      token.set(null);
       csrfToken.set(null);
+      isSuperAdmin.set(false);
     });
   }
 }
 
 /**
  * Get OTP Auth API URL
+ * CRITICAL: Stream Suite must NOT depend on OTP auth service worker packages for URL resolution.
+ * Use the auth-store helper (which resolves /auth-api on localhost).
  */
 function getOtpAuthApiUrl(): string {
-  // Try to get from window config (injected during build)
-  if (typeof window !== 'undefined') {
-    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
-    const isLocalhost = window.location.hostname === 'localhost' || 
-                        window.location.hostname === '127.0.0.1' ||
-                        import.meta.env?.DEV ||
-                        import.meta.env?.MODE === 'development';
-    
-    if (isLocalhost) {
-      // NEVER fall back to production when on localhost
-      return 'http://localhost:8787';
-    }
-    
-    // Priority 1: VITE_AUTH_API_URL (for E2E tests, set by playwright config)
-    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
-      const viteUrl = import.meta.env.VITE_AUTH_API_URL;
-      if (viteUrl) {
-        return viteUrl;
-      }
-    }
-    
-    // Priority 2: window.getOtpAuthApiUrl() (from config.js)
-    if ((window as any).getOtpAuthApiUrl) {
-      const url = (window as any).getOtpAuthApiUrl();
-      if (url) {
-        return url;
-      }
-    }
-    
-    // Only use production URL if NOT on localhost
-    return 'https://auth.idling.app';
-  }
-  return '';
+  if (typeof window === 'undefined') return '';
+  return getAuthApiUrl();
 }
 
 /**
- * Restore session from backend based on IP address
- * This enables cross-application session sharing for the same device
- * 
- * CRITICAL: Has timeout to prevent browser lockup if server is slow/unresponsive
+ * Decode JWT payload (without verification - for extracting CSRF token and other claims)
  */
-async function restoreSessionFromBackend(): Promise<boolean> {
-  try {
-    const apiUrl = getOtpAuthApiUrl();
-    if (!apiUrl) {
-      console.warn('[Auth] OTP Auth API URL not configured, skipping session restoration');
-      return false;
-    }
-
-    // Add timeout to prevent browser lockup (5 seconds max)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 5000); // 5 second timeout
-
-    let response: Response;
-    try {
-      response = await secureFetch(`${apiUrl}/auth/restore-session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      // If aborted, it's a timeout
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        console.warn('[Auth] Session restoration timed out after 5 seconds');
-        return false;
-      }
-      throw fetchError; // Re-throw other errors
-    }
-
-    if (!response.ok) {
-      // Not an error - just no session found
-      if (response.status === 200) {
-        const data = await response.json() as { restored?: boolean };
-        if (!data.restored) {
-          return false;
-        }
-      } else {
-        console.warn('[Auth] Session restoration failed:', response.status);
-        return false;
-      }
-    }
-
-    const data = await response.json() as {
-      restored?: boolean;
-      access_token?: string;
-      token?: string;
-      sub?: string;
-      email?: string;
-      displayName?: string | null;
-      customerId: string;
-      expiresAt?: string;
-      isSuperAdmin?: boolean;
-    };
-    
-    if (data.restored && data.access_token) {
-      // Session restored! Save the token
-      const customerData: AuthenticatedCustomer = {
-        customerId: data.customerId,
-        email: data.email || '',
-        displayName: data.displayName || undefined,
-        token: data.access_token || data.token || '',
-        expiresAt: data.expiresAt || new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(),
-        isSuperAdmin: data.isSuperAdmin || false,
-      };
-      
-      saveAuthState(customerData);
-      console.log('[Auth] ✓ Session restored from backend for customer:', customerData.email);
-      return true;
-    }
-
-    if (data.restored === false) {
-      console.log('[Auth] No active session found for this IP address');
-    } else {
-      console.warn('[Auth] Unexpected response format from restore-session:', { restored: data.restored, hasToken: !!data.access_token });
-    }
-
-    return false;
-  } catch (error) {
-    // Log error for debugging (session restoration is optional but we want to know if it's failing)
-    console.warn('[Auth] Session restoration error:', error instanceof Error ? error.message : String(error));
-    if (error instanceof Error && error.stack) {
-      console.debug('[Auth] Session restoration stack:', error.stack);
-    }
-    return false;
-  }
-}
-
-/**
- * Validate token with backend to check if it's blacklisted or invalid
- * Returns true if token is valid, false if invalid/blacklisted
- * 
- * Uses OTP Auth API URL to ensure we're validating against the same auth service
- * that handles logout and token blacklisting
- */
-async function validateTokenWithBackend(token: string): Promise<boolean> {
-  try {
-    const apiUrl = getOtpAuthApiUrl();
-    if (!apiUrl) {
-      // If no API URL configured, skip validation (graceful degradation)
-      return true;
-    }
-
-    // Add timeout to prevent blocking initialization (2 seconds max)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 2000); // 2 second timeout
-
-    try {
-      const response = await secureFetch(`${apiUrl}/auth/me`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      // If 401, token is invalid/blacklisted
-      if (response.status === 401) {
-        console.log('[Auth] Token validation failed: token is invalid or blacklisted');
-        return false;
-      }
-
-      // If 200, token is valid
-      if (response.ok) {
-        return true;
-      }
-
-      // Other status codes - assume valid to avoid clearing auth on server errors
-      console.warn('[Auth] Token validation returned unexpected status:', response.status, '- assuming valid');
-      return true;
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      // If aborted, it's a timeout - assume valid to avoid blocking initialization
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        console.warn('[Auth] Token validation timed out, assuming valid to avoid blocking initialization');
-        return true;
-      }
-      // Other errors (network issues, etc.) - assume valid to avoid clearing auth on temporary issues
-      console.warn('[Auth] Token validation error (assuming valid to avoid clearing auth):', fetchError);
-      return true;
-    }
-  } catch (error) {
-    // Silently fail - don't block initialization if validation fails
-    console.debug('[Auth] Token validation error (non-critical):', error);
-    return true; // Assume valid to avoid blocking initialization
-  }
-}
-
-/**
- * Load authentication state from storage
- * Loads token from sessionStorage (more secure)
- * If no token found, attempts to restore session from backend (cross-domain session sharing)
- * 
- * CRITICAL: Validates tokens with backend to detect blacklisted tokens from logout on other domains
- */
-export async function loadAuthState(): Promise<void> {
-  try {
-    // Try new storage key first, fallback to old key for migration
-    let customerData = storage.get('auth_customer') as AuthenticatedCustomer | null;
-    if (!customerData) {
-      // Migrate from old auth_user storage key
-      const oldUserData = storage.get('auth_user') as any;
-      if (oldUserData) {
-        customerData = {
-          customerId: oldUserData.customerId || oldUserData.userId || oldUserData.sub || '',
-          email: oldUserData.email,
-          displayName: oldUserData.displayName,
-          token: oldUserData.token,
-          expiresAt: oldUserData.expiresAt,
-          isSuperAdmin: oldUserData.isSuperAdmin,
-        };
-        // Save under new key and remove old key
-        storage.set('auth_customer', customerData);
-        storage.remove('auth_user');
-      }
-    }
-    
-    // Token is stored in customerData, no need to check separate token storage
-    if (customerData && customerData.token && 'expiresAt' in customerData && typeof customerData.expiresAt === 'string') {
-      // Check if token is expired locally first (fast check)
-      if (new Date(customerData.expiresAt) > new Date()) {
-        // Token not expired locally - validate with backend to check if blacklisted
-        // This ensures we detect tokens that were blacklisted on other domains
-        // BUT: Don't clear auth on network errors - only clear if explicitly invalid
-        const isValid = await validateTokenWithBackend(customerData.token);
-        
-        if (!isValid) {
-          // Token is blacklisted or invalid - clear auth state
-          console.log('[Auth] Token is blacklisted or invalid, clearing auth state');
-          saveAuthState(null);
-          // Try to restore session from backend (in case there's a valid session for this IP)
-          await restoreSessionFromBackend();
-          return;
-        }
-
-        // Token is valid - restore auth state
-        // Extract CSRF token and isSuperAdmin from JWT payload before saving
-        const payload = decodeJWTPayload(customerData.token);
-        const csrf = payload?.csrf as string | undefined;
-        const isSuperAdmin = payload?.isSuperAdmin === true;
-        if (csrf) {
-          csrfToken.set(csrf);
-        }
-        // Update customerData with isSuperAdmin from JWT if not already set
-        const updatedCustomerData = { ...customerData, isSuperAdmin: isSuperAdmin || customerData.isSuperAdmin };
-        saveAuthState(updatedCustomerData);
-        console.log('[Auth] ✓ Customer authenticated from storage, token valid until:', customerData.expiresAt);
-        return;
-      } else {
-        // Token expired, try to restore from backend before clearing
-        console.log('[Auth] Token expired, attempting to restore from backend');
-        const restored = await restoreSessionFromBackend();
-        if (!restored) {
-          // Backend restore failed, clear auth
-          saveAuthState(null);
-        }
-        return;
-      }
-    }
-
-    // No customerData found - try to restore session from backend
-    // This enables cross-application session sharing for the same device/IP
-    if (!customerData) {
-      await restoreSessionFromBackend();
-    }
-  } catch (error) {
-    console.error('[Auth] Failed to load auth state:', error);
-    // Don't clear auth on error - might be a temporary network issue
-    // Only clear if we truly have no customerData
-    const customerData = storage.get('auth_customer') as AuthenticatedCustomer | null;
-    if (!customerData) {
-      saveAuthState(null);
-    }
-  }
-}
-
-/**
- * Set authentication state (after login)
- */
-export function setAuth(customerData: AuthenticatedCustomer): void {
-  saveAuthState(customerData);
-}
-
-/**
- * Clear authentication state (logout)
- */
-export function clearAuth(): void {
-  saveAuthState(null);
-}
-
-/**
- * Logout customer - calls API endpoint and clears local auth state
- * Continues with logout even if API call fails (graceful degradation)
- */
-export async function logout(): Promise<void> {
-  try {
-    // Try to call logout endpoint to invalidate token on server
-    await authenticatedFetch('/auth/logout', {
-      method: 'POST',
-    });
-  } catch (error) {
-    // Continue with logout even if API call fails
-    // This ensures customer can always logout locally
-    console.warn('[Auth] Logout API call failed, continuing with local logout:', error);
-  } finally {
-    // Always clear local auth state
-    clearAuth();
-  }
-}
-
-/**
- * Get current auth token
- */
-export function getAuthToken(): string | null {
-  return get(token);
-}
-
-/**
- * Get current CSRF token from JWT payload
- */
-export function getCsrfToken(): string | null {
-  return get(csrfToken);
-}
-
-/**
- * Decode JWT payload (without verification - for extracting CSRF token)
- */
-function decodeJWTPayload(jwt: string): { csrf?: string; [key: string]: unknown } | null {
+function decodeJWTPayloadLocal(jwt: string): { csrf?: string; isSuperAdmin?: boolean; [key: string]: unknown } | null {
   try {
     const parts = jwt.split('.');
     if (parts.length !== 3) return null;
@@ -479,6 +169,198 @@ function decodeJWTPayload(jwt: string): { csrf?: string; [key: string]: unknown 
 }
 
 /**
+ * Check authentication status from HttpOnly cookie
+ * CRITICAL: HttpOnly cookies are NOT accessible from JavaScript!
+ * We call /auth/me which automatically sends the cookie, and if it returns customer data, we're authenticated
+ * 
+ * This replaces IP-based session restoration with true SSO via cookies
+ */
+/**
+ * Check authentication from HttpOnly cookie
+ * FAIL-FAST: Throws errors for network issues, returns false only for "not authenticated"
+ */
+async function checkAuthFromCookie(): Promise<boolean> {
+  const apiUrl = getOtpAuthApiUrl();
+  if (!apiUrl) {
+    throw new Error('[Auth] OTP Auth API URL not configured. Check VITE_AUTH_API_URL environment variable.');
+  }
+
+  try {
+    // Fetch customer info from /auth/me - cookie is sent automatically by browser
+    // If the HttpOnly cookie is valid, this will return customer data
+    const customerInfo = await fetchCustomerInfo(null, { authApiUrl: apiUrl });
+    
+    if (customerInfo) {
+      // We don't have direct access to the JWT token (it's HttpOnly)
+      // But we can create a customer object with the info we got from /auth/me
+      const authenticatedCustomer: AuthenticatedCustomer = {
+        customerId: customerInfo.customerId,
+        email: customerInfo.email || '',
+        displayName: customerInfo.displayName || undefined,
+        token: '', // Token is in HttpOnly cookie, not accessible from JS
+        expiresAt: new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(), // Default 7 hours
+        isSuperAdmin: customerInfo.isSuperAdmin || false,
+      };
+      
+      saveAuthState(authenticatedCustomer);
+      console.log('[Auth] Session restored from HttpOnly cookie', {
+        customerId: authenticatedCustomer.customerId,
+        hasDisplayName: Boolean(authenticatedCustomer.displayName),
+        isSuperAdmin: authenticatedCustomer.isSuperAdmin,
+        authApiUrl: apiUrl,
+      });
+      return true;
+    } else {
+      // No customer data returned - not authenticated (401/403) - this is expected
+      console.debug('[Auth] No customer data from /auth/me - not authenticated', { authApiUrl: apiUrl });
+      saveAuthState(null);
+      return false;
+    }
+  } catch (error) {
+    // Network errors, 500s, etc. are critical - log and rethrow for caller to handle
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[Auth] Error during checkAuth:', errorMessage);
+    saveAuthState(null);
+    
+    // Re-throw so caller can handle it (fail-fast)
+    throw new Error(`Authentication check failed: ${errorMessage}. Check your connection and that the auth service is running.`);
+  }
+}
+
+/**
+ * Load authentication state from HttpOnly cookie
+ * Checks for auth token in cookie and validates with backend
+ * 
+ * CRITICAL: This is the new cookie-based SSO approach - no localStorage token storage
+ */
+export async function loadAuthState(): Promise<void> {
+  try {
+    // Clean up old storage keys (migration)
+    storage.remove('auth_customer');
+    storage.remove('auth_user');
+    storage.remove('auth_token');
+    
+    // Check authentication from HttpOnly cookie
+    await checkAuthFromCookie();
+  } catch (error) {
+    console.error('[Auth] Failed to load auth state:', error);
+    saveAuthState(null);
+  } finally {
+    // Mark auth check as complete
+    authCheckComplete.set(true);
+  }
+}
+
+/**
+ * Set authentication state (after login)
+ * CRITICAL: Token is now in HttpOnly cookie, we just update the store
+ */
+export function setAuth(customerData: AuthenticatedCustomer): void {
+  saveAuthState(customerData);
+}
+
+/**
+ * Login with token (after successful OTP verification)
+ * CRITICAL: Token is in HttpOnly cookie, we fetch full customer data from /auth/me
+ */
+export async function login(jwtToken: string): Promise<void> {
+  // Decode token to get basic customer info
+  const payload = decodeJWTPayloadLocal(jwtToken);
+  if (!payload) {
+    console.error('[Auth] Failed to decode JWT token');
+    return;
+  }
+  
+  // Immediately set basic auth state from JWT
+  const basicCustomerData: AuthenticatedCustomer = {
+    customerId: payload.customerId as string || payload.sub as string,
+    email: payload.email as string,
+    displayName: payload.displayName as string | undefined,
+    token: '', // Token is in HttpOnly cookie
+    expiresAt: payload.exp ? new Date(payload.exp as number * 1000).toISOString() : new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(),
+    isSuperAdmin: payload.isSuperAdmin as boolean || false,
+  };
+  
+  saveAuthState(basicCustomerData);
+  
+  // Then fetch full customer data from /auth/me (which uses the HttpOnly cookie)
+  try {
+    await checkAuthFromCookie();
+  } catch (error) {
+    console.warn('[Auth] Failed to fetch full customer data after login:', error);
+    // Keep the basic data we decoded from JWT
+  }
+}
+
+/**
+ * Check authentication status
+ * Wrapper for loadAuthState for consistency with other apps
+ */
+export async function checkAuth(): Promise<boolean> {
+  try {
+    await loadAuthState();
+    return get(isAuthenticated);
+  } catch (error) {
+    console.error('[Auth] checkAuth failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Clear authentication state (logout)
+ */
+export function clearAuth(): void {
+  saveAuthState(null);
+}
+
+/**
+ * Logout customer - calls API endpoint to clear HttpOnly cookie and clears local auth state
+ * Continues with logout even if API call fails (graceful degradation)
+ */
+export async function logout(): Promise<void> {
+  try {
+    const apiUrl = getOtpAuthApiUrl();
+    if (!apiUrl) {
+      console.warn('[Auth] OTP Auth API URL not configured, clearing local state only');
+      clearAuth();
+      return;
+    }
+
+    // Call logout endpoint to clear HttpOnly cookie
+    const response = await secureFetch(`${apiUrl}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', // Important: send cookies
+    });
+
+    if (!response.ok) {
+      console.warn('[Auth] Logout API call failed:', response.status);
+    }
+  } catch (error) {
+    // Continue with logout even if API call fails
+    // This ensures customer can always logout locally
+    console.warn('[Auth] Logout API call failed, continuing with local logout:', error);
+  } finally {
+    // Always clear local auth state
+    clearAuth();
+    // HttpOnly cookie is cleared by the server, we can't delete it from JavaScript
+  }
+}
+
+// getAuthToken() REMOVED: HttpOnly cookies cannot be read by JavaScript.
+// The browser automatically sends the cookie with credentials: 'include'.
+// Use isAuthenticated store to check authentication status.
+
+/**
+ * Get current CSRF token from JWT payload
+ */
+export function getCsrfToken(): string | null {
+  return get(csrfToken);
+}
+
+/**
  * Get API base URL from config
  */
 export function getApiUrl(): string {
@@ -491,13 +373,18 @@ export function getApiUrl(): string {
 
 /**
  * Make authenticated API request
+ * CRITICAL: Uses credentials: 'include' to send HttpOnly cookies
+ * 
+ * With HttpOnly cookies, we cannot read the token from JavaScript.
+ * The browser automatically sends the auth_token cookie with credentials: 'include'.
+ * We just need to ensure the user is authenticated (check store state).
  */
 export async function authenticatedFetch(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const token = getAuthToken();
-  if (!token) {
+  // Check if user is authenticated (from store state, not cookie)
+  if (!get(isAuthenticated)) {
     throw new Error('Not authenticated');
   }
   
@@ -507,7 +394,8 @@ export async function authenticatedFetch(
   }
   
   const headers = new Headers(options.headers);
-  headers.set('Authorization', `Bearer ${token}`);
+  // NOTE: Do NOT add Authorization header - token is in HttpOnly cookie
+  // The browser sends it automatically with credentials: 'include'
   headers.set('Content-Type', 'application/json');
   
   // Add CSRF token for state-changing operations (POST, PUT, DELETE)
@@ -520,9 +408,11 @@ export async function authenticatedFetch(
   }
   
   // Use secureFetch to enforce HTTPS
+  // CRITICAL: Include credentials to send HttpOnly cookies automatically
   return secureFetch(`${apiUrl}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include',
   });
 }
 

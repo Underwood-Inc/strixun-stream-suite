@@ -8,13 +8,12 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
-import { isEmailAllowed } from '../../utils/auth.js';
-import { hasUploadPermission, isSuperAdminEmail } from '../../utils/admin.js';
-import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
+import { calculateStrixunHash } from '../../utils/hash.js';
 import { MAX_MOD_FILE_SIZE, MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { checkUploadQuota, trackUpload } from '../../utils/upload-quota.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion, ModUploadRequest } from '../../types/mod.js';
+import type { Env } from '../../worker.js';
 
 /**
  * Generate URL-friendly slug from title
@@ -68,7 +67,7 @@ export async function slugExists(slug: string, env: Env, excludeModId?: string):
             }
         }
         
-        cursor = listResult.listComplete ? undefined : listResult.cursor;
+        cursor = listResult.list_complete ? undefined : listResult.cursor;
     } while (cursor);
     
     return false;
@@ -95,7 +94,7 @@ function generateVersionId(): string {
 export async function handleUploadMod(
     request: Request,
     env: Env,
-    auth: { customerId: string; email?: string }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
         // Check if uploads are globally enabled
@@ -103,8 +102,7 @@ export async function handleUploadMod(
         const uploadsEnabled = await areUploadsEnabled(env);
         if (!uploadsEnabled) {
             const rfcError = createError(request, 503, 'Uploads Disabled', 'Mod uploads are currently disabled globally. Please try again later.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 503,
@@ -115,47 +113,24 @@ export async function handleUploadMod(
             });
         }
         
-        // Check upload permission (super admins or approved users)
-        const hasPermission = await hasUploadPermission(auth.customerId, auth.email, env);
-        if (!hasPermission) {
-            const rfcError = createError(request, 403, 'Upload Permission Required', 'You do not have permission to upload mods. Please request approval from an administrator.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        // Check upload quota (uses Authorization Service)
+        const quotaCheck = await checkUploadQuota(auth.customerId, env, auth.jwtToken);
+        if (!quotaCheck.allowed) {
+            const quotaMessage = `Upload quota exceeded. Limit: ${quotaCheck.limit}, Remaining: ${quotaCheck.remaining}. Resets at ${new Date(quotaCheck.resetAt).toLocaleString()}.`;
+            
+            const rfcError = createError(request, 429, 'Upload Quota Exceeded', quotaMessage);
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
-                status: 403,
+                status: 429,
                 headers: {
                     'Content-Type': 'application/problem+json',
+                    'X-Quota-Limit': quotaCheck.limit.toString(),
+                    'X-Quota-Remaining': quotaCheck.remaining.toString(),
+                    'X-Quota-Reset': quotaCheck.resetAt,
                     ...Object.fromEntries(corsHeaders.entries()),
                 },
             });
-        }
-
-        // Check upload quota (skip for super admins)
-        const isSuperAdmin = await isSuperAdminEmail(auth.email, env);
-        if (!isSuperAdmin) {
-            const quotaCheck = await checkUploadQuota(auth.customerId, env);
-            if (!quotaCheck.allowed) {
-                const quotaMessage = quotaCheck.reason === 'daily_quota_exceeded'
-                    ? `Daily upload limit exceeded. You have uploaded ${quotaCheck.usage.daily} of ${quotaCheck.quota.maxUploadsPerDay} allowed uploads today.`
-                    : `Monthly upload limit exceeded. You have uploaded ${quotaCheck.usage.monthly} of ${quotaCheck.quota.maxUploadsPerMonth} allowed uploads this month.`;
-                
-                const rfcError = createError(request, 429, 'Upload Quota Exceeded', quotaMessage);
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
-                return new Response(JSON.stringify(rfcError), {
-                    status: 429,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        'X-Quota-Limit-Daily': quotaCheck.quota.maxUploadsPerDay.toString(),
-                        'X-Quota-Remaining-Daily': Math.max(0, quotaCheck.quota.maxUploadsPerDay - quotaCheck.usage.daily).toString(),
-                        'X-Quota-Limit-Monthly': quotaCheck.quota.maxUploadsPerMonth.toString(),
-                        'X-Quota-Remaining-Monthly': Math.max(0, quotaCheck.quota.maxUploadsPerMonth - quotaCheck.usage.monthly).toString(),
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
-            }
         }
 
         // Parse multipart form data
@@ -164,8 +139,7 @@ export async function handleUploadMod(
         
         if (!file) {
             const rfcError = createError(request, 400, 'File Required', 'File is required for mod upload');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -185,8 +159,7 @@ export async function handleUploadMod(
                 'File Too Large',
                 sizeValidation.error || `File size exceeds maximum allowed size of ${MAX_MOD_FILE_SIZE / (1024 * 1024)}MB`
             );
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 413,
@@ -221,8 +194,7 @@ export async function handleUploadMod(
                 'Invalid File Type', 
                 `File type "${fileExtension}" is not allowed. Allowed extensions: ${allowedExtensions.join(', ')}`
             );
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -242,8 +214,7 @@ export async function handleUploadMod(
         const metadataJson = formData.get('metadata') as string | null;
         if (!metadataJson) {
             const rfcError = createError(request, 400, 'Metadata Required', 'Metadata is required for mod upload');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -259,8 +230,7 @@ export async function handleUploadMod(
         // Validate required fields
         if (!metadata.title || !metadata.version || !metadata.category) {
             const rfcError = createError(request, 400, 'Validation Error', 'Title, version, and category are required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -276,8 +246,7 @@ export async function handleUploadMod(
         
         if (!sharedKey || sharedKey.length < 32) {
             const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 500,
@@ -299,8 +268,7 @@ export async function handleUploadMod(
         
         if (!isBinaryEncrypted && !isLegacyEncrypted) {
             const rfcError = createError(request, 400, 'File Must Be Encrypted', 'Files must be encrypted before upload for security. Please ensure the file is encrypted.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -342,8 +310,7 @@ export async function handleUploadMod(
             console.error('File decryption error during upload:', error);
             const errorMsg = error instanceof Error ? error.message : String(error);
             const rfcError = createError(request, 400, 'Decryption Failed', `Failed to decrypt uploaded file. All files must be encrypted with the shared encryption key. ${errorMsg}`);
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -366,8 +333,7 @@ export async function handleUploadMod(
         const baseSlug = generateSlug(metadata.title);
         if (!baseSlug) {
             const rfcError = createError(request, 400, 'Invalid Title', 'Title must contain valid characters for slug generation');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -381,8 +347,7 @@ export async function handleUploadMod(
         // Check if slug already exists - reject if it does
         if (await slugExists(baseSlug, env)) {
             const rfcError = createError(request, 409, 'Slug Already Exists', `A mod with the title "${metadata.title}" (slug: "${baseSlug}") already exists. Please choose a different title.`);
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 409,
@@ -434,7 +399,7 @@ export async function handleUploadMod(
                 encrypted: 'true', // Mark as encrypted
                 encryptionFormat: encryptionFormat, // 'binary-v4' or 'json-v3'
                 originalFileName,
-                originalContentType: 'application/zip', // Original file type
+                originalContentType: file.type || 'application/octet-stream', // Use actual file type from upload
                 sha256: fileHash, // Hash of decrypted file for verification
             }, env, request),
         });
@@ -474,8 +439,7 @@ export async function handleUploadMod(
             const thumbnailBuffer = new Uint8Array(await thumbnailFile.arrayBuffer());
             if (thumbnailBuffer.length >= 4 && (thumbnailBuffer[0] === 4 || thumbnailBuffer[0] === 5)) {
                 const rfcError = createError(request, 400, 'Invalid Thumbnail', 'Thumbnail file appears to be encrypted. Thumbnails must be unencrypted image files (PNG, JPEG, GIF, or WebP). Please upload the original image file without encryption.');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 400,
@@ -488,17 +452,21 @@ export async function handleUploadMod(
             
             // Binary file upload (optimized - no base64 overhead)
             thumbnailUrl = await handleThumbnailBinaryUpload(thumbnailFile, modId, slug, request, env, auth.customerId);
+            console.log('[Upload] Thumbnail uploaded successfully:', { thumbnailUrl, modId, slug });
             // CRITICAL FIX: Extract extension from file type for faster lookup
             const imageType = thumbnailFile.type.split('/')[1]?.toLowerCase();
             thumbnailExtension = imageType === 'jpeg' ? 'jpg' : imageType; // Normalize jpeg to jpg
+            console.log('[Upload] Thumbnail extension stored:', { extension: thumbnailExtension });
         } else if (metadata.thumbnail) {
             // Legacy base64 upload (backward compatibility)
             thumbnailUrl = await handleThumbnailUpload(metadata.thumbnail, modId, slug, request, env, auth.customerId);
+            console.log('[Upload] Thumbnail (base64) uploaded successfully:', { thumbnailUrl, modId, slug });
             // CRITICAL FIX: Extract extension from base64 data URL for faster lookup
             const matches = metadata.thumbnail.match(/^data:image\/(\w+);base64,/);
             if (matches) {
                 const imageType = matches[1]?.toLowerCase();
                 thumbnailExtension = imageType === 'jpeg' ? 'jpg' : imageType; // Normalize jpeg to jpg
+                console.log('[Upload] Thumbnail extension stored:', { extension: thumbnailExtension });
             }
         }
 
@@ -547,12 +515,10 @@ export async function handleUploadMod(
         // customerId is REQUIRED - reject uploads without it
         if (!auth.customerId) {
             console.error('[Upload] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
-                email: auth.email,
                 note: 'Rejecting upload - customerId is required for data scoping and display name lookups'
             });
             const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod uploads. Please ensure your account has a valid customer association.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -611,7 +577,9 @@ export async function handleUploadMod(
             versionsListKey,
             modsListKey,
             authorId: auth.customerId,
-            authorDisplayName
+            authorDisplayName,
+            thumbnailUrl: mod.thumbnailUrl,
+            thumbnailExtension: mod.thumbnailExtension
         });
 
         // Store mod and version in customer scope
@@ -656,13 +624,10 @@ export async function handleUploadMod(
         // They will only be added to the public list when an admin changes status to 'published'
         // This ensures pending mods are not visible to the public, even if visibility is 'public'
 
-        // Track successful upload (skip for super admins)
-        if (!isSuperAdmin) {
-            await trackUpload(auth.customerId, env);
-        }
+        // Track successful upload
+        await trackUpload(auth.customerId, env, auth.jwtToken);
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify({
             mod,
@@ -682,8 +647,7 @@ export async function handleUploadMod(
             'Failed to Upload Mod',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while uploading the mod'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,
@@ -803,10 +767,16 @@ async function handleThumbnailBinaryUpload(
         console.log('[Upload] Thumbnail uploaded with extension:', { modId, extension, r2Key });
         
         // Return API proxy URL using slug for consistency
+        // In dev, use localhost:8788 (mods-api worker port)
+        // In production, use MODS_PUBLIC_URL if set, otherwise derive from request
         const requestUrl = new URL(request.url);
-        const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
-            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8788'}`  // Local dev (mods-api runs on 8788)
-            : `https://mods-api.idling.app`;  // Production
+        let API_BASE_URL: string;
+        if (env.ENVIRONMENT === 'development') {
+            // Force localhost in dev - request.url has proxy target hostname
+            API_BASE_URL = 'http://localhost:8788';
+        } else {
+            API_BASE_URL = env.MODS_PUBLIC_URL || `${requestUrl.protocol}//${requestUrl.host}`;
+        }
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
         console.error('Thumbnail binary upload error:', error);
@@ -887,26 +857,20 @@ async function handleThumbnailUpload(
 
         // Return API proxy URL using slug for consistency (thumbnails should be served through API, not direct R2)
         // Slug is passed as parameter to avoid race condition (mod not stored yet)
-        // Use request URL to determine base URL dynamically
+        // In dev, use localhost:8788 (mods-api worker port)
+        // In production, use MODS_PUBLIC_URL if set, otherwise derive from request
         const requestUrl = new URL(request.url);
-        const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
-            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8788'}`  // Local dev (mods-api runs on 8788)
-            : `https://mods-api.idling.app`;  // Production
+        let API_BASE_URL: string;
+        if (env.ENVIRONMENT === 'development') {
+            // Force localhost in dev - request.url has proxy target hostname
+            API_BASE_URL = 'http://localhost:8788';
+        } else {
+            API_BASE_URL = env.MODS_PUBLIC_URL || `${requestUrl.protocol}//${requestUrl.host}`;
+        }
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
         console.error('Thumbnail upload error:', error);
         throw error;
     }
-}
-
-interface Env {
-    MODS_KV: KVNamespace;
-    MODS_R2: R2Bucket;
-    MODS_PUBLIC_URL?: string;
-    MODS_ENCRYPTION_KEY?: string;
-    ALLOWED_EMAILS?: string;
-    ALLOWED_ORIGINS?: string;
-    ENVIRONMENT?: string;
-    [key: string]: any;
 }
 

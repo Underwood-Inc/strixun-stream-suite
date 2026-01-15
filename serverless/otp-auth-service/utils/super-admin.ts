@@ -1,89 +1,55 @@
 /**
  * Super Admin Authentication
- * Handles super-admin authentication for system-level operations
  * 
- * Super admins are configured via Cloudflare environment variables or KV storage
- * Format: Comma-separated list of email addresses in SUPER_ADMIN_EMAILS
+ * NEW: Now uses Authorization Service for role-based super admin checks.
+ * Email-based checks have been replaced with customerId-based role checks.
+ * 
+ * @module super-admin
  */
 
 import { getCorsHeaders } from './cors.js';
-import { hashEmail } from './crypto.js';
+import { createAccessClient } from '../../shared/access-client.js';
 
 interface Env {
     SUPER_ADMIN_API_KEY?: string;
-    SUPER_ADMIN_EMAILS?: string;
+    ACCESS_SERVICE_URL?: string; // Used by access-client for service-to-service calls
+    SERVICE_API_KEY?: string;
     OTP_AUTH_KV?: KVNamespace;
     [key: string]: any;
 }
 
 /**
- * Get list of super admin emails from environment or KV
+ * Check if a customer is a super admin (via Authorization Service)
  * 
- * PRIMARY SOURCE: env.SUPER_ADMIN_EMAILS (from .dev.vars for local dev, or Cloudflare secrets for production)
- * FALLBACK: KV storage (only used if env var is not set - mainly for production runtime updates)
+ * NEW: Uses Authorization Service to check for 'super-admin' role
  * 
- * For local development: Set SUPER_ADMIN_EMAILS in .dev.vars
- * For production: Set via wrangler secret put SUPER_ADMIN_EMAILS or Cloudflare Dashboard
+ * @param customerId - Customer ID
+ * @param env - Environment
+ * @returns True if customer has super-admin role
  */
-async function getSuperAdminEmails(env: Env): Promise<string[]> {
-    // PRIMARY: Check environment variable first (from .dev.vars in local dev, or Cloudflare secrets in production)
-    if (env.SUPER_ADMIN_EMAILS) {
-        const emails = env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
-        console.log('[SuperAdmin] ✓ Loaded from env.SUPER_ADMIN_EMAILS:', {
-            count: emails.length,
-            emails: emails,
-            source: 'environment variable (.dev.vars or Cloudflare secrets)'
-        });
-        return emails;
-    }
-    
-    // FALLBACK: Check KV for super admin list (only if env var not set)
-    // NOTE: In local dev with --local flag, KV is stored locally in ~/.wrangler/state/v3/kv/
-    // This fallback is mainly for production where admins might update KV directly
-    if (env.OTP_AUTH_KV) {
-        try {
-            const kvEmails = await env.OTP_AUTH_KV.get('super_admin_emails');
-            if (kvEmails) {
-                const emails = kvEmails.split(',').map(email => email.trim().toLowerCase());
-                console.log('[SuperAdmin] ⚠ Loaded from KV fallback (env.SUPER_ADMIN_EMAILS not set):', {
-                    count: emails.length,
-                    emails: emails,
-                    source: 'KV storage (fallback)',
-                    note: 'Set SUPER_ADMIN_EMAILS in .dev.vars for local dev to avoid KV dependency'
-                });
-                return emails;
-            }
-        } catch (e) {
-            console.warn('[SuperAdmin] KV read failed:', e);
-        }
-    }
-    
-    console.warn('[SuperAdmin] ✗ No super admin emails found - super admin access DISABLED');
-    console.warn('[SuperAdmin]   Set SUPER_ADMIN_EMAILS in .dev.vars (local dev) or Cloudflare secrets (production)');
-    return [];
-}
-
-/**
- * Check if an email is a super admin
- */
-export async function isSuperAdminEmail(email: string, env: Env): Promise<boolean> {
-    if (!email) {
+export async function isSuperAdmin(customerId: string, env: Env): Promise<boolean> {
+    if (!customerId) {
         return false;
     }
-    
-    const normalizedEmail = email.trim().toLowerCase();
-    const superAdminEmails = await getSuperAdminEmails(env);
-    const isSuperAdmin = superAdminEmails.includes(normalizedEmail);
-    
-    console.log('[SuperAdmin] Checking super admin status:', {
-        email: normalizedEmail,
-        isSuperAdmin: isSuperAdmin,
-        superAdminEmails: superAdminEmails,
-        emailInList: superAdminEmails.includes(normalizedEmail)
-    });
-    
-    return isSuperAdmin;
+
+    try {
+        // Use service key for authentication during JWT creation (no JWT available yet)
+        const access = createAccessClient(env, { serviceApiKey: env.SERVICE_API_KEY });
+        const isSuperAdmin = await access.isSuperAdmin(customerId);
+        
+        console.log('[SuperAdmin] Checking super admin status:', {
+            customerId,
+            isSuperAdmin,
+            source: 'Authorization Service'
+        });
+        
+        return isSuperAdmin;
+    } catch (error) {
+        console.error('[SuperAdmin] Failed to check super admin status:', error);
+        return false; // Fail closed
+    }
 }
+
 
 /**
  * Verify super-admin API key
@@ -108,15 +74,9 @@ export function verifySuperAdmin(apiKey: string, env: Env): boolean {
  * @returns True if authenticated as super-admin
  */
 export function authenticateSuperAdmin(request: Request, env: Env): boolean {
-    const authHeader = request.headers.get('Authorization');
-    let apiKey: string | null = null;
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        apiKey = authHeader.substring(7).trim();
-    } else {
-        apiKey = request.headers.get('X-Super-Admin-Key');
-    }
+    // ONLY check X-Super-Admin-Key header for API key authentication
+    // NO Authorization header fallback
+    const apiKey = request.headers.get('X-Super-Admin-Key');
     
     if (!apiKey) {
         return false;
@@ -126,19 +86,29 @@ export function authenticateSuperAdmin(request: Request, env: Env): boolean {
 }
 
 /**
- * Authenticate super-admin request via JWT token (email-based)
+ * Authenticate super-admin request via JWT token (customerId-based)
+ * 
+ * NEW: Now checks Authorization Service for super-admin role
+ * 
  * @param request - HTTP request
  * @param env - Worker environment
- * @returns Email if authenticated as super-admin, null otherwise
+ * @returns customerId if authenticated as super-admin, null otherwise
  */
-export async function authenticateSuperAdminEmail(request: Request, env: Env): Promise<string | null> {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+export async function authenticateSuperAdminJWT(request: Request, env: Env): Promise<string | null> {
+    // ONLY check HttpOnly cookie for JWT token - NO Authorization header fallback
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) {
+        return null;
+    }
+    
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    if (!authCookie) {
         return null;
     }
     
     // CRITICAL: Trim token to ensure it matches the token used for encryption
-    const token = authHeader.substring(7).trim();
+    const token = authCookie.substring('auth_token='.length).trim();
     
     try {
         // Import JWT verification utilities
@@ -146,21 +116,60 @@ export async function authenticateSuperAdminEmail(request: Request, env: Env): P
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret);
         
-        if (!payload || !payload.email) {
+        if (!payload || !payload.customerId) {
             return null;
         }
         
-        // Check if email is a super admin
-        const isSuperAdmin = await isSuperAdminEmail(payload.email, env);
-        return isSuperAdmin ? payload.email : null;
+        // Check if customer is a super admin via Authorization Service
+        const isSuper = await isSuperAdmin(payload.customerId, env);
+        return isSuper ? payload.customerId : null;
     } catch (e) {
         return null;
     }
 }
 
+
 /**
- * Require super-admin authentication (API key or email-based)
+ * Check if a customer has admin or super-admin role (via Authorization Service)
+ * 
+ * @param customerId - Customer ID
+ * @param env - Environment
+ * @param jwtToken - Optional JWT token for authentication
+ * @returns True if customer has admin or super-admin role
+ */
+export async function isAdminOrSuperAdmin(customerId: string, env: Env, jwtToken?: string): Promise<boolean> {
+    if (!customerId) {
+        return false;
+    }
+
+    try {
+        const access = createAccessClient(env, { jwtToken: jwtToken || undefined });
+        const authorization = await access.getCustomerAuthorization(customerId);
+        
+        if (!authorization) {
+            return false;
+        }
+        
+        const hasAdminAccess = authorization.roles.includes('admin') || authorization.roles.includes('super-admin');
+        
+        console.log('[AdminAuth] Checking admin access:', {
+            customerId,
+            roles: authorization.roles,
+            hasAdminAccess,
+            source: 'Authorization Service'
+        });
+        
+        return hasAdminAccess;
+    } catch (error) {
+        console.error('[AdminAuth] Failed to check admin status:', error);
+        return false; // Fail closed
+    }
+}
+
+/**
+ * Require super-admin authentication (API key or JWT-based)
  * Returns 401 response if not authenticated
+ * 
  * @param request - HTTP request
  * @param env - Worker environment
  * @returns 401 response if not authenticated, null if authenticated
@@ -171,17 +180,17 @@ export async function requireSuperAdmin(request: Request, env: Env): Promise<Res
         return null; // Authenticated via API key
     }
     
-    // Try email-based authentication
-    const superAdminEmail = await authenticateSuperAdminEmail(request, env);
-    if (superAdminEmail) {
-        return null; // Authenticated via email
+    // Try JWT-based authentication (checks Authorization Service)
+    const superAdminCustomerId = await authenticateSuperAdminJWT(request, env);
+    if (superAdminCustomerId) {
+        return null; // Authenticated via JWT with super-admin role
     }
     
     // Not authenticated
     return new Response(JSON.stringify({ 
         error: 'Super-admin authentication required',
         code: 'SUPER_ADMIN_REQUIRED',
-        hint: 'Set SUPER_ADMIN_API_KEY or SUPER_ADMIN_EMAILS environment variable. For email-based auth, use JWT token from dashboard login. For API key auth, use Authorization: Bearer <key> header'
+        hint: 'Authenticate with a JWT token that has super-admin role or use SUPER_ADMIN_API_KEY'
     }), {
         status: 401,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },

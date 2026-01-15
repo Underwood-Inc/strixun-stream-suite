@@ -5,7 +5,7 @@
  * Authentication is handled by the route wrapper with automatic encryption
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getCustomerKey } from '../../services/customer.js';
 
 /**
@@ -25,7 +25,7 @@ async function handleStartDungeon(request, env, userId, customerId) {
                 message: 'characterId and dungeonId are required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -71,7 +71,7 @@ async function handleStartDungeon(request, env, userId, customerId) {
             instance
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Start dungeon error:', error);
@@ -80,7 +80,7 @@ async function handleStartDungeon(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -106,7 +106,7 @@ async function handleCompleteRoom(request, env, userId, customerId) {
                 message: 'instanceId and roomId are required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -120,7 +120,7 @@ async function handleCompleteRoom(request, env, userId, customerId) {
                 message: 'Dungeon instance not found'
             }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -154,7 +154,7 @@ async function handleCompleteRoom(request, env, userId, customerId) {
             rewards: result === 'victory' ? generateRoomRewards(instance.difficulty) : null
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Complete room error:', error);
@@ -163,7 +163,7 @@ async function handleCompleteRoom(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -185,7 +185,7 @@ async function handleCompleteDungeon(request, env, userId, customerId) {
                 message: 'instanceId is required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -199,7 +199,7 @@ async function handleCompleteDungeon(request, env, userId, customerId) {
                 message: 'Dungeon instance not found'
             }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -225,7 +225,7 @@ async function handleCompleteDungeon(request, env, userId, customerId) {
             instance
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Complete dungeon error:', error);
@@ -234,7 +234,7 @@ async function handleCompleteDungeon(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -256,7 +256,7 @@ async function handleGetDungeonInstances(request, env, userId, customerId) {
                 message: 'characterId query parameter is required'
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -279,7 +279,7 @@ async function handleGetDungeonInstances(request, env, userId, customerId) {
             instances
         }), {
             status: 200,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Get dungeon instances error:', error);
@@ -288,7 +288,7 @@ async function handleGetDungeonInstances(request, env, userId, customerId) {
             message: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -351,7 +351,7 @@ export async function handleGameDungeons(request, env, userId, customerId, actio
         message: 'Invalid action'
     }), {
         status: 400,
-        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
     });
 }
 

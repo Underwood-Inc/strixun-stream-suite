@@ -39,9 +39,6 @@ import {
     adminDeleteMod,
     getModRatings,
     submitModRating,
-    listCustomers,
-    getCustomerDetails,
-    updateCustomer,
     getCustomerMods,
     checkUploadPermission,
     getAdminSettings,
@@ -51,7 +48,13 @@ import {
     detectDuplicates,
     deleteR2File,
     bulkDeleteR2Files,
-} from './api.js';
+} from './mods/index.js';
+
+import {
+    listCustomers,
+    getCustomerDetails,
+    updateCustomer,
+} from './customerApi.js';
 
 describe('Mods Hub API Service - Unit Tests', () => {
     beforeEach(() => {
@@ -445,8 +448,9 @@ describe('Mods Hub API Service - Unit Tests', () => {
 
     describe('getCustomerDetails', () => {
         it('should call API with Customer ID', async () => {
+            const mockCustomer = { id: 'user_123', email: 'test@example.com' };
             const mockResponse = {
-                data: { id: 'user_123', email: 'test@example.com' },
+                data: { customer: mockCustomer },
                 status: 200,
                 statusText: 'OK',
             };
@@ -455,15 +459,16 @@ describe('Mods Hub API Service - Unit Tests', () => {
             const result = await getCustomerDetails('user_123');
 
             expect(mockApiClient.get).toHaveBeenCalledWith('/admin/customers/user_123');
-            expect(result).toEqual(mockResponse.data);
+            expect(result).toEqual(mockCustomer);
         });
     });
 
     describe('updateCustomer', () => {
         it('should call API with user updates', async () => {
             const mockUpdates = { displayName: 'New Name' };
+            const mockCustomer = { id: 'user_123', ...mockUpdates };
             const mockResponse = {
-                data: { id: 'user_123', ...mockUpdates },
+                data: { customer: mockCustomer },
                 status: 200,
                 statusText: 'OK',
             };
@@ -475,7 +480,7 @@ describe('Mods Hub API Service - Unit Tests', () => {
                 '/admin/customers/user_123',
                 mockUpdates
             );
-            expect(result).toEqual(mockResponse.data);
+            expect(result).toEqual(mockCustomer);
         });
     });
 
@@ -499,7 +504,13 @@ describe('Mods Hub API Service - Unit Tests', () => {
     describe('checkUploadPermission', () => {
         it('should call permissions endpoint', async () => {
             const mockResponse = {
-                data: { hasPermission: true },
+                data: { 
+                    hasUploadPermission: true,
+                    isAdmin: false,
+                    isSuperAdmin: false,
+                    roles: ['customer'],
+                    permissions: ['upload:mod']
+                },
                 status: 200,
                 statusText: 'OK',
             };
@@ -508,7 +519,7 @@ describe('Mods Hub API Service - Unit Tests', () => {
             const result = await checkUploadPermission();
 
             expect(mockApiClient.get).toHaveBeenCalledWith('/mods/permissions/me');
-            expect(result).toEqual(mockResponse.data);
+            expect(result).toEqual({ hasPermission: true });
         });
     });
 

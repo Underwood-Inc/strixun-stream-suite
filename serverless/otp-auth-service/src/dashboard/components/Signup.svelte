@@ -13,8 +13,8 @@
                         import.meta.env?.MODE === 'development';
     
     if (isLocalhost) {
-      // NEVER fall back to production when on localhost
-      return 'http://localhost:8787';
+      // Use Vite proxy in dev to avoid CORS issues
+      return '';
     }
     
     // Only use production URL if NOT on localhost

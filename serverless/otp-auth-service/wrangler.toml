@@ -1,8 +1,8 @@
-﻿# OTP Authentication Service - Cloudflare Worker Configuration
+# OTP Authentication Service - Cloudflare Worker Configuration
 # Standalone multi-tenant OTP authentication service
 
 name = "otp-auth-service"
-main = "worker.ts"
+main = "dist/worker.js"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
@@ -26,6 +26,7 @@ compatibility_flags = ["nodejs_compat"]
 [env.production.vars]
 ENVIRONMENT = "production"
 CUSTOMER_API_URL = "https://customer-api.idling.app"
+ACCESS_SERVICE_URL = "https://access-api.idling.app"
 
 # Production KV Namespace
 [[env.production.kv_namespaces]]
@@ -42,7 +43,8 @@ zone_name = "idling.app"
 
 [env.development.vars]
 ENVIRONMENT = "development"
-CUSTOMER_API_URL = "https://strixun-customer-api-dev.strixuns-script-suite.workers.dev"
+CUSTOMER_API_URL = "http://localhost:8790"
+ACCESS_SERVICE_URL = "http://localhost:8791"
 
 # Development KV Namespace (using same namespace for testing)
 [[env.development.kv_namespaces]]
@@ -53,6 +55,7 @@ id = "680c9dbe86854c369dd23e278abb41f9"
 [vars]
 ENVIRONMENT = "production"
 CUSTOMER_API_URL = "https://customer-api.idling.app"
+ACCESS_SERVICE_URL = "https://access-api.idling.app"
 
 # Default KV Namespace (required for routes configured in dashboard or when no environment is specified)
 [[kv_namespaces]]
@@ -60,9 +63,9 @@ binding = "OTP_AUTH_KV"
 id = "680c9dbe86854c369dd23e278abb41f9"
 
 # Default routes (production)
-routes = [
-  { pattern = "auth.idling.app/*", zone_name = "idling.app" }
-]
+[[routes]]
+pattern = "auth.idling.app/*"
+zone_name = "idling.app"
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard ΓåÆ Workers & Pages ΓåÆ otp-auth-service

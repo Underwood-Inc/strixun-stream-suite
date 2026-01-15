@@ -12,7 +12,7 @@ import { handleGameInventory } from '../handlers/game/inventory.js';
 import { handleGameLootBox } from '../handlers/game/loot-box.js';
 import { handleGameLoot } from '../handlers/game/loot.js';
 import { handleGameSaveState } from '../handlers/game/save-state.js';
-import { getCorsHeaders } from '../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../utils/cors.js';
 import { getJWTSecret, verifyJWT } from '../utils/crypto.js';
 
 /**
@@ -59,7 +59,7 @@ async function handleGameRoute(handler, request, env, auth) {
                 message: 'Authentication required. Please provide a valid JWT token.'
             }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             }),
             customerId: null
         };
@@ -279,7 +279,7 @@ export async function handleGameRoutes(request, path, env) {
         return {
             response: new Response(JSON.stringify({ error: 'Game endpoint not found' }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             }),
             customerId: auth?.customerId || null
         };
@@ -291,7 +291,7 @@ export async function handleGameRoutes(request, path, env) {
                 message: env.ENVIRONMENT === 'development' ? error.message : undefined
             }), {
                 status: 500,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             }),
             customerId: auth?.customerId || null
         };

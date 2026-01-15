@@ -12,7 +12,7 @@ export {
   getAPIClient,
   setAPIClient,
   resetAPIClient,
-} from './src/client.js';
+} from './src/client';
 
 export type {
   APIRequest,
@@ -26,7 +26,7 @@ export type {
   RetryConfig,
   OptimisticConfig,
   OfflineConfig,
-} from './src/types.js';
+} from './src/types';
 
 // Re-export encryption utilities for client-side use
 export {
@@ -34,5 +34,5 @@ export {
   decryptBinaryWithJWT,
   encryptWithJWT,
   decryptWithJWT,
-} from './encryption/index.js';
+} from './encryption/index';
 

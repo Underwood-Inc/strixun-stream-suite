@@ -6,7 +6,7 @@
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { requireSuperAdmin, authenticateSuperAdminEmail } from '../../utils/super-admin.js';
+import { requireSuperAdmin } from '../../utils/super-admin.js';
 import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomer } from '../../services/customer.js';
 import {
@@ -36,33 +36,32 @@ export async function handleCreateDataRequest(request: Request, env: Env): Promi
             return authError;
         }
 
-        // Get requester info from JWT or API key
+        // Get requester info from JWT token (from HttpOnly cookie)
         let requesterId: string | null = null;
         let requesterEmail: string | null = null;
 
-        // Try to get from JWT token
-        const authHeader = request.headers.get('Authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            // CRITICAL: Trim token to ensure it matches the token used for encryption
-            const token = authHeader.substring(7).trim();
-            const jwtSecret = getJWTSecret(env);
-            const payload = await verifyJWT(token, jwtSecret);
-            
-            if (payload) {
-                requesterId = payload.customerId || null;
-                requesterEmail = payload.email || null;
+        // Try to get from HttpOnly cookie
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+                // CRITICAL: Trim token to ensure it matches the token used for encryption
+                const token = authCookie.substring('auth_token='.length).trim();
+                const jwtSecret = getJWTSecret(env);
+                const payload = await verifyJWT(token, jwtSecret);
+                
+                if (payload) {
+                    requesterId = payload.customerId || null;
+                    requesterEmail = payload.email || null;
+                }
             }
         }
 
-        // If no JWT, try email-based super admin
-        if (!requesterEmail) {
-            requesterEmail = await authenticateSuperAdminEmail(request, env);
-        }
-
-        if (!requesterEmail) {
+        if (!requesterId || !requesterEmail) {
             return new Response(JSON.stringify({ 
                 error: 'Could not identify requester',
-                detail: 'Super admin email is required'
+                detail: 'Valid JWT token is required'
             }), {
                 status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -191,15 +190,19 @@ export async function handleGetDataRequest(request: Request, env: Env, requestId
         
         // If not found, try to find it by searching requester's requests
         if (!dataRequest) {
-            const authHeader = request.headers.get('Authorization');
-            if (authHeader && authHeader.startsWith('Bearer ')) {
-                const token = authHeader.substring(7);
-                const jwtSecret = getJWTSecret(env);
-                const payload = await verifyJWT(token, jwtSecret);
-                
-                if (payload && payload.customerId) {
-                    const requesterRequests = await getRequesterDataRequests(payload.customerId, null, env);
-                    dataRequest = requesterRequests.find(r => r.requestId === requestId) || null;
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    const token = authCookie.substring('auth_token='.length).trim();
+                    const jwtSecret = getJWTSecret(env);
+                    const payload = await verifyJWT(token, jwtSecret);
+                    
+                    if (payload && payload.customerId) {
+                        const requesterRequests = await getRequesterDataRequests(payload.customerId, null, env);
+                        dataRequest = requesterRequests.find(r => r.requestId === requestId) || null;
+                    }
                 }
             }
         }
@@ -258,12 +261,24 @@ export async function handleListDataRequests(request: Request, env: Env): Promis
             return authError;
         }
 
-        // Get requester info from JWT
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        // Get requester info from HttpOnly cookie
+        const cookieHeader = request.headers.get('Cookie');
+        if (!cookieHeader) {
             return new Response(JSON.stringify({ 
-                error: 'Authorization header required',
-                detail: 'JWT token is required to identify requester'
+                error: 'Authentication required',
+                detail: 'Please authenticate with HttpOnly cookie'
+            }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        if (!authCookie) {
+            return new Response(JSON.stringify({ 
+                error: 'Authentication required',
+                detail: 'Please authenticate with HttpOnly cookie'
             }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -271,7 +286,7 @@ export async function handleListDataRequests(request: Request, env: Env): Promis
         }
 
         // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authHeader.substring(7).trim();
+        const token = authCookie.substring('auth_token='.length).trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret);
 

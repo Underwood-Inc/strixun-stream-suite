@@ -1,16 +1,13 @@
 <script lang="ts">
-  import CodeBlock from '../lib/CodeBlock.svelte';
-  import ObfuscatedText from '@shared-components/svelte/ObfuscatedText.svelte';
+  import MultiFileViewer from '@shared-components/svelte/MultiFileViewer.svelte';
+  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
   import { 
-    vanillaJsExample, 
-    reactExample, 
-    svelteExample,
-    vanillaJsApiKeyExample,
-    reactApiKeyExample,
-    svelteApiKeyExample
-  } from '../lib/code-examples';
+    reactMultiFileExample,
+    svelteMultiFileExample,
+    vanillaMultiFileExample
+  } from '../lib/multi-file-examples';
 
-  let activeTab = 'vanilla';
+  let activeTab = 'react';
 
   function switchTab(tab: string) {
     activeTab = tab;
@@ -24,21 +21,27 @@
   </p>
   
   <div class="info-box">
-    <strong>◆ API Key Required:</strong> All integrations require an API key. <strong>Free tier available!</strong> Get your API key from the <a href="/dashboard">dashboard</a> after signing up. Includes free tier with <ObfuscatedText text="1,000" length={5} /> OTP requests/month.
+    <strong>◆ API Key Required:</strong> All integrations require an API key. <StatusFlair status="in-testing"><strong>Free tier available!</strong></StatusFlair> Get your API key from the <a href="/dashboard">dashboard</a> after signing up. Includes free tier with 1,000 OTP requests/month.
   </div>
   
   <div class="code-tabs">
-    <button class="code-tab" class:active={activeTab === 'vanilla'} on:click={() => switchTab('vanilla')}>Vanilla JS/TS</button>
-    <button class="code-tab" class:active={activeTab === 'react'} on:click={() => switchTab('react')}>React</button>
-    <button class="code-tab" class:active={activeTab === 'svelte'} on:click={() => switchTab('svelte')}>Svelte</button>
+    <button class="code-tab" class:active={activeTab === 'react'} on:click={() => switchTab('react')}>
+      <span class="tab-icon">⚛</span> React + TypeScript
+    </button>
+    <button class="code-tab" class:active={activeTab === 'svelte'} on:click={() => switchTab('svelte')}>
+      <span class="tab-icon">S</span> Svelte + TypeScript
+    </button>
+    <button class="code-tab" class:active={activeTab === 'vanilla'} on:click={() => switchTab('vanilla')}>
+      <span class="tab-icon">JS</span> Vanilla JavaScript
+    </button>
   </div>
 
-  {#if activeTab === 'vanilla'}
-    <CodeBlock code={vanillaJsApiKeyExample} language="javascript" />
-  {:else if activeTab === 'react'}
-    <CodeBlock code={reactApiKeyExample} language="jsx" />
+  {#if activeTab === 'react'}
+    <MultiFileViewer files={reactMultiFileExample} />
   {:else if activeTab === 'svelte'}
-    <CodeBlock code={svelteApiKeyExample} language="svelte" />
+    <MultiFileViewer files={svelteMultiFileExample} />
+  {:else if activeTab === 'vanilla'}
+    <MultiFileViewer files={vanillaMultiFileExample} />
   {/if}
 </section>
 
@@ -83,6 +86,9 @@
     letter-spacing: 0.5px;
     transition: all 0.2s;
     margin-bottom: -2px;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
   }
 
   .code-tab:hover {
@@ -93,6 +99,11 @@
   .code-tab.active {
     color: var(--accent);
     border-bottom-color: var(--accent);
+  }
+
+  .tab-icon {
+    font-size: 1.2rem;
+    font-weight: 700;
   }
 
   .info-box {

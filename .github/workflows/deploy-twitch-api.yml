@@ -34,7 +34,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -60,7 +60,8 @@ jobs:
       - name: Run Twitch API Tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/twitch-api
-        run: pnpm test
+        # CI-only: build workspace deps so workspace:* package exports resolve in tests.
+        run: pnpm run build:deps && pnpm test
       
       - name: Generate coverage report
         if: steps.check_test.outputs.has_tests == 'true'
@@ -100,7 +101,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
           
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -112,6 +113,11 @@ jobs:
       - name: Install all dependencies
         working-directory: .
         run: pnpm install --frozen-lockfile
+      
+      - name: Build Worker
+        working-directory: serverless/twitch-api
+        # CI-only: ensure workspace deps are built before bundling.
+        run: pnpm run build:deps && pnpm run build:worker
         
       - name: Deploy Worker
         id: deploy

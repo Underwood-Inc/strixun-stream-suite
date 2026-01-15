@@ -1,0 +1,52 @@
+{
+  "name": "@strixun/access-service",
+  "version": "1.0.0",
+  "description": "Access control service for Strixun - handles roles, permissions, and quotas",
+  "main": "worker.ts",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./types": "./types/authorization.ts"
+  },
+  "scripts": {
+    "predev": "pnpm run build:worker",
+    "dev": "wrangler dev --port 8795 --local",
+    "build:worker": "esbuild worker.ts --bundle --format=esm --outfile=dist/worker.js --platform=node --external:cloudflare:* --external:node:*",
+    "predeploy": "pnpm run build:deps && pnpm run build:worker",
+    "deploy": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --env development",
+    "tail": "wrangler tail",
+    "tail:dev": "wrangler tail --env development",
+    "build:test": "esbuild worker.ts --bundle --format=esm --outfile=dist/worker.js --platform=node --external:cloudflare:* --external:node:*",
+    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build && cd ../otp-auth-service && pnpm run build:worker && cd ../customer-api && pnpm run build:worker",
+    "pretest": "pnpm run build:deps && pnpm run build:test",
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage",
+    "test:unit": "vitest run --testNamePattern='(Unit|unit)' --exclude='**/*.integration.test.ts'",
+    "test:integration": "vitest run **/*.integration.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "access-control",
+    "permissions",
+    "roles",
+    "cloudflare-workers"
+  ],
+  "author": "Strixun",
+  "license": "PROPRIETARY",
+  "dependencies": {
+    "@strixun/api-framework": "workspace:*",
+    "@strixun/error-utils": "workspace:*",
+    "@strixun/service-client": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241218.0",
+    "@vitest/coverage-v8": "^4.0.16",
+    "esbuild": "^0.24.0",
+    "miniflare": "^3.20250718.3",
+    "typescript": "^5.3.3",
+    "wrangler": "^4.56.0",
+    "vitest": "^4.0.16"
+  }
+}

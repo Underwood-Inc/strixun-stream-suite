@@ -165,11 +165,10 @@ test.describe('Mod Detail Page', () => {
             { timeout: 10000 }
           );
           
-          const token = await page.evaluate(() => {
-            return localStorage.getItem('auth_token') || 
-                   localStorage.getItem('jwt_token') ||
-                   localStorage.getItem('token');
-          });
+          // Get token from HttpOnly cookie (for API calls)
+          const cookies = await page.context().cookies();
+          const authCookie = cookies.find(c => c.name === 'auth_token');
+          const token = authCookie?.value || null;
           
           // Now download with JWT - should succeed
           const authenticatedDownloadResponse = await page.evaluate(async ({ url, authToken }: { url: string; authToken: string | null }) => {
@@ -237,11 +236,10 @@ test.describe('Mod Detail Page', () => {
         { timeout: 10000 }
       );
       
-      const token = await page.evaluate(() => {
-        return localStorage.getItem('auth_token') || 
-               localStorage.getItem('jwt_token') ||
-               localStorage.getItem('token');
-      });
+      // Get token from HttpOnly cookie (for API calls)
+      const cookies = await page.context().cookies();
+      const authCookie = cookies.find(c => c.name === 'auth_token');
+      const token = authCookie?.value || null;
       
       // Make direct API request to download endpoint
       const downloadUrl = `${WORKER_URLS.MODS_API}/mods/${mod.slug}/versions/${mod.versions[0].versionId}/download`;

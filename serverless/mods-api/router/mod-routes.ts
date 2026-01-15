@@ -4,7 +4,7 @@
  */
 
 import { createError } from '../utils/errors.js';
-import { createCORSHeadersWithLocalhost } from '../utils/cors.js';
+import { getCorsHeaders } from '../utils/cors.js';
 import { handleListMods } from '../handlers/mods/list.js';
 import { handleGetModDetail } from '../handlers/mods/detail.js';
 import { handleUploadMod } from '../handlers/mods/upload.js';
@@ -26,10 +26,10 @@ async function createErrorResponse(
     status: number,
     title: string,
     detail: string,
-    auth: { customerId?: string; customerId?: string | null } | null = null
+    auth: { customerId: string; jwtToken: string } | null = null
 ): Promise<RouteResult> {
     const rfcError = createError(request, status, title, detail);
-    const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+    const corsHeaders = getCorsHeaders(env, request);
     const errorResponse = new Response(JSON.stringify(rfcError), {
         status,
         headers: {
@@ -38,7 +38,9 @@ async function createErrorResponse(
         },
     });
     // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
-    return await wrapWithEncryption(errorResponse, auth, request, env);
+    return await wrapWithEncryption(errorResponse, null, request, env, {
+        requireJWT: false
+    });
 }
 
 /**
@@ -48,10 +50,11 @@ async function createErrorResponse(
 async function resolveSlugIfNeeded(
     slugOrModId: string,
     env: Env,
-    auth: { customerId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string; jwtToken: string } | null
 ): Promise<string | null> {
-    // Check if it looks like a slug (short, no mod_ prefix) vs modId (long with mod_ prefix or timestamp)
-    const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+    // Check if it looks like a slug vs modId
+    // ModIds always start with 'mod_' prefix, everything else is a slug
+    const looksLikeSlug = !slugOrModId.startsWith('mod_');
     if (looksLikeSlug) {
         const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
         const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
@@ -82,6 +85,15 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
 
     // Authenticate request (optional for public endpoints)
     const auth = await authenticateRequest(request, env);
+    
+    // CRITICAL: Detect if request is using HttpOnly cookie (browser request)
+    // If yes, we must disable response encryption because JavaScript can't access HttpOnly cookies to decrypt
+    const cookieHeader = request.headers.get('Cookie');
+    const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+    
+    // For HttpOnly cookie requests, pass null to wrapWithEncryption to disable encryption
+    // For Authorization header requests (service-to-service), pass auth object to enable encryption
+    const authForEncryption = isHttpOnlyCookie ? null : auth;
 
     try {
         // Parse path segments and normalize (remove 'mods' prefix if present)
@@ -97,15 +109,15 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // All other endpoints require JWT encryption
         if (pathSegments.length === 0 && request.method === 'GET') {
             const response = await handleListMods(request, env, auth);
-            // Allow public browsing - requireJWT: false for mod list only
-            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
+            // Allow public browsing - no encryption for public endpoints
+            return await wrapWithEncryption(response, null, request, env, { requireJWT: false });
         }
 
         // Route: POST /mods or POST / - Upload new mod
         if (pathSegments.length === 0 && request.method === 'POST') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to upload mods');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                const corsHeaders = getCorsHeaders(env, request);
                 const errorResponse = new Response(JSON.stringify(rfcError), {
                     status: 401,
                     headers: {
@@ -114,10 +126,14 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     },
                 });
                 // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
-                return await wrapWithEncryption(errorResponse, null, request, env);
+                return await wrapWithEncryption(errorResponse, null, request, env, {
+                    requireJWT: false
+                });
             }
             const response = await handleUploadMod(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/permissions/me or GET /permissions/me - Get current user's upload permissions
@@ -127,9 +143,12 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetCustomerPermissions } = await import('../handlers/mods/permissions.js');
             const response = await handleGetCustomerPermissions(request, env, auth);
-            const encryptedResult = await wrapWithEncryption(response, auth, request, env);
+            // Use authForEncryption (already set above) to disable encryption for HttpOnly cookies
+            const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
             // Ensure CORS headers are preserved after encryption
-            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const corsHeaders = getCorsHeaders(env, request);
             const finalHeaders = new Headers(encryptedResult.response.headers);
             for (const [key, value] of corsHeaders.entries()) {
                 finalHeaders.set(key, value);
@@ -144,6 +163,18 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             };
         }
 
+        // Route: GET /mods/settings or GET /settings - Get mod upload settings (JWT required, encrypted)
+        if (pathSegments.length === 1 && pathSegments[0] === 'settings' && request.method === 'GET') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
+            }
+            const { handleGetSettings } = await import('../handlers/settings/get-settings.js');
+            const response = await handleGetSettings(request, env, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
         // Route: GET /mods/:slug/review or GET /:slug/review - Get mod review page (admin/uploader only)
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 2 && pathSegments[1] === 'review' && request.method === 'GET') {
@@ -154,7 +185,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetModReview } = await import('../handlers/mods/review.js');
             const response = await handleGetModReview(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug or GET /:slug - Get mod detail (by slug)
@@ -167,8 +200,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
             }
             const response = await handleGetModDetail(request, env, modId, auth);
-            // Allow public browsing - requireJWT: false for mod detail only
-            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
+            // Allow public browsing - no encryption for public endpoints
+            return await wrapWithEncryption(response, null, request, env, { requireJWT: false });
         }
 
         // Route: PUT /mods/:slug or PUT /:slug - Update mod (by slug)
@@ -182,7 +215,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                const corsHeaders = getCorsHeaders(env, request);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -195,7 +228,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const response = await handleUpdateMod(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: DELETE /mods/:slug or DELETE /:slug - Delete mod (by slug)
@@ -208,7 +243,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                const corsHeaders = getCorsHeaders(env, request);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -221,7 +256,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const response = await handleDeleteMod(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/ratings or GET /:slug/ratings - Get ratings for a mod
@@ -235,8 +272,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetModRatings } = await import('../handlers/mods/ratings.js');
             const response = await handleGetModRatings(request, env, modId, auth);
-            // Allow public browsing - requireJWT: false for ratings only
-            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
+            // Allow public browsing - no encryption for public endpoints
+            return await wrapWithEncryption(response, null, request, env, { requireJWT: false });
         }
 
         // Route: POST /mods/:slug/ratings or POST /:slug/ratings - Submit a rating for a mod
@@ -249,7 +286,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                const corsHeaders = getCorsHeaders(env, request);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -263,7 +300,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleSubmitModRating } = await import('../handlers/mods/ratings.js');
             const response = await handleSubmitModRating(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/snapshots or GET /:slug/snapshots - List snapshots for a mod
@@ -279,7 +318,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleListModSnapshots } = await import('../handlers/mods/snapshots.js');
             const response = await handleListModSnapshots(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/snapshots/:snapshotId or GET /:slug/snapshots/:snapshotId - Load a specific snapshot
@@ -296,7 +337,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleLoadSnapshot } = await import('../handlers/mods/snapshots.js');
             const response = await handleLoadSnapshot(request, env, modId, snapshotId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: POST /mods/:slug/versions or POST /:slug/versions - Upload new version
@@ -309,7 +352,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                const corsHeaders = getCorsHeaders(env, request);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -322,7 +365,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const response = await handleUploadVersion(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/thumbnail or GET /:slug/thumbnail - Get thumbnail
@@ -335,7 +380,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
@@ -382,7 +427,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             let modId = slugOrModId; // Assume it's already a modId first
             
             // Check if it looks like a slug (short, no mod_ prefix) vs modId (long with mod_ prefix or timestamp)
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
@@ -399,53 +444,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Response is already decrypted by handler (file was encrypted at rest with shared key, decrypted on-the-fly)
             // Downloads use shared key encryption, not JWT encryption, so we don't wrap with JWT encryption
             // Ensure CORS headers are preserved (handler already sets them, but ensure they're present)
-            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
-            const finalHeaders = new Headers(response.headers);
-            for (const [key, value] of corsHeaders.entries()) {
-                finalHeaders.set(key, value);
-            }
-            return {
-                response: new Response(response.body, {
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: finalHeaders,
-                }),
-                customerId: auth?.customerId || null,
-            };
-        }
-
-        // Route: GET /mods/:slug/variants/:variantId/download or GET /:slug/variants/:variantId/download - Download variant
-        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
-        // Variants use shared key encryption (not JWT), so JWT is not required
-        // Normalized pathSegments = [slug, 'variants', variantId, 'download']
-        if (pathSegments.length === 4 && pathSegments[1] === 'variants' && pathSegments[3] === 'download' && request.method === 'GET') {
-            const slugOrModId = pathSegments[0];
-            const variantId = pathSegments[2];
-            // console.log('[Router] Variant download request:', { path, pathSegments, slugOrModId, variantId, hasAuth: !!auth });
-            
-            // Resolve slug to modId
-            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
-            let modId = slugOrModId;
-            
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
-            if (looksLikeSlug) {
-                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
-                if (resolvedModId) {
-                    modId = resolvedModId;
-                    // console.log('[Router] Resolved slug to modId for variant download:', { slug: slugOrModId, modId });
-                } else {
-                    console.error('[Router] Failed to resolve slug to modId for variant download:', { slug: slugOrModId });
-                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
-                }
-            }
-            
-            const { handleDownloadVariant } = await import('../handlers/variants/download.js');
-            const response = await handleDownloadVariant(request, env, modId, variantId, auth);
-            // console.log('[Router] Variant download response:', { status: response.status, contentType: response.headers.get('content-type'), contentLength: response.headers.get('content-length') });
-            // Response is already decrypted by handler (file was encrypted at rest with shared key, decrypted on-the-fly)
-            // Downloads use shared key encryption, not JWT encryption, so we don't wrap with JWT encryption
-            // Ensure CORS headers are preserved (handler already sets them, but ensure they're present)
-            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const corsHeaders = getCorsHeaders(env, request);
             const finalHeaders = new Headers(response.headers);
             for (const [key, value] of corsHeaders.entries()) {
                 finalHeaders.set(key, value);
@@ -470,77 +469,80 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
                     modId = resolvedModId;
                 } else {
+                    console.error('[Router] Failed to resolve slug to modId for variant versions:', { slug: slugOrModId });
                     return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
                 }
             }
             
             const { handleListVariantVersions } = await import('../handlers/variants/list-versions.js');
             const response = await handleListVariantVersions(request, env, modId, variantId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            
+            return {
+                response: new Response(response.body, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: response.headers,
+                }),
+                customerId: auth?.customerId || null,
+            };
         }
 
-        // Route: POST /mods/:slug/variants/:variantId/versions or POST /:slug/variants/:variantId/versions - Upload variant version
+        // Route: GET /mods/:slug/variants/:variantId/download or GET /:slug/variants/:variantId/download - Download variant
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
-        // Normalized pathSegments = [slug, 'variants', variantId, 'versions']
-        if (pathSegments.length === 4 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && request.method === 'POST') {
-            if (!auth) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
-            }
+        // Variants use shared key encryption (not JWT), so JWT is not required
+        // Normalized pathSegments = [slug, 'variants', variantId, 'download']
+        if (pathSegments.length === 4 && pathSegments[1] === 'variants' && pathSegments[3] === 'download' && request.method === 'GET') {
             const slugOrModId = pathSegments[0];
             const variantId = pathSegments[2];
+            // console.log('[Router] Variant download request:', { path, pathSegments, slugOrModId, variantId, hasAuth: !!auth });
             
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
                     modId = resolvedModId;
+                    // console.log('[Router] Resolved slug to modId for variant download:', { slug: slugOrModId, modId });
                 } else {
+                    console.error('[Router] Failed to resolve slug to modId for variant download:', { slug: slugOrModId });
                     return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
                 }
             }
             
-            const { handleUploadVariantVersion } = await import('../handlers/variants/upload-version.js');
-            const response = await handleUploadVariantVersion(request, env, modId, variantId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            const { handleDownloadVariant } = await import('../handlers/variants/download.js');
+            const response = await handleDownloadVariant(request, env, modId, variantId, auth);
+            // console.log('[Router] Variant download response:', { status: response.status, contentType: response.headers.get('content-type'), contentLength: response.headers.get('content-length') });
+            // Response is already decrypted by handler (file was encrypted at rest with shared key, decrypted on-the-fly)
+            // Downloads use shared key encryption, not JWT encryption, so we don't wrap with JWT encryption
+            // Ensure CORS headers are preserved (handler already sets them, but ensure they're present)
+            const corsHeaders = getCorsHeaders(env, request);
+            const finalHeaders = new Headers(response.headers);
+            for (const [key, value] of corsHeaders.entries()) {
+                finalHeaders.set(key, value);
+            }
+            return {
+                response: new Response(response.body, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: finalHeaders,
+                }),
+                customerId: auth?.customerId || null,
+            };
         }
 
-        // Route: DELETE /mods/:slug/variants/:variantId/versions/:versionId or DELETE /:slug/variants/:variantId/versions/:versionId - Delete variant version
-        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
-        // Normalized pathSegments = [slug, 'variants', variantId, 'versions', versionId]
-        if (pathSegments.length === 5 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && request.method === 'DELETE') {
-            if (!auth) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
-            }
-            const slugOrModId = pathSegments[0];
-            const variantId = pathSegments[2];
-            const variantVersionId = pathSegments[4];
-            
-            // Resolve slug to modId
-            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
-            let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
-            if (looksLikeSlug) {
-                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
-                if (resolvedModId) {
-                    modId = resolvedModId;
-                } else {
-                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
-                }
-            }
-            
-            const { handleDeleteVariantVersion } = await import('../handlers/variants/delete-version.js');
-            const response = await handleDeleteVariantVersion(request, env, modId, variantId, variantVersionId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
-        }
+        // UNIFIED SYSTEM: Variant versions are handled by regular version routes
+        // Frontend should use /mods/:slug/versions/:versionId routes for both main mod and variant versions
+        // The ModVersion.variantId field distinguishes between main mod and variant versions
 
         // Route: DELETE /mods/:slug/variants/:variantId or DELETE /:slug/variants/:variantId - Delete entire variant
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
@@ -552,7 +554,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
@@ -564,7 +566,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleDeleteVariant } = await import('../handlers/variants/delete.js');
             const response = await handleDeleteVariant(request, env, modId, variantId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/versions/:versionId/verify or GET /:slug/versions/:versionId/verify - Verify file integrity
@@ -576,7 +580,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
@@ -588,7 +592,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleVerifyVersion } = await import('../handlers/versions/verify.js');
             const response = await handleVerifyVersion(request, env, modId, versionId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: POST /mods/:slug/versions/:versionId/validate or POST /:slug/versions/:versionId/validate - Validate file against uploaded version
@@ -600,7 +606,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
@@ -612,7 +618,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleValidateVersion } = await import('../handlers/versions/validate.js');
             const response = await handleValidateVersion(request, env, modId, versionId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /mods/:slug/versions/:versionId/badge or GET /:slug/versions/:versionId/badge - Get integrity badge
@@ -635,7 +643,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
             let modId = slugOrModId;
-            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
             if (looksLikeSlug) {
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {

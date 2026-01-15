@@ -3,7 +3,7 @@
  * Handles customer configuration endpoints
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getCustomer, storeCustomer } from '../../services/customer.js';
 import { invalidateCustomerCache } from '../../utils/cache.js';
 import { validateCustomerConfig } from '../../utils/validation.js';
@@ -18,7 +18,7 @@ export async function handleGetConfig(request, env, customerId) {
         if (!customer) {
             return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -29,7 +29,7 @@ export async function handleGetConfig(request, env, customerId) {
             plan: customer.plan,
             features: customer.features
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({
@@ -37,7 +37,7 @@ export async function handleGetConfig(request, env, customerId) {
             message: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -52,7 +52,7 @@ export async function handleUpdateConfig(request, env, customerId) {
         if (!customer) {
             return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -62,7 +62,7 @@ export async function handleUpdateConfig(request, env, customerId) {
         if (!config) {
             return new Response(JSON.stringify({ error: 'Configuration object required' }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -83,7 +83,7 @@ export async function handleUpdateConfig(request, env, customerId) {
                 errors: validation.errors
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -103,7 +103,7 @@ export async function handleUpdateConfig(request, env, customerId) {
             configVersion: customer.configVersion,
             message: 'Configuration updated successfully'
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({
@@ -111,7 +111,7 @@ export async function handleUpdateConfig(request, env, customerId) {
             message: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -126,7 +126,7 @@ export async function handleUpdateEmailConfig(request, env, customerId) {
         if (!customer) {
             return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -146,7 +146,7 @@ export async function handleUpdateEmailConfig(request, env, customerId) {
                 errors: validation.errors
             }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -166,7 +166,7 @@ export async function handleUpdateEmailConfig(request, env, customerId) {
             emailConfig: customer.config.emailConfig,
             message: 'Email configuration updated successfully'
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({
@@ -174,7 +174,7 @@ export async function handleUpdateEmailConfig(request, env, customerId) {
             message: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }

@@ -42,6 +42,23 @@
         edgeLabelBackground: '#252017',
         edgeLabelTextColor: '#f9f9f9',
         arrowheadColor: '#6495ed',
+        // Sequence diagram specific colors
+        actorBkg: '#252017',
+        actorBorder: '#edae49',
+        actorTextColor: '#f9f9f9',
+        actorLineColor: '#6495ed',
+        signalColor: '#f9f9f9',
+        signalTextColor: '#f9f9f9',
+        labelBoxBkgColor: '#1a1611',
+        labelBoxBorderColor: '#3d3627',
+        labelTextColor: '#f9f9f9',
+        loopTextColor: '#f9f9f9',
+        noteBorderColor: '#edae49',
+        noteBkgColor: '#252017',
+        noteTextColor: '#f9f9f9',
+        activationBorderColor: '#6495ed',
+        activationBkgColor: 'rgba(100, 149, 237, 0.2)',
+        sequenceNumberColor: '#f9f9f9',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
         fontSize: '14px'
       },
@@ -53,6 +70,18 @@
         nodeSpacing: 50,
         rankSpacing: 80,
         diagramPadding: 20
+      },
+      sequence: {
+        useMaxWidth: true,
+        diagramMarginX: 50,
+        diagramMarginY: 10,
+        actorMargin: 50,
+        width: 150,
+        height: 65,
+        boxMargin: 10,
+        boxTextMargin: 5,
+        noteMargin: 10,
+        messageMargin: 35
       }
     });
     

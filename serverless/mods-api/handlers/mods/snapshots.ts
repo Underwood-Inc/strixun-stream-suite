@@ -17,13 +17,12 @@ export async function handleListModSnapshots(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     try {
         if (!auth) {
             const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to view snapshots');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 401,
@@ -41,8 +40,7 @@ export async function handleListModSnapshots(
         
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -56,8 +54,7 @@ export async function handleListModSnapshots(
         // Check authorization - only mod author can view snapshots
         if (mod.authorId !== auth.customerId) {
             const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to view snapshots for this mod');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 403,
@@ -73,8 +70,7 @@ export async function handleListModSnapshots(
         const snapshotIds = await env.MODS_KV.get(snapshotsListKey, { type: 'json' }) as string[] | null;
         
         if (!snapshotIds || snapshotIds.length === 0) {
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify({ snapshots: [], total: 0 }), {
                 status: 200,
@@ -104,8 +100,7 @@ export async function handleListModSnapshots(
         // Sort by creation date (newest first)
         snapshots.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify({ snapshots, total: snapshots.length }), {
             status: 200,
@@ -122,8 +117,7 @@ export async function handleListModSnapshots(
             'Failed to List Snapshots',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while listing snapshots'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,
@@ -143,13 +137,12 @@ export async function handleLoadSnapshot(
     env: Env,
     modId: string,
     snapshotId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     try {
         if (!auth) {
             const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to load snapshots');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 401,
@@ -166,8 +159,7 @@ export async function handleLoadSnapshot(
         
         if (!snapshot) {
             const rfcError = createError(request, 404, 'Snapshot Not Found', 'The requested snapshot was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -181,8 +173,7 @@ export async function handleLoadSnapshot(
         // Verify snapshot belongs to the mod
         if (snapshot.modId !== normalizeModId(modId)) {
             const rfcError = createError(request, 400, 'Bad Request', 'Snapshot does not belong to the specified mod');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -200,8 +191,7 @@ export async function handleLoadSnapshot(
         
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -215,8 +205,7 @@ export async function handleLoadSnapshot(
         // Check authorization - only mod author can load snapshots
         if (mod.authorId !== auth.customerId) {
             const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to load snapshots for this mod');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 403,
@@ -231,8 +220,7 @@ export async function handleLoadSnapshot(
         const isValid = await verifySnapshot(snapshot, env);
         if (!isValid) {
             const rfcError = createError(request, 400, 'Invalid Snapshot', 'Snapshot integrity verification failed');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -243,8 +231,7 @@ export async function handleLoadSnapshot(
             });
         }
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify({ snapshot }), {
             status: 200,
@@ -261,8 +248,7 @@ export async function handleLoadSnapshot(
             'Failed to Load Snapshot',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while loading snapshot'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

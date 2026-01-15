@@ -21,7 +21,9 @@
     "types": ["@cloudflare/workers-types"],
     "paths": {
       "$lib/*": ["src/lib/*"],
-      "$components/*": ["src/components/*"]
+      "$components/*": ["src/components/*"],
+      "@strixun/access-service": ["../access-service/index.ts"],
+      "@strixun/access-service/*": ["../access-service/*"]
     }
   },
   "include": [

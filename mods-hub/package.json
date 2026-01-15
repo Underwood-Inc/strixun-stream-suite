@@ -30,6 +30,7 @@
     "@strixun/api-framework": "workspace:*",
     "@strixun/dice-board-game": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
+    "@strixun/error-utils": "workspace:*",
     "@strixun/search-query-parser": "workspace:*",
     "@strixun/shared-components": "workspace:*",
     "@strixun/shared-config": "workspace:*",

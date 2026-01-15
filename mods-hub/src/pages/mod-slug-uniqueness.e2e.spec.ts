@@ -111,8 +111,22 @@ async function getAuthToken(email: string): Promise<string> {
     throw new Error(`Failed to verify OTP: ${verifyResponse.status}`);
   }
   
+  // Extract auth_token from Set-Cookie header (HttpOnly cookie)
+  const setCookieHeader = verifyResponse.headers.get('set-cookie');
+  if (setCookieHeader) {
+    const authCookieMatch = setCookieHeader.match(/auth_token=([^;]+)/);
+    if (authCookieMatch && authCookieMatch[1]) {
+      return authCookieMatch[1];
+    }
+  }
+  
+  // Fallback to JSON response (for backwards compatibility)
   const verifyData = await verifyResponse.json() as { access_token?: string; token?: string };
-  return verifyData.access_token || verifyData.token || '';
+  if (verifyData.access_token || verifyData.token) {
+    return verifyData.access_token || verifyData.token || '';
+  }
+  
+  throw new Error('Auth token not found in Set-Cookie header or response body after OTP verification');
 }
 
 /**

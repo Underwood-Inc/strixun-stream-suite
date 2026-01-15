@@ -10,6 +10,6 @@ export {
   getAPIClient,
   setAPIClient,
   resetAPIClient,
-} from './client.js';
+} from './client';
 
 

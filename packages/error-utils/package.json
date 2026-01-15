@@ -1,0 +1,68 @@
+{
+  "name": "@strixun/error-utils",
+  "version": "1.0.0",
+  "description": "Framework-agnostic error handling utilities with RFC 7807 Problem Details support, strong typing, and composable error transformations",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./rfc7807": {
+      "types": "./dist/rfc7807.d.ts",
+      "default": "./dist/rfc7807.js"
+    },
+    "./factory": {
+      "types": "./dist/factory.d.ts",
+      "default": "./dist/factory.js"
+    },
+    "./transformers": {
+      "types": "./dist/transformers.d.ts",
+      "default": "./dist/transformers.js"
+    },
+    "./response": {
+      "types": "./dist/response.d.ts",
+      "default": "./dist/response.js"
+    },
+    "./guards": {
+      "types": "./dist/guards.d.ts",
+      "default": "./dist/guards.js"
+    }
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "*.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "error-handling",
+    "rfc7807",
+    "problem-details",
+    "typescript",
+    "api-errors",
+    "http-errors"
+  ],
+  "author": "Strixun",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16",
+    "@vitest/coverage-v8": "^4.0.16"
+  }
+}

@@ -7,7 +7,7 @@ import { useState } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { VariantVersion } from '../../types/mod';
-import { downloadVariantVersion } from '../../services/api';
+import { downloadVersion } from '../../services/mods';
 import { IntegrityBadge } from './IntegrityBadge';
 import { celebrateClick } from '../../utils/confetti';
 import { getButtonStyles } from '../../utils/buttonStyles';
@@ -151,9 +151,9 @@ export function VariantVersionList({
             if (!version.fileName) {
                 throw new Error('Variant version file name not found');
             }
-            await downloadVariantVersion(
+            // UNIFIED SYSTEM: Variant versions are stored as ModVersion, use regular download
+            await downloadVersion(
                 modSlug, 
-                variantId, 
                 version.variantVersionId, 
                 version.fileName
             );

@@ -148,7 +148,7 @@ export async function handleOGImage(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string } | null
 ): Promise<Response> {
     try {
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
@@ -186,14 +186,13 @@ export async function handleOGImage(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
 
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -207,8 +206,7 @@ export async function handleOGImage(
         // Check visibility
         if (mod.visibility === 'private' && mod.authorId !== auth?.customerId) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -220,15 +218,22 @@ export async function handleOGImage(
         }
 
         // EXCEPTION: Allow public access (no JWT required) for OG images (social media crawlers)
-        // Get JWT token from request (optional for public access)
+        // Get JWT token from HttpOnly cookie (optional for public access)
         // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || null;
+        let jwtToken: string | null = null;
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+                jwtToken = authCookie.substring('auth_token='.length).trim();
+            }
+        }
 
         // Generate OG image SVG
         const ogImageSvg = generateOGImage(mod, mod.thumbnailUrl);
         
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         
         // Encrypt with JWT if token is present, otherwise return unencrypted SVG for public access
@@ -267,8 +272,7 @@ export async function handleOGImage(
             'Failed to Generate OG Image',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while generating the preview image'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

@@ -51,53 +51,6 @@ export interface RouteProtectionResult {
     level?: AdminLevel;
 }
 
-/**
- * Get list of super admin emails from environment
- */
-export async function getSuperAdminEmails(env: RouteProtectionEnv): Promise<string[]> {
-    if (env.SUPER_ADMIN_EMAILS) {
-        return env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
-    }
-    return [];
-}
-
-/**
- * Get list of regular admin emails from environment
- */
-export async function getAdminEmails(env: RouteProtectionEnv): Promise<string[]> {
-    if (env.ADMIN_EMAILS) {
-        return env.ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
-    }
-    return [];
-}
-
-/**
- * Check if an email is a super admin
- */
-export async function isSuperAdminEmail(email: string | undefined, env: RouteProtectionEnv): Promise<boolean> {
-    if (!email) return false;
-    
-    // Normalize email (trim and lowercase) to match how super admin emails are stored
-    const normalizedEmail = email.trim().toLowerCase();
-    const adminEmails = await getSuperAdminEmails(env);
-    return adminEmails.includes(normalizedEmail);
-}
-
-
-/**
- * Check if an email is a regular admin (or super admin)
- */
-export async function isAdminEmail(email: string | undefined, env: RouteProtectionEnv): Promise<boolean> {
-    if (!email) return false;
-    
-    // Super admins are also admins
-    if (await isSuperAdminEmail(email, env)) {
-        return true;
-    }
-    
-    const adminEmails = await getAdminEmails(env);
-    return adminEmails.includes(email.toLowerCase());
-}
 
 /**
  * Verify super-admin API key
@@ -131,7 +84,7 @@ export async function authenticateJWT(
         }
         
         return {
-            customerId: payload.customerId,
+            customerId: payload.customerId || payload.sub,  // Use sub as fallback if customerId not in payload
             email: payload.email,
             jwtToken: token,
         };
@@ -149,15 +102,33 @@ export async function extractAuth(
     env: RouteProtectionEnv,
     verifyJWT: (token: string, secret: string) => Promise<any>
 ): Promise<AuthResult | null> {
-    const authHeader = request.headers.get('Authorization');
+    let token: string | null = null;
     
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authHeader.substring(7).trim();
-        return await authenticateJWT(token, env, verifyJWT);
+    // PRIORITY 1: Check HttpOnly cookie (browser requests)
+    const cookieHeader = request.headers.get('Cookie');
+    if (cookieHeader) {
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        
+        if (authCookie) {
+            token = authCookie.substring('auth_token='.length).trim();
+        }
     }
     
-    return null;
+    // PRIORITY 2: Check Authorization header (service-to-service calls)
+    if (!token) {
+        const authHeader = request.headers.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            // CRITICAL: Trim token to ensure it matches the token used for encryption
+            token = authHeader.substring(7).trim();
+        }
+    }
+    
+    if (!token) {
+        return null;
+    }
+    
+    return await authenticateJWT(token, env, verifyJWT);
 }
 
 /**
@@ -169,8 +140,7 @@ export function createUnauthorizedResponse(
     message: string = 'Authentication required',
     code: string = 'UNAUTHORIZED'
 ): Response {
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
     });
     
     return new Response(JSON.stringify({
@@ -194,8 +164,7 @@ export function createForbiddenResponse(
     message: string = 'Admin access required',
     code: string = 'FORBIDDEN'
 ): Response {
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
     });
     
     return new Response(JSON.stringify({
@@ -225,24 +194,14 @@ export async function protectAdminRoute(
     level: AdminLevel,
     verifyJWT: (token: string, secret: string) => Promise<any>
 ): Promise<RouteProtectionResult> {
-    // First, try to authenticate the request
+    // CRITICAL: Admin routes ALWAYS require JWT authentication
+    // API keys are NOT authentication keys - they are for service identification only
+    // Admin routes must have valid JWT with proper role verification
+    
+    // Authenticate the request (extracts JWT from HttpOnly cookie or Authorization header)
     const auth = await extractAuth(request, env, verifyJWT);
     
-    // Check for super admin API key (service-to-service calls)
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authHeader.substring(7).trim();
-        if (verifySuperAdminKey(token, env)) {
-            // Super admin API key authenticated - allow access
-            return {
-                allowed: true,
-                level: 'super-admin',
-            };
-        }
-    }
-    
-    // If no auth and no API key, require authentication
+    // If no JWT authentication, deny access
     if (!auth) {
         return {
             allowed: false,
@@ -250,53 +209,36 @@ export async function protectAdminRoute(
         };
     }
     
-    // Check admin level
+    // Check admin level using Access Service
     if (level === 'super-admin') {
-        // If email is in JWT, use it directly
-        if (auth.email) {
-            const isSuperAdmin = await isSuperAdminEmail(auth.email, env);
-            if (!isSuperAdmin) {
-                return {
-                    allowed: false,
-                    error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
-                    auth,
-                };
-            }
+        // Use customerId to check super-admin role via Access Service
+        if (!auth.customerId) {
             return {
-                allowed: true,
+                allowed: false,
+                error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
                 auth,
-                level: 'super-admin',
             };
         }
         
-        // If no email but we have customerId, look up customer to get email
-        if (auth.customerId) {
-            const { isSuperAdminByCustomerId } = await import('./customer-lookup.js');
-            const isSuperAdmin = await isSuperAdminByCustomerId(auth.customerId, env);
-            
-            if (!isSuperAdmin) {
-                return {
-                    allowed: false,
-                    error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
-                    auth,
-                };
-            }
+        const { isSuperAdminByCustomerId } = await import('./customer-lookup.js');
+        const isSuperAdmin = await isSuperAdminByCustomerId(auth.customerId, env);
+        
+        if (!isSuperAdmin) {
             return {
-                allowed: true,
+                allowed: false,
+                error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
                 auth,
-                level: 'super-admin',
             };
         }
         
-        // No email and no customerId - cannot verify
         return {
-            allowed: false,
-            error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
+            allowed: true,
             auth,
+            level: 'super-admin',
         };
     } else {
-        // Regular admin
-        if (!auth.email || !(await isAdminEmail(auth.email, env))) {
+        // Regular admin - check via Access Service for admin OR super-admin role
+        if (!auth.customerId) {
             return {
                 allowed: false,
                 error: createForbiddenResponse(request, env, 'Admin access required', 'ADMIN_REQUIRED'),
@@ -304,13 +246,36 @@ export async function protectAdminRoute(
             };
         }
         
-        // Determine actual level (could be super-admin or regular admin)
-        const isSuper = await isSuperAdminEmail(auth.email, env);
-        return {
-            allowed: true,
-            auth,
-            level: isSuper ? 'super-admin' : 'admin',
-        };
+        // Check if customer has admin or super-admin role via Access Service
+        const { getCustomerRoles } = await import('./customer-lookup.js');
+        try {
+            const roles = await getCustomerRoles(auth.customerId, env);
+            const hasAdminAccess = roles.includes('admin') || roles.includes('super-admin');
+            
+            if (!hasAdminAccess) {
+                return {
+                    allowed: false,
+                    error: createForbiddenResponse(request, env, 'Admin access required', 'ADMIN_REQUIRED'),
+                    auth,
+                };
+            }
+            
+            // Determine actual level based on roles
+            const actualLevel = roles.includes('super-admin') ? 'super-admin' : 'admin';
+            
+            return {
+                allowed: true,
+                auth,
+                level: actualLevel,
+            };
+        } catch (error) {
+            console.error('[RouteProtection] Failed to check admin roles:', error);
+            return {
+                allowed: false,
+                error: createForbiddenResponse(request, env, 'Failed to verify admin access', 'AUTH_CHECK_FAILED'),
+                auth,
+            };
+        }
     }
 }
 

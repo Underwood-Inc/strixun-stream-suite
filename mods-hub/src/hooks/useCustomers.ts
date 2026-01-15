@@ -4,7 +4,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as api from '../services/api';
+import * as api from '../services/customerApi';
+import { getCustomerMods } from '../services/mods/modAdminApi';
 import { useUIStore } from '../stores/ui';
 import type { UpdateCustomerRequest } from '../types/customer';
 
@@ -85,7 +86,7 @@ export function useCustomerMods(customerId: string, params: {
 }) {
     return useQuery({
         queryKey: [...customerKeys.mods(customerId), params],
-        queryFn: () => api.getCustomerMods(customerId, params),
+        queryFn: () => getCustomerMods(customerId, params),
         enabled: !!customerId,
     });
 }

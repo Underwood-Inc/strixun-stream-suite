@@ -35,8 +35,3 @@ export {
     handleDeleteCustomerData, handleExportCustomerData, handleGetAuditLogs
 } from './admin/gdpr.js';
 
-// Customer Management (List)
-export {
-    handleListCustomers
-} from './admin/list-customers.js';
-

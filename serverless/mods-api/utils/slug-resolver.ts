@@ -19,7 +19,7 @@ import { getCustomerKey } from './customer.js';
 export async function resolveSlugToModId(
     slug: string,
     env: Env,
-    auth: { customerId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string; jwtToken: string } | null
 ): Promise<string | null> {
     console.log('[SlugResolver] Resolving slug to modId:', { slug, hasAuth: !!auth, customerId: auth?.customerId });
     
@@ -68,7 +68,7 @@ export async function resolveSlugToModId(
             }
         }
         
-        cursor = listResult.listComplete ? undefined : listResult.cursor;
+        cursor = listResult.list_complete ? undefined : listResult.cursor;
     } while (cursor);
     
     console.log('[SlugResolver] Slug not found in any index:', { slug });

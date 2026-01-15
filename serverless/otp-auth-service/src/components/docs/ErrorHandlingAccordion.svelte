@@ -1,5 +1,5 @@
 <script lang="ts">
-  import CodeBlock from '../../lib/CodeBlock.svelte';
+  import CodeBlock from '@shared-components/svelte/CodeBlock.svelte';
 
   const errorResponseExample = `{
   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",

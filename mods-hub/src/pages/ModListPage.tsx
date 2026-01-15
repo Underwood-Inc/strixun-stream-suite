@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FixedSizeList as List } from 'react-window';
 import { useModsList } from '../hooks/useMods';
-import { ModListItem } from '../components/mod/ModListItem';
+import { ModListItem, mapModToListItemProps } from '../components/mod/ModListItem';
 import { ModCard } from '../components/mod/ModCard';
 import { ModFilters } from '../components/mod/ModFilters';
 import { ViewToggle, type ViewType } from '../components/mod/ViewToggle';
@@ -80,7 +80,7 @@ const ListContainer = styled.div`
   background: ${colors.bg};
   border: 1px solid ${colors.border};
   border-radius: 8px;
-  overflow: hidden;
+  overflow: auto;
 `;
 
 const SimpleListContainer = styled.div`
@@ -355,7 +355,7 @@ export function ModListPage() {
                             {isMobileView ? (
                                 <SimpleListContainer>
                                     {data.mods.map((mod) => (
-                                        <ModListItem key={mod.id} mod={mod} />
+                                        <ModListItem key={mod.modId} {...mapModToListItemProps(mod)} />
                                     ))}
                                 </SimpleListContainer>
                             ) : (
@@ -369,8 +369,8 @@ export function ModListPage() {
                                         {({ index, style }) => {
                                             const mod = data.mods[index];
                                             return (
-                                                <div key={mod.id} style={style}>
-                                                    <ModListItem mod={mod} />
+                                                <div key={mod.modId} style={style}>
+                                                    <ModListItem {...mapModToListItemProps(mod)} />
                                                 </div>
                                             );
                                         }}
@@ -384,7 +384,7 @@ export function ModListPage() {
                     ) : (
                         <GridContainer>
                             {data.mods.map((mod) => (
-                                <ModCard key={mod.id} mod={mod} />
+                                <ModCard key={mod.modId} mod={mod} />
                             ))}
                             <div key="end-of-list" style={{ 
                                 gridColumn: '1 / -1', 

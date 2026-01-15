@@ -12,11 +12,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { encryptWithJWT, decryptWithJWT } from '@strixun/api-framework';
 import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
-import { createCORSHeadersWithLocalhost } from '../utils/cors.js';
+import { getCorsHeaders } from '../utils/cors.js';
 
 // Mock external dependencies
 vi.mock('../utils/cors.js', () => ({
-    createCORSHeadersWithLocalhost: vi.fn(() => {
+    getCorsHeaders: vi.fn(() => {
         const headers = new Headers();
         headers.set('Access-Control-Allow-Origin', '*');
         headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -26,7 +26,7 @@ vi.mock('../utils/cors.js', () => ({
 }));
 
 vi.mock('../../utils/admin.js', () => ({
-    isSuperAdminEmail: vi.fn(() => Promise.resolve(true)),
+    isSuperAdmin: vi.fn(() => Promise.resolve(true)),
 }));
 
 describe('API Framework Integration Tests', () => {
@@ -76,7 +76,7 @@ describe('API Framework Integration Tests', () => {
             const request = new Request('https://mods-api.idling.app/admin/mods/mod_123/status', {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                     'Content-Type': 'application/json',
                     'X-Encrypted': 'true',
                 },
@@ -100,7 +100,7 @@ describe('API Framework Integration Tests', () => {
             const request = new Request('https://mods-api.idling.app/admin/mods/mod_123/status', {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `Bearer ${invalidToken}`,
+                    'Cookie': `auth_token=${invalidToken}`,
                     'Content-Type': 'application/json',
                     'X-Encrypted': 'true',
                 },
@@ -131,7 +131,7 @@ describe('API Framework Integration Tests', () => {
             const request = new Request('https://mods-api.idling.app/admin/mods/mod_123/status', {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                     'Content-Type': 'application/json',
                     'X-Encrypted': 'true',
                 },
@@ -170,9 +170,9 @@ describe('API Framework Integration Tests', () => {
             expect(isLocalhost).toBe(true);
             
             // Mocked function should return headers with CORS
-            const headers = createCORSHeadersWithLocalhost(
-                new Request('http://localhost:5173/admin', { headers: { 'Origin': origin } }),
-                { ALLOWED_ORIGINS: 'https://mods.idling.app' }
+            const headers = getCorsHeaders(
+                { ALLOWED_ORIGINS: 'https://mods.idling.app' },
+                new Request('http://localhost:5173/admin', { headers: { 'Origin': origin } })
             );
             const allowOrigin = headers.get('Access-Control-Allow-Origin');
             
@@ -186,9 +186,9 @@ describe('API Framework Integration Tests', () => {
             
             expect(isLocalhost).toBe(true);
             
-            const headers = createCORSHeadersWithLocalhost(
-                new Request('http://127.0.0.1:5173/admin', { headers: { 'Origin': origin } }),
-                { ALLOWED_ORIGINS: 'https://mods.idling.app' }
+            const headers = getCorsHeaders(
+                { ALLOWED_ORIGINS: 'https://mods.idling.app' },
+                new Request('http://127.0.0.1:5173/admin', { headers: { 'Origin': origin } })
             );
             const allowOrigin = headers.get('Access-Control-Allow-Origin');
             
@@ -201,9 +201,9 @@ describe('API Framework Integration Tests', () => {
             
             expect(isLocalhost).toBe(false);
             
-            const headers = createCORSHeadersWithLocalhost(
-                new Request('https://mods.idling.app/admin', { headers: { 'Origin': origin } }),
-                { ALLOWED_ORIGINS: 'https://mods.idling.app' }
+            const headers = getCorsHeaders(
+                { ALLOWED_ORIGINS: 'https://mods.idling.app' },
+                new Request('https://mods.idling.app/admin', { headers: { 'Origin': origin } })
             );
             const allowOrigin = headers.get('Access-Control-Allow-Origin');
             

@@ -2,7 +2,7 @@
 # Dedicated worker for customer data management
 
 name = "strixun-customer-api"
-main = "worker.ts"
+main = "dist/worker.js"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
@@ -18,7 +18,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # Production environment
 [env.production]
-vars = { ENVIRONMENT = "production" }
+vars = { ENVIRONMENT = "production", ACCESS_SERVICE_URL = "https://access-api.idling.app" }
 
 # Production KV Namespace
 [[env.production.kv_namespaces]]
@@ -32,7 +32,7 @@ zone_name = "idling.app"
 
 # Development environment
 [env.development]
-vars = { ENVIRONMENT = "development" }
+vars = { ENVIRONMENT = "development", ACCESS_SERVICE_URL = "http://localhost:8795" }
 
 # Development KV Namespace (using same namespace for testing)
 [[env.development.kv_namespaces]]
@@ -49,9 +49,9 @@ binding = "CUSTOMER_KV"
 id = "86ef5ab4419b40eab3fe65b75f052789"
 
 # Default routes (production)
-routes = [
-  { pattern = "customer-api.idling.app/*", zone_name = "idling.app" }
-]
+[[routes]]
+pattern = "customer-api.idling.app/*"
+zone_name = "idling.app"
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard ΓåÆ Workers & Pages ΓåÆ strixun-customer-api

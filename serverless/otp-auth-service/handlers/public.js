@@ -3,7 +3,7 @@
  * Handles public endpoints: signup, verify signup, register customer, health checks
  */
 
-import { getCorsHeaders } from '../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../utils/cors.js';
 import { hashEmail } from '../utils/crypto.js';
 import { generateCustomerId, storeCustomer } from '../services/customer.js';
 import { createApiKeyForCustomer } from '../services/api-key.js';
@@ -30,14 +30,14 @@ export async function handlePublicSignup(request, env) {
         if (!email || !companyName) {
             return new Response(JSON.stringify({ error: 'Email and company name are required' }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             return new Response(JSON.stringify({ error: 'Valid email address required' }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -82,7 +82,7 @@ export async function handlePublicSignup(request, env) {
                     expiresIn: Math.floor((new Date(otpData.expiresAt).getTime() - Date.now()) / 1000),
                     alreadyInProgress: true
                 }), {
-                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
                 });
             }
         }
@@ -128,7 +128,7 @@ export async function handlePublicSignup(request, env) {
             expiresIn: otpResponseData.expiresIn || 600, // 10 minutes
             remaining: otpResponseData.remaining
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Signup error:', error);
@@ -137,7 +137,7 @@ export async function handlePublicSignup(request, env) {
             message: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -160,14 +160,14 @@ export async function handleVerifySignup(request, env) {
         if (!email) {
             return new Response(JSON.stringify({ error: 'Email required' }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
         if (!otp) {
             return new Response(JSON.stringify({ error: 'OTP code required' }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -181,7 +181,7 @@ export async function handleVerifySignup(request, env) {
         if (!signupData) {
             return new Response(JSON.stringify({ error: 'Signup not found or expired. Please start the signup process again.' }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -190,7 +190,7 @@ export async function handleVerifySignup(request, env) {
             await env.OTP_AUTH_KV.delete(signupKey);
             return new Response(JSON.stringify({ error: 'Signup expired. Please start the signup process again.' }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -346,7 +346,7 @@ export async function handleVerifySignup(request, env) {
                 status: customer?.status || 'active'
             }
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Signup verification error:', error);
@@ -355,7 +355,7 @@ export async function handleVerifySignup(request, env) {
             message: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -373,14 +373,14 @@ export async function handleRegisterCustomer(request, env) {
         if (!name || !email || !companyName) {
             return new Response(JSON.stringify({ error: 'Name, email, and company name are required' }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             return new Response(JSON.stringify({ error: 'Valid email address required' }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -480,7 +480,7 @@ export async function handleRegisterCustomer(request, env) {
                 status: customerData.status
             }
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('Customer registration error:', error);
@@ -490,7 +490,7 @@ export async function handleRegisterCustomer(request, env) {
             details: env.ENVIRONMENT === 'development' ? error.stack : undefined
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }

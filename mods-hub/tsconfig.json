@@ -34,7 +34,10 @@
   "exclude": [
     "../shared-components/**/*",
     "../src/**/*",
-    "node_modules"
+    "node_modules",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/*.e2e.spec.ts"
   ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

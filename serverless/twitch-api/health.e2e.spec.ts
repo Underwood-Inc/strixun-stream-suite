@@ -18,7 +18,7 @@ test.describe('Twitch API Health', () => {
     
     const response = await request.get(`${WORKER_URLS.TWITCH_API}/health`, {
       headers: {
-        'Authorization': `Bearer ${testJWTToken}`,
+        'Cookie': `auth_token=${testJWTToken}`,
       },
     });
     expect(response.ok()).toBeTruthy();

@@ -7,7 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { isSuperAdminEmail } from '../../utils/admin.js';
+import { isAdmin as checkIsAdmin } from '../../utils/admin.js';
 import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
 
 /**
@@ -17,14 +17,13 @@ export async function handleGetModReview(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string; jwtToken?: string } | null
 ): Promise<Response> {
     try {
         // Must be authenticated
         if (!auth) {
             const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 401,
@@ -70,7 +69,7 @@ export async function handleGetModReview(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
         
@@ -81,8 +80,7 @@ export async function handleGetModReview(
                 'Mod Not Found',
                 'The requested mod was not found'
             );
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -94,7 +92,22 @@ export async function handleGetModReview(
         }
         
         // Check access: only admin or uploader can access review page
-        const isAdmin = auth.email && await isSuperAdminEmail(auth.email, env);
+        // Extract JWT token from auth object or from cookie
+        let jwtToken: string | null = null;
+        if (auth.jwtToken) {
+            jwtToken = auth.jwtToken;
+        } else {
+            // Fallback: extract from cookie if not in auth object
+            const cookieHeader = request.headers.get('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').map(c => c.trim());
+                const authCookie = cookies.find(c => c.startsWith('auth_token='));
+                if (authCookie) {
+                    jwtToken = authCookie.substring('auth_token='.length).trim();
+                }
+            }
+        }
+        const isAdmin = auth.customerId && jwtToken ? await checkIsAdmin(auth.customerId, jwtToken, env) : false;
         const isUploader = mod.authorId === auth.customerId;
 
         if (!isAdmin && !isUploader) {
@@ -104,8 +117,7 @@ export async function handleGetModReview(
                 'Forbidden',
                 'Only admins and the mod author can access the review page'
             );
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 403,
@@ -118,25 +130,24 @@ export async function handleGetModReview(
         
         // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
         const normalizedStoredModId = normalizeModId(mod.modId);
-        const modId = normalizedStoredModId;
 
         // Get all versions - try global scope first, then mod's customer scope
         // CRITICAL: Use mod.customerId (where mod was uploaded), not auth.customerId
         let versionIds: string[] = [];
         
         // Check global scope first
-        const globalVersionsKey = `mod_${modId}_versions`;
+        const globalVersionsKey = `mod_${normalizedStoredModId}_versions`;
         const globalVersionsData = await env.MODS_KV.get(globalVersionsKey, { type: 'json' }) as string[] | null;
         if (globalVersionsData) {
             versionIds = globalVersionsData;
         } else if (mod.customerId) {
             // Fall back to mod's customer scope (where it was uploaded)
-            const customerVersionsKey = getCustomerKey(mod.customerId, `mod_${modId}_versions`);
+            const customerVersionsKey = getCustomerKey(mod.customerId, `mod_${normalizedStoredModId}_versions`);
             const customerVersionsData = await env.MODS_KV.get(customerVersionsKey, { type: 'json' }) as string[] | null;
             versionIds = customerVersionsData || [];
         } else if (auth?.customerId) {
             // Last resort: try auth user's customer scope (for backward compatibility)
-            const customerVersionsKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
+            const customerVersionsKey = getCustomerKey(auth.customerId, `mod_${normalizedStoredModId}_versions`);
             const customerVersionsData = await env.MODS_KV.get(customerVersionsKey, { type: 'json' }) as string[] | null;
             versionIds = customerVersionsData || [];
         }
@@ -185,8 +196,7 @@ export async function handleGetModReview(
             versions
         };
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(response), {
             status: 200,
@@ -203,8 +213,7 @@ export async function handleGetModReview(
             'Failed to Get Mod Review',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while fetching mod review'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,

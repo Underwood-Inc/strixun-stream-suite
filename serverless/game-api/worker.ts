@@ -4,12 +4,12 @@
  * Dedicated worker for idle game API endpoints
  * Handles all game-related operations with JWT authentication
  * 
- * @version 2.0.0 - Migrated to use shared API framework
+ * @version 2.1.0 - Uses standardized CORS from api-framework
  */
 
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import type { ExecutionContext } from '@strixun/types';
 import { createError } from './utils/errors.js';
+import { getCorsHeaders } from './utils/cors.js';
 import { handleGameRoutes } from './router/game-routes.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 
@@ -18,33 +18,48 @@ import { wrapWithEncryption } from '@strixun/api-framework';
  * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health
  */
 async function handleHealth(env: any, request: Request): Promise<Response> {
-    // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
-    // Get JWT token from request
-    const authHeader = request.headers.get('Authorization');
-    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    const corsHeaders = getCorsHeaders(env, request);
     
-    if (!jwtToken) {
+    // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
+    // ONLY check HttpOnly cookie - NO fallbacks, NO Authorization header
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) {
         const errorResponse = {
             type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
             title: 'Unauthorized',
             status: 401,
-            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            detail: 'JWT token is required for encryption/decryption. Please authenticate with HttpOnly cookie.',
             instance: request.url
         };
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        });
         return new Response(JSON.stringify(errorResponse), {
             status: 401,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...corsHeaders,
             },
         });
     }
-
-    // Create auth object for encryption
-    const authForEncryption = { userId: 'anonymous', customerId: null, jwtToken };
+    
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    if (!authCookie) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please authenticate with HttpOnly cookie.',
+            instance: request.url
+        };
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...corsHeaders,
+            },
+        });
+    }
+    
+    const jwtToken = authCookie.substring('auth_token='.length).trim();
 
     // Create health check response
     const healthData = { 
@@ -61,8 +76,22 @@ async function handleHealth(env: any, request: Request): Promise<Response> {
         },
     });
 
-    // Wrap with encryption to ensure JWT encryption is applied
-    const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
+    // CRITICAL: Detect if request is using HttpOnly cookie (browser request)
+    // If yes, we must disable response encryption because JavaScript can't access HttpOnly cookies to decrypt
+    // For HttpOnly cookie requests, pass null to disable encryption
+    // For Authorization header requests (service-to-service), pass auth object to enable encryption
+    const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+    const authForEncryption = isHttpOnlyCookie ? null : {
+        userId: 'anonymous',
+        customerId: null,
+        jwtToken
+    };
+
+    // Wrap with encryption - disable for HttpOnly cookie auth (browser can't decrypt)
+    // (JavaScript can't access HttpOnly cookies to decrypt, and HTTPS already protects data in transit)
+    const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env, {
+        requireJWT: authForEncryption ? true : false
+    });
     return encryptedResult.response;
 }
 
@@ -71,16 +100,19 @@ async function handleHealth(env: any, request: Request): Promise<Response> {
  */
 export default {
     async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+        const corsHeaders = getCorsHeaders(env, request);
+        
         // Handle CORS preflight
         if (request.method === 'OPTIONS') {
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
-            return new Response(null, { headers: Object.fromEntries(corsHeaders.entries()) });
+            return new Response(null, { status: 204, headers: corsHeaders });
         }
 
         const url = new URL(request.url);
-        const path = url.pathname;
+        // Dev-proxy normalization: allow apps to call through /game-api/* without 404s
+        let path = url.pathname;
+        if (path.startsWith('/game-api/')) {
+            path = path.substring('/game-api'.length);
+        }
 
         try {
             // Health check
@@ -96,14 +128,11 @@ export default {
 
             // 404 for unknown routes
             const rfcError = createError(request, 404, 'Not Found', 'The requested endpoint was not found');
-            const corsHeaders404 = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders404.entries()),
+                    ...corsHeaders,
                 },
             });
         } catch (error: any) {
@@ -117,14 +146,11 @@ export default {
                     'Server Configuration Error',
                     'JWT_SECRET environment variable is required. Please contact the administrator.'
                 );
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-                });
                 return new Response(JSON.stringify(rfcError), {
                     status: 500,
                     headers: {
                         'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
+                        ...corsHeaders,
                     },
                 });
             }
@@ -135,17 +161,13 @@ export default {
                 'Internal Server Error',
                 env.ENVIRONMENT === 'development' ? error.message : 'An internal server error occurred'
             );
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
             return new Response(JSON.stringify(rfcError), {
                 status: 500,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
+                    ...corsHeaders,
                 },
             });
         }
     },
 };
-

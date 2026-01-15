@@ -90,7 +90,8 @@
   }
 
   .accordion.active .accordion-content {
-    max-height: 5000px;
+    max-height: 80vh;
+    overflow-y: auto;
   }
 
   .accordion-body {

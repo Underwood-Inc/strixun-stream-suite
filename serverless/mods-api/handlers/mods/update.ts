@@ -5,18 +5,15 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { generateSlug, slugExists } from './upload.js';
-import { isEmailAllowed } from '../../utils/auth.js';
 import { MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { createModSnapshot } from '../../utils/snapshot.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
-import { calculateStrixunHash } from '../../utils/hash.js';
-import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
 // handleThumbnailUpload is defined locally in this file
 import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
+import type { Env } from '../../worker.js';
 
 /**
  * Handle update mod request
@@ -25,23 +22,10 @@ export async function handleUpdateMod(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; email?: string }
+    auth: { customerId: string }
 ): Promise<Response> {
     try {
-        // Check email whitelist
-        if (!isEmailAllowed(auth.email, env)) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Your email address is not authorized to manage mods');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
+        // All authenticated users can update their own mods (authorization check happens below)
 
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
         // Use modId directly - it already includes 'mod_' prefix
@@ -83,14 +67,13 @@ export async function handleUpdateMod(
                     }
                 }
                 if (mod) break;
-                cursor = listResult.listComplete ? undefined : listResult.cursor;
+                cursor = listResult.list_complete ? undefined : listResult.cursor;
             } while (cursor);
         }
 
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -101,14 +84,10 @@ export async function handleUpdateMod(
             });
         }
 
-        // ✨ LAZY MIGRATION: Automatically migrate variants if needed
-        mod = await migrateModVariantsIfNeeded(mod, env);
-
         // Check authorization
         if (mod.authorId !== auth.customerId) {
             const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to update this mod');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 403,
@@ -122,12 +101,10 @@ export async function handleUpdateMod(
         // CRITICAL: Validate customerId is present - required for data scoping and display name lookups
         if (!auth.customerId) {
             console.error('[Update] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
-                email: auth.email,
                 note: 'Rejecting mod update - customerId is required for data scoping and display name lookups'
             });
             const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod updates. Please ensure your account has a valid customer association.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -177,8 +154,7 @@ export async function handleUpdateMod(
             const baseSlug = generateSlug(updateData.title);
             if (!baseSlug) {
                 const rfcError = createError(request, 400, 'Invalid Title', 'Title must contain valid characters for slug generation');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 400,
@@ -192,8 +168,7 @@ export async function handleUpdateMod(
             // Check if slug already exists (excluding this mod)
             if (baseSlug !== oldSlug && await slugExists(baseSlug, env, storedModId)) {
                 const rfcError = createError(request, 409, 'Slug Already Exists', `A mod with the title "${updateData.title}" (slug: "${baseSlug}") already exists. Please choose a different title.`);
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });
                 return new Response(JSON.stringify(rfcError), {
                     status: 409,
@@ -213,7 +188,47 @@ export async function handleUpdateMod(
         if (updateData.category !== undefined) mod.category = updateData.category;
         if (updateData.tags !== undefined) mod.tags = updateData.tags;
         if (updateData.visibility !== undefined) mod.visibility = updateData.visibility;
-        if (updateData.variants !== undefined) mod.variants = updateData.variants;
+        
+        // CRITICAL: Merge variants intelligently - preserve currentVersionId and other system fields
+        // Frontend only sends name and description, not currentVersionId (it doesn't know it)
+        // We must preserve currentVersionId from existing variants to avoid breaking downloads
+        if (updateData.variants !== undefined) {
+            const existingVariants = mod.variants || [];
+            const updatedVariants = updateData.variants.map(updatedVariant => {
+                // Find existing variant by variantId
+                const existing = existingVariants.find(v => v.variantId === updatedVariant.variantId);
+                
+                if (existing) {
+                    // Merge: keep system fields (currentVersionId, createdAt) from existing,
+                    // update user-editable fields (name, description) from update
+                    return {
+                        ...existing,
+                        name: updatedVariant.name,
+                        description: updatedVariant.description,
+                        updatedAt: new Date().toISOString(),
+                        // Preserve currentVersionId, versionCount, totalDownloads from existing
+                    };
+                } else {
+                    // New variant: use all fields from update (currentVersionId will be null until file uploaded)
+                    return {
+                        ...updatedVariant,
+                        createdAt: updatedVariant.createdAt || new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        currentVersionId: null, // Will be set when file is uploaded
+                        versionCount: 0, // Initialize to 0 for new variants
+                        totalDownloads: 0, // Initialize to 0 for new variants
+                    };
+                }
+            });
+            
+            mod.variants = updatedVariants;
+            // console.log('[UpdateMod] Merged variants:', {
+            //     existingCount: existingVariants.length,
+            //     updatedCount: updatedVariants.length,
+            //     preserved: updatedVariants.filter(v => v.currentVersionId).length
+            // });
+        }
+        
         if (updateData.gameId !== undefined) mod.gameId = updateData.gameId;
         mod.updatedAt = new Date().toISOString();
 
@@ -222,6 +237,12 @@ export async function handleUpdateMod(
         if (formData) {
             // Check for binary thumbnail file upload
             const thumbnailFile = formData.get('thumbnail') as File | null;
+            console.log('[UpdateMod] Checking for thumbnail in formData:', {
+                hasThumbnailFile: !!thumbnailFile,
+                thumbnailFileName: thumbnailFile?.name,
+                thumbnailSize: thumbnailFile?.size,
+                thumbnailType: thumbnailFile?.type
+            });
             if (thumbnailFile) {
                 try {
                     // CRITICAL: Verify thumbnail is NOT encrypted before processing
@@ -229,8 +250,7 @@ export async function handleUpdateMod(
                     const thumbnailBuffer = new Uint8Array(await thumbnailFile.arrayBuffer());
                     if (thumbnailBuffer.length >= 4 && (thumbnailBuffer[0] === 4 || thumbnailBuffer[0] === 5)) {
                         const rfcError = createError(request, 400, 'Invalid Thumbnail', 'Thumbnail file appears to be encrypted. Thumbnails must be unencrypted image files (PNG, JPEG, GIF, or WebP). Please upload the original image file without encryption.');
-                        const corsHeaders = createCORSHeaders(request, {
-                            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                         });
                         return new Response(JSON.stringify(rfcError), {
                             status: 400,
@@ -242,258 +262,251 @@ export async function handleUpdateMod(
                     }
                     
                     // Use current slug (may have been updated if title changed)
+                    console.log('[UpdateMod] Processing thumbnail upload:', {
+                        fileName: thumbnailFile.name,
+                        size: thumbnailFile.size,
+                        type: thumbnailFile.type,
+                        modId,
+                        slug: mod.slug
+                    });
                     mod.thumbnailUrl = await handleThumbnailBinaryUpload(thumbnailFile, modId, mod.slug, request, env, auth.customerId);
+                    console.log('[UpdateMod] Thumbnail uploaded successfully:', { thumbnailUrl: mod.thumbnailUrl });
+                    
+                    // Extract extension from file type for faster lookup
+                    const imageType = thumbnailFile.type.split('/')[1]?.toLowerCase();
+                    mod.thumbnailExtension = imageType === 'jpeg' ? 'jpg' : imageType;
+                    console.log('[UpdateMod] Thumbnail extension stored:', { extension: mod.thumbnailExtension });
                 } catch (error) {
-                    console.error('Thumbnail binary update error:', error);
-                    // Continue without thumbnail update
+                    console.error('[UpdateMod] Thumbnail upload FAILED:', {
+                        error: error instanceof Error ? error.message : String(error),
+                        stack: error instanceof Error ? error.stack : undefined,
+                        modId,
+                        slug: mod.slug
+                    });
+                    // FAIL THE REQUEST - do not allow silent errors
+                    const rfcError = createError(
+                        request, 
+                        500, 
+                        'Thumbnail Upload Failed', 
+                        `Failed to upload thumbnail: ${error instanceof Error ? error.message : String(error)}`
+                    );
+                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 500,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
                 }
             }
         }
         
-        // Handle variant file uploads
-        if (formData && updateData.variants) {
-            const normalizedModId = normalizeModId(modId);
-            const now = new Date().toISOString();
-            
-            // Process each variant file from FormData
-            // CRITICAL: Variant files must use the same encryption system as main mod uploads (shared key, not JWT)
-            const sharedKey = env.MODS_ENCRYPTION_KEY;
-            if (!sharedKey || sharedKey.length < 32) {
-                const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
-                return new Response(JSON.stringify(rfcError), {
-                    status: 500,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
-            }
-            
+        // Validate variant metadata before processing
+        if (updateData.variants) {
             for (const variant of updateData.variants) {
+                // Validate variant name is present and not empty
+                if (!variant.name || variant.name.trim().length === 0) {
+                    const rfcError = createError(request, 400, 'Invalid Variant Data', 'Variant name is required and cannot be empty');
+                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 400,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
+            }
+        }
+        
+        // Handle variant file uploads with TWO-PHASE COMMIT pattern
+        // PHASE 1: Upload all files, collect results
+        // PHASE 2: Update mod metadata only if ALL uploads succeeded
+        // This prevents partial state where some variants are updated and others aren't
+        if (formData && mod.variants && mod.variants.length > 0) {
+            const { handleUploadVersion } = await import('../versions/upload.js');
+            
+            // Track upload results for rollback on error
+            interface UploadResult {
+                variantId: string;
+                versionId: string;
+                success: boolean;
+                error?: string;
+            }
+            const uploadResults: UploadResult[] = [];
+            
+            // PHASE 1: Process all variant file uploads
+            for (const variant of mod.variants) {
                 const variantFile = formData.get(`variant_${variant.variantId}`) as File | null;
-                if (variantFile) {
-                    try {
-                        // Variant files should already be encrypted by the client with shared key
-                        // Validate and process them the same way as main mod uploads
-                        const fileBuffer = await variantFile.arrayBuffer();
-                        const fileBytes = new Uint8Array(fileBuffer);
-                        
-                        // Get original file name (remove .encrypted extension if present)
-                        let originalFileName = variantFile.name;
-                        if (originalFileName.endsWith('.encrypted')) {
-                            originalFileName = originalFileName.slice(0, -10); // Remove '.encrypted'
-                        }
-                        
-                        // Get file extension
-                        const fileExtension = originalFileName.includes('.') 
-                            ? originalFileName.substring(originalFileName.lastIndexOf('.')) 
-                            : '.zip';
-                        const extensionForR2 = fileExtension.substring(1); // Remove dot
-                        
-                        // Validate encryption format - must be binary encrypted with shared key (version 4 or 5)
-                        // CRITICAL: Same validation as main mod upload - reject files that aren't encrypted with shared key
-                        const isBinaryEncrypted = fileBytes.length >= 4 && (fileBytes[0] === 4 || fileBytes[0] === 5);
-                        const isLegacyEncrypted = fileBytes.length > 0 && fileBytes[0] === 0x7B; // '{' for JSON
-                        
-                        if (!isBinaryEncrypted && !isLegacyEncrypted) {
-                            const rfcError = createError(request, 400, 'File Must Be Encrypted', 'Variant files must be encrypted with shared key encryption (binary format v4 or v5) before upload. Please ensure the file is encrypted.');
-                            const corsHeaders = createCORSHeaders(request, {
-                                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                            });
-                            return new Response(JSON.stringify(rfcError), {
-                                status: 400,
-                                headers: {
-                                    'Content-Type': 'application/problem+json',
-                                    ...Object.fromEntries(corsHeaders.entries()),
-                                },
-                            });
-                        }
-                        
-                        // Temporarily decrypt to calculate file hash (for integrity verification)
-                        // This validates the file is encrypted with the correct shared key
-                        let fileHash: string;
-                        let fileSize: number;
-                        let encryptionFormat: string;
-                        
-                        try {
-                            if (isBinaryEncrypted) {
-                                // Binary encrypted format - Shared key encryption is MANDATORY
-                                // CRITICAL: Reject JWT-encrypted files (they would have version 4/5 but wrong key)
-                                let decryptedBytes: Uint8Array;
-                                try {
-                                    decryptedBytes = await decryptBinaryWithSharedKey(fileBytes, sharedKey);
-                                    console.log('[UpdateMod] Variant file decryption successful with shared key');
-                                } catch (decryptError) {
-                                    const errorMsg = decryptError instanceof Error ? decryptError.message : String(decryptError);
-                                    // If decryption fails, the file might be JWT-encrypted or encrypted with wrong key
-                                    const rfcError = createError(request, 400, 'Invalid Encryption', `Variant file must be encrypted with shared key encryption. Failed to decrypt with shared key: ${errorMsg}. Please ensure the file is encrypted with MODS_ENCRYPTION_KEY (not JWT encryption).`);
-                                    const corsHeaders = createCORSHeaders(request, {
-                                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                                    });
-                                    return new Response(JSON.stringify(rfcError), {
-                                        status: 400,
-                                        headers: {
-                                            'Content-Type': 'application/problem+json',
-                                            ...Object.fromEntries(corsHeaders.entries()),
-                                        },
-                                    });
-                                }
-                                
-                                fileSize = decryptedBytes.length;
-                                fileHash = await calculateStrixunHash(decryptedBytes, env);
-                                // Determine version from first byte (4 or 5)
-                                encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
-                            } else {
-                                // Legacy JSON encrypted format - not supported
-                                const rfcError = createError(request, 400, 'Unsupported Format', 'Legacy JSON encryption format is not supported for variant files. Please re-upload the file using shared key encryption (binary format v4 or v5).');
-                                const corsHeaders = createCORSHeaders(request, {
-                                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                                });
-                                return new Response(JSON.stringify(rfcError), {
-                                    status: 400,
-                                    headers: {
-                                        'Content-Type': 'application/problem+json',
-                                        ...Object.fromEntries(corsHeaders.entries()),
-                                    },
-                                });
-                            }
-                        } catch (error) {
-                            const errorMsg = error instanceof Error ? error.message : String(error);
-                            const rfcError = createError(request, 400, 'Encryption Validation Failed', `Failed to validate variant file encryption: ${errorMsg}`);
-                            const corsHeaders = createCORSHeaders(request, {
-                                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                            });
-                            return new Response(JSON.stringify(rfcError), {
-                                status: 400,
-                                headers: {
-                                    'Content-Type': 'application/problem+json',
-                                    ...Object.fromEntries(corsHeaders.entries()),
-                                },
-                            });
-                        }
-                        
-                        // CRITICAL: Delete any existing variant files for this variantId before storing the new one
-                        // This ensures we don't leave orphaned files when the extension changes
-                        const commonExtensions = ['zip', 'jar', 'mod', 'dat', 'json'];
-                        for (const ext of commonExtensions) {
-                            try {
-                                const oldVariantKey = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/variants/${variant.variantId}.${ext}`);
-                                const oldFile = await env.MODS_R2.get(oldVariantKey);
-                                if (oldFile) {
-                                    // Check if this file belongs to this variant by checking metadata
-                                    const oldMetadata = oldFile.customMetadata;
-                                    if (oldMetadata?.variantId === variant.variantId) {
-                                        console.log('[UpdateMod] Deleting old variant file:', oldVariantKey);
-                                        await env.MODS_R2.delete(oldVariantKey);
-                                    }
-                                }
-                            } catch (error) {
-                                // Ignore errors when deleting old files (file might not exist)
-                                console.log('[UpdateMod] Could not delete old variant file (may not exist):', error);
-                            }
-                        }
-                        
-                        // Also try to delete using the variant's existing fileUrl if available
-                        if (variant.fileUrl) {
-                            try {
-                                const url = new URL(variant.fileUrl);
-                                const oldKey = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
-                                const oldFile = await env.MODS_R2.get(oldKey);
-                                if (oldFile) {
-                                    const oldMetadata = oldFile.customMetadata;
-                                    if (oldMetadata?.variantId === variant.variantId) {
-                                        console.log('[UpdateMod] Deleting old variant file from fileUrl:', oldKey);
-                                        await env.MODS_R2.delete(oldKey);
-                                    }
-                                }
-                            } catch (error) {
-                                // Ignore errors - fileUrl might be invalid or file might not exist
-                                console.log('[UpdateMod] Could not delete variant file from fileUrl:', error);
-                            }
-                        }
-                        
-                        // Store variant file in R2
-                        const variantR2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/variants/${variant.variantId}.${extensionForR2}`);
-                        
-                        // Add R2 source metadata
-                        const r2SourceInfo = getR2SourceInfo(env, request);
-                        console.log('[UpdateMod] Variant file R2 storage source:', r2SourceInfo);
-                        
-                        await env.MODS_R2.put(variantR2Key, fileBytes, {
-                            httpMetadata: {
-                                contentType: 'application/octet-stream', // Binary encrypted format
-                                cacheControl: 'private, no-cache',
-                            },
-                            customMetadata: addR2SourceMetadata({
-                                modId,
-                                variantId: variant.variantId,
-                                uploadedBy: auth.customerId,
-                                uploadedAt: now,
-                                encrypted: 'true',
-                                encryptionFormat: encryptionFormat, // 'binary-v4' or 'binary-v5' - CRITICAL for download handler
-                                originalFileName: originalFileName, // Original filename without .encrypted
-                                originalContentType: 'application/zip', // Original file type
-                                sha256: fileHash, // Hash of decrypted file for verification
-                            }, env, request),
-                        });
-                        
-                        // Generate download URL
-                        const downloadUrl = env.MODS_PUBLIC_URL 
-                            ? `${env.MODS_PUBLIC_URL}/${variantR2Key}`
-                            : `https://pub-${(env.MODS_R2 as any).id}.r2.dev/${variantR2Key}`;
-                        
-                        // Update variant metadata with file info (use original filename, not encrypted filename)
-                        variant.fileUrl = downloadUrl;
-                        variant.r2Key = variantR2Key; // Store R2 key for reliable lookup
-                        variant.fileName = originalFileName;
-                        variant.fileSize = fileSize; // Use decrypted file size
-                        variant.updatedAt = now;
-                        
-                        // CRITICAL: Reset download counter when variant file is replaced
-                        // This ensures accurate tracking - old downloads don't count for the new file
-                        variant.downloads = 0;
-                        console.log('[UpdateMod] Reset download counter for variant (file replaced):', {
-                            variantId: variant.variantId,
-                            variantName: variant.name,
-                            previousDownloads: variant.downloads
-                        });
-                        
-                        console.log('[UpdateMod] Variant file uploaded:', {
-                            variantId: variant.variantId,
-                            fileName: originalFileName,
-                            fileSize: fileSize,
-                            encryptedSize: fileBytes.length,
-                            encryptionFormat,
-                            r2Key: variantR2Key,
-                        });
-                    } catch (error) {
-                        console.error(`[UpdateMod] Variant file upload error for ${variant.variantId}:`, error);
-                        // If error is already a Response (from validation), return it
-                        if (error instanceof Response) {
-                            return error;
-                        }
-                        // Otherwise, return error response
-                        const errorMsg = error instanceof Error ? error.message : String(error);
-                        const rfcError = createError(request, 400, 'Variant Upload Failed', `Failed to upload variant file for ${variant.variantId}: ${errorMsg}`);
-                        const corsHeaders = createCORSHeaders(request, {
-                            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                        });
-                        return new Response(JSON.stringify(rfcError), {
-                            status: 400,
-                            headers: {
-                                'Content-Type': 'application/problem+json',
-                                ...Object.fromEntries(corsHeaders.entries()),
-                            },
-                        });
+                if (!variantFile) continue; // No file for this variant, skip
+                
+                console.log('[UpdateMod] Processing variant file upload:', {
+                    variantId: variant.variantId,
+                    fileName: variantFile.name,
+                    size: variantFile.size
+                });
+                
+                try {
+                    // Create FormData for version upload
+                    const variantFormData = new FormData();
+                    variantFormData.append('file', variantFile);
+                    
+                    // Generate version number
+                    const variantVersionsListKey = getCustomerKey(auth.customerId, `variant_${variant.variantId}_versions`);
+                    const existingVersions = await env.MODS_KV.get(variantVersionsListKey, { type: 'json' }) as string[] | null;
+                    const versionCount = existingVersions ? existingVersions.length : 0;
+                    const newVersionNumber = versionCount > 0 ? `1.0.${versionCount}` : '1.0.0';
+                    
+                    const variantMetadata = {
+                        version: newVersionNumber,
+                        changelog: 'Uploaded via mod update',
+                        gameVersions: [],
+                        dependencies: []
+                    };
+                    variantFormData.append('metadata', JSON.stringify(variantMetadata));
+                    
+                    // Create request - forward HttpOnly cookie for authentication
+                    const headers = new Headers();
+                    const cookieHeader = request.headers.get('Cookie');
+                    if (cookieHeader) headers.set('Cookie', cookieHeader);
+                    
+                    const variantUploadRequest = new Request(request.url, {
+                        method: 'POST',
+                        headers: headers,
+                        body: variantFormData
+                    });
+                    
+                    // Upload file
+                    const uploadResponse = await handleUploadVersion(
+                        variantUploadRequest,
+                        env,
+                        modId,
+                        auth,
+                        variant.variantId
+                    );
+                    
+                    // Check if upload succeeded
+                    if (uploadResponse.status !== 201) {
+                        const errorText = await uploadResponse.text();
+                        throw new Error(`Upload failed with status ${uploadResponse.status}: ${errorText}`);
                     }
+                    
+                    // Parse response to get versionId
+                    const uploadResult = await uploadResponse.json() as { version?: { versionId?: string } };
+                    if (!uploadResult.version?.versionId) {
+                        throw new Error('Upload response missing versionId');
+                    }
+                    
+                    // Record successful upload
+                    uploadResults.push({
+                        variantId: variant.variantId,
+                        versionId: uploadResult.version.versionId,
+                        success: true
+                    });
+                    
+                    console.log('[UpdateMod] Variant file uploaded successfully:', {
+                        variantId: variant.variantId,
+                        versionId: uploadResult.version.versionId
+                    });
+                    
+                } catch (uploadError: any) {
+                    // Record failed upload
+                    uploadResults.push({
+                        variantId: variant.variantId,
+                        versionId: '',
+                        success: false,
+                        error: uploadError.message
+                    });
+                    
+                    console.error('[UpdateMod] Variant file upload failed:', {
+                        variantId: variant.variantId,
+                        error: uploadError.message
+                    });
+                    
+                    // ROLLBACK: Mark R2 files for deletion and clean up KV records
+                    console.warn('[UpdateMod] Rolling back previously successful uploads...');
+                    const rollbackErrors: string[] = [];
+                    const { markR2FileForDeletion } = await import('../../utils/r2-deletion.js');
+                    
+                    for (const successfulUpload of uploadResults.filter(r => r.success)) {
+                        try {
+                            // Get the version to find its R2 key
+                            const versionKey = getCustomerKey(auth.customerId, `version_${successfulUpload.versionId}`);
+                            const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as { r2Key?: string } | null;
+                            
+                            // Mark R2 file for deletion (will be cleaned up by cron after 5 days)
+                            if (version?.r2Key) {
+                                const marked = await markR2FileForDeletion(env.MODS_R2, version.r2Key);
+                                if (!marked) {
+                                    console.warn('[UpdateMod] Failed to mark R2 file for deletion:', version.r2Key);
+                                }
+                            }
+                            
+                            // Delete the version from KV
+                            await env.MODS_KV.delete(versionKey);
+                            
+                            // Remove from variant's version list
+                            const variantVersionsListKey = getCustomerKey(auth.customerId, `variant_${successfulUpload.variantId}_versions`);
+                            const versionsList = await env.MODS_KV.get(variantVersionsListKey, { type: 'json' }) as string[] | null;
+                            if (versionsList) {
+                                const updatedList = versionsList.filter(id => id !== successfulUpload.versionId);
+                                await env.MODS_KV.put(variantVersionsListKey, JSON.stringify(updatedList));
+                            }
+                            
+                            console.log('[UpdateMod] Rolled back upload:', {
+                                variantId: successfulUpload.variantId,
+                                versionId: successfulUpload.versionId,
+                                r2FileMarked: !!version?.r2Key
+                            });
+                        } catch (rollbackError: any) {
+                            rollbackErrors.push(`Failed to rollback ${successfulUpload.variantId}: ${rollbackError.message}`);
+                            console.error('[UpdateMod] Rollback error:', rollbackError);
+                        }
+                    }
+                    
+                    // Return error with rollback status
+                    const errorMessage = rollbackErrors.length > 0
+                        ? `Failed to upload variant ${variant.variantId}: ${uploadError.message}. Rollback partially failed: ${rollbackErrors.join(', ')}`
+                        : `Failed to upload variant ${variant.variantId}: ${uploadError.message}. All previous uploads rolled back successfully.`;
+                    
+                    const rfcError = createError(
+                        request,
+                        500,
+                        'Variant Upload Failed',
+                        errorMessage
+                    );
+                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 500,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
                 }
             }
             
-            // Update mod.variants with the updated variant metadata
-            mod.variants = updateData.variants;
+            // PHASE 2: All uploads succeeded - update mod metadata
+            if (uploadResults.length > 0) {
+                for (const result of uploadResults) {
+                    if (result.success) {
+                        const variant = mod.variants.find(v => v.variantId === result.variantId);
+                        if (variant) {
+                            variant.currentVersionId = result.versionId;
+                            variant.updatedAt = new Date().toISOString();
+                        }
+                    }
+                }
+                
+                console.log('[UpdateMod] All variant uploads succeeded, metadata updated:', {
+                    uploadCount: uploadResults.length,
+                    successCount: uploadResults.filter(r => r.success).length
+                });
+            }
         }
         
         // Legacy base64 thumbnail support
@@ -680,8 +693,7 @@ export async function handleUpdateMod(
             }
         }
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify({ mod }), {
             status: 200,
@@ -698,8 +710,7 @@ export async function handleUpdateMod(
             'Failed to Update Mod',
             env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while updating the mod'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
             status: 500,
@@ -815,10 +826,16 @@ async function handleThumbnailBinaryUpload(
         });
         
         // Return API proxy URL using slug for consistency
+        // In dev, use localhost:8788 (mods-api worker port)
+        // In production, use MODS_PUBLIC_URL if set, otherwise derive from request
         const requestUrl = new URL(request.url);
-        const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
-            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8788'}`  // Local dev (mods-api runs on 8788)
-            : `https://mods-api.idling.app`;  // Production
+        let API_BASE_URL: string;
+        if (env.ENVIRONMENT === 'development') {
+            // Force localhost in dev - request.url has proxy target hostname
+            API_BASE_URL = 'http://localhost:8788';
+        } else {
+            API_BASE_URL = env.MODS_PUBLIC_URL || `${requestUrl.protocol}//${requestUrl.host}`;
+        }
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
         console.error('Thumbnail binary upload error:', error);
@@ -900,25 +917,20 @@ async function handleThumbnailUpload(
 
         // Return API proxy URL using slug (thumbnails should be served through API, not direct R2)
         // Slug is passed as parameter to avoid race condition
-        // Use request URL to determine base URL dynamically
+        // In dev, use localhost:8788 (mods-api worker port)
+        // In production, use MODS_PUBLIC_URL if set, otherwise derive from request
         const requestUrl = new URL(request.url);
-        const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
-            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8788'}`  // Local dev (mods-api runs on 8788)
-            : `https://mods-api.idling.app`;  // Production
+        let API_BASE_URL: string;
+        if (env.ENVIRONMENT === 'development') {
+            // Force localhost in dev - request.url has proxy target hostname
+            API_BASE_URL = 'http://localhost:8788';
+        } else {
+            API_BASE_URL = env.MODS_PUBLIC_URL || `${requestUrl.protocol}//${requestUrl.host}`;
+        }
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
         console.error('Thumbnail upload error:', error);
         throw error;
     }
-}
-
-interface Env {
-    MODS_KV: KVNamespace;
-    MODS_R2: R2Bucket;
-    MODS_PUBLIC_URL?: string;
-    ALLOWED_EMAILS?: string;
-    ALLOWED_ORIGINS?: string;
-    ENVIRONMENT?: string;
-    [key: string]: any;
 }
 

@@ -21,10 +21,9 @@ interface Env {
 }
 
 interface AuthResult {
-    userId: string;
-    email?: string;
     customerId: string | null;
     jwtToken: string;
+    // SECURITY: Email is NEVER included - use getCustomerEmail() utility when needed
 }
 
 /**
@@ -37,8 +36,7 @@ export async function handleUpdateCustomerById(
     auth: AuthResult,
     customerId: string
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
     });
 
     try {
@@ -116,8 +114,7 @@ export async function handleGetCustomer(
     auth: AuthResult,
     customerId?: string
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
     });
 
     try {
@@ -125,11 +122,11 @@ export async function handleGetCustomer(
         const targetCustomerId = customerId || auth.customerId;
         
         // Debug logging
-        console.log(`[Customer API] GET /customer/me - Auth: {
-  userId: '${auth.userId}',
-  customerId: '${auth.customerId}',
-  hasJWT: ${!!auth.jwtToken}
-}, targetCustomerId: '${targetCustomerId}'`);
+        // console.log(`[Customer API] GET /customer/me - Auth: {
+        //   userId: '${auth.userId}',
+        //   customerId: '${auth.customerId}',
+        //   hasJWT: ${!!auth.jwtToken}
+        // }, targetCustomerId: '${targetCustomerId}'`);
 
         if (!targetCustomerId) {
             const rfcError = createError(request, 404, 'Not Found', 'Customer not found. Customer ID is required.');
@@ -202,7 +199,7 @@ export async function handleGetCustomer(
                 customer.updatedAt = new Date().toISOString();
                 await storeCustomer(customer.customerId, customer, env);
                 
-                console.log(`[Customer API] Generated and set displayName "${customerDisplayName}" for customer ${customer.customerId}`);
+                // console.log(`[Customer API] Generated and set displayName "${customerDisplayName}" for customer ${customer.customerId}`);
             } catch (error) {
                 console.error(`[Customer API] Failed to generate displayName for customer ${customer.customerId}:`, error);
                 // Don't throw - return customer without displayName rather than failing the request
@@ -252,8 +249,7 @@ export async function handleCreateCustomer(
     env: Env,
     auth: AuthResult
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
     });
 
     try {
@@ -290,13 +286,13 @@ export async function handleCreateCustomer(
         // CRITICAL: displayName is REQUIRED - generate if not provided
         let finalDisplayName = displayName;
         if (!finalDisplayName || finalDisplayName.trim() === '') {
-            const { generateUniqueDisplayName, reserveDisplayName } = await import('@strixun/otp-auth-service/services/nameGenerator');
+            const { generateUniqueDisplayName, reserveDisplayName } = await import('../services/nameGenerator.js');
             const nameGeneratorEnv = {
-                OTP_AUTH_KV: env.CUSTOMER_KV,
+                OTP_AUTH_KV: env.CUSTOMER_KV, // Use CUSTOMER_KV for display name storage
             } as { OTP_AUTH_KV: KVNamespace; [key: string]: any };
             
             finalDisplayName = await generateUniqueDisplayName({
-                maxAttempts: 10,
+                maxAttempts: 50,
                 pattern: 'random'
             }, nameGeneratorEnv);
             
@@ -378,8 +374,7 @@ export async function handleGetCustomerByEmail(
     auth: AuthResult,
     email: string
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
     });
 
     try {
@@ -439,8 +434,7 @@ export async function handleUpdateCustomer(
     env: Env,
     auth: AuthResult
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
     });
 
     try {

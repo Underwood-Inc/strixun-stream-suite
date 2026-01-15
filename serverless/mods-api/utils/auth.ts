@@ -32,24 +32,6 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
     return payload;
 }
 
-/**
- * Check if email is in allowed list
- * @param email - Email address to check
- * @param env - Worker environment
- * @returns True if email is allowed (or no whitelist configured)
- */
-export function isEmailAllowed(email: string | undefined, env: Env): boolean {
-    if (!email) return false;
-    
-    // If no whitelist is configured, allow all authenticated customers
-    if (!env.ALLOWED_EMAILS) {
-        return true;
-    }
-    
-    // Parse comma-separated list of allowed emails
-    const allowedEmails = env.ALLOWED_EMAILS.split(',').map(e => e.trim().toLowerCase());
-    return allowedEmails.includes(email.toLowerCase());
-}
 
 /**
  * Fetch customer email from auth service if missing from JWT
@@ -95,14 +77,38 @@ async function fetchEmailFromAuthService(token: string, env: Env): Promise<strin
  */
 export async function authenticateRequest(request: Request, env: Env): Promise<AuthResult | null> {
     try {
-        const authHeader = request.headers.get('Authorization');
-        console.debug(`[Auth] Authorization header check: hasHeader=${!!authHeader}, headerLength=${authHeader?.length || 0}, startsWithBearer=${authHeader?.startsWith('Bearer ') || false}, firstChars=${authHeader?.substring(0, 20) || 'none'}`);
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        let token: string | null = null;
+        
+        // PRIORITY 1: Check HttpOnly cookie (browser requests)
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            
+            if (authCookie) {
+                token = authCookie.substring('auth_token='.length).trim();
+                console.debug(`[Auth] Token from HttpOnly cookie: tokenLength=${token.length}`);
+            }
+        }
+        
+        // PRIORITY 2: Check Authorization header (service-to-service calls)
+        // This supports JWT tokens from ServiceClient and other internal services
+        if (!token) {
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring('Bearer '.length).trim();
+                console.debug(`[Auth] Token from Authorization header: tokenLength=${token.length}`);
+            }
+        }
+        
+        // No authentication provided
+        if (!token) {
+            console.debug('[Auth] No authentication found - not authenticated');
             return null;
         }
 
         // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authHeader.substring(7).trim();
+        token = token.trim();
         const jwtSecret = getJWTSecret(env);
         console.debug(`[Auth] Verifying JWT: tokenLength=${token.length}, secretLength=${jwtSecret.length}, secretFirstChars=${jwtSecret.substring(0, 20)}`);
         const payload = await verifyJWT(token, jwtSecret);
@@ -127,9 +133,9 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
 
         // CRITICAL: payload.sub IS the customerId (set by OTP auth service)
         // NO separate userId exists - customerId is the ONLY identity
+        // SECURITY: Email is NEVER returned in auth object - use getCustomerEmail() utility when needed
         return {
             customerId: payload.sub, // PRIMARY IDENTITY - MANDATORY
-            email: email,
             jwtToken: token // Include JWT token for encryption
         };
     } catch (error) {
@@ -146,10 +152,10 @@ export type { JWTPayload } from '@strixun/api-framework/jwt';
 
 /**
  * Auth result interface
+ * SECURITY: Email is NEVER included - use getCustomerEmail() utility when needed
  */
 export interface AuthResult {
     customerId: string; // PRIMARY IDENTITY - MANDATORY
-    email?: string;
     jwtToken: string;
 }
 
@@ -158,7 +164,6 @@ export interface AuthResult {
  */
 interface Env {
     JWT_SECRET?: string;
-    ALLOWED_EMAILS?: string; // Comma-separated list of allowed email addresses
     AUTH_API_URL?: string; // URL of the auth service (for fetching email if missing from JWT)
     [key: string]: any;
 }

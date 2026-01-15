@@ -54,7 +54,7 @@ describe('Authentication Flow Integration', () => {
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                 },
             });
 
@@ -63,7 +63,7 @@ describe('Authentication Flow Integration', () => {
             // Step 3: Verify authentication succeeded
             expect(auth).not.toBeNull();
             expect(auth?.customerId).toBe(userId); // customerId comes from JWT sub field
-            expect(auth?.email).toBe(email);
+            // NOTE: email is NOT included in auth response for privacy/security
             expect(auth?.jwtToken).toBe(token);
         });
 
@@ -98,7 +98,7 @@ describe('Authentication Flow Integration', () => {
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${expiredToken}`,
+                    'Cookie': `auth_token=${expiredToken}`,
                 },
             });
 
@@ -134,7 +134,7 @@ describe('Authentication Flow Integration', () => {
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                 },
             });
 
@@ -162,7 +162,7 @@ describe('Authentication Flow Integration', () => {
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                 },
             });
 
@@ -195,7 +195,7 @@ describe('Authentication Flow Integration', () => {
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                 },
             });
 
@@ -204,13 +204,13 @@ describe('Authentication Flow Integration', () => {
             // Step 3: Verify API access is granted
             expect(auth).not.toBeNull();
             expect(auth?.customerId).toBe(userId); // customerId comes from JWT sub field
-            expect(auth?.email).toBe(email);
+            // NOTE: email is NOT included in auth response for privacy/security
 
             // Step 4: Verify token can be used for subsequent requests
             const secondRequest = new Request('https://example.com/api/mods/123', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Cookie': `auth_token=${token}`,
                 },
             });
 

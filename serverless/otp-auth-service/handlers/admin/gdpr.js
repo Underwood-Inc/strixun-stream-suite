@@ -3,7 +3,7 @@
  * Handles user data export, deletion, and audit logs
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getCustomerKey } from '../../services/customer.js';
 import { hashEmail } from '../../utils/crypto.js';
 import { logSecurityEvent } from '../../services/security.js';
@@ -21,7 +21,7 @@ export async function handleExportCustomerData(request, env, customerId, custome
         if (!customer) {
             return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -53,7 +53,7 @@ export async function handleExportCustomerData(request, env, customerId, custome
             message: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -71,7 +71,7 @@ export async function handleDeleteCustomerData(request, env, customerId, custome
         if (!customer) {
             return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -107,7 +107,7 @@ export async function handleDeleteCustomerData(request, env, customerId, custome
             success: true,
             message: 'Customer data deleted successfully'
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({
@@ -115,7 +115,7 @@ export async function handleDeleteCustomerData(request, env, customerId, custome
             message: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -160,7 +160,7 @@ export async function handleGetAuditLogs(request, env, customerId) {
             total: events.length,
             events: events.slice(0, 1000) // Limit to 1000 most recent
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({
@@ -168,7 +168,7 @@ export async function handleGetAuditLogs(request, env, customerId) {
             message: error.message
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }

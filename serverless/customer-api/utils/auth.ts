@@ -13,9 +13,9 @@ interface Env {
 }
 
 interface AuthResult {
-    customerId: string; // PRIMARY IDENTITY - we ONLY use customerId
-    email?: string;
+    customerId: string | null; // PRIMARY IDENTITY - we ONLY use customerId (null for service calls)
     jwtToken: string;
+    // SECURITY: Email is NEVER included - use getCustomerEmail() utility when needed
 }
 
 /**
@@ -36,33 +36,45 @@ export async function verifyJWT(token: string, secret: string): Promise<any | nu
 
 /**
  * Authenticate request and extract customer info
- * Uses JWT tokens only - all requests must be authenticated with JWT
+ * Supports BOTH HttpOnly cookies (browser) and Authorization header (service-to-service)
  * Returns auth object with customerId and jwtToken
  */
 export async function authenticateRequest(request: Request, env: Env): Promise<AuthResult | null> {
-    // JWT authentication only
     try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        let token: string | null = null;
+        
+        // PRIORITY 1: Check HttpOnly cookie (browser requests)
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            
+            if (authCookie) {
+                token = authCookie.substring('auth_token='.length).trim();
+            }
+        }
+        
+        // PRIORITY 2: Check Authorization header (service-to-service calls)
+        // This supports SUPER_ADMIN_API_KEY and SERVICE_API_KEY from ServiceClient
+        if (!token) {
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring('Bearer '.length).trim();
+            }
+        }
+        
+        // No authentication provided
+        if (!token) {
             return null;
         }
 
-        const token = authHeader.substring(7);
+        token = token.trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret);
 
         if (!payload || !payload.sub) {
             return null;
         }
-
-        // Debug logging
-        console.log(`[Customer API Auth] JWT payload extracted: {
-  sub: '${payload.sub}',
-  email: '${payload.email}',
-  customerId: '${payload.customerId || 'null'}',
-  iss: '${payload.iss}',
-  aud: '${payload.aud}'
-}`);
 
         // CRITICAL: payload.sub IS the customerId (not userId - we don't have users)
         const customerId = payload.customerId || payload.sub;
@@ -74,7 +86,6 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
         
         return {
             customerId,
-            email: payload.email,
             jwtToken: token // Include JWT token for encryption
         };
     } catch (error) {

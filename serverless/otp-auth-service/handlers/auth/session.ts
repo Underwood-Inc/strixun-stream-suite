@@ -4,10 +4,9 @@
  */
 
 import { getCustomerKey } from '../../services/customer.js';
-import { getCorsHeaders } from '../../utils/cors.js';
+import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getAuthCacheHeaders } from '../../utils/cache-headers.js';
 import { createJWT, getJWTSecret, hashEmail, verifyJWT } from '../../utils/crypto.js';
-import { storeIPSessionMapping, deleteIPSessionMapping } from '../../services/ip-session-index.js';
 import { getClientIP } from '../../utils/ip.js';
 import { createFingerprintHash } from '@strixun/api-framework';
 
@@ -49,23 +48,36 @@ interface JWTPayload {
  */
 export async function handleGetMe(request: Request, env: Env): Promise<Response> {
     try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return new Response(JSON.stringify({ error: 'Authorization header required' }), {
+        console.log('[handleGetMe] Starting request processing');
+        // ONLY check HttpOnly cookie - NO Authorization header fallback
+        const cookieHeader = request.headers.get('Cookie');
+        console.log('[handleGetMe] Cookie header:', cookieHeader ? 'present' : 'missing');
+        if (!cookieHeader) {
+            console.log('[handleGetMe] Returning 401 - no cookie header');
+            return new Response(JSON.stringify({ error: 'Authentication required (HttpOnly cookie)' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authHeader.substring(7).trim();
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        if (!authCookie) {
+            return new Response(JSON.stringify({ error: 'Authentication required (auth_token cookie missing)' }), {
+                status: 401,
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+
+        const token = authCookie.substring('auth_token='.length).trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
         
         if (!payload) {
+            console.log('[handleGetMe] Returning 401 - invalid or expired token');
             return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -76,7 +88,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
         if (!customerId) {
             return new Response(JSON.stringify({ error: 'Invalid token: missing customer ID' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -84,14 +96,14 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
         if (!payload.sub) {
             return new Response(JSON.stringify({ error: 'Invalid token: missing subject' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
         if (payload.sub !== customerId) {
             return new Response(JSON.stringify({ error: 'Invalid token: subject mismatch' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -102,7 +114,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             // Session was deleted (customer logged out)
             return new Response(JSON.stringify({ error: 'Session not found. Please log in again.' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -112,7 +124,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             // Session expired
             return new Response(JSON.stringify({ error: 'Session expired. Please log in again.' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -125,7 +137,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
                 detail: 'JWT token must contain iss claim'
             }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -136,7 +148,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
                 detail: 'JWT token must contain aud claim'
             }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -155,12 +167,18 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             aud: payload.aud,
             // Custom Claims (from JWT only)
             isSuperAdmin: payload.isSuperAdmin ?? false, // Explicit false if missing
+            // CSRF token for state-changing operations (POST, PUT, DELETE)
+            csrf: payload.csrf || null, // Extract from JWT payload for HttpOnly cookie compatibility
         };
         
         // OpenID Connect UserInfo Response (RFC 7662)
+        console.log('[handleGetMe] Returning SUCCESS 200 with customer data:', {
+            customerId: responseData.customerId,
+            isSuperAdmin: responseData.isSuperAdmin
+        });
         return new Response(JSON.stringify(responseData), {
             headers: { 
-                ...getCorsHeaders(env, request), 
+                ...getCorsHeadersRecord(env, request), 
                 'Content-Type': 'application/json',
                 ...getAuthCacheHeaders(),
                 'Pragma': 'no-cache',
@@ -168,6 +186,8 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
         });
     } catch (error: any) {
         // RFC 7807 Problem Details for HTTP APIs
+        console.error('[handleGetMe] EXCEPTION caught:', error instanceof Error ? error.message : String(error));
+        console.error('[handleGetMe] Error stack:', error instanceof Error ? error.stack : 'No stack');
         return new Response(JSON.stringify({ 
             type: 'https://tools.ietf.org/html/rfc7231#section-6.6.1',
             title: 'Internal Server Error',
@@ -177,7 +197,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
         }), {
             status: 500,
             headers: { 
-                ...getCorsHeaders(env, request), 
+                ...getCorsHeadersRecord(env, request), 
                 'Content-Type': 'application/problem+json',
             },
         });
@@ -190,23 +210,80 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
  */
 export async function handleLogout(request: Request, env: Env): Promise<Response> {
     try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return new Response(JSON.stringify({ error: 'Authorization header required' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
+        // Clear HttpOnly cookie for current domain only
+        const isProduction = env.ENVIRONMENT === 'production';
+        
+        // Extract current request's root domain
+        const url = new URL(request.url);
+        const hostname = url.hostname;
+        
+        // Determine cookie domain based on current hostname
+        let cookieDomain: string;
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+            cookieDomain = 'localhost';
+        } else {
+            const parts = hostname.split('.');
+            const rootDomain = parts.slice(-2).join('.');
+            cookieDomain = `.${rootDomain}`;
         }
         
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authHeader.substring(7).trim();
+        const clearCookieParts = isProduction ? [
+            'auth_token=',
+            `Domain=${cookieDomain}`,
+            'Path=/',
+            'HttpOnly',
+            'Secure',
+            'SameSite=Lax',
+            'Max-Age=0'
+        ] : [
+            'auth_token=',
+            `Domain=${cookieDomain}`,
+            'Path=/',
+            'HttpOnly',
+            'SameSite=Lax',
+            'Max-Age=0'
+        ];
+        
+        const clearCookie = clearCookieParts.join('; ');
+
+        // ONLY check HttpOnly cookie - NO Authorization header fallback
+        const cookieHeader = request.headers.get('Cookie');
+        if (!cookieHeader) {
+            return new Response(JSON.stringify({ success: true, message: 'Logged out (no active session)' }), {
+                status: 200,
+                headers: {
+                    ...getCorsHeadersRecord(env, request),
+                    'Content-Type': 'application/json',
+                    'Set-Cookie': clearCookie,
+                },
+            });
+        }
+
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        const authCookie = cookies.find(c => c.startsWith('auth_token='));
+        if (!authCookie) {
+            return new Response(JSON.stringify({ success: true, message: 'Logged out (no auth cookie)' }), {
+                status: 200,
+                headers: {
+                    ...getCorsHeadersRecord(env, request),
+                    'Content-Type': 'application/json',
+                    'Set-Cookie': clearCookie,
+                },
+            });
+        }
+
+        const token = authCookie.substring('auth_token='.length).trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
-        
+
         if (!payload) {
-            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            return new Response(JSON.stringify({ success: true, message: 'Logged out (invalid/expired token)' }), {
+                status: 200,
+                headers: {
+                    ...getCorsHeadersRecord(env, request),
+                    'Content-Type': 'application/json',
+                    'Set-Cookie': clearCookie,
+                },
             });
         }
         
@@ -215,7 +292,7 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
         if (!customerId) {
             return new Response(JSON.stringify({ error: 'Invalid token: missing customer ID' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -235,28 +312,23 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             // Get session to find IP address for cleanup
             const sessionData = await env.OTP_AUTH_KV.get(sessionKey, { type: 'json' }) as SessionData | null;
             
-            // Delete IP-to-session mapping for this customer from all IPs
-            // We need to delete from the current session's IP, but also check if there are other sessions
-            // Since we can't list all IPs, we'll delete from the known IP and rely on session restore
-            // to validate sessions exist before restoring
-            if (sessionData?.ipAddress) {
-                // Delete IP-to-session mapping for this customer from this IP
-                await deleteIPSessionMapping(sessionData.ipAddress, customerId, env);
-            }
-            
-            // CRITICAL: Delete the session itself - this prevents /auth/me and session restore
-            // from working with this session
+            // CRITICAL: Delete the session itself - this prevents /auth/me from working with this session
             await env.OTP_AUTH_KV.delete(sessionKey);
             
             // CRITICAL: Do NOT log OTP email - it's sensitive data
             console.log(`[Logout] ✓ Deleted session for customer: ${customerId}`);
         }
         
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
             success: true,
             message: 'Logged out successfully'
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            status: 200,
+            headers: {
+                ...getCorsHeadersRecord(env, request),
+                'Content-Type': 'application/json',
+                'Set-Cookie': clearCookie,
+            },
         });
     } catch (error: any) {
         return new Response(JSON.stringify({ 
@@ -264,7 +336,7 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             message: error.message 
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -281,7 +353,7 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         if (!token) {
             return new Response(JSON.stringify({ error: 'Token required' }), {
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -291,7 +363,7 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         if (!payload) {
             return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -305,7 +377,7 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         if (blacklisted) {
             return new Response(JSON.stringify({ error: 'Token has been revoked' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -318,7 +390,7 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         if (!customerId) {
             return new Response(JSON.stringify({ error: 'Invalid token: missing customer ID' }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -365,29 +437,12 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         
         await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(sessionData), { expirationTtl: 25200 }); // 7 hours
         
-        // Update IP-to-session mapping (delete old IP if changed, add new IP)
-        if (existingSession?.ipAddress && existingSession.ipAddress !== sessionIP) {
-            await deleteIPSessionMapping(existingSession.ipAddress, customerId, env);
-        }
-        
-        if (sessionIP !== 'unknown') {
-            await storeIPSessionMapping(
-                sessionIP,
-                customerId, // Use customerId, not customerId
-                customerId,
-                sessionKey,
-                expiresAt.toISOString(),
-                payload.email,
-                env
-            );
-        }
-        
         return new Response(JSON.stringify({ 
             success: true,
             token: newToken,
             expiresAt: expiresAt.toISOString(),
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error: any) {
         return new Response(JSON.stringify({ 
@@ -395,7 +450,7 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
             message: error.message 
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });
     }
 }

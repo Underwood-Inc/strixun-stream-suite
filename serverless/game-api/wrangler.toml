@@ -2,7 +2,7 @@
 # Dedicated worker for idle game API endpoints
 
 name = "strixun-game-api"
-main = "worker.ts"
+main = "dist/worker.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
@@ -49,9 +49,9 @@ binding = "GAME_KV"
 id = "cc95b32546e14dfbb6c36f8e3d96f13f"
 
 # Default routes (production)
-routes = [
-  { pattern = "game.idling.app/*", zone_name = "idling.app" }
-]
+[[routes]]
+pattern = "game.idling.app/*"
+zone_name = "idling.app"
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard ΓåÆ Workers & Pages ΓåÆ strixun-game-api

@@ -21,7 +21,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -47,7 +47,8 @@ jobs:
       - name: Run Game API Tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/game-api
-        run: pnpm test
+        # CI-only: ensure workspace deps are built so workspace:* package exports resolve.
+        run: pnpm --filter "@strixun/types" run build && pnpm --filter "@strixun/service-client" run build && pnpm --filter "@strixun/schemas" run build && pnpm --filter "@strixun/api-framework" run build && pnpm test
       
       - name: Generate coverage report
         if: steps.check_test.outputs.has_tests == 'true'
@@ -87,7 +88,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.15.1
+          version: 10.28.0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -99,6 +100,11 @@ jobs:
       - name: Install all dependencies
         working-directory: .
         run: pnpm install --frozen-lockfile
+      
+      - name: Build Worker
+        working-directory: serverless/game-api
+        # CI-only: ensure workspace deps are built before bundling.
+        run: pnpm --filter "@strixun/types" run build && pnpm --filter "@strixun/service-client" run build && pnpm --filter "@strixun/schemas" run build && pnpm --filter "@strixun/api-framework" run build && pnpm run build:worker
       
       - name: Deploy to Cloudflare Workers
         id: deploy

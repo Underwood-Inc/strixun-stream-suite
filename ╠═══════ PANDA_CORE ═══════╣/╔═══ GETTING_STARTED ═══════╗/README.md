@@ -19,7 +19,6 @@ This section contains all documentation needed to get started with Strixun Strea
 
 ### Environment Setup
 - **ENVIRONMENT_SETUP.md** - Complete environment variable configuration guide
-- **ENV_SETUP_GUIDE.md** - Quick reference for .env file locations
 
 ### Installation
 - **INSTALLATION.md** - Step-by-step installation instructions

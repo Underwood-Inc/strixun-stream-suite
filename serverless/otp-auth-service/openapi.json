@@ -24,8 +24,8 @@
       "description": "OTP-based authentication endpoints"
     },
     {
-      "name": "User",
-      "description": "User information and session management"
+      "name": "Customer",
+      "description": "Customer information and session management"
     },
     {
       "name": "Admin",
@@ -157,9 +157,9 @@
     },
     "/auth/me": {
       "get": {
-        "tags": ["User"],
-        "summary": "Get current user",
-        "description": "Get information about the currently authenticated user",
+        "tags": ["Customer"],
+        "summary": "Get current customer",
+        "description": "Get information about the currently authenticated customer",
         "operationId": "getMe",
         "security": [
           {
@@ -168,11 +168,11 @@
         ],
         "responses": {
           "200": {
-            "description": "User information",
+            "description": "Customer information",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/User"
+                  "$ref": "#/components/schemas/Customer"
                 }
               }
             }
@@ -192,7 +192,7 @@
     },
     "/auth/logout": {
       "post": {
-        "tags": ["User"],
+        "tags": ["Customer"],
         "summary": "Logout",
         "description": "Logout and revoke the current access token",
         "operationId": "logout",
@@ -227,7 +227,7 @@
     },
     "/auth/refresh": {
       "post": {
-        "tags": ["User"],
+        "tags": ["Customer"],
         "summary": "Refresh token",
         "description": "Refresh an expiring access token",
         "operationId": "refreshToken",
@@ -508,7 +508,7 @@
           "email": {
             "type": "string",
             "format": "email",
-            "example": "user@example.com"
+            "example": "customer@example.com"
           }
         }
       },
@@ -542,7 +542,7 @@
           "email": {
             "type": "string",
             "format": "email",
-            "example": "user@example.com"
+            "example": "customer@example.com"
           },
           "otp": {
             "type": "string",
@@ -574,41 +574,17 @@
           },
           "sub": {
             "type": "string",
-            "description": "Subject (user ID)",
-            "example": "user_abc123"
+            "description": "Subject (customer ID)",
+            "example": "cust_abc123"
           },
           "email": {
             "type": "string",
             "format": "email",
-            "example": "user@example.com"
+            "example": "customer@example.com"
           },
           "email_verified": {
             "type": "boolean",
             "example": true
-          }
-        }
-      },
-      "User": {
-        "type": "object",
-        "properties": {
-          "sub": {
-            "type": "string",
-            "description": "Subject (user ID)"
-          },
-          "email": {
-            "type": "string",
-            "format": "email"
-          },
-          "email_verified": {
-            "type": "boolean"
-          },
-          "iss": {
-            "type": "string",
-            "description": "Issuer"
-          },
-          "aud": {
-            "type": "string",
-            "description": "Audience (customer ID)"
           }
         }
       },

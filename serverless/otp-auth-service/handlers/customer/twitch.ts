@@ -22,6 +22,7 @@ interface AuthResult {
   error?: string;
   customerId?: string;
   email?: string;
+  jwtToken?: string;
 }
 
 interface TwitchTokenInfo {
@@ -52,13 +53,20 @@ async function authenticateRequest(
   request: Request,
   env: CloudflareEnv
 ): Promise<AuthResult> {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return { authenticated: false, status: 401, error: 'Authorization header required' };
+  // ONLY check HttpOnly cookie - NO Authorization header fallback
+  const cookieHeader = request.headers.get('Cookie');
+  if (!cookieHeader) {
+    return { authenticated: false, status: 401, error: 'Authentication required. Please authenticate with HttpOnly cookie.' };
+  }
+
+  const cookies = cookieHeader.split(';').map(c => c.trim());
+  const authCookie = cookies.find(c => c.startsWith('auth_token='));
+  if (!authCookie) {
+    return { authenticated: false, status: 401, error: 'Authentication required. Please authenticate with HttpOnly cookie.' };
   }
 
   // CRITICAL: Trim token to ensure it matches the token used for encryption
-  const token = authHeader.substring(7).trim();
+  const token = authCookie.substring('auth_token='.length).trim();
   const jwtSecret = getJWTSecret(env);
   const payload = await verifyJWT(token, jwtSecret);
 
@@ -69,6 +77,7 @@ async function authenticateRequest(
   return {
     authenticated: true,
     customerId: (payload as any).customerId || (payload as any).sub,
+    jwtToken: token,
     email: (payload as any).email,
   };
 }
@@ -265,8 +274,8 @@ export async function handleAttachTwitchAccount(
     const finalTwitchUserId = twitchUserId || twitchInfo.twitchUserId;
     const finalTwitchUsername = twitchUsername || twitchInfo.twitchUsername;
 
-    // CRITICAL: Trim token to ensure it matches the token used for encryption
-    const authToken = request.headers.get('Authorization')?.substring(7).trim() || '';
+    // CRITICAL: Use JWT token from auth result (already extracted from HttpOnly cookie)
+    const authToken = auth.jwtToken || '';
     const encryptedToken = await encryptToken(accessToken, authToken, env);
 
     const emailHash = await hashEmail(auth.email!);

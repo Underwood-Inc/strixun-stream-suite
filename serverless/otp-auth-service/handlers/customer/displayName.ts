@@ -29,19 +29,28 @@ interface AuthResult {
     error?: string;
     customerId?: string;
     email?: string;
+    jwtToken?: string;
 }
 
 /**
  * Verify JWT token and extract customer info
+ * ONLY checks HttpOnly cookie - NO Authorization header fallback
  */
 async function authenticateRequest(request: Request, env: Env): Promise<AuthResult> {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return { authenticated: false, status: 401, error: 'Authorization header required' };
+    // ONLY check HttpOnly cookie - NO Authorization header fallback
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) {
+        return { authenticated: false, status: 401, error: 'Authentication required. Please authenticate with HttpOnly cookie.' };
+    }
+
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    const authCookie = cookies.find(c => c.startsWith('auth_token='));
+    if (!authCookie) {
+        return { authenticated: false, status: 401, error: 'Authentication required. Please authenticate with HttpOnly cookie.' };
     }
 
     // CRITICAL: Trim token to ensure it matches the token used for encryption
-    const token = authHeader.substring(7).trim();
+    const token = authCookie.substring('auth_token='.length).trim();
     
     // Import JWT utilities from crypto.js
     const { verifyJWT, getJWTSecret } = await import('../../utils/crypto.js');
@@ -56,6 +65,7 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
         authenticated: true,
         customerId: payload.customerId || payload.userId || payload.sub,
         email: payload.email,
+        jwtToken: token,
     };
 }
 
@@ -191,12 +201,12 @@ export async function handleUpdateDisplayName(request: Request, env: Env): Promi
 
         // Update display name via customer-api
         // This updates both customer record and preferences in CUSTOMER_KV
-        const customerApiUrl = env.CUSTOMER_API_URL || 'http://localhost:8790';
+        const customerApiUrl = env.CUSTOMER_API_URL || (env.ENVIRONMENT === 'development' ? 'http://localhost:8790' : 'https://customer-api.idling.app');
         const updateResponse = await fetch(`${customerApiUrl}/customer/${auth.customerId}/display-name`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': request.headers.get('Authorization') || '',
+                'Cookie': request.headers.get('Cookie') || '',
             },
             body: JSON.stringify({ displayName: sanitized }),
         });
@@ -298,7 +308,7 @@ export async function handleRegenerateDisplayName(request: Request, env: Env): P
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': request.headers.get('Authorization') || '',
+                'Cookie': request.headers.get('Cookie') || '',
             },
             body: JSON.stringify({ displayName: newDisplayName }),
         });

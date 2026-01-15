@@ -1103,6 +1103,11 @@
                 <p>Simple REST API that works with any framework. React, Svelte, Vue, or vanilla JavaScript—we've got you covered.</p>
             </div>
             <div class="feature-card">
+                <div class="feature-icon">🍪</div>
+                <h3>True Single Sign-On</h3>
+                <p>Login once, authenticated everywhere. HttpOnly cookies provide seamless SSO across all subdomains with enterprise-grade XSS protection.</p>
+            </div>
+            <div class="feature-card">
                 <div class="feature-icon">≡</div>
                 <h3>Multi-Tenant Ready</h3>
                 <p>Built for SaaS applications. Complete customer isolation, per-tenant rate limiting, and usage analytics.</p>
@@ -1157,6 +1162,10 @@
                 <div class="security-item">
                     <h3>✓ JWT Tokens</h3>
                     <p>HMAC-SHA256 signed tokens with 7-hour expiration. Token blacklisting for secure logout.</p>
+                </div>
+                <div class="security-item">
+                    <h3>🍪 HttpOnly Cookie SSO</h3>
+                    <p>Secure, XSS-proof authentication cookies. Domain-wide SSO with automatic transmission, HTTPS-only, and SameSite protection.</p>
                 </div>
                 <div class="security-item">
                     <h3>ℹ Audit Logging</h3>
@@ -1328,7 +1337,8 @@
       const response = await fetch(\`\${API_URL}/auth/verify-otp\`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
+        body: JSON.stringify({ email, otp }),
+        credentials: 'include' // Send HttpOnly cookies
       });
       
       if (!response.ok) {
@@ -1336,17 +1346,15 @@
         throw new Error(error.detail || 'Invalid OTP');
       }
       
-      const data = await response.json();
-      localStorage.setItem('auth_token', data.token);
-      return data;
+      // HttpOnly cookie is set automatically by auth service
+      // No need to store token in localStorage!
+      return await response.json();
     }
 
     async function getCurrentUser() {
-      const token = localStorage.getItem('auth_token');
-      if (!token) return null;
-      
+      // HttpOnly cookie is sent automatically with credentials: 'include'
       const response = await fetch(\`\${API_URL}/auth/me\`, {
-        headers: { 'Authorization': \`Bearer \${token}\` }
+        credentials: 'include' // Send HttpOnly cookies
       });
       
       if (!response.ok) return null;
@@ -1417,8 +1425,13 @@
       document.getElementById('otp-error').textContent = '';
     }
 
-    function logout() {
-      localStorage.removeItem('auth_token');
+    async function logout() {
+      // Call logout endpoint to clear HttpOnly cookie
+      await fetch(\`\${API_URL}/auth/logout\`, {
+        method: 'POST',
+        credentials: 'include' // Send HttpOnly cookies
+      });
+      
       document.getElementById('login-form').style.display = 'block';
       document.getElementById('welcome').style.display = 'none';
       document.getElementById('email').value = '';
@@ -1467,28 +1480,22 @@ function LoginForm() {
   const [customer, setUser] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      getCurrentUser();
-    }
+    // Check auth on mount - HttpOnly cookie sent automatically
+    getCurrentUser();
   }, []);
 
   async function getCurrentUser() {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
-    
     try {
       const response = await fetch(\`\${API_URL}/auth/me\`, {
-        headers: { 'Authorization': \`Bearer \${token}\` }
+        credentials: 'include' // Send HttpOnly cookies
       });
       if (response.ok) {
         const customerData = await response.json();
         setUser(customerData);
-      } else {
-        localStorage.removeItem('auth_token');
       }
     } catch (err) {
-      localStorage.removeItem('auth_token');
+      // Not authenticated or error
+      setUser(null);
     }
   }
 
@@ -1535,12 +1542,14 @@ function LoginForm() {
       const response = await fetch(\`\${API_URL}/auth/verify-otp\`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
+        body: JSON.stringify({ email, otp }),
+        credentials: 'include' // Send HttpOnly cookies
       });
       
       const data = await response.json();
       if (response.ok) {
-        localStorage.setItem('auth_token', data.token);
+        // HttpOnly cookie is set automatically by auth service
+        // No need to store token in localStorage!
         setUser(data);
         setError('');
       } else {
@@ -1553,8 +1562,13 @@ function LoginForm() {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('auth_token');
+  const logout = async () => {
+    // Call logout endpoint to clear HttpOnly cookie
+    await fetch(\`\${API_URL}/auth/logout\`, {
+      method: 'POST',
+      credentials: 'include' // Send HttpOnly cookies
+    });
+    
     setUser(null);
     setEmail('');
     setOtp('');
@@ -1742,27 +1756,21 @@ export default LoginForm;</code></pre>
   const API_URL = 'https://auth.idling.app';
 
   onMount(async () => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      await getCurrentUser();
-    }
+    // Check auth on mount - HttpOnly cookie sent automatically
+    await getCurrentUser();
   });
 
   async function getCurrentUser() {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
-    
     try {
       const response = await fetch(\`\${API_URL}/auth/me\`, {
-        headers: { 'Authorization': \`Bearer \${token}\` }
+        credentials: 'include' // Send HttpOnly cookies
       });
       if (response.ok) {
         customer = await response.json();
-      } else {
-        localStorage.removeItem('auth_token');
       }
     } catch (err) {
-      localStorage.removeItem('auth_token');
+      // Not authenticated or error
+      customer = null;
     }
   }
 
@@ -1807,12 +1815,14 @@ export default LoginForm;</code></pre>
       const response = await fetch(\`\${API_URL}/auth/verify-otp\`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
+        body: JSON.stringify({ email, otp }),
+        credentials: 'include' // Send HttpOnly cookies
       });
       
       const data = await response.json();
       if (response.ok) {
-        localStorage.setItem('auth_token', data.token);
+        // HttpOnly cookie is set automatically by auth service
+        // No need to store token in localStorage!
         customer = data;
         error = '';
       } else {
@@ -1825,8 +1835,13 @@ export default LoginForm;</code></pre>
     }
   }
 
-  function logout() {
-    localStorage.removeItem('auth_token');
+  async function logout() {
+    // Call logout endpoint to clear HttpOnly cookie
+    await fetch(\`\${API_URL}/auth/logout\`, {
+      method: 'POST',
+      credentials: 'include' // Send HttpOnly cookies
+    });
+    
     customer = null;
     email = '';
     otp = '';
@@ -2077,7 +2092,7 @@ export default LoginForm;</code></pre>
                         <li>Deploy anywhere (Cloudflare, AWS, GCP, etc.)</li>
                     </ul>
                     <div style="margin-top: var(--spacing-lg);">
-                        <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn btn-github">
+                        <a href="https://github.com/Underwood-Inc/strixun-stream-suite/tree/master/serverless/otp-auth-service" target="_blank" rel="noopener noreferrer" class="btn btn-github">
                             <span>★</span> View on GitHub
                         </a>
                     </div>
@@ -2125,7 +2140,7 @@ export default LoginForm;</code></pre>
             </div>
 
             <div class="self-hosting-cta">
-                <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                <a href="https://github.com/Underwood-Inc/strixun-stream-suite" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
                     <svg class="star-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                     </svg>
@@ -2170,6 +2185,24 @@ export default LoginForm;</code></pre>
                         <li><strong>GET /auth/me</strong> - Get current customer info (requires Bearer token)</li>
                         <li><strong>POST /auth/logout</strong> - Logout and revoke token</li>
                         <li><strong>POST /auth/refresh</strong> - Refresh expiring JWT token</li>
+                    </ul>
+
+                    <h5>SSO Configuration Endpoints</h5>
+                    <p style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
+                        Manage API key-level SSO configuration for inter-tenant session sharing:
+                    </p>
+                    <ul>
+                        <li><strong>GET /auth/api-keys</strong> - List all API keys with SSO configuration</li>
+                        <li><strong>GET /auth/api-key/:keyId/sso-config</strong> - Get SSO configuration for a specific API key</li>
+                        <li><strong>PUT /auth/api-key/:keyId/sso-config</strong> - Update SSO configuration for an API key</li>
+                    </ul>
+                    <p style="margin-top: var(--spacing-sm); color: var(--text-secondary); font-size: 0.875rem;">
+                        <strong>SSO Isolation Modes:</strong>
+                    </p>
+                    <ul style="font-size: 0.875rem; color: var(--text-secondary);">
+                        <li><code>none</code> - Global SSO enabled (default) - sessions shared across all customer's API keys</li>
+                        <li><code>selective</code> - Sessions shared only with specified API keys in <code>allowedKeyIds</code></li>
+                        <li><code>complete</code> - Complete isolation - sessions not shared with any other keys</li>
                     </ul>
 
                     <h5>Public Endpoints</h5>
@@ -2299,10 +2332,212 @@ graph LR
                         <li><strong>Authorization: Bearer:</strong> Customer authentication, session management</li>
                     </ul>
 
+                    <h4>Single Sign-On (SSO) with HttpOnly Cookies</h4>
+                    <div class="mermaid-container">
+                        <div class="mermaid">
+sequenceDiagram
+    participant User as 🧙 User Browser
+    participant Mods as mods.idling.app
+    participant Short as s.idling.app
+    participant Stream as streamkit.idling.app
+    participant Auth as auth.idling.app
+    participant KV as Cloudflare KV
+    
+    Note over User,KV: User logs in on first app
+    User->>Mods: Visit mods.idling.app
+    Mods->>User: Show login form
+    User->>Auth: Request OTP (email)
+    Auth->>KV: Store OTP (10min TTL)
+    Auth-->>User: Send OTP via email
+    User->>Auth: Verify OTP code
+    Auth->>KV: Validate OTP
+    Auth->>Auth: Generate JWT token
+    Auth->>User: Set HttpOnly Cookie<br/>Domain=.idling.app<br/>Path=/<br/>Secure; SameSite=Lax
+    User->>Mods: Authenticated!
+    
+    Note over User,KV: User visits second app - already logged in!
+    User->>Short: Visit s.idling.app
+    Short->>User: Check cookie
+    User->>Short: HttpOnly Cookie sent<br/>automatically by browser
+    Short->>Auth: Validate token (/auth/me)
+    Auth->>KV: Verify session
+    Auth-->>Short: ✓ Customer info
+    Short->>User: Authenticated! (No login needed)
+    
+    Note over User,KV: User visits third app - still logged in!
+    User->>Stream: Visit streamkit.idling.app
+    Stream->>User: Check cookie
+    User->>Stream: HttpOnly Cookie sent<br/>automatically by browser
+    Stream->>Auth: Validate token (/auth/me)
+    Auth->>KV: Verify session
+    Auth-->>Stream: ✓ Customer info
+    Stream->>User: Authenticated! (No login needed)
+</div>
+                    </div>
+                    <p>
+                        <strong>How SSO Works Across All Apps:</strong>
+                    </p>
+                    <ol>
+                        <li><strong>Login Once:</strong> User logs in on any app (e.g., mods.idling.app)</li>
+                        <li><strong>Shared Cookie:</strong> Auth service sets an HttpOnly cookie on <code>.idling.app</code> domain</li>
+                        <li><strong>Automatic Authentication:</strong> Cookie is automatically sent to all subdomains</li>
+                        <li><strong>Seamless Experience:</strong> User is instantly authenticated on all apps</li>
+                        <li><strong>Secure Logout:</strong> Logging out on any app clears the cookie for all apps</li>
+                    </ol>
+                    <p>
+                        <strong>Apps Using This SSO:</strong>
+                    </p>
+                    <ul>
+                        <li><strong>mods.idling.app</strong> - Mod Management Hub</li>
+                        <li><strong>s.idling.app</strong> / <strong>shorten.idling.app</strong> / <strong>short.idling.app</strong> / <strong>short.army</strong> - URL Shortener Service</li>
+                        <li><strong>streamkit.idling.app</strong> - Stream Suite (OBS overlays, widgets)</li>
+                        <li><strong>design.idling.app</strong> - Component Library (Storybook)</li>
+                        <li><strong>docs.idling.app</strong> - Documentation & API Reference</li>
+                    </ul>
+
+                    <h4>SSO Cookie Security</h4>
+                    <div class="mermaid-container">
+                        <div class="mermaid">
+graph TB
+    Cookie["`**HttpOnly Cookie**<br/>auth_token=eyJhbGc...`"] --> Props["`**Cookie Properties**`"]
+    
+    Props --> Prop1["`**Domain: .idling.app**<br/>Works on all subdomains`"]
+    Props --> Prop2["`**HttpOnly: true**<br/>No JavaScript access<br/>⚔ XSS Protection`"]
+    Props --> Prop3["`**Secure: true**<br/>HTTPS only<br/>⚔ MITM Protection`"]
+    Props --> Prop4["`**SameSite: Lax**<br/>⚔ CSRF Protection`"]
+    Props --> Prop5["`**Max-Age: 7 hours**<br/>Auto-expiry`"]
+    
+    Cookie --> Benefits["`**Security Benefits**`"]
+    
+    Benefits --> Ben1["`⚔ **XSS Protection**<br/>Cannot be read by malicious scripts`"]
+    Benefits --> Ben2["`⚔ **Automatic Transmission**<br/>Browser sends cookie to all subdomains`"]
+    Benefits --> Ben3["`⚔ **Secure Storage**<br/>Isolated from localStorage/sessionStorage`"]
+    Benefits --> Ben4["`⚔ **No Token Exposure**<br/>Not visible in client-side code`"]
+    
+    classDef cookieStyle fill:#252017,stroke:#edae49,stroke-width:3px,color:#f9f9f9
+    classDef propStyle fill:#1a1611,stroke:#6495ed,stroke-width:3px,color:#f9f9f9
+    classDef benefitStyle fill:#252017,stroke:#28a745,stroke-width:3px,color:#f9f9f9
+    
+    class Cookie cookieStyle
+    class Props,Prop1,Prop2,Prop3,Prop4,Prop5 propStyle
+    class Benefits,Ben1,Ben2,Ben3,Ben4 benefitStyle
+</div>
+                    </div>
+                    <p>
+                        <strong>Why HttpOnly Cookies for SSO?</strong>
+                    </p>
+                    <ul>
+                        <li><strong>XSS Protection:</strong> JavaScript cannot access HttpOnly cookies, preventing token theft</li>
+                        <li><strong>Automatic Sharing:</strong> Browser automatically sends cookie to all <code>.idling.app</code> subdomains</li>
+                        <li><strong>True SSO:</strong> Login once, authenticated everywhere - no manual token passing</li>
+                        <li><strong>No localStorage:</strong> Tokens never stored in client-side storage (vulnerable to XSS)</li>
+                        <li><strong>Secure by Default:</strong> HTTPS-only, CSRF protection, automatic expiry</li>
+                    </ul>
+
+                    <h4>SSO Flow Example</h4>
+                    <div class="mermaid-container">
+                        <div class="mermaid">
+flowchart LR
+    Start(["`👤 **User**`"]) --> Login{"`Already<br/>logged in?`"}
+    
+    Login -->|"`❌ No`"| OTP["`📧 **Request OTP**<br/>on mods.idling.app`"]
+    OTP --> Verify["`🔐 **Enter OTP Code**`"]
+    Verify --> SetCookie["`🍪 **Set HttpOnly Cookie**<br/>Domain: .idling.app`"]
+    SetCookie --> ModsAuth["`✓ **Authenticated**<br/>on mods.idling.app`"]
+    
+    Login -->|"`✓ Yes`"| ModsAuth
+    
+    ModsAuth --> VisitShort["`🔗 **Visit s.idling.app**`"]
+    VisitShort --> AutoAuth1["`🍪 **Cookie Auto-Sent**<br/>by browser`"]
+    AutoAuth1 --> ShortAuth["`✓ **Instantly Authenticated**<br/>on s.idling.app`"]
+    
+    ShortAuth --> VisitStream["`🎥 **Visit streamkit.idling.app**`"]
+    VisitStream --> AutoAuth2["`🍪 **Cookie Auto-Sent**<br/>by browser`"]
+    AutoAuth2 --> StreamAuth["`✓ **Instantly Authenticated**<br/>on streamkit.idling.app`"]
+    
+    StreamAuth --> VisitDocs["`📚 **Visit docs.idling.app**`"]
+    VisitDocs --> AutoAuth3["`🍪 **Cookie Auto-Sent**<br/>by browser`"]
+    AutoAuth3 --> DocsAuth["`✓ **Instantly Authenticated**<br/>on docs.idling.app`"]
+    
+    DocsAuth --> Logout["`🚪 **Logout**<br/>on any app`"]
+    Logout --> ClearCookie["`🗑 **Clear Cookie**<br/>Domain: .idling.app`"]
+    ClearCookie --> AllLogout["`✓ **Logged out**<br/>on all apps`"]
+    
+    classDef userStyle fill:#252017,stroke:#edae49,stroke-width:3px,color:#f9f9f9
+    classDef authStyle fill:#1a1611,stroke:#28a745,stroke-width:3px,color:#f9f9f9
+    classDef cookieStyle fill:#252017,stroke:#6495ed,stroke-width:3px,color:#f9f9f9
+    classDef logoutStyle fill:#1a1611,stroke:#dc3545,stroke-width:3px,color:#f9f9f9
+    
+    class Start,Login userStyle
+    class OTP,Verify,ModsAuth,ShortAuth,StreamAuth,DocsAuth authStyle
+    class SetCookie,AutoAuth1,AutoAuth2,AutoAuth3 cookieStyle
+    class Logout,ClearCookie,AllLogout logoutStyle
+</div>
+                    </div>
+
+                    <h4>Inter-Tenant SSO Configuration (API Key Level)</h4>
+                    <p>
+                        For organizations with multiple applications (API keys), you can configure how authentication sessions are shared between them.
+                        This allows building custom SSO ecosystems where different apps can optionally share user sessions.
+                    </p>
+                    <div class="mermaid-container">
+                        <div class="mermaid">
+graph TB
+    subgraph Customer["Customer: Acme Corp"]
+        Key1["`**API Key A**<br/>mods.acme.com<br/>isolationMode: none`"]
+        Key2["`**API Key B**<br/>app.acme.com<br/>isolationMode: none`"]
+        Key3["`**API Key C**<br/>admin.acme.com<br/>isolationMode: selective<br/>allowedKeyIds: [A, B]`"]
+        Key4["`**API Key D**<br/>internal.acme.com<br/>isolationMode: complete`"]
+    end
+    
+    Session1["`**User Session**<br/>Created on Key A`"]
+    
+    Key1 -->|"`✓ Global SSO`"| Session1
+    Key2 -->|"`✓ Global SSO`"| Session1
+    Key3 -->|"`✓ Selective SSO`"| Session1
+    Key4 -.->|"`✗ Isolated`"| Session1
+    
+    Note1["`**SSO Modes:**<br/>• none = Share with ALL keys<br/>• selective = Share with specific keys<br/>• complete = No sharing`"]
+    
+    classDef keyStyle fill:#252017,stroke:#edae49,stroke-width:3px,color:#f9f9f9
+    classDef sessionStyle fill:#1a1611,stroke:#28a745,stroke-width:3px,color:#f9f9f9
+    classDef noteStyle fill:#1a1611,stroke:#6495ed,stroke-width:2px,color:#f9f9f9
+    classDef customerStyle fill:#0f0e0b,stroke:#3d3627,stroke-width:2px,color:#f9f9f9
+    
+    class Key1,Key2,Key3,Key4 keyStyle
+    class Session1 sessionStyle
+    class Note1 noteStyle
+    class Customer customerStyle
+</div>
+                    </div>
+                    <p>
+                        <strong>SSO Isolation Modes:</strong>
+                    </p>
+                    <ul>
+                        <li><strong><code>none</code> (default)</strong> - Global SSO enabled. Sessions created with this API key can be used by ALL other API keys owned by the same customer. Best for unified ecosystems.</li>
+                        <li><strong><code>selective</code></strong> - Selective SSO. Sessions are only shared with API keys listed in <code>allowedKeyIds</code>. Useful for grouping related apps.</li>
+                        <li><strong><code>complete</code></strong> - Complete isolation. Sessions are NOT shared with any other API keys. Use for sensitive admin apps or when complete separation is required.</li>
+                    </ul>
+                    <p>
+                        <strong>Configuration Example:</strong>
+                    </p>
+                    <pre><code class="language-json">// PUT /auth/api-key/:keyId/sso-config
+{
+  "isolationMode": "selective",
+  "allowedKeyIds": ["key_abc123", "key_def456"],
+  "globalSsoEnabled": false
+}</code></pre>
+                    <p style="margin-top: var(--spacing-md); color: var(--text-secondary);">
+                        <strong>Note:</strong> API keys are for tenant/organization identification, NOT for user authentication. 
+                        JWT tokens (in HttpOnly cookies) handle actual user authentication. SSO config only controls whether 
+                        JWT sessions can be validated across different API keys owned by the same customer.
+                    </p>
+
                     <h4>Storage</h4>
                     <ul>
                         <li><strong>Cloudflare KV</strong> - OTP codes, customer sessions, customer data (tenant-isolated)</li>
                         <li><strong>JWT Tokens</strong> - Stateless authentication (no server-side storage)</li>
+                        <li><strong>HttpOnly Cookies</strong> - Secure token storage in browser (XSS-safe, auto-transmitted)</li>
                         <li><strong>Token Blacklist</strong> - Stored in KV for logout/revocation</li>
                     </ul>
                 </div>
@@ -2386,24 +2621,54 @@ graph LR
             </div>
             <div class="accordion-content">
                 <div class="accordion-body">
-                    <h4>Token Storage</h4>
+                    <h4>Token Storage (HttpOnly Cookie SSO)</h4>
                     <ul>
-                        <li><strong>Web Apps:</strong> Store in httpOnly cookies (preferred) or localStorage</li>
+                        <li><strong>Web Apps:</strong> MUST use HttpOnly cookies (set automatically by auth service)</li>
                         <li><strong>Mobile Apps:</strong> Use secure storage (Keychain/Keystore)</li>
-                        <li><strong>Never:</strong> Store tokens in URL parameters or plain cookies</li>
+                        <li><strong>Never:</strong> Store tokens in URL parameters, localStorage, or plain cookies</li>
                     </ul>
+                    <p><strong>⚠ CRITICAL:</strong> For web applications, tokens are ONLY stored in HttpOnly cookies set by the auth service. Never manually store JWT tokens in localStorage or sessionStorage - this exposes your application to XSS attacks.</p>
+
+                    <h4>SSO Cookie Security Attributes</h4>
+                    <p>The authentication cookie set by <code>/auth/verify-otp</code> includes these security attributes:</p>
+                    <ul>
+                        <li><strong><code>HttpOnly</code></strong> - Prevents JavaScript access (XSS protection)</li>
+                        <li><strong><code>Secure</code></strong> - Only transmitted over HTTPS</li>
+                        <li><strong><code>SameSite=Lax</code></strong> - CSRF protection while allowing navigation</li>
+                        <li><strong><code>Domain=.idling.app</code></strong> - Shared across all subdomains for SSO</li>
+                        <li><strong><code>Path=/</code></strong> - Available to all routes</li>
+                        <li><strong><code>Max-Age=25200</code></strong> - 7-hour expiration (matches JWT)</li>
+                    </ul>
+                    <p style="margin-top: var(--spacing-sm); color: var(--text-secondary);">
+                        <strong>Implementation Note:</strong> Always use <code>credentials: 'include'</code> in fetch requests to send cookies automatically:
+                    </p>
+                    <pre><code class="language-javascript">// Correct: Cookie sent automatically
+fetch('https://auth.idling.app/auth/me', {
+  credentials: 'include'
+});
+
+// WRONG: Cookie not sent
+fetch('https://auth.idling.app/auth/me');</code></pre>
 
                     <h4>HTTPS Only</h4>
-                    <p>Always use HTTPS in production. The API only accepts HTTPS connections.</p>
+                    <p>Always use HTTPS in production. The API only accepts HTTPS connections. The <code>Secure</code> cookie attribute ensures tokens are never transmitted over unencrypted connections.</p>
 
                     <h4>CORS Configuration</h4>
-                    <p>Configure allowed origins in your customer settings to prevent unauthorized access.</p>
+                    <p>Configure allowed origins in your customer settings to prevent unauthorized access. For SSO to work across subdomains, ensure all participating domains are listed as allowed origins.</p>
 
                     <h4>IP Allowlisting</h4>
                     <p>For additional security, configure IP allowlists in customer settings.</p>
 
                     <h4>Token Refresh</h4>
-                    <p>Implement automatic token refresh before expiration to maintain seamless customer experience.</p>
+                    <p>Implement automatic token refresh before expiration to maintain seamless customer experience. The <code>/auth/refresh</code> endpoint also sets a new HttpOnly cookie with the refreshed token.</p>
+
+                    <h4>Logout and Session Invalidation</h4>
+                    <p>Calling <code>POST /auth/logout</code> (with <code>credentials: 'include'</code>) will:</p>
+                    <ul>
+                        <li>Clear the HttpOnly cookie (sets <code>Max-Age=0</code>)</li>
+                        <li>Invalidate the session server-side</li>
+                        <li>Log out from ALL apps sharing the SSO cookie (same domain)</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -2558,16 +2823,11 @@ graph LR
         const usageBar = document.getElementById('api-usage-bar');
         
         async function loadApiUsage() {
-            const token = localStorage.getItem('auth_token');
-            if (!token) {
-                usageBar.classList.remove('visible');
-                return;
-            }
-
             try {
+                // HttpOnly cookie is sent automatically with credentials: 'include'
                 const response = await fetch(`${API_URL}/auth/quota`, {
+                    credentials: 'include', // Send HttpOnly cookies
                     headers: {
-                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 });
@@ -2576,7 +2836,6 @@ graph LR
                     // If unauthorized, hide the bar
                     if (response.status === 401) {
                         usageBar.classList.remove('visible');
-                        localStorage.removeItem('auth_token');
                     }
                     return;
                 }
@@ -2647,11 +2906,10 @@ graph LR
         // Load usage on page load
         loadApiUsage();
 
-        // Refresh usage every 30 seconds if customer is authenticated
+        // Refresh usage every 30 seconds
+        // HttpOnly cookie is sent automatically, so just call loadApiUsage
         setInterval(() => {
-            if (localStorage.getItem('auth_token')) {
-                loadApiUsage();
-            }
+            loadApiUsage();
         }, 30000);
 
         // Initialize Swagger UI when API Endpoints accordion is opened

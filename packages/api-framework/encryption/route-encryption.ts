@@ -17,8 +17,8 @@
  * - JWT-based encryption: All authenticated routes use JWT encryption
  */
 
-import type { EncryptedData } from './types.js';
-import { encryptWithJWT } from './jwt-encryption.js';
+import type { EncryptedData } from './types';
+import { encryptWithJWT } from './jwt-encryption';
 
 // ============ Types ============
 
@@ -71,57 +71,6 @@ export interface EncryptionResult {
   error?: Error;
 }
 
-// ============ Service Key Encryption ============
-
-/**
- * Encrypt data using service key (DEPRECATED - REMOVED)
- * Service key encryption was obfuscation only (key is in frontend bundle).
- * Use JWT encryption instead.
- */
-export async function encryptWithServiceKey(
-  _data: unknown,
-  _serviceKey: string
-): Promise<EncryptedData> {
-  throw new Error('Service key encryption has been completely removed. Use JWT encryption (encryptWithJWT) instead.');
-}
-
-/**
- * Decrypt data using service key (DEPRECATED - REMOVED)
- * Service key encryption was obfuscation only (key is in frontend bundle).
- * Use JWT decryption instead.
- */
-export async function decryptWithServiceKey(
-  _encryptedData: EncryptedData | unknown,
-  _serviceKey: string
-): Promise<unknown> {
-  throw new Error('Service key decryption has been completely removed. Use JWT decryption (decryptWithJWT) instead.');
-}
-
-// ============ Binary Service Key Encryption ============
-
-/**
- * Encrypt binary data using service key (DEPRECATED - REMOVED)
- * Service key encryption was obfuscation only (key is in frontend bundle).
- * Use JWT binary encryption instead.
- */
-export async function encryptBinaryWithServiceKey(
-  _data: ArrayBuffer | Uint8Array,
-  _serviceKey: string
-): Promise<Uint8Array> {
-  throw new Error('Service key binary encryption has been completely removed. Use JWT binary encryption (encryptBinaryWithJWT) instead.');
-}
-
-/**
- * Decrypt binary data encrypted with service key (DEPRECATED - REMOVED)
- * Service key encryption was obfuscation only (key is in frontend bundle).
- * Use JWT binary decryption instead.
- */
-export async function decryptBinaryWithServiceKey(
-  _encryptedBinary: ArrayBuffer | Uint8Array,
-  _serviceKey: string
-): Promise<Uint8Array> {
-  throw new Error('Service key binary decryption has been completely removed. Use JWT binary decryption (decryptBinaryWithJWT) instead.');
-}
 
 // ============ Route Pattern Matching ============
 
@@ -297,8 +246,8 @@ export const DEFAULT_ENCRYPTION_POLICIES: RouteEncryptionPolicy[] = [
     strategy: 'none', // Don't encrypt - client needs to read the JWT token
   },
   {
-    pattern: '/auth/restore-session',
-    strategy: 'none', // Don't encrypt - client needs to read the JWT token (chicken-and-egg: token is IN the response)
+    pattern: '/auth/me',
+    strategy: 'none', // Don't encrypt - uses HttpOnly cookie authentication
   },
   {
     pattern: '/auth/**',

@@ -11,7 +11,7 @@ export interface CustomerListItem {
     hasUploadPermission: boolean;
     permissionSource?: 'super-admin' | 'env-var' | 'kv' | 'none'; // Source of upload permission
     isSuperAdmin?: boolean; // True if customer is super admin
-    modCount: number;
+    modCount?: number; // Optional - may not be returned by all endpoints
 }
 
 export interface CustomerDetail extends CustomerListItem {

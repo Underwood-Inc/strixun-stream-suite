@@ -194,12 +194,12 @@ export class ProfilePictureService {
 
   /**
    * Upload profile picture
+   * CRITICAL: Uses HttpOnly cookie for authentication - token is sent automatically
    * 
    * @param file - Image file to upload
-   * @param token - Authentication token
    * @returns Profile picture data
    */
-  async uploadProfilePicture(file: File, token: string): Promise<ProfilePictureData> {
+  async uploadProfilePicture(file: File): Promise<ProfilePictureData> {
     // Validate file
     const validation = this.validateFile(file);
     if (!validation.valid) {
@@ -214,12 +214,11 @@ export class ProfilePictureService {
     formData.append('image', webpBlob, 'profile.webp');
 
     // Upload to server
+    // CRITICAL: Use credentials: 'include' to send HttpOnly cookie automatically
     const response = await fetch(`${this.config.apiUrl}/customer/profile-picture`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
       body: formData,
+      credentials: 'include', // Send HttpOnly cookie
       // CRITICAL: Prevent caching of API calls
       cache: 'no-store',
     });
@@ -235,16 +234,16 @@ export class ProfilePictureService {
 
   /**
    * Get profile picture URL
+   * CRITICAL: Uses HttpOnly cookie for authentication - token is sent automatically
    * 
-   * @param userId - User ID
+   * @param customerId - Customer ID
    * @returns Profile picture URL or null
    */
-  async getProfilePictureUrl(customerId: string, token: string): Promise<string | null> {
+  async getProfilePictureUrl(customerId: string): Promise<string | null> {
     try {
+      // CRITICAL: Use credentials: 'include' to send HttpOnly cookie automatically
       const response = await fetch(`${this.config.apiUrl}/customer/profile-picture/${customerId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include', // Send HttpOnly cookie
         // CRITICAL: Prevent caching of API calls
         cache: 'no-store',
       });
@@ -267,15 +266,13 @@ export class ProfilePictureService {
 
   /**
    * Delete profile picture
-   * 
-   * @param token - Authentication token
+   * CRITICAL: Uses HttpOnly cookie for authentication - token is sent automatically
    */
-  async deleteProfilePicture(token: string): Promise<void> {
+  async deleteProfilePicture(): Promise<void> {
+    // CRITICAL: Use credentials: 'include' to send HttpOnly cookie automatically
     const response = await fetch(`${this.config.apiUrl}/customer/profile-picture`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      credentials: 'include', // Send HttpOnly cookie
       // CRITICAL: Prevent caching of API calls
       cache: 'no-store',
     });

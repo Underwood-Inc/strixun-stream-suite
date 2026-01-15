@@ -7,7 +7,7 @@
  */
 
 import { wrapWithEncryption } from '@strixun/api-framework';
-import { createCORSHeadersWithLocalhost } from '../utils/cors.js';
+import { getCorsHeaders } from '../utils/cors.js';
 import { protectAdminRoute, type RouteProtectionEnv } from '@strixun/api-framework';
 import { verifyJWT } from '../utils/auth.js';
 import { createError } from '../utils/errors.js';
@@ -18,12 +18,13 @@ import { createError } from '../utils/errors.js';
  */
 export async function handleAdminRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
     try {
-        // Protect route with super-admin requirement
+        // Protect route with admin-level requirement
         // This ensures API-level protection - no data is returned if unauthorized
+        // Admin-level allows both 'admin' and 'super-admin' roles
         const protection = await protectAdminRoute(
             request,
             env,
-            'super-admin', // All mods-api admin routes require super-admin
+            'admin', // All mods-api admin routes require admin or super-admin role
             verifyJWT
         );
 
@@ -45,6 +46,15 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         }
 
         const auth = protection.auth;
+        
+        // CRITICAL: Detect if request is using HttpOnly cookie (browser request)
+        // If yes, we must disable response encryption because JavaScript can't access HttpOnly cookies to decrypt
+        const cookieHeader = request.headers.get('Cookie');
+        const isHttpOnlyCookie = !!(cookieHeader && cookieHeader.includes('auth_token='));
+        
+        // For HttpOnly cookie requests, pass null to wrapWithEncryption to disable encryption
+        // For Authorization header requests (service-to-service), pass auth object to enable encryption
+        const authForEncryption = isHttpOnlyCookie ? null : auth;
 
         const pathSegments = path.split('/').filter(Boolean);
         console.log('[AdminRoutes] Processing request', { path, pathSegments, method: request.method, pathSegmentsLength: pathSegments.length });
@@ -53,7 +63,9 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'mods' && request.method === 'GET') {
             const { handleListAllMods } = await import('../handlers/admin/list.js');
             const response = await handleListAllMods(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: PUT /admin/mods/:modId/status - Update mod status (also accepts POST for backward compatibility)
@@ -62,7 +74,9 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             console.log('[AdminRoutes] PUT /admin/mods/:modId/status matched', { modId, pathSegments, method: request.method });
             const { handleUpdateModStatus } = await import('../handlers/admin/triage.js');
             const response = await handleUpdateModStatus(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: POST /admin/mods/:modId/comments - Add review comment
@@ -70,30 +84,57 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             const modId = pathSegments[2];
             const { handleAddReviewComment } = await import('../handlers/admin/triage.js');
             const response = await handleAddReviewComment(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /admin/approvals - List approved uploaders
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'approvals' && request.method === 'GET') {
             const { handleListApprovedUsers } = await import('../handlers/admin/approvals.js');
             const response = await handleListApprovedUsers(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: POST /admin/approvals/:userId - Approve user for uploads
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'approvals' && request.method === 'POST') {
             const userId = pathSegments[2];
-            const { handleApproveUser } = await import('../handlers/admin/approvals.js');
-            const response = await handleApproveUser(request, env, userId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            const { handleApproveCustomer } = await import('../handlers/admin/approvals.js');
+            const response = await handleApproveCustomer(request, env, userId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: DELETE /admin/approvals/:userId - Revoke user upload permission
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'approvals' && request.method === 'DELETE') {
             const userId = pathSegments[2];
-            const { handleRevokeUser } = await import('../handlers/admin/approvals.js');
-            const response = await handleRevokeUser(request, env, userId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            const { handleRevokeCustomer } = await import('../handlers/admin/approvals.js');
+            const response = await handleRevokeCustomer(request, env, userId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: GET /admin/approvals - List approved uploaders
+        if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'approvals' && request.method === 'GET') {
+            const { handleListApprovedUsers } = await import('../handlers/admin/approvals.js');
+            const response = await handleListApprovedUsers(request, env, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: GET /admin/customers/:customerId/mods - Get customer's mods (mod data, not customer data)
+        if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && pathSegments[3] === 'mods' && request.method === 'GET') {
+            const customerId = pathSegments[2];
+            const { handleGetCustomerMods } = await import('../handlers/admin/customer-mods.js');
+            const response = await handleGetCustomerMods(request, env, customerId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: DELETE /admin/mods/:modId - Delete mod (admin only, bypasses author check)
@@ -102,21 +143,27 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             console.log('[AdminRoutes] DELETE /admin/mods/:modId matched', { modId, pathSegments, method: request.method });
             const { handleAdminDeleteMod } = await import('../handlers/admin/delete.js');
             const response = await handleAdminDeleteMod(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /admin/r2/files - List all R2 files
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'files' && request.method === 'GET') {
             const { handleListR2Files } = await import('../handlers/admin/r2-management.js');
             const response = await handleListR2Files(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /admin/r2/duplicates - Detect duplicate and orphaned files
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'duplicates' && request.method === 'GET') {
             const { handleDetectDuplicates } = await import('../handlers/admin/r2-management.js');
             const response = await handleDetectDuplicates(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: DELETE /admin/r2/files/:key - Delete single R2 file
@@ -124,21 +171,27 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             const key = decodeURIComponent(pathSegments[3]);
             const { handleDeleteR2File } = await import('../handlers/admin/r2-management.js');
             const response = await handleDeleteR2File(request, env, auth, key);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: POST /admin/r2/files/delete - Bulk delete R2 files
         if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'files' && pathSegments[3] === 'delete' && request.method === 'POST') {
             const { handleDeleteR2File } = await import('../handlers/admin/r2-management.js');
             const response = await handleDeleteR2File(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: POST /admin/r2/cleanup - Manually trigger cleanup job (for testing)
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'cleanup' && request.method === 'POST') {
             const { handleManualCleanup } = await import('../handlers/admin/r2-cleanup.js');
             const response = await handleManualCleanup(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: PUT /admin/r2/files/:key/timestamp - Set deletion timestamp (for testing only)
@@ -146,28 +199,34 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             const key = decodeURIComponent(pathSegments[3]);
             const { handleSetDeletionTimestamp } = await import('../handlers/admin/r2-management.js');
             const response = await handleSetDeletionTimestamp(request, env, auth, key);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: GET /admin/settings - Get admin settings
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'settings' && request.method === 'GET') {
             const { handleGetSettings } = await import('../handlers/admin/settings.js');
             const response = await handleGetSettings(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: PUT /admin/settings - Update admin settings
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'settings' && request.method === 'PUT') {
             const { handleUpdateSettings } = await import('../handlers/admin/settings.js');
             const response = await handleUpdateSettings(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // Route: POST /admin/migrate/dry-run - Run migration analysis (no changes)
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'migrate' && pathSegments[2] === 'dry-run' && request.method === 'POST') {
             const { dryRunVariantMigration } = await import('../scripts/migrate-variants-to-versions.js');
             const stats = await dryRunVariantMigration(env);
-            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const corsHeaders = getCorsHeaders(env, request);
             const headers: Record<string, string> = {};
             corsHeaders.forEach((value, key) => {
                 headers[key] = value;
@@ -188,7 +247,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'migrate' && pathSegments[2] === 'run' && request.method === 'POST') {
             const { migrateAllVariantsToVersions } = await import('../scripts/migrate-variants-to-versions.js');
             const stats = await migrateAllVariantsToVersions(env);
-            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const corsHeaders = getCorsHeaders(env, request);
             const headers: Record<string, string> = {};
             corsHeaders.forEach((value, key) => {
                 headers[key] = value;
@@ -210,7 +269,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
     } catch (error: any) {
         console.error('Admin routes error:', error);
         const rfcError = createError(request, 500, 'Internal Server Error', 'An error occurred while processing the admin request');
-        const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+        const corsHeaders = getCorsHeaders(env, request);
         const headers: Record<string, string> = {};
         corsHeaders.forEach((value, key) => {
             headers[key] = value;

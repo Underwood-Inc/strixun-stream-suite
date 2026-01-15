@@ -3,21 +3,34 @@
   "version": "1.0.0",
   "description": "Shared validation schemas using Valibot for Strixun services",
   "type": "module",
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.ts",
-      "default": "./index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./customer": {
-      "types": "./customer.ts",
-      "default": "./customer.ts"
+      "types": "./dist/customer.d.ts",
+      "default": "./dist/customer.js"
     },
     "./auth": {
-      "types": "./auth.ts",
-      "default": "./auth.ts"
+      "types": "./dist/auth.d.ts",
+      "default": "./dist/auth.js"
     }
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "*.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage --passWithNoTests"
   },
   "keywords": [
     "validation",
