@@ -651,8 +651,11 @@ jobs:
       - name: Build workspace dependencies
         working-directory: .
         run: |
-          # CI-only: ensure workspace packages used by the dashboard/build resolve via their dist/* entrypoints.
+          # Build dependencies in correct order
+          pnpm --filter "@strixun/types" run build
+          pnpm --filter "@strixun/service-client" run build
           pnpm --filter "@strixun/api-framework" run build
+          pnpm --filter "@strixun/auth-store" run build
           pnpm --filter "@strixun/otp-login" run build:react
       
       - name: Build Dashboard
@@ -1108,6 +1111,17 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build workspace dependencies
+        working-directory: .
+        run: |
+          # Build dependencies in correct order
+          pnpm --filter "@strixun/types" run build
+          pnpm --filter "@strixun/service-client" run build
+          pnpm --filter "@strixun/api-framework" run build
+          pnpm --filter "@strixun/auth-store" run build
+          pnpm --filter "@strixun/otp-login" run build:react
+          pnpm --filter "@strixun/dice-board-game" run build
+      
       - name: Build Mods Hub
         working-directory: mods-hub
         env:
@@ -1284,6 +1298,16 @@ jobs:
       - name: Install all dependencies
         working-directory: .
         run: pnpm install --frozen-lockfile
+      
+      - name: Build workspace dependencies
+        working-directory: .
+        run: |
+          # Build dependencies in correct order
+          pnpm --filter "@strixun/types" run build
+          pnpm --filter "@strixun/service-client" run build
+          pnpm --filter "@strixun/api-framework" run build
+          pnpm --filter "@strixun/auth-store" run build
+          pnpm --filter "@strixun/otp-login" run build:react
       
       - name: Build Svelte app
         env:
