@@ -7,6 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
+import { sortByDateDesc } from '../../../shared/utils/sortByDate.js';
 import type { ModVersion } from '../../types/mod.js';
 import type { Env } from '../../worker.js';
 
@@ -50,8 +51,8 @@ export async function handleListVariantVersions(
             }
         }
 
-        // Sort versions by createdAt (newest first) for reliable ordering
-        versions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        // Sort versions by createdAt (newest first)
+        versions.sort(sortByDateDesc('createdAt'));
 
         const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });

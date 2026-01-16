@@ -8,6 +8,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import { isSuperAdmin } from '../../utils/admin.js';
+import { sortByDateDesc } from '../../../shared/utils/sortByDate.js';
 import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 import type { AuthResult } from '../../utils/auth.js';
 
@@ -166,7 +167,7 @@ export async function handleListMods(
         }
 
         // Sort by updatedAt (newest first)
-        mods.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        mods.sort(sortByDateDesc('updatedAt'));
 
         // CRITICAL: Ensure all mods have customerId (for data scoping)
         // Set customerId from auth context if missing (for legacy mods)
