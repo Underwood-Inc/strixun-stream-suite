@@ -5,7 +5,7 @@
 
 import { createError } from '../../utils/errors.js';
 import { getCorsHeaders } from '../../utils/cors.js';
-import { getCustomerKey } from '../../utils/customer.js';
+import { KVKeys } from '../../utils/kv-keys.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 interface Env {
@@ -43,7 +43,7 @@ export async function handleDeleteVersion(
 
     try {
         // Get mod metadata to verify ownership
-        const modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+        const modKey = KVKeys.mod(auth.customerId, modId);
         const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
 
         if (!mod) {
@@ -70,7 +70,7 @@ export async function handleDeleteVersion(
         }
 
         // Get the version
-        const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
+        const versionKey = KVKeys.version(auth.customerId, versionId);
         const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
 
         if (!version) {
@@ -84,8 +84,10 @@ export async function handleDeleteVersion(
             });
         }
 
-        // Verify the version belongs to this mod
-        if (version.modId !== modId) {
+        // Verify the version belongs to this mod (normalize both for comparison)
+        const normalizedModId = KVKeys.normalizeModId(modId);
+        const normalizedVersionModId = KVKeys.normalizeModId(version.modId);
+        if (normalizedVersionModId !== normalizedModId) {
             const rfcError = createError(request, 400, 'Invalid Version', 'This version does not belong to the specified mod');
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -111,7 +113,7 @@ export async function handleDeleteVersion(
         await env.MODS_KV.delete(versionKey);
 
         // Remove from mod's version list
-        const versionListKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
+        const versionListKey = KVKeys.modVersions(auth.customerId, modId);
         const versionIds = await env.MODS_KV.get(versionListKey, { type: 'json' }) as string[] | null;
         
         if (versionIds) {
@@ -128,7 +130,7 @@ export async function handleDeleteVersion(
                 // Fetch remaining versions to find the most recent
                 const remainingVersions: ModVersion[] = [];
                 for (const vid of remainingVersionIds) {
-                    const vKey = getCustomerKey(auth.customerId, `version_${vid}`);
+                    const vKey = KVKeys.version(auth.customerId, vid);
                     const v = await env.MODS_KV.get(vKey, { type: 'json' }) as ModVersion | null;
                     if (v) remainingVersions.push(v);
                 }
@@ -148,7 +150,7 @@ export async function handleDeleteVersion(
             
             // Update global key if public
             if (mod.visibility === 'public') {
-                await env.MODS_KV.put(`mod_${modId}`, JSON.stringify(mod));
+                await env.MODS_KV.put(KVKeys.modGlobal(modId), JSON.stringify(mod));
             }
         }
 

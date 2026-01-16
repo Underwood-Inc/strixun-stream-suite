@@ -5,7 +5,7 @@
 
 import { createError } from '../../utils/errors.js';
 import { getCorsHeaders } from '../../utils/cors.js';
-import { getCustomerKey } from '../../utils/customer.js';
+import { KVKeys } from '../../utils/kv-keys.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 interface Env {
@@ -63,7 +63,7 @@ export async function handleUpdateVersion(
         }
 
         // Get mod metadata to verify ownership
-        const modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+        const modKey = KVKeys.mod(auth.customerId, modId);
         const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
 
         if (!mod) {
@@ -90,7 +90,7 @@ export async function handleUpdateVersion(
         }
 
         // Get the version
-        const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
+        const versionKey = KVKeys.version(auth.customerId, versionId);
         const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
 
         if (!version) {
@@ -104,8 +104,10 @@ export async function handleUpdateVersion(
             });
         }
 
-        // Verify the version belongs to this mod
-        if (version.modId !== modId) {
+        // Verify the version belongs to this mod (normalize both for comparison)
+        const normalizedModId = KVKeys.normalizeModId(modId);
+        const normalizedVersionModId = KVKeys.normalizeModId(version.modId);
+        if (normalizedVersionModId !== normalizedModId) {
             const rfcError = createError(request, 400, 'Invalid Version', 'This version does not belong to the specified mod');
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
@@ -130,7 +132,7 @@ export async function handleUpdateVersion(
 
         // Update global key if public
         if (mod.visibility === 'public') {
-            await env.MODS_KV.put(`version_${versionId}`, JSON.stringify(version));
+            await env.MODS_KV.put(KVKeys.versionGlobal(versionId), JSON.stringify(version));
         }
 
         console.log('[UpdateVersion] Successfully updated version:', {
