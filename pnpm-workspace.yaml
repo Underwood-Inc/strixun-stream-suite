@@ -30,4 +30,5 @@ packages:
   - 'chat-hub'
   - 'shared-components'
   - 'shared-config'
+  - 'shared-styles'
 

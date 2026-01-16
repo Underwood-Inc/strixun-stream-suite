@@ -1,0 +1,34 @@
+{
+  "name": "@strixun/shared-styles",
+  "version": "1.0.0",
+  "description": "Strixun Stream Suite shared design tokens and styles",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    },
+    "./tokens": {
+      "types": "./tokens.ts",
+      "default": "./tokens.ts"
+    },
+    "./GlobalStyle": {
+      "types": "./GlobalStyle.ts",
+      "default": "./GlobalStyle.ts"
+    },
+    "./variables": "./_variables.scss",
+    "./mixins": "./_mixins.scss",
+    "./animations": "./_animations.scss"
+  },
+  "peerDependencies": {
+    "styled-components": "^6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "styled-components": {
+      "optional": true
+    }
+  }
+}

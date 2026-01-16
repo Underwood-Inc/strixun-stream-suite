@@ -17,8 +17,10 @@
     "@strixun/auth-store": "workspace:*",
     "@strixun/chat": "workspace:*",
     "@strixun/otp-login": "workspace:*",
+    "@strixun/shared-styles": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "styled-components": "^6.1.17",
     "zustand": "^4.5.2"
   },
   "devDependencies": {

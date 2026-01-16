@@ -1,16 +1,28 @@
 /**
- * Global styles for Mods Hub
- * Extends shared @strixun/shared-styles with app-specific additions
+ * Strixun Stream Suite - Global Style (styled-components)
+ * 
+ * Provides global CSS that injects CSS variables matching _variables.scss
+ * Use this in React apps with styled-components.
+ * 
+ * Usage:
+ *   import { GlobalStyle } from '@shared-styles/GlobalStyle';
+ *   
+ *   function App() {
+ *     return (
+ *       <>
+ *         <GlobalStyle />
+ *         <YourApp />
+ *       </>
+ *     );
+ *   }
  */
 
 import { createGlobalStyle } from 'styled-components';
-import { colors, spacing, radius, shadows, typography } from '@strixun/shared-styles';
-import { getSeasonalKeyframesCSS } from '../utils/seasonalAnimations';
+import { colors, spacing, radius, shadows, typography } from './tokens.js';
 
-// Mods Hub global style - includes all shared CSS variables plus app-specific extensions
 export const GlobalStyle = createGlobalStyle`
-  /* Seasonal animation keyframes */
-  ${getSeasonalKeyframesCSS()}                                                                                                                                                                                                                                                                                                                                       
+  * {
+    margin: 0;
     padding: 0;
     box-sizing: border-box;
   }
@@ -18,7 +30,7 @@ export const GlobalStyle = createGlobalStyle`
   html {
     font-size: 16px;
     
-    /* CSS Variables - from shared @strixun/shared-styles */
+    /* CSS Variables - matches _variables.scss :root */
     /* Backgrounds */
     --bg: ${colors.bg};
     --bg-dark: ${colors.bgDark};
@@ -81,6 +93,20 @@ export const GlobalStyle = createGlobalStyle`
     --font-family: ${typography.fontFamily};
     --font-sans: ${typography.fontFamily};
     --font-display: Georgia, serif;
+    
+    /* Sizing */
+    --header-height: 60px;
+    --sidebar-width: 280px;
+    
+    /* Gold theme aliases (for components expecting gold-* vars) */
+    --gold-primary: ${colors.accent};
+    --gold-light: ${colors.accentLight};
+    --gold-dark: ${colors.accentDark};
+  }
+
+  html, body {
+    height: 100%;
+    width: 100%;
   }
 
   body {
@@ -94,7 +120,9 @@ export const GlobalStyle = createGlobalStyle`
   }
 
   #root {
-    min-height: 100vh;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
   }
 
   a {
@@ -126,7 +154,7 @@ export const GlobalStyle = createGlobalStyle`
   }
 
   ::-webkit-scrollbar-track {
-    background: ${colors.bgSecondary};
+    background: ${colors.bgDark};
   }
 
   ::-webkit-scrollbar-thumb {
@@ -138,7 +166,7 @@ export const GlobalStyle = createGlobalStyle`
     }
   }
 
-  /* Text Selection - Strixun brand orange with pure black text for legibility */
+  /* Text Selection - Strixun brand orange with pure black text */
   ::selection {
     background: ${colors.accent};
     color: #000000;
@@ -149,12 +177,7 @@ export const GlobalStyle = createGlobalStyle`
     color: #000000;
   }
 
-  ::-webkit-selection {
-    background: ${colors.accent};
-    color: #000000;
-  }
-
-  /* Global click ripple effect - subtle ring ripple */
+  /* Global click ripple effect */
   .click-ripple {
     position: fixed;
     width: 4px;
@@ -180,4 +203,12 @@ export const GlobalStyle = createGlobalStyle`
       border-width: 0.5px;
     }
   }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 `;
+
+export default GlobalStyle;

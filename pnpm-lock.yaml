@@ -222,12 +222,18 @@ importers:
       '@strixun/otp-login':
         specifier: workspace:*
         version: link:../packages/otp-login
+      '@strixun/shared-styles':
+        specifier: workspace:*
+        version: link:../shared-styles
       react:
         specifier: ^19.0.0
         version: 19.2.3
       react-dom:
         specifier: ^19.0.0
         version: 19.2.3(react@19.2.3)
+      styled-components:
+        specifier: ^6.1.17
+        version: 6.1.19(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       zustand:
         specifier: ^4.5.2
         version: 4.5.7(@types/react@19.2.7)(react@19.2.3)
@@ -414,6 +420,9 @@ importers:
       '@strixun/shared-config':
         specifier: workspace:*
         version: link:../shared-config
+      '@strixun/shared-styles':
+        specifier: workspace:*
+        version: link:../shared-styles
       '@strixun/virtualized-table':
         specifier: workspace:*
         version: link:../packages/virtualized-table
@@ -1421,6 +1430,12 @@ importers:
         version: 4.56.0(@cloudflare/workers-types@4.20251225.0)
 
   shared-config: {}
+
+  shared-styles:
+    dependencies:
+      styled-components:
+        specifier: ^6.0.0
+        version: 6.1.19(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
 
 packages:
 
