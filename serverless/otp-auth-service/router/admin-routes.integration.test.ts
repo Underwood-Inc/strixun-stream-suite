@@ -109,10 +109,11 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
 
     describe('Super Admin API Key Authentication', () => {
         it('should authenticate with SUPER_ADMIN_API_KEY and allow POST /admin/customers', async () => {
+            // Super admin routes use X-Super-Admin-Key header for API key authentication
             const request = new Request('https://api.example.com/admin/customers', {
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Bearer super-secret-key',
+                    'X-Super-Admin-Key': 'super-secret-key',
                 },
                 body: JSON.stringify({ email: 'test@example.com' }),
             });
@@ -124,10 +125,11 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
         });
 
         it('should reject POST /admin/customers with invalid API key', async () => {
+            // Super admin routes use X-Super-Admin-Key header for API key authentication
             const request = new Request('https://api.example.com/admin/customers', {
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Bearer wrong-key',
+                    'X-Super-Admin-Key': 'wrong-key',
                 },
                 body: JSON.stringify({ email: 'test@example.com' }),
             });
@@ -163,10 +165,11 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
                 exp: Math.floor(Date.now() / 1000) + 3600,
             }, mockEnv.JWT_SECRET!);
 
+            // Dashboard routes use HttpOnly cookies, not Authorization header
             const request = new Request('https://api.example.com/admin/analytics', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${jwtToken}`,
+                    'Cookie': `auth_token=${jwtToken}`,
                 },
             });
 
@@ -185,10 +188,11 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
                 exp: Math.floor(Date.now() / 1000) + 3600,
             }, mockEnv.JWT_SECRET!);
 
+            // Dashboard routes use HttpOnly cookies, not Authorization header
             const request = new Request('https://api.example.com/admin/analytics', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${jwtToken}`,
+                    'Cookie': `auth_token=${jwtToken}`,
                 },
             });
 

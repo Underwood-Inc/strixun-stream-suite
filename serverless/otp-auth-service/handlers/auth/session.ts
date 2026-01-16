@@ -1,6 +1,6 @@
 /**
  * Session Management Handlers
- * Handles customer session endpoints: me, logout, refresh
+ * Handles customer session endpoints: me, logout
  */
 
 import { getCustomerKey } from '../../services/customer.js';
@@ -50,27 +50,37 @@ interface JWTPayload {
 export async function handleGetMe(request: Request, env: Env): Promise<Response> {
     try {
         console.log('[handleGetMe] Starting request processing');
-        // ONLY check HttpOnly cookie - NO Authorization header fallback
+        // PRIORITY 1: Check HttpOnly cookie (browser requests - primary SSO method)
+        // PRIORITY 2: Check Authorization header (service-to-service calls)
+        let token: string | null = null;
+        
         const cookieHeader = request.headers.get('Cookie');
         console.log('[handleGetMe] Cookie header:', cookieHeader ? 'present' : 'missing');
-        if (!cookieHeader) {
-            console.log('[handleGetMe] Returning 401 - no cookie header');
-            return new Response(JSON.stringify({ error: 'Authentication required (HttpOnly cookie)' }), {
-                status: 401,
-                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
-            });
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+                token = authCookie.substring('auth_token='.length).trim();
+                console.log('[handleGetMe] Token extracted from HttpOnly cookie');
+            }
         }
         
-        const cookies = cookieHeader.split(';').map(c => c.trim());
-        const authCookie = cookies.find(c => c.startsWith('auth_token='));
-        if (!authCookie) {
-            return new Response(JSON.stringify({ error: 'Authentication required (auth_token cookie missing)' }), {
+        // Fallback to Authorization header for service-to-service calls
+        if (!token) {
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring('Bearer '.length).trim();
+                console.log('[handleGetMe] Token extracted from Authorization header (service-to-service)');
+            }
+        }
+        
+        if (!token) {
+            console.log('[handleGetMe] Returning 401 - no authentication found');
+            return new Response(JSON.stringify({ error: 'Authentication required (HttpOnly cookie or Authorization header)' }), {
                 status: 401,
                 headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
-
-        const token = authCookie.substring('auth_token='.length).trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
         
@@ -268,9 +278,28 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             clearCookieHeaders.push(clearCookieParts.join('; '));
         }
 
-        // ONLY check HttpOnly cookie - NO Authorization header fallback
+        // PRIORITY 1: Check HttpOnly cookie (browser requests)
+        // PRIORITY 2: Check Authorization header (service-to-service calls)
+        let token: string | null = null;
+        
         const cookieHeader = request.headers.get('Cookie');
-        if (!cookieHeader) {
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+                token = authCookie.substring('auth_token='.length).trim();
+            }
+        }
+        
+        // Fallback to Authorization header for service-to-service logout
+        if (!token) {
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring('Bearer '.length).trim();
+            }
+        }
+        
+        if (!token) {
             const response = new Response(JSON.stringify({ success: true, message: 'Logged out (no active session)' }), {
                 status: 200,
                 headers: {
@@ -286,27 +315,6 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             
             return response;
         }
-
-        const cookies = cookieHeader.split(';').map(c => c.trim());
-        const authCookie = cookies.find(c => c.startsWith('auth_token='));
-        if (!authCookie) {
-            const response = new Response(JSON.stringify({ success: true, message: 'Logged out (no auth cookie)' }), {
-                status: 200,
-                headers: {
-                    ...getCorsHeadersRecord(env, request),
-                    'Content-Type': 'application/json',
-                },
-            });
-            
-            // Add all Set-Cookie headers to clear cookies
-            for (const clearCookie of clearCookieHeaders) {
-                response.headers.append('Set-Cookie', clearCookie);
-            }
-            
-            return response;
-        }
-
-        const token = authCookie.substring('auth_token='.length).trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
 
@@ -387,117 +395,4 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
     }
 }
 
-/**
- * Refresh token endpoint
- * POST /auth/refresh
- */
-export async function handleRefresh(request: Request, env: Env): Promise<Response> {
-    try {
-        const body = await request.json() as { token?: string };
-        const { token } = body;
-        
-        if (!token) {
-            return new Response(JSON.stringify({ error: 'Token required' }), {
-                status: 400,
-                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-        
-        const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
-        
-        if (!payload) {
-            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
-                status: 401,
-                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-        
-        // Get customer ID from token
-        let customerId = payload.customerId || null;
-        
-        // Check if token is blacklisted with customer isolation
-        const tokenHash = await hashEmail(token);
-        const blacklistKey = getCustomerKey(customerId, `blacklist_${tokenHash}`);
-        const blacklisted = await env.OTP_AUTH_KV.get(blacklistKey);
-        if (blacklisted) {
-            return new Response(JSON.stringify({ error: 'Token has been revoked' }), {
-                status: 401,
-                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-        
-        // Generate new CSRF token for refreshed session
-        const newCsrfToken = crypto.randomUUID ? crypto.randomUUID() : 
-            Array.from(crypto.getRandomValues(new Uint8Array(16)))
-                .map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        // FAIL-FAST: Require customerId - MANDATORY
-        if (!customerId) {
-            return new Response(JSON.stringify({ error: 'Invalid token: missing customer ID' }), {
-                status: 401,
-                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-        
-        // Generate new token (7 hours expiration)
-        const expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000); // 7 hours
-        const newTokenPayload = {
-            sub: customerId, // customerId is the ONLY identifier
-            email: payload.email,
-            customerId: customerId, // MANDATORY
-            csrf: newCsrfToken, // New CSRF token for refreshed session
-            exp: Math.floor(expiresAt.getTime() / 1000),
-            iat: Math.floor(Date.now() / 1000),
-        };
-        
-        const newToken = await createJWT(newTokenPayload, jwtSecret);
-        
-        // Extract IP address and metadata from request
-        const clientIP = getClientIP(request);
-        const userAgent = request.headers.get('User-Agent') || undefined;
-        const country = request.headers.get('CF-IPCountry') || undefined;
-        
-        // Create device fingerprint for enhanced session security
-        const fingerprint = await createFingerprintHash(request);
-        
-        // Get existing session to preserve original IP if new IP is unknown
-        const sessionKey = getCustomerKey(customerId, `session_${customerId}`);
-        const existingSession = await env.OTP_AUTH_KV.get(sessionKey, { type: 'json' }) as SessionData | null;
-        
-        // Use existing IP if new IP is unknown, otherwise use new IP
-        const sessionIP = (clientIP === 'unknown' && existingSession?.ipAddress) ? existingSession.ipAddress : clientIP;
-        
-        // Update session with customer isolation (including IP tracking)
-        const sessionData: SessionData = {
-            customerId: customerId, // MANDATORY - the ONLY identifier
-            email: payload.email,
-            token: await hashEmail(newToken),
-            expiresAt: expiresAt.toISOString(),
-            createdAt: existingSession?.createdAt || new Date().toISOString(),
-            ipAddress: sessionIP,
-            userAgent: userAgent || existingSession?.userAgent,
-            country: country || existingSession?.country,
-            fingerprint, // Update fingerprint on refresh
-        };
-        
-        await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(sessionData), { expirationTtl: 25200 }); // 7 hours
-        
-        return new Response(JSON.stringify({ 
-            success: true,
-            token: newToken,
-            expiresAt: expiresAt.toISOString(),
-        }), {
-            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
-        });
-    } catch (error: any) {
-        return new Response(JSON.stringify({ 
-            error: 'Failed to refresh token',
-            message: error.message 
-        }), {
-            status: 500,
-            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
-        });
-    }
-}
 

@@ -182,10 +182,12 @@ export async function createAuthToken(
     // JWT Standard Claims (RFC 7519) + OAuth 2.0 + Custom
     // NOTE: Email is included in JWT payload for internal use, but NOT returned in response body
     // CRITICAL: sub (subject) is customerId - NO userId
+    // Get issuer from environment (JWT_ISSUER or AUTH_SERVICE_URL), fallback to default
+    const issuer = env.JWT_ISSUER || env.AUTH_SERVICE_URL || (env.ENVIRONMENT === 'production' ? 'auth.idling.app' : 'localhost');
     const tokenPayload = {
         // Standard JWT Claims
         sub: customerId, // Subject (customer ID - the ONLY identifier)
-        iss: 'auth.idling.app', // Issuer
+        iss: issuer, // Issuer (from env var, no hardcoded domain)
         aud: customerId, // Audience (customer/tenant) - REQUIRED
         exp: Math.floor(expiresAt.getTime() / 1000), // Expiration time
         iat: now, // Issued at

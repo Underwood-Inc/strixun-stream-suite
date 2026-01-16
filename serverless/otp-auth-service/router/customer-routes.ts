@@ -287,7 +287,7 @@ export async function handleCustomerRoutes(
     // PROXY: Forward any other unhandled /customer/* routes to customer-api service
     if (path.startsWith('/customer')) {
         try {
-            const customerApiUrl = env.CUSTOMER_API_URL || 'https://customer-api.idling.app';
+            const customerApiUrl = env.CUSTOMER_API_URL || (env.ENVIRONMENT === 'production' ? 'https://customer-api.idling.app' : 'http://localhost:8790');
             const targetUrl = new URL(path, customerApiUrl);
             
             // Forward the request with auth headers

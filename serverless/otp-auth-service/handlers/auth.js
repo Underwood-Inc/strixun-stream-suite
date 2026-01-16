@@ -14,8 +14,7 @@ export {
 // Session handlers
 export {
     handleGetMe,
-    handleLogout,
-    handleRefresh
+    handleLogout
 } from './auth/session.js';
 
 // Encryption key (DEK) handler

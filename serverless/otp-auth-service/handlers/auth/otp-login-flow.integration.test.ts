@@ -401,13 +401,13 @@ describe.skipIf(!E2E_OTP_CODE)('OTP Login Flow - Integration Tests (Miniflare)',
         });
         
         // Verify we got valid user data (any of these fields should be present)
-        const hasValidData = data && (
+        const hasValidData = !!(data && (
           data.email || 
           data.userId || 
           data.displayName || 
           data.customerId ||
           typeof data === 'object'
-        );
+        ));
         expect(hasValidData).toBe(true);
         console.log('[Integration Tests] ✓ Token trimming fix verified - token with whitespace works correctly');
       } else {

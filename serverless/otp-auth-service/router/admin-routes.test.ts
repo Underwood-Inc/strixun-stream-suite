@@ -108,6 +108,8 @@ describe('OTP Auth Service Admin Routes', () => {
         SUPER_ADMIN_API_KEY: 'super-secret-key', // TEST-ONLY: Not a real production key
         SUPER_ADMIN_EMAILS: 'admin@example.com', // TEST-ONLY: example.com is reserved for examples
         JWT_SECRET: 'test-secret', // TEST-ONLY: Not a real production secret
+        ALLOWED_ORIGINS: 'https://api.example.com,https://localhost:3000', // TEST-ONLY: Required for CORS
+        ENVIRONMENT: 'test', // TEST-ONLY: Required for env detection
     };
 
     beforeEach(() => {
@@ -188,10 +190,11 @@ describe('OTP Auth Service Admin Routes', () => {
                 email: 'admin@example.com' 
             } as any);
 
+            // Use HttpOnly cookie for authentication (dashboard routes use cookies, not Authorization header)
             const request = new Request('https://api.example.com/admin/analytics', {
                 method: 'GET',
                 headers: {
-                    'Authorization': 'Bearer admin-token',
+                    'Cookie': 'auth_token=admin-token',
                 },
             });
 
@@ -217,10 +220,11 @@ describe('OTP Auth Service Admin Routes', () => {
                 email: 'admin@example.com' 
             } as any);
 
+            // Use HttpOnly cookie for authentication (dashboard routes use cookies, not Authorization header)
             const request = new Request('https://api.example.com/admin/config', {
                 method: 'GET',
                 headers: {
-                    'Authorization': 'Bearer admin-token',
+                    'Cookie': 'auth_token=admin-token',
                 },
             });
 
@@ -243,10 +247,11 @@ describe('OTP Auth Service Admin Routes', () => {
                 email: 'admin@example.com' 
             } as any);
 
+            // Use HttpOnly cookie for authentication (dashboard routes use cookies, not Authorization header)
             const request = new Request('https://api.example.com/admin/domains/example.com/status', {
                 method: 'GET',
                 headers: {
-                    'Authorization': 'Bearer admin-token',
+                    'Cookie': 'auth_token=admin-token',
                 },
             });
 
@@ -270,10 +275,11 @@ describe('OTP Auth Service Admin Routes', () => {
                 email: 'admin@example.com' 
             } as any);
 
+            // Use HttpOnly cookie for authentication (dashboard routes use cookies, not Authorization header)
             const request = new Request('https://api.example.com/admin/customers/customer-123/export', {
                 method: 'POST', // Fixed: Route expects POST, not GET
                 headers: {
-                    'Authorization': 'Bearer admin-token',
+                    'Cookie': 'auth_token=admin-token',
                 },
             });
 

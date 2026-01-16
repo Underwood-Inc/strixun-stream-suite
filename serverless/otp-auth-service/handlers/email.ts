@@ -134,6 +134,9 @@ export async function sendOTPEmail(
         throw new Error('RESEND_FROM_EMAIL must be set to your verified domain email (e.g., noreply@yourdomain.com). Set it via: wrangler secret put RESEND_FROM_EMAIL');
     }
     
+    // Get auth service URL from env (no hardcoded domain)
+    const authServiceUrl = env.AUTH_SERVICE_URL || env.JWT_ISSUER || (env.ENVIRONMENT === 'production' ? 'https://auth.idling.app' : 'http://localhost:8787');
+    
     // Prepare template variables
     const variables: Record<string, string | number> = {
         ...templateVariables,
@@ -141,7 +144,8 @@ export async function sendOTPEmail(
         expiresIn: '10',
         expiresAt: trackingData?.expiresAt || new Date(Date.now() + 10 * 60 * 1000).toISOString(),
         userEmail: email,
-        appName: templateVariables.appName || customer?.companyName || 'OTP Auth Service'
+        appName: templateVariables.appName || customer?.companyName || 'OTP Auth Service',
+        authUrl: authServiceUrl // Auth service URL from env (for email template links)
     };
     
     // Generate tracking pixel if tracking data is provided

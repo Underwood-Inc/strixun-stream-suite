@@ -222,7 +222,7 @@ function getInlineEmailTemplate(): string {
                 <p>If you didn't request this OTP, please ignore this email.</p>
             </div>
             <div class="footer">
-                <p><a href="https://auth.idling.app" class="brand-name">{{appName}}</a></p>
+                <p><a href="{{authUrl}}" class="brand-name">{{appName}}</a></p>
                 <p>{{footerText}}</p>
             </div>
         </div>

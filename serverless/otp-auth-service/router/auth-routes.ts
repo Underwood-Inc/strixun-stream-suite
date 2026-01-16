@@ -87,10 +87,10 @@ async function authenticateJWT(
     env: Env,
     requestingKeyId?: string
 ): Promise<{ customerId: string; payload: any } | null> {
-    // CRITICAL: Check HttpOnly cookie FIRST, then Authorization header
+    // CRITICAL: Check HttpOnly cookie FIRST, then Authorization header (for service-to-service SSO)
     let token: string | null = null;
     
-    // Check cookie first (primary - HttpOnly SSO)
+    // PRIORITY 1: Check cookie first (primary - HttpOnly SSO for browsers)
     const cookieHeader = request.headers.get('Cookie');
     if (cookieHeader) {
         const cookies = cookieHeader.split(';').map(c => c.trim());
@@ -98,6 +98,15 @@ async function authenticateJWT(
         if (authCookie) {
             token = authCookie.substring('auth_token='.length).trim();
             console.log('[AuthRoutes] authenticateJWT - Token extracted from cookie:', token ? token.substring(0, 20) + '...' : 'empty');
+        }
+    }
+    
+    // PRIORITY 2: Check Authorization header (service-to-service calls)
+    if (!token) {
+        const authHeader = request.headers.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring('Bearer '.length).trim();
+            console.log('[AuthRoutes] authenticateJWT - Token extracted from Authorization header:', token ? token.substring(0, 20) + '...' : 'empty');
         }
     }
     
@@ -493,11 +502,6 @@ export async function handleAuthRoutes(
     }
     if (path === '/auth/logout' && request.method === 'POST') {
         const handlerResponse = await authHandlers.handleLogout(request, env);
-        // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
-        return { response: handlerResponse, customerId };
-    }
-    if (path === '/auth/refresh' && request.method === 'POST') {
-        const handlerResponse = await authHandlers.handleRefresh(request, env);
         // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
         return { response: handlerResponse, customerId };
     }
