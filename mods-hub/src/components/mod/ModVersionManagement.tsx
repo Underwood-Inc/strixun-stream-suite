@@ -17,6 +17,7 @@ import { candyShopAnimation } from '../../utils/candyShopAnimation';
 import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys, useDeleteModVersion, useUpdateModVersion } from '../../hooks/useMods';
+import { MarkdownEditor } from '../common/MarkdownEditor';
 
 const Container = styled.div`
   ${getCardStyles('default')}
@@ -128,23 +129,6 @@ const Input = styled.input`
   border-radius: 4px;
   color: ${colors.text};
   font-size: 0.875rem;
-  
-  &:focus {
-    border-color: ${colors.accent};
-    outline: none;
-  }
-`;
-
-const TextArea = styled.textarea`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${colors.bg};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  color: ${colors.text};
-  font-size: 0.875rem;
-  min-height: 80px;
-  resize: vertical;
-  font-family: inherit;
   
   &:focus {
     border-color: ${colors.accent};
@@ -357,11 +341,13 @@ export function ModVersionManagement({ modSlug, modId, versions }: ModVersionMan
                                 </FormGroup>
                                 
                                 <FormGroup>
-                                    <Label>Changelog</Label>
-                                    <TextArea
+                                    <MarkdownEditor
+                                        label="Changelog"
                                         value={editFormData.changelog || ''}
-                                        onChange={(e) => setEditFormData({ ...editFormData, changelog: e.target.value })}
+                                        onChange={(value) => setEditFormData({ ...editFormData, changelog: value })}
                                         placeholder="What's new in this version?"
+                                        height={200}
+                                        preview="live"
                                     />
                                 </FormGroup>
                                 

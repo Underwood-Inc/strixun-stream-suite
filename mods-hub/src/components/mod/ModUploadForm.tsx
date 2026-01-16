@@ -10,6 +10,7 @@ import type { ModUploadRequest, ModCategory, ModVisibility, ModVariant, ModStatu
 import { useModSettings } from '../../hooks/useMods';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
+import { MarkdownEditor } from '../common/MarkdownEditor';
 
 // UI-only type that extends ModVariant with file upload fields
 type ModVariantWithFile = ModVariant & {
@@ -42,23 +43,6 @@ const Input = styled.input`
   border-radius: 4px;
   color: ${colors.text};
   font-size: 0.875rem;
-  
-  &:focus {
-    border-color: ${colors.accent};
-    outline: none;
-  }
-`;
-
-const TextArea = styled.textarea`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${colors.bg};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  color: ${colors.text};
-  font-size: 0.875rem;
-  min-height: 100px;
-  resize: vertical;
-  font-family: inherit;
   
   &:focus {
     border-color: ${colors.accent};
@@ -272,6 +256,7 @@ export function ModUploadForm({
         const newVariant: ModVariantWithFile = {
             variantId: `variant-${Date.now()}`,
             modId: '', // Will be set when mod is created
+            parentVersionId: '', // Will be set to initial version when mod is created
             name: '',
             description: '',
             createdAt: '',
@@ -384,11 +369,13 @@ export function ModUploadForm({
             </FormGroup>
 
             <FormGroup>
-                <Label>Description</Label>
-                <TextArea
+                <MarkdownEditor
+                    label="Description"
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe your mod..."
+                    onChange={setDescription}
+                    placeholder="Describe your mod... Supports **bold**, *italic*, `code`, lists, and more..."
+                    height={200}
+                    preview="live"
                 />
             </FormGroup>
 
@@ -426,11 +413,13 @@ export function ModUploadForm({
             </FormGroup>
 
             <FormGroup>
-                <Label>Changelog</Label>
-                <TextArea
+                <MarkdownEditor
+                    label="Changelog"
                     value={changelog}
-                    onChange={(e) => setChangelog(e.target.value)}
-                    placeholder="What's new in this version?"
+                    onChange={setChangelog}
+                    placeholder="What's new in this version? Supports **bold**, *italic*, `code`, lists, and more..."
+                    height={200}
+                    preview="live"
                 />
             </FormGroup>
 
@@ -517,11 +506,13 @@ export function ModUploadForm({
                             />
                         </FormGroup>
                         <FormGroup>
-                            <Label>Variant Description</Label>
-                            <TextArea
+                            <MarkdownEditor
+                                label="Variant Description"
                                 value={variant.description || ''}
-                                onChange={(e) => handleVariantChange(variant.variantId, 'description', e.target.value)}
+                                onChange={(value) => handleVariantChange(variant.variantId, 'description', value)}
                                 placeholder="Describe this variant..."
+                                height={150}
+                                preview="edit"
                             />
                         </FormGroup>
                         <FormGroup>

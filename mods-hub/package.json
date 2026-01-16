@@ -26,8 +26,8 @@
   "type": "module",
   "version": "1.0.0",
   "dependencies": {
-    "@strixun/auth-store": "workspace:*",
     "@strixun/api-framework": "workspace:*",
+    "@strixun/auth-store": "workspace:*",
     "@strixun/dice-board-game": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/error-utils": "workspace:*",
@@ -36,6 +36,7 @@
     "@strixun/shared-config": "workspace:*",
     "@strixun/virtualized-table": "workspace:*",
     "@tanstack/react-query": "^5.62.11",
+    "@uiw/react-md-editor": "^4.0.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-helmet-async": "^2.0.5",

@@ -15,6 +15,7 @@ import { getButtonStyles } from '../../utils/buttonStyles';
 import { getBadgeStyles } from '../../utils/sharedStyles';
 import { getStatusBadgeType } from '../../utils/badgeHelpers';
 import { ConfirmationModal } from '../common/ConfirmationModal';
+import { MarkdownEditor } from '../common/MarkdownEditor';
 
 // UI-only type that extends ModVariant with file upload fields
 // These fields are used for creating new versions, not for persisted data
@@ -121,32 +122,6 @@ const Input = styled.input`
   border-radius: 6px;
   color: ${colors.text};
   font-size: 0.875rem;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  
-  &:focus {
-    border-color: ${colors.accent};
-    outline: none;
-    box-shadow: 0 0 0 3px ${colors.accent}20, 0 2px 6px rgba(0, 0, 0, 0.1);
-    transform: translateY(-1px);
-  }
-  
-  &:hover:not(:focus) {
-    border-color: ${colors.borderLight || colors.border};
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-  }
-`;
-
-const TextArea = styled.textarea`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${colors.bg};
-  border: 1px solid ${colors.border};
-  border-radius: 6px;
-  color: ${colors.text};
-  font-size: 0.875rem;
-  min-height: 100px;
-  resize: vertical;
-  font-family: inherit;
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   
@@ -486,6 +461,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
         const newVariant: ModVariantWithFile = {
             variantId: `variant-${Date.now()}`,
             modId: mod.modId,
+            parentVersionId: '', // TODO: UI should allow selecting which version this variant belongs to
             name: '',
             description: '',
             createdAt: '', // Empty = NEW variant (not saved yet)
@@ -707,11 +683,13 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                     </FormGroup>
 
                     <FormGroup>
-                        <Label>Description</Label>
-                        <TextArea
+                        <MarkdownEditor
+                            label="Description"
                             value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            style={{ minHeight: '120px' }}
+                            onChange={setDescription}
+                            placeholder="Describe your mod..."
+                            height={200}
+                            preview="live"
                         />
                     </FormGroup>
 
@@ -803,11 +781,12 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                                             borderColor: isNew && !hasName ? colors.warning : undefined 
                                         }}
                                     />
-                                    <TextArea
-                                        placeholder="Variant description (optional)"
+                                    <MarkdownEditor
                                         value={variant.description || ''}
-                                        onChange={(e) => handleVariantChange(variant.variantId, 'description', e.target.value)}
-                                        style={{ minHeight: '60px' }}
+                                        onChange={(value) => handleVariantChange(variant.variantId, 'description', value)}
+                                        placeholder="Variant description (optional)"
+                                        height={120}
+                                        preview="edit"
                                     />
                                     <FormGroup>
                                         <Label>

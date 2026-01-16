@@ -84,7 +84,7 @@ const ChangelogContainer = styled.div`
   }
   
   &::-webkit-scrollbar-track {
-    background: ${colors.cardBg};
+    background: ${colors.card};
     border-radius: 3px;
   }
   
