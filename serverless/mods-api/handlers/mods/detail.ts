@@ -7,9 +7,20 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
-import { sortByDateDesc } from '../../../shared/utils/sortByDate.js';
 import type { ModMetadata, ModVersion, ModDetailResponse, VariantVersion } from '../../types/mod.js';
 import type { AuthResult } from '../../utils/auth.js';
+
+/**
+ * Sort by date descending (newest first)
+ * Inline to avoid bundling issues with shared imports
+ */
+function sortByCreatedAtDesc(a: ModVersion, b: ModVersion): number {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const aValid = !isNaN(aTime) ? aTime : 0;
+    const bValid = !isNaN(bTime) ? bTime : 0;
+    return bValid - aValid;
+}
 
 /**
  * Handle get mod detail request
@@ -240,7 +251,7 @@ export async function handleGetModDetail(
         }
 
         // Sort versions by createdAt (newest first)
-        versions.sort(sortByDateDesc('createdAt'));
+        versions.sort(sortByCreatedAtDesc);
 
         // CRITICAL: Ensure mod has customerId (for data scoping)
         // Set customerId from auth context if missing (for legacy mods)

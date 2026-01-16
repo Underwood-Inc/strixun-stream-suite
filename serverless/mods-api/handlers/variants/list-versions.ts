@@ -7,9 +7,19 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
-import { sortByDateDesc } from '../../../shared/utils/sortByDate.js';
 import type { ModVersion } from '../../types/mod.js';
 import type { Env } from '../../worker.js';
+
+/**
+ * Sort by date descending (newest first)
+ */
+function sortByCreatedAtDesc(a: ModVersion, b: ModVersion): number {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const aValid = !isNaN(aTime) ? aTime : 0;
+    const bValid = !isNaN(bTime) ? bTime : 0;
+    return bValid - aValid;
+}
 
 export async function handleListVariantVersions(
     request: Request,
@@ -52,7 +62,7 @@ export async function handleListVariantVersions(
         }
 
         // Sort versions by createdAt (newest first)
-        versions.sort(sortByDateDesc('createdAt'));
+        versions.sort(sortByCreatedAtDesc);
 
         const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
