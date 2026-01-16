@@ -76,7 +76,7 @@ const VersionDate = styled.span`
 
 const ChangelogContainer = styled.div`
   margin: 0;
-  max-height: 120px;
+  max-height: 400px;
   overflow-y: auto;
   
   &::-webkit-scrollbar {

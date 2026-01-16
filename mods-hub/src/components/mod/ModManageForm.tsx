@@ -100,6 +100,22 @@ const InfoSection = styled.div`
   min-width: 0; /* Allows flex item to shrink below content size */
 `;
 
+const TwoColumnRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: ${spacing.lg};
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const FullWidthSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${spacing.lg};
+`;
+
 const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
@@ -650,6 +666,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                 )}
             </StatusInfo>
 
+            {/* Top Section: Thumbnail (left) | Title, Category, Tags (right) */}
             <Header>
                 <ThumbnailSection>
                     <Label>Thumbnail (optional)</Label>
@@ -683,17 +700,6 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                     </FormGroup>
 
                     <FormGroup>
-                        <MarkdownEditor
-                            label="Description"
-                            value={description}
-                            onChange={setDescription}
-                            placeholder="Describe your mod..."
-                            height={200}
-                            preview="live"
-                        />
-                    </FormGroup>
-
-                    <FormGroup>
                         <Label>Category</Label>
                         <Select value={category} onChange={(e) => setCategory(e.target.value as ModCategory)}>
                             <option value="script">Script</option>
@@ -713,26 +719,41 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                             onChange={(e) => setTags(e.target.value)}
                         />
                     </FormGroup>
-
-                    <FormGroup>
-                        <Label>Visibility</Label>
-                        <Select value={visibility} onChange={(e) => setVisibility(e.target.value as ModVisibility)}>
-                            <option value="public">Public</option>
-                            <option value="unlisted">Unlisted</option>
-                            <option value="private">Private</option>
-                        </Select>
-                    </FormGroup>
-
-                    <FormGroup>
-                        <Label>Associated Game (optional)</Label>
-                        <GamesPicker
-                            value={gameId}
-                            onChange={setGameId}
-                            placeholder="Select a game this mod is for..."
-                        />
-                    </FormGroup>
                 </InfoSection>
             </Header>
+
+            {/* Middle Section: Visibility (left) | Associated Game (right) */}
+            <TwoColumnRow>
+                <FormGroup>
+                    <Label>Visibility</Label>
+                    <Select value={visibility} onChange={(e) => setVisibility(e.target.value as ModVisibility)}>
+                        <option value="public">Public</option>
+                        <option value="unlisted">Unlisted</option>
+                        <option value="private">Private</option>
+                    </Select>
+                </FormGroup>
+
+                <FormGroup>
+                    <Label>Associated Game (optional)</Label>
+                    <GamesPicker
+                        value={gameId}
+                        onChange={setGameId}
+                        placeholder="Select a game this mod is for..."
+                    />
+                </FormGroup>
+            </TwoColumnRow>
+
+            {/* Description: Full width */}
+            <FullWidthSection>
+                <MarkdownEditor
+                    label="Description"
+                    value={description}
+                    onChange={setDescription}
+                    placeholder="Describe your mod..."
+                    height={300}
+                    preview="live"
+                />
+            </FullWidthSection>
 
             <FormGroup>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
