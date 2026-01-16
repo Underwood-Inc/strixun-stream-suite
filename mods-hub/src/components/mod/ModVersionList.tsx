@@ -18,6 +18,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys } from '../../hooks/useMods';
 import { formatDate } from '@strixun/shared-config/date-utils';
+import { MarkdownContent } from '../common/MarkdownContent';
 
 const Container = styled.div`
   display: flex;
@@ -73,10 +74,7 @@ const VersionDate = styled.span`
   color: ${colors.textMuted};
 `;
 
-const Changelog = styled.p`
-  color: ${colors.textSecondary};
-  font-size: 0.875rem;
-  line-height: 1.5;
+const ChangelogContainer = styled.div`
   margin: 0;
 `;
 
@@ -87,33 +85,9 @@ const Meta = styled.div`
   color: ${colors.textMuted};
 `;
 
-const ExpandButton = styled.button`
-  background: none;
-  border: none;
-  color: ${colors.textSecondary};
-  font-size: 1.25rem;
-  cursor: pointer;
-  padding: ${spacing.xs};
-  display: flex;
-  align-items: center;
-  transition: transform 0.2s ease, color 0.2s ease;
-  
-  &:hover {
-    color: ${colors.text};
-  }
-`;
-
 const DownloadButton = styled.button`
   ${getButtonStyles('primary')}
   ${candyShopAnimation}
-`;
-
-const ExpandedContent = styled.div<{ $isExpanded: boolean }>`
-  max-height: ${props => props.$isExpanded ? '2000px' : '0'};
-  overflow: hidden;
-  transition: max-height 0.3s ease;
-  border-top: ${props => props.$isExpanded ? `1px solid ${colors.border}` : 'none'};
-  padding-top: ${props => props.$isExpanded ? spacing.md : '0'};
 `;
 
 const VariantsSection = styled.div`
@@ -174,15 +148,6 @@ const VariantDownloadButton = styled.button`
   padding: ${spacing.xs} ${spacing.sm};
 `;
 
-const NoVariantsMessage = styled.div`
-  padding: ${spacing.md};
-  text-align: center;
-  color: ${colors.textMuted};
-  font-size: 0.875rem;
-  background: ${colors.bgTertiary};
-  border-radius: 4px;
-`;
-
 interface ModVersionListProps {
     modSlug: string; // Mod slug for constructing download URLs
     versions: ModVersion[];
@@ -196,25 +161,11 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
     const [downloading, setDownloading] = useState<Set<string>>(new Set());
     const [downloadingVariants, setDownloadingVariants] = useState<Set<string>>(new Set());
     const [downloadError, setDownloadError] = useState<string | null>(null);
-    const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set());
 
     const formatFileSize = (bytes: number): string => {
         if (bytes < 1024) return `${bytes} B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    };
-
-
-    const toggleVersion = (versionId: string) => {
-        setExpandedVersions(prev => {
-            const next = new Set(prev);
-            if (next.has(versionId)) {
-                next.delete(versionId);
-            } else {
-                next.add(versionId);
-            }
-            return next;
-        });
     };
 
     const handleDownload = async (version: ModVersion) => {
@@ -311,37 +262,27 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                     {downloadError}
                 </div>
             )}
-            {versions.map((version) => {
-                const isExpanded = expandedVersions.has(version.versionId);
-                
-                // Calculate cumulative downloads for this version
-                // Note: Variants have their own download tracking via totalDownloads
-                const variantDownloads = variants.reduce((sum, v) => sum + (v.totalDownloads || 0), 0);
-                const cumulativeDownloads = version.downloads + variantDownloads;
-                
-                return (
-                    <VersionCard key={version.versionId} $isExpanded={isExpanded}>
-                        <VersionCardHeader onClick={() => toggleVersion(version.versionId)}>
+            {versions.map((version) => (
+                    <VersionCard key={version.versionId} $isExpanded={false}>
+                        <VersionCardHeader>
                             <VersionInfo>
                                 <VersionHeader>
                                     <VersionNumber>v{version.version}</VersionNumber>
                                     <VersionDate>{formatDate(version.createdAt)}</VersionDate>
                                 </VersionHeader>
-                                {version.changelog && <Changelog>{version.changelog}</Changelog>}
+                                {version.changelog && (
+                                                    <ChangelogContainer>
+                                                        <MarkdownContent content={version.changelog} />
+                                                    </ChangelogContainer>
+                                                )}
                                 <Meta>
                                     <span>{formatFileSize(version.fileSize)}</span>
                                     <span>•</span>
-                                    <span>{cumulativeDownloads} downloads{variants.length > 0 ? ` (${version.downloads} main + ${variantDownloads} variants)` : ''}</span>
+                                    <span>{version.downloads} downloads</span>
                                     {version.gameVersions.length > 0 && (
                                         <>
                                             <span>•</span>
                                             <span>Game: {version.gameVersions.join(', ')}</span>
-                                        </>
-                                    )}
-                                    {variants.length > 0 && (
-                                        <>
-                                            <span>•</span>
-                                            <span>{variants.length} variant{variants.length !== 1 ? 's' : ''}</span>
                                         </>
                                     )}
                                 </Meta>
@@ -364,76 +305,61 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                 >
                                     {downloading.has(version.versionId) ? 'Downloading...' : 'Download'}
                                 </DownloadButton>
-                                <ExpandButton
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleVersion(version.versionId);
-                                    }}
-                                    style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                                    aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                                >
-                                    ▼
-                                </ExpandButton>
                             </div>
                         </VersionCardHeader>
-                        <ExpandedContent $isExpanded={isExpanded}>
-                            {variants.length > 0 ? (
-                                <VariantsSection>
-                                    <VariantsTitle>Variants ({variants.length})</VariantsTitle>
-                                    <div style={{ 
-                                        padding: spacing.sm, 
-                                        background: `${colors.accent}20`, 
-                                        color: colors.textSecondary, 
-                                        borderRadius: 4,
-                                        fontSize: '0.875rem',
-                                        marginBottom: spacing.md
-                                    }}>
-                                        ℹ Variants are mod-level alternatives with their own version history. 
-                                        Download the latest version of each variant below.
-                                    </div>
-                                    {variants.map((variant) => (
-                                        <VariantCard key={variant.variantId}>
-                                            <VariantInfo>
-                                                <VariantName>{variant.name}</VariantName>
-                                                {variant.description && (
-                                                    <VariantDescription>{variant.description}</VariantDescription>
-                                                )}
-                                                <VariantMeta>
-                                                    <span>{variant.versionCount} version{variant.versionCount !== 1 ? 's' : ''}</span>
-                                                    <span>•</span>
-                                                    <span>{variant.totalDownloads} total downloads</span>
-                                                    <span>•</span>
-                                                    <span>Created: {formatDate(variant.createdAt)}</span>
-                                                </VariantMeta>
-                                                {variant.currentVersionId && (
-                                                    <IntegrityBadge 
-                                                        slug={modSlug}
-                                                        versionId={variant.currentVersionId}
-                                                    />
-                                                )}
-                                            </VariantInfo>
-                                            <VariantDownloadButton
-                                                onClick={(e) => {
-                                                    celebrateClick(e.currentTarget);
-                                                    handleVariantDownload(variant);
-                                                }}
-                                                disabled={downloadingVariants.has(variant.variantId) || !variant.variantId || !isAuthenticated}
-                                                title={!isAuthenticated ? 'Please log in to download' : undefined}
-                                            >
-                                                {downloadingVariants.has(variant.variantId) ? 'Downloading...' : 'Download Latest'}
-                                            </VariantDownloadButton>
-                                        </VariantCard>
-                                    ))}
-                                </VariantsSection>
-                            ) : (
-                                <NoVariantsMessage>
-                                    No variants available for this mod
-                                </NoVariantsMessage>
-                            )}
-                        </ExpandedContent>
                     </VersionCard>
-                );
-            })}
+            ))}
+            
+            {/* Variants Section - shown once at mod level, not per-version */}
+            {variants.length > 0 && (
+                <VariantsSection>
+                    <VariantsTitle>Variants ({variants.length})</VariantsTitle>
+                    <div style={{ 
+                        padding: spacing.sm, 
+                        background: `${colors.accent}20`, 
+                        color: colors.textSecondary, 
+                        borderRadius: 4,
+                        fontSize: '0.875rem',
+                        marginBottom: spacing.md
+                    }}>
+                        ℹ Variants are mod-level alternatives with their own version history. 
+                        Download the latest version of each variant below.
+                    </div>
+                    {variants.map((variant) => (
+                        <VariantCard key={variant.variantId}>
+                            <VariantInfo>
+                                <VariantName>{variant.name}</VariantName>
+                                {variant.description && (
+                                    <VariantDescription>{variant.description}</VariantDescription>
+                                )}
+                                <VariantMeta>
+                                    <span>{variant.versionCount} version{variant.versionCount !== 1 ? 's' : ''}</span>
+                                    <span>•</span>
+                                    <span>{variant.totalDownloads} total downloads</span>
+                                    <span>•</span>
+                                    <span>Created: {formatDate(variant.createdAt)}</span>
+                                </VariantMeta>
+                                {variant.currentVersionId && (
+                                    <IntegrityBadge 
+                                        slug={modSlug}
+                                        versionId={variant.currentVersionId}
+                                    />
+                                )}
+                            </VariantInfo>
+                            <VariantDownloadButton
+                                onClick={(e) => {
+                                    celebrateClick(e.currentTarget);
+                                    handleVariantDownload(variant);
+                                }}
+                                disabled={downloadingVariants.has(variant.variantId) || !variant.variantId || !isAuthenticated}
+                                title={!isAuthenticated ? 'Please log in to download' : undefined}
+                            >
+                                {downloadingVariants.has(variant.variantId) ? 'Downloading...' : 'Download Latest'}
+                            </VariantDownloadButton>
+                        </VariantCard>
+                    ))}
+                </VariantsSection>
+            )}
         </Container>
     );
 }

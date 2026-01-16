@@ -238,19 +238,9 @@ export async function handleGetModDetail(
             }
         }
 
-        // Sort versions by semantic version (newest first)
-        versions.sort((a, b) => {
-            const aParts = a.version.split('.').map(Number);
-            const bParts = b.version.split('.').map(Number);
-            for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-                const aPart = aParts[i] || 0;
-                const bPart = bParts[i] || 0;
-                if (aPart !== bPart) {
-                    return bPart - aPart;
-                }
-            }
-            return 0;
-        });
+        // Sort versions by createdAt (newest first) for reliable ordering
+        // Using createdAt ensures consistent sorting regardless of version string format
+        versions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
         // CRITICAL: Ensure mod has customerId (for data scoping)
         // Set customerId from auth context if missing (for legacy mods)

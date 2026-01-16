@@ -17,6 +17,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys } from '../../hooks/useMods';
 import { formatDate } from '@strixun/shared-config/date-utils';
+import { MarkdownContent } from '../common/MarkdownContent';
 
 const Container = styled.div`
   display: flex;
@@ -63,10 +64,7 @@ const VersionDate = styled.span`
   color: ${colors.textMuted};
 `;
 
-const Changelog = styled.p`
-  color: ${colors.textSecondary};
-  font-size: 0.875rem;
-  line-height: 1.5;
+const ChangelogContainer = styled.div`
   margin: 0;
 `;
 
@@ -214,7 +212,11 @@ export function VariantVersionList({
                                 <VersionNumber>v{version.version}</VersionNumber>
                                 <VersionDate>{formatDate(version.createdAt)}</VersionDate>
                             </div>
-                            {version.changelog && <Changelog>{version.changelog}</Changelog>}
+                            {version.changelog && (
+                                                <ChangelogContainer>
+                                                    <MarkdownContent content={version.changelog} />
+                                                </ChangelogContainer>
+                                            )}
                             <Meta>
                                 <span>{formatFileSize(version.fileSize)}</span>
                                 <span>•</span>

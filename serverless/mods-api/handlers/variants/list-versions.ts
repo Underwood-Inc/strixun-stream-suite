@@ -50,6 +50,9 @@ export async function handleListVariantVersions(
             }
         }
 
+        // Sort versions by createdAt (newest first) for reliable ordering
+        versions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
         const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
 
