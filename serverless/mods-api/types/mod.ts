@@ -181,6 +181,7 @@ export interface ModReviewComment {
 export interface ModVariant {
     variantId: string;
     modId: string; // Parent mod ID (for backward compatibility - internally uses VariantReference)
+    parentVersionId: string; // Parent mod version ID - variants are tied to specific mod versions
     name: string;
     description?: string;
     createdAt: string;
