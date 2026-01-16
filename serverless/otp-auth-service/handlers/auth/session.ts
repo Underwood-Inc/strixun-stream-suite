@@ -9,6 +9,7 @@ import { getAuthCacheHeaders } from '../../utils/cache-headers.js';
 import { createJWT, getJWTSecret, hashEmail, verifyJWT } from '../../utils/crypto.js';
 import { getClientIP } from '../../utils/ip.js';
 import { createFingerprintHash } from '@strixun/api-framework';
+import { getCookieDomains } from '../../utils/cookie-domains.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -210,66 +211,99 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
  */
 export async function handleLogout(request: Request, env: Env): Promise<Response> {
     try {
-        // Clear HttpOnly cookie for current domain only
+        // Clear HttpOnly cookies for all root domains from ALLOWED_ORIGINS
+        // CRITICAL: Browser security - can only clear cookies for domains matching response origin
         const isProduction = env.ENVIRONMENT === 'production';
         
-        // Extract current request's root domain
+        // Get all root domains from ALLOWED_ORIGINS
+        const allCookieDomains = getCookieDomains(env, null);
+        
+        // Extract current request's root domain to determine which cookies we can clear
         const url = new URL(request.url);
         const hostname = url.hostname;
         
-        // Determine cookie domain based on current hostname
-        let cookieDomain: string;
+        // Determine current response's root domain
+        let currentRootDomain: string;
         if (hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-            cookieDomain = 'localhost';
+            currentRootDomain = 'localhost';
         } else {
             const parts = hostname.split('.');
-            const rootDomain = parts.slice(-2).join('.');
-            cookieDomain = `.${rootDomain}`;
+            currentRootDomain = parts.slice(-2).join('.');
         }
         
-        const clearCookieParts = isProduction ? [
-            'auth_token=',
-            `Domain=${cookieDomain}`,
-            'Path=/',
-            'HttpOnly',
-            'Secure',
-            'SameSite=Lax',
-            'Max-Age=0'
-        ] : [
-            'auth_token=',
-            `Domain=${cookieDomain}`,
-            'Path=/',
-            'HttpOnly',
-            'SameSite=Lax',
-            'Max-Age=0'
-        ];
+        // Filter cookie domains to only those matching current response origin (browser security)
+        const cookieDomainsToClear = allCookieDomains.filter(domain => {
+            if (domain === 'localhost') {
+                return currentRootDomain === 'localhost';
+            }
+            // Remove leading dot for comparison
+            const domainWithoutDot = domain.startsWith('.') ? domain.substring(1) : domain;
+            return domainWithoutDot === currentRootDomain;
+        });
         
-        const clearCookie = clearCookieParts.join('; ');
+        // If no matching domain found, fall back to current root domain
+        if (cookieDomainsToClear.length === 0) {
+            cookieDomainsToClear.push(currentRootDomain === 'localhost' ? 'localhost' : `.${currentRootDomain}`);
+        }
+        
+        // Create Set-Cookie headers to clear cookies for all matching domains
+        const clearCookieHeaders: string[] = [];
+        for (const cookieDomain of cookieDomainsToClear) {
+            const clearCookieParts = isProduction ? [
+                'auth_token=',
+                `Domain=${cookieDomain}`,
+                'Path=/',
+                'HttpOnly',
+                'Secure',
+                'SameSite=Lax',
+                'Max-Age=0'
+            ] : [
+                'auth_token=',
+                `Domain=${cookieDomain}`,
+                'Path=/',
+                'HttpOnly',
+                'SameSite=Lax',
+                'Max-Age=0'
+            ];
+            clearCookieHeaders.push(clearCookieParts.join('; '));
+        }
 
         // ONLY check HttpOnly cookie - NO Authorization header fallback
         const cookieHeader = request.headers.get('Cookie');
         if (!cookieHeader) {
-            return new Response(JSON.stringify({ success: true, message: 'Logged out (no active session)' }), {
+            const response = new Response(JSON.stringify({ success: true, message: 'Logged out (no active session)' }), {
                 status: 200,
                 headers: {
                     ...getCorsHeadersRecord(env, request),
                     'Content-Type': 'application/json',
-                    'Set-Cookie': clearCookie,
                 },
             });
+            
+            // Add all Set-Cookie headers to clear cookies
+            for (const clearCookie of clearCookieHeaders) {
+                response.headers.append('Set-Cookie', clearCookie);
+            }
+            
+            return response;
         }
 
         const cookies = cookieHeader.split(';').map(c => c.trim());
         const authCookie = cookies.find(c => c.startsWith('auth_token='));
         if (!authCookie) {
-            return new Response(JSON.stringify({ success: true, message: 'Logged out (no auth cookie)' }), {
+            const response = new Response(JSON.stringify({ success: true, message: 'Logged out (no auth cookie)' }), {
                 status: 200,
                 headers: {
                     ...getCorsHeadersRecord(env, request),
                     'Content-Type': 'application/json',
-                    'Set-Cookie': clearCookie,
                 },
             });
+            
+            // Add all Set-Cookie headers to clear cookies
+            for (const clearCookie of clearCookieHeaders) {
+                response.headers.append('Set-Cookie', clearCookie);
+            }
+            
+            return response;
         }
 
         const token = authCookie.substring('auth_token='.length).trim();
@@ -277,14 +311,20 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
 
         if (!payload) {
-            return new Response(JSON.stringify({ success: true, message: 'Logged out (invalid/expired token)' }), {
+            const response = new Response(JSON.stringify({ success: true, message: 'Logged out (invalid/expired token)' }), {
                 status: 200,
                 headers: {
                     ...getCorsHeadersRecord(env, request),
                     'Content-Type': 'application/json',
-                    'Set-Cookie': clearCookie,
                 },
             });
+            
+            // Add all Set-Cookie headers to clear cookies
+            for (const clearCookie of clearCookieHeaders) {
+                response.headers.append('Set-Cookie', clearCookie);
+            }
+            
+            return response;
         }
         
         // Get customer ID from token - MANDATORY
@@ -319,7 +359,7 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             console.log(`[Logout] ✓ Deleted session for customer: ${customerId}`);
         }
         
-        return new Response(JSON.stringify({
+        const response = new Response(JSON.stringify({
             success: true,
             message: 'Logged out successfully'
         }), {
@@ -327,9 +367,15 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             headers: {
                 ...getCorsHeadersRecord(env, request),
                 'Content-Type': 'application/json',
-                'Set-Cookie': clearCookie,
             },
         });
+        
+        // Add all Set-Cookie headers to clear cookies
+        for (const clearCookie of clearCookieHeaders) {
+            response.headers.append('Set-Cookie', clearCookie);
+        }
+        
+        return response;
     } catch (error: any) {
         return new Response(JSON.stringify({ 
             error: 'Failed to logout',
