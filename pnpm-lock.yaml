@@ -222,18 +222,12 @@ importers:
       '@strixun/otp-login':
         specifier: workspace:*
         version: link:../packages/otp-login
-      '@strixun/shared-styles':
-        specifier: workspace:*
-        version: link:../shared-styles
       react:
         specifier: ^19.0.0
         version: 19.2.3
       react-dom:
         specifier: ^19.0.0
         version: 19.2.3(react@19.2.3)
-      styled-components:
-        specifier: ^6.1.17
-        version: 6.1.19(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       zustand:
         specifier: ^4.5.2
         version: 4.5.7(@types/react@19.2.7)(react@19.2.3)
@@ -262,6 +256,9 @@ importers:
       globals:
         specifier: ^15.15.0
         version: 15.15.0
+      sass:
+        specifier: ^1.77.0
+        version: 1.97.1
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

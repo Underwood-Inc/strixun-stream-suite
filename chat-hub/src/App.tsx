@@ -3,7 +3,7 @@
  * Standalone P2P chat interface
  */
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from './stores/auth';
 import { useChatStore } from './stores/chat';
 import { ChatClient } from '@strixun/chat/react';
@@ -38,7 +38,7 @@ export function App() {
   }, [checkAuth]);
 
   const handleLoginSuccess = async (_data: LoginSuccessData) => {
-    console.log('[ChatHub] ✓ OTP verification successful, validating session...');
+    console.log('[ChatHub] OTP verification successful, validating session...');
     setLoginError(null);
     
     try {
@@ -47,13 +47,13 @@ export function App() {
         setLoginError('Session validation failed. Please try again.');
       }
     } catch (error) {
-      console.error('[ChatHub] ✗ Error validating session:', error);
+      console.error('[ChatHub] Error validating session:', error);
       setLoginError('Session validation error. Please try again.');
     }
   };
 
   const handleLoginError = (error: string) => {
-    console.error('[ChatHub] ✗ Login failed:', error);
+    console.error('[ChatHub] Login failed:', error);
     setLoginError(error);
   };
 
@@ -61,16 +61,16 @@ export function App() {
     try {
       await logout();
     } catch (error) {
-      console.error('[ChatHub] ✗ Logout failed:', error);
+      console.error('[ChatHub] Logout failed:', error);
     }
   };
 
   // Loading state
   if (isLoading) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.loadingSpinner} />
-        <p style={styles.loadingText}>Loading...</p>
+      <div className="loading-container">
+        <div className="loading-spinner" />
+        <p className="loading-text">Loading...</p>
       </div>
     );
   }
@@ -78,14 +78,14 @@ export function App() {
   // Not authenticated - show login
   if (!isAuthenticated || !customer) {
     return (
-      <div style={styles.loginContainer}>
-        <header style={styles.header}>
-          <h1 style={styles.headerTitle}>Community Chat</h1>
-          <span style={styles.headerSubtitle}>Strixun Stream Suite</span>
+      <div className="login-container">
+        <header className="login-header">
+          <h1 className="login-header__title">Community Chat</h1>
+          <span className="login-header__subtitle">Strixun Stream Suite</span>
         </header>
         
         {loginError && (
-          <div style={styles.errorBanner}>
+          <div className="error-banner">
             {loginError}
           </div>
         )}
@@ -103,22 +103,22 @@ export function App() {
 
   // Authenticated - show chat
   return (
-    <div style={styles.appContainer}>
+    <div className="app-container">
       {/* Header */}
-      <header style={styles.chatHeader}>
-        <div style={styles.headerLeft}>
-          <h1 style={styles.chatTitle}>Community Chat</h1>
-          <span style={styles.chatSubtitle}>P2P Real-time Messaging</span>
+      <header className="chat-header">
+        <div className="chat-header__left">
+          <h1 className="chat-header__title">Community Chat</h1>
+          <span className="chat-header__subtitle">P2P Real-time Messaging</span>
         </div>
         
-        <div style={styles.headerRight}>
-          <div style={styles.userInfo}>
-            <span style={styles.userLabel}>Logged in as:</span>
-            <span style={styles.userName}>{customer.displayName || 'Customer'}</span>
+        <div className="chat-header__right">
+          <div className="chat-header__user-info">
+            <span className="chat-header__user-label">Logged in as:</span>
+            <span className="chat-header__user-name">{customer.displayName || 'Customer'}</span>
           </div>
           <button 
             onClick={handleLogout}
-            style={styles.logoutButton}
+            className="chat-header__logout-btn"
           >
             Sign Out
           </button>
@@ -126,20 +126,22 @@ export function App() {
       </header>
 
       {/* Chat Interface */}
-      <main style={styles.chatMain}>
-        <ChatClient
-          useChatStore={useChatStore}
-          userId={customer.customerId}
-          userName={customer.displayName || 'Customer'}
-          showRoomList={true}
-          showRoomCreator={true}
-          style={styles.chatClient}
-        />
+      <main className="chat-main">
+        <div className="chat-client-container">
+          <ChatClient
+            useChatStore={useChatStore}
+            userId={customer.customerId}
+            userName={customer.displayName || 'Customer'}
+            showRoomList={true}
+            showRoomCreator={true}
+            style={{ height: '100%' }}
+          />
+        </div>
       </main>
 
       {/* Footer */}
-      <footer style={styles.footer}>
-        <p style={styles.footerText}>
+      <footer className="chat-footer">
+        <p className="chat-footer__text">
           <a href="https://strixun.live" target="_blank" rel="noopener noreferrer">
             Strixun Stream Suite
           </a>
@@ -150,162 +152,3 @@ export function App() {
     </div>
   );
 }
-
-// Styles (inline for standalone app simplicity)
-const styles: Record<string, React.CSSProperties> = {
-  // Loading
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    gap: '16px',
-  },
-  loadingSpinner: {
-    width: '40px',
-    height: '40px',
-    border: '3px solid var(--border)',
-    borderTopColor: 'var(--gold-primary)',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-  },
-  loadingText: {
-    color: 'var(--text-muted)',
-    fontSize: '0.875rem',
-  },
-  
-  // Login
-  loginContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    padding: '24px',
-    gap: '24px',
-  },
-  header: {
-    textAlign: 'center' as const,
-    marginBottom: '16px',
-  },
-  headerTitle: {
-    fontFamily: 'var(--font-display)',
-    fontSize: '2.5rem',
-    fontWeight: 400,
-    color: 'var(--gold-primary)',
-    marginBottom: '8px',
-  },
-  headerSubtitle: {
-    fontSize: '0.875rem',
-    color: 'var(--text-muted)',
-    letterSpacing: '0.1em',
-    textTransform: 'uppercase' as const,
-  },
-  errorBanner: {
-    padding: '12px 16px',
-    background: 'rgba(244, 67, 54, 0.1)',
-    border: '1px solid rgba(244, 67, 54, 0.3)',
-    borderRadius: '8px',
-    color: 'var(--danger)',
-    fontSize: '0.875rem',
-    maxWidth: '400px',
-    textAlign: 'center' as const,
-  },
-  
-  // App
-  appContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-  },
-  
-  // Chat Header
-  chatHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '16px 24px',
-    background: 'var(--bg-secondary)',
-    borderBottom: '1px solid var(--border)',
-    flexShrink: 0,
-  },
-  headerLeft: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  chatTitle: {
-    fontFamily: 'var(--font-display)',
-    fontSize: '1.5rem',
-    fontWeight: 400,
-    color: 'var(--gold-primary)',
-    margin: 0,
-  },
-  chatSubtitle: {
-    fontSize: '0.75rem',
-    color: 'var(--text-muted)',
-    letterSpacing: '0.05em',
-  },
-  headerRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-  },
-  userInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-    gap: '2px',
-  },
-  userLabel: {
-    fontSize: '0.625rem',
-    color: 'var(--text-muted)',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.05em',
-  },
-  userName: {
-    fontSize: '0.875rem',
-    color: 'var(--gold-primary)',
-    fontWeight: 500,
-  },
-  logoutButton: {
-    padding: '8px 16px',
-    background: 'transparent',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--border-radius-sm)',
-    color: 'var(--text-secondary)',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  
-  // Chat Main
-  chatMain: {
-    flex: 1,
-    padding: '24px',
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  chatClient: {
-    flex: 1,
-    minHeight: 0,
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--border-radius)',
-  },
-  
-  // Footer
-  footer: {
-    padding: '12px 24px',
-    background: 'var(--bg-secondary)',
-    borderTop: '1px solid var(--border)',
-    textAlign: 'center' as const,
-    flexShrink: 0,
-  },
-  footerText: {
-    fontSize: '0.75rem',
-    color: 'var(--text-muted)',
-    margin: 0,
-  },
-};
