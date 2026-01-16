@@ -168,13 +168,21 @@ export function getCorsHeaders(
     request: Request,
     customer?: { config?: { allowedOrigins?: string[] }; [key: string]: any } | null
 ): Headers {
-    // Get allowed origins: customer config > env.ALLOWED_ORIGINS
+    // CRITICAL: env.ALLOWED_ORIGINS is ALWAYS checked first, never a fallback
+    // Get base allowed origins from env.ALLOWED_ORIGINS (required)
     let allowedOrigins: string[] = [];
     
-    if (customer?.config?.allowedOrigins && customer.config.allowedOrigins.length > 0) {
-        allowedOrigins = customer.config.allowedOrigins;
-    } else if (env.ALLOWED_ORIGINS) {
+    if (env.ALLOWED_ORIGINS) {
         allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(o => o.length > 0);
+    }
+    
+    // If customer config exists, intersect with env.ALLOWED_ORIGINS (customer can only restrict further)
+    if (customer?.config?.allowedOrigins && customer.config.allowedOrigins.length > 0) {
+        const customerOrigins = customer.config.allowedOrigins;
+        // Intersect: only allow origins that are in BOTH env.ALLOWED_ORIGINS and customer config
+        allowedOrigins = allowedOrigins.filter(origin => 
+            customerOrigins.includes('*') || customerOrigins.includes(origin)
+        );
     }
     
     // No ALLOWED_ORIGINS = log error

@@ -225,46 +225,6 @@
         }
       }
     },
-    "/auth/refresh": {
-      "post": {
-        "tags": ["Customer"],
-        "summary": "Refresh token",
-        "description": "Refresh an expiring access token",
-        "operationId": "refreshToken",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RefreshTokenRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Token refreshed successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TokenResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Invalid or expired token",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/admin/customers/me": {
       "get": {
         "tags": ["Admin"],
@@ -598,16 +558,6 @@
           "message": {
             "type": "string",
             "example": "Logged out successfully"
-          }
-        }
-      },
-      "RefreshTokenRequest": {
-        "type": "object",
-        "required": ["token"],
-        "properties": {
-          "token": {
-            "type": "string",
-            "description": "Current access token to refresh"
           }
         }
       },

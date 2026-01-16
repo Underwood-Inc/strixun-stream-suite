@@ -129,25 +129,6 @@ export class OTPAuth {
     }
   }
 
-  /**
-   * Refresh JWT token
-   */
-  async refreshToken(token: string): Promise<AuthResponse> {
-    const response = await fetch(`${this.baseUrl}/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ token })
-    });
-
-    if (!response.ok) {
-      const error: ErrorResponse = await response.json();
-      throw new Error(error.error || `Refresh failed: ${response.status}`);
-    }
-
-    return await response.json();
-  }
 
   /**
    * Health check

@@ -19,6 +19,7 @@ import { ensureCustomerAccount } from './customer-creation.js';
 import { createAuthToken } from './jwt-creation.js';
 import { storeCustomerPreferences, getDefaultPreferences, getCustomerPreferences } from '../../services/customer-preferences.js';
 import { createGenericOTPError, createInternalErrorResponse } from './otp-errors.js';
+import { getCookieDomains } from '../../utils/cookie-domains.js';
 // decryptWithServiceKey removed - service key encryption was obfuscation only
 
 interface Env {
@@ -382,54 +383,83 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         // Pass keyId for inter-tenant SSO scoping
         const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request, keyId);
         
-        // Set HttpOnly cookie for current domain only
-        // CRITICAL: Browser rejects Set-Cookie for domains that don't match response origin
-        // Example: Response from auth.idling.app can only set cookie for .idling.app, NOT .short.army
+        // Set HttpOnly cookies for all root domains from ALLOWED_ORIGINS
+        // CRITICAL: Browser security - can only set cookies for domains matching response origin
+        // So we filter cookie domains to only those that match the current response origin
         const isProduction = env.ENVIRONMENT === 'production';
         
-        // Extract current request's root domain
+        // Get all root domains from ALLOWED_ORIGINS
+        const allCookieDomains = getCookieDomains(env, null);
+        
+        // Extract current request's root domain to determine which cookies we can set
         const url = new URL(request.url);
         const hostname = url.hostname;
         
-        // Determine cookie domain based on current hostname
-        let cookieDomain: string;
+        // Determine current response's root domain
+        let currentRootDomain: string;
         if (hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-            cookieDomain = 'localhost';
+            currentRootDomain = 'localhost';
         } else {
-            // Extract root domain (last 2 parts: example.com from sub.example.com)
             const parts = hostname.split('.');
-            const rootDomain = parts.slice(-2).join('.');
-            cookieDomain = `.${rootDomain}`;
+            currentRootDomain = parts.slice(-2).join('.');
         }
         
-        // Create single cookie for current domain
-        const cookieParts = isProduction ? [
-            `auth_token=${tokenResponse.token}`,
-            `Domain=${cookieDomain}`,
-            'Path=/',
-            'HttpOnly',
-            'Secure',
-            'SameSite=Lax',
-            `Max-Age=${tokenResponse.expires_in}`
-        ] : [
-            `auth_token=${tokenResponse.token}`,
-            `Domain=${cookieDomain}`,
-            'Path=/',
-            'HttpOnly',
-            'SameSite=Lax',
-            `Max-Age=${tokenResponse.expires_in}`
-        ];
-        
-        const cookieValue = cookieParts.join('; ');
-        
-        return new Response(JSON.stringify(tokenResponse), {
-            headers: {
-                ...getCorsHeadersRecord(env, request),
-                ...getOtpCacheHeaders(),
-                'Content-Type': 'application/json',
-                'Set-Cookie': cookieValue,
-            },
+        // Filter cookie domains to only those matching current response origin (browser security)
+        // For same root domain, we can set the cookie (e.g., auth.idling.app can set .idling.app cookie)
+        const cookieDomainsToSet = allCookieDomains.filter(domain => {
+            if (domain === 'localhost') {
+                return currentRootDomain === 'localhost';
+            }
+            // Remove leading dot for comparison
+            const domainWithoutDot = domain.startsWith('.') ? domain.substring(1) : domain;
+            return domainWithoutDot === currentRootDomain;
         });
+        
+        // If no matching domain found, fall back to current root domain
+        if (cookieDomainsToSet.length === 0) {
+            cookieDomainsToSet.push(currentRootDomain === 'localhost' ? 'localhost' : `.${currentRootDomain}`);
+        }
+        
+        // Create Set-Cookie headers for all matching domains
+        const setCookieHeaders: string[] = [];
+        for (const cookieDomain of cookieDomainsToSet) {
+            const cookieParts = isProduction ? [
+                `auth_token=${tokenResponse.token}`,
+                `Domain=${cookieDomain}`,
+                'Path=/',
+                'HttpOnly',
+                'Secure',
+                'SameSite=Lax',
+                `Max-Age=${tokenResponse.expires_in}`
+            ] : [
+                `auth_token=${tokenResponse.token}`,
+                `Domain=${cookieDomain}`,
+                'Path=/',
+                'HttpOnly',
+                'SameSite=Lax',
+                `Max-Age=${tokenResponse.expires_in}`
+            ];
+            setCookieHeaders.push(cookieParts.join('; '));
+        }
+        
+        // Build response headers with all Set-Cookie headers
+        const responseHeaders: Record<string, string> = {
+            ...getCorsHeadersRecord(env, request),
+            ...getOtpCacheHeaders(),
+            'Content-Type': 'application/json',
+        };
+        
+        // Add all Set-Cookie headers (Response constructor accepts array for Set-Cookie)
+        const response = new Response(JSON.stringify(tokenResponse), {
+            headers: responseHeaders,
+        });
+        
+        // Set multiple Set-Cookie headers
+        for (const cookieValue of setCookieHeaders) {
+            response.headers.append('Set-Cookie', cookieValue);
+        }
+        
+        return response;
     } catch (error: any) {
         console.error('[OTP Verify] Error:', error);
         console.error('[OTP Verify] Stack:', error?.stack);

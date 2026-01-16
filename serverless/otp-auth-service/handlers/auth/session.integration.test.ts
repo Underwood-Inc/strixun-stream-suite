@@ -10,7 +10,7 @@
  * These tests verify:
  * 1. /auth/me - JWT-only, no customer-api calls, no email in response
  * 2. /auth/logout - Session deletion, IP mapping cleanup
- * 3. /auth/refresh - Token refresh flow
+ * 3. /auth/refresh - REMOVED (HttpOnly cookie SSO doesn't need refresh)
  * 4. Customer-api integration - OTP email storage, customerId lookups
  * 5. Fail-fast scenarios - missing customerId, missing displayName
  */
@@ -181,74 +181,11 @@ describe.skipIf(!E2E_OTP_CODE)('Session Management - Integration Tests (Miniflar
     }, 30000);
   });
 
-  describe('POST /auth/refresh - Token refresh', () => {
-    it('should refresh JWT token', async () => {
-      if (!jwtToken || !customerId) {
-        throw new Error('JWT token or customerId not available');
-      }
-
-      // Create a new session first (logout deleted the previous one)
-      const requestResponse = await otpAuthService.fetch('http://example.com/auth/request-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: testEmail }),
-      });
-      expect(requestResponse.status).toBe(200);
-
-      const verifyResponse = await otpAuthService.fetch('http://example.com/auth/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: testEmail, otp: E2E_OTP_CODE }),
-      });
-      expect(verifyResponse.status).toBe(200);
-      
-      const verifyData = await verifyResponse.json();
-      const newJwtToken = verifyData.access_token || verifyData.token;
-
-      const refreshResponse = await otpAuthService.fetch('http://example.com/auth/refresh', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${newJwtToken}`,
-        },
-        body: JSON.stringify({ token: newJwtToken }),
-      });
-
-      // Refresh endpoint may return 200 or 500 depending on encryption
-      if (refreshResponse.status !== 200) {
-        const errorText = await refreshResponse.text();
-        console.log('[Session Tests] Refresh response error:', refreshResponse.status, errorText);
-        throw new Error(`Refresh failed with status ${refreshResponse.status}: ${errorText}`);
-      }
-      
-      const isEncrypted = refreshResponse.headers.get('x-encrypted') === 'true';
-      let data: any;
-      
-      if (isEncrypted) {
-        const { decryptWithJWT } = await import('@strixun/api-framework');
-        const encryptedBody = await refreshResponse.text();
-        let encryptedData = JSON.parse(encryptedBody);
-        
-        // Decrypt first layer
-        data = await decryptWithJWT(encryptedData, newJwtToken);
-        
-        // Check if result is still encrypted (nested encryption)
-        if (data && typeof data === 'object' && data.encrypted) {
-          data = await decryptWithJWT(data, newJwtToken);
-        }
-      } else {
-        data = await refreshResponse.json();
-      }
-
-      // Refresh endpoint returns token and expiresAt
-      const actualToken = data.token || data.access_token;
-      expect(actualToken).toBeDefined();
-      expect(typeof actualToken).toBe('string');
-      expect(actualToken.length).toBeGreaterThan(0);
-      
-      expect(data.expiresAt).toBeDefined();
-    }, 30000);
-  });
+  // NOTE: POST /auth/refresh endpoint has been removed
+  // HttpOnly cookie-based SSO does not require manual token refresh
+  // - Cookies are automatically sent by the browser
+  // - Tokens are valid for 7 hours
+  // - Users simply re-authenticate after expiration
 
   describe('Customer-API Integration', () => {
     it('should always create/upsert customer with OTP email in customer-api', async () => {

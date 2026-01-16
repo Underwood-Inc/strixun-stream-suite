@@ -56,12 +56,11 @@ export function getCookieDomains(env: Env, customer: Customer | null = null): st
         return ['localhost'];
     }
     
-    // Get allowed origins: customer config > env.ALLOWED_ORIGINS
+    // CRITICAL: env.ALLOWED_ORIGINS is ALWAYS checked first for cookie domains
+    // Cookie domains use env.ALLOWED_ORIGINS only (not customer config) to enable SSO across all allowed origins
     let allowedOrigins: string[] = [];
     
-    if (customer?.config?.allowedOrigins && customer.config.allowedOrigins.length > 0) {
-        allowedOrigins = customer.config.allowedOrigins;
-    } else if (env.ALLOWED_ORIGINS) {
+    if (env.ALLOWED_ORIGINS) {
         allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(o => o.length > 0);
     }
     

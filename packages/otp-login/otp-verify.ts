@@ -43,10 +43,13 @@ export async function verifyOtp(context: OtpVerifyContext): Promise<void> {
     // Send plain JSON - HTTPS provides transport security
     const requestBody = JSON.stringify({ email: state.email, otp });
 
+    // CRITICAL: credentials: 'include' is required for HttpOnly cookie SSO
+    // This allows cookies to be sent/received across origins (CORS with credentials)
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
       body: requestBody,
+      credentials: 'include', // CRITICAL: Send/receive cookies for SSO
     });
 
     const responseText = await response.text().catch(() => null);

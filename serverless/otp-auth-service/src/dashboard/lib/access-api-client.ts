@@ -8,10 +8,28 @@ import type { RoleDefinition, PermissionDefinition } from './types.js';
 
 // Access Service URL - direct connection
 // In dev mode, Vite proxy handles /access → localhost:8795
-// In production, we call access-api.idling.app directly
-const ACCESS_SERVICE_URL = typeof window !== 'undefined' 
-  ? (window.location.hostname === 'localhost' ? window.location.origin : 'https://access-api.idling.app')
-  : '';
+// In production, use env var or fallback to production URL
+const getAccessServiceUrl = (): string => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  
+  // Check for env var (for builds)
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ACCESS_SERVICE_URL) {
+    return import.meta.env.VITE_ACCESS_SERVICE_URL;
+  }
+  
+  // Development: use Vite proxy
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return window.location.origin; // Vite proxy handles /access
+  }
+  
+  // Production: use env var or fallback (should be set via env var)
+  return (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ACCESS_SERVICE_URL) 
+    || 'https://access-api.idling.app';
+};
+
+const ACCESS_SERVICE_URL = getAccessServiceUrl();
 
 // Create Access Service API client with HttpOnly cookie auth
 const createAccessClient = () => {

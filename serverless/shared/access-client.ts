@@ -78,10 +78,10 @@ export class AccessClient {
   private readonly timeout: number;
 
   constructor(env: any, options: AccessClientOptions = {}) {
-    // Default to production URL, override with env var or option
+    // Use env var or option (no hardcoded fallback - must be configured)
     this.accessUrl = options.accessUrl 
       || env.ACCESS_SERVICE_URL 
-      || 'https://access-api.idling.app';
+      || (env.ENVIRONMENT === 'production' ? 'https://access-api.idling.app' : 'http://localhost:8791');
     
     this.serviceApiKey = options.serviceApiKey || env.SERVICE_API_KEY || '';
     this.jwtToken = options.jwtToken || '';

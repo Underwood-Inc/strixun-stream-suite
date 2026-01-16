@@ -65,8 +65,8 @@ fetch('https://auth.idling.app/auth/me');</code></pre>
 <h4>IP Allowlisting</h4>
 <p>For additional security, configure IP allowlists in customer settings.</p>
 
-<h4>Token Refresh</h4>
-<p>Implement automatic token refresh before expiration to maintain seamless customer experience. The <code>/auth/refresh</code> endpoint also sets a new HttpOnly cookie with the refreshed token.</p>
+<h4>Session Management</h4>
+<p>JWT tokens are valid for 7 hours and are automatically sent via HttpOnly cookies for SSO across all subdomains. No manual token refresh is needed - the browser automatically includes the cookie with each request.</p>
 
 <h4>Logout and Session Invalidation</h4>
 <p>Calling <code>POST /auth/logout</code> (with <code>credentials: 'include'</code>) will:</p>
