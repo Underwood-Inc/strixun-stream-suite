@@ -28,8 +28,10 @@
   "dependencies": {
     "@strixun/api-framework": "workspace:*",
     "@strixun/auth-store": "workspace:*",
+    "@strixun/chat": "workspace:*",
     "@strixun/dice-board-game": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
+    "@strixun/otp-login": "workspace:*",
     "@strixun/error-utils": "workspace:*",
     "@strixun/search-query-parser": "workspace:*",
     "@strixun/shared-components": "workspace:*",

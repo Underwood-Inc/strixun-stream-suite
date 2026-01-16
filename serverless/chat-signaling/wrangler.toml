@@ -43,15 +43,16 @@ id = "78a1bd4cd5dc468780de442aacc9d1ee"
 #   wrangler secret put ALLOWED_ORIGINS (optional, comma-separated CORS origins)
 
 # Custom domain configuration
-# Using idling.app domain
+# API served at chat-api.idling.app
+# Frontend served separately at chat.idling.app
 [[routes]]
-pattern = "chat.idling.app/*"
+pattern = "chat-api.idling.app/*"
 zone_name = "idling.app"
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
-# 1. Go to Cloudflare Dashboard ΓåÆ Workers & Pages ΓåÆ strixun-chat-signaling
-# 2. Go to Settings ΓåÆ Triggers ΓåÆ Routes
-# 3. Add custom domain route: chat.idling.app/*
+# 1. Go to Cloudflare Dashboard -> Workers & Pages -> strixun-chat-signaling
+# 2. Go to Settings -> Triggers -> Custom Domains
+# 3. Add custom domain: chat-api.idling.app
 # 4. DNS records are automatically managed by Cloudflare
 #
 # Note: Routes configured in the dashboard take precedence over wrangler.toml

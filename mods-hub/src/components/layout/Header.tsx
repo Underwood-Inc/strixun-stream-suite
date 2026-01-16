@@ -275,6 +275,7 @@ export function Header() {
                                 </>
                             )}
                             <NavLink to="/profile" onClick={handleNavClick}>Profile</NavLink>
+                            <NavLink to="/chat" onClick={handleNavClick}>Chat</NavLink>
                             {isSuperAdmin && (
                                 <NavLink to="/admin" onClick={handleNavClick}>Admin</NavLink>
                             )}

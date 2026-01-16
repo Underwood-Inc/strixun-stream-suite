@@ -22,10 +22,12 @@ packages:
   - 'packages/schemas'
   - 'packages/audio-player'
   - 'packages/error-utils'
+  - 'packages/chat'
   - 'dice-board-game'
   - 'control-panel'
   - 'mods-hub'
   - 'access-hub'
+  - 'chat-hub'
   - 'shared-components'
   - 'shared-config'
 

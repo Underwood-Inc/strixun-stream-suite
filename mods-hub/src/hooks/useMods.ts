@@ -96,15 +96,18 @@ export function useModsList(filters: {
 
 /**
  * Get mod detail query
+ * Always fetches fresh data - no caching
  */
 export function useModDetail(modId: string) {
     return useQuery({
         queryKey: modKeys.detail(modId),
         queryFn: () => api.getModDetail(modId),
         enabled: !!modId,
-        staleTime: 0,
-        gcTime: 0,
-        refetchOnMount: 'always',
+        // Always fetch fresh data - disable all caching
+        staleTime: 0, // Data is immediately stale, will refetch
+        gcTime: 0, // Don't keep data in cache (formerly cacheTime)
+        refetchOnMount: 'always', // Always refetch when component mounts
+        refetchOnWindowFocus: true, // Refetch when window regains focus
     });
 }
 
@@ -279,6 +282,7 @@ export function useUploadVersion() {
 
 /**
  * Admin list mods query (all statuses)
+ * Always fetches fresh data - no caching
  */
 export function useAdminModsList(filters: {
     page?: number;
@@ -290,17 +294,28 @@ export function useAdminModsList(filters: {
     return useQuery({
         queryKey: modKeys.adminList(filters),
         queryFn: () => api.listAllMods(filters),
+        // Always fetch fresh data - disable all caching
+        staleTime: 0, // Data is immediately stale, will refetch
+        gcTime: 0, // Don't keep data in cache (formerly cacheTime)
+        refetchOnMount: 'always', // Always refetch when component mounts
+        refetchOnWindowFocus: true, // Refetch when window regains focus
     });
 }
 
 /**
  * Get mod review query (admin/uploader only)
+ * Always fetches fresh data - no caching
  */
 export function useModReview(slug: string) {
     return useQuery({
         queryKey: modKeys.review(slug),
         queryFn: () => api.getModReview(slug),
         enabled: !!slug,
+        // Always fetch fresh data - disable all caching
+        staleTime: 0, // Data is immediately stale, will refetch
+        gcTime: 0, // Don't keep data in cache (formerly cacheTime)
+        refetchOnMount: 'always', // Always refetch when component mounts
+        refetchOnWindowFocus: true, // Refetch when window regains focus
     });
 }
 
@@ -386,12 +401,18 @@ export function useAdminDeleteMod() {
 
 /**
  * Get mod ratings query
+ * Always fetches fresh data - no caching
  */
 export function useModRatings(modId: string) {
     return useQuery({
         queryKey: [...modKeys.details(), modId, 'ratings'],
         queryFn: () => api.getModRatings(modId),
         enabled: !!modId,
+        // Always fetch fresh data - disable all caching
+        staleTime: 0, // Data is immediately stale, will refetch
+        gcTime: 0, // Don't keep data in cache (formerly cacheTime)
+        refetchOnMount: 'always', // Always refetch when component mounts
+        refetchOnWindowFocus: true, // Refetch when window regains focus
     });
 }
 
@@ -511,12 +532,18 @@ export function useUpdateAdminSettings() {
 
 /**
  * List variant versions query
+ * Always fetches fresh data - no caching
  */
 export function useVariantVersions(modSlug: string, variantId: string) {
     return useQuery({
         queryKey: modKeys.variantVersions(modSlug, variantId),
         queryFn: () => api.listVariantVersions(modSlug, variantId),
         enabled: !!modSlug && !!variantId,
+        // Always fetch fresh data - disable all caching
+        staleTime: 0, // Data is immediately stale, will refetch
+        gcTime: 0, // Don't keep data in cache (formerly cacheTime)
+        refetchOnMount: 'always', // Always refetch when component mounts
+        refetchOnWindowFocus: true, // Refetch when window regains focus
     });
 }
 

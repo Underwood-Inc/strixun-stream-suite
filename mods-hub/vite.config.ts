@@ -66,6 +66,7 @@ export default defineConfig({
       '@strixun/api-framework/client',
       '@strixun/otp-login',
       '@strixun/auth-store',
+      '@strixun/chat',
       '@strixun/search-query-parser',
       '@strixun/virtualized-table',
       '@strixun/dice-board-game',
@@ -79,6 +80,7 @@ export default defineConfig({
       '@strixun/api-framework/client',
       '@strixun/otp-login',
       '@strixun/auth-store',
+      '@strixun/chat',
       '@strixun/search-query-parser',
       '@strixun/virtualized-table',
       '@strixun/dice-board-game'
@@ -223,6 +225,44 @@ export default defineConfig({
           proxy.on('proxyRes', (proxyRes, req, _res) => {
             if (!req.headers.upgrade || req.headers.upgrade !== 'websocket') {
               console.log('[Vite Proxy] Customer API Response:', req.method, req.url, '->', proxyRes.statusCode);
+            }
+          });
+        },
+      },
+      // Chat API proxy
+      '/chat-api': {
+        target: 'http://localhost:8792', // Chat Signaling API runs on port 8792
+        changeOrigin: true,
+        // Remove /chat-api prefix and send to worker
+        // /chat-api/signaling/create-room -> /signaling/create-room
+        rewrite: (path) => path.replace(/^\/chat-api/, ''),
+        secure: false,
+        ws: true, // Enable WebSocket proxying for chat signaling
+        timeout: 30000,
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy, _options) => {
+          proxy.on('error', (err: NodeJS.ErrnoException, req, res) => {
+            console.error('[Vite Proxy] Chat API proxy error:', err.message);
+            if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
+              if (res && typeof res === 'object' && 'writeHead' in res && 'headersSent' in res && !res.headersSent) {
+                (res as any).writeHead(503, { 'Content-Type': 'application/json' });
+                (res as any).end(JSON.stringify({
+                  error: 'Service Unavailable',
+                  message: 'Chat API server is not running. Please start it with: pnpm --filter strixun-chat-signaling dev',
+                  code: 'BACKEND_NOT_RUNNING'
+                }));
+              }
+            }
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            if (!req.headers.upgrade || req.headers.upgrade !== 'websocket') {
+              console.log('[Vite Proxy] Chat API', req.method, req.url, '->', proxyReq.path, '(target: localhost:8792)');
+            }
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            if (!req.headers.upgrade || req.headers.upgrade !== 'websocket') {
+              console.log('[Vite Proxy] Chat API Response:', req.method, req.url, '->', proxyRes.statusCode);
             }
           });
         },

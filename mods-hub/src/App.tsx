@@ -14,6 +14,7 @@ import { PublicCustomerProfilePage } from './pages/PublicCustomerProfilePage';
 import { LoginPage } from './pages/LoginPage';
 import { DraftsPage } from './pages/DraftsPage';
 import { AdminSettingsPage } from './pages/AdminSettingsPage';
+import { ChatPage } from './pages/ChatPage';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import { AdminRoute } from './components/routing/AdminRoute';
@@ -79,6 +80,10 @@ export function App() {
                                 <CustomerProfilePage />
                             </ProtectedRoute>
                         } 
+                    />
+                    <Route 
+                        path="/chat" 
+                        element={<ChatPage />} 
                     />
                     <Route 
                         path="/manage/:slug" 
