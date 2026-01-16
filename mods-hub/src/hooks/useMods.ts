@@ -102,6 +102,9 @@ export function useModDetail(modId: string) {
         queryKey: modKeys.detail(modId),
         queryFn: () => api.getModDetail(modId),
         enabled: !!modId,
+        staleTime: 0,
+        gcTime: 0,
+        refetchOnMount: 'always',
     });
 }
 
