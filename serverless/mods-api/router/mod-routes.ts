@@ -25,8 +25,7 @@ async function createErrorResponse(
     env: Env,
     status: number,
     title: string,
-    detail: string,
-    auth: { customerId: string; jwtToken: string } | null = null
+    detail: string
 ): Promise<RouteResult> {
     const rfcError = createError(request, status, title, detail);
     const corsHeaders = getCorsHeaders(env, request);
@@ -139,7 +138,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // Route: GET /mods/permissions/me or GET /permissions/me - Get current user's upload permissions
         if (pathSegments.length === 2 && pathSegments[0] === 'permissions' && pathSegments[1] === 'me' && request.method === 'GET') {
             if (!auth) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required');
             }
             const { handleGetCustomerPermissions } = await import('../handlers/mods/permissions.js');
             const response = await handleGetCustomerPermissions(request, env, auth);
@@ -166,7 +165,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // Route: GET /mods/settings or GET /settings - Get mod upload settings (JWT required, encrypted)
         if (pathSegments.length === 1 && pathSegments[0] === 'settings' && request.method === 'GET') {
             if (!auth) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required');
             }
             const { handleGetSettings } = await import('../handlers/settings/get-settings.js');
             const response = await handleGetSettings(request, env, auth);
@@ -181,7 +180,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
-                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
             }
             const { handleGetModReview } = await import('../handlers/mods/review.js');
             const response = await handleGetModReview(request, env, modId, auth);
@@ -197,7 +196,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
-                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
             }
             const response = await handleGetModDetail(request, env, modId, auth);
             // Allow public browsing - no encryption for public endpoints
@@ -209,7 +208,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // Also supports PATCH for backward compatibility
         if (pathSegments.length === 1 && (request.method === 'PUT' || request.method === 'PATCH')) {
             if (!auth) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required');
             }
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
@@ -237,7 +236,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 1 && request.method === 'DELETE') {
             if (!auth) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required');
             }
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
@@ -268,7 +267,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
-                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
             }
             const { handleGetModRatings } = await import('../handlers/mods/ratings.js');
             const response = await handleGetModRatings(request, env, modId, auth);
@@ -280,7 +279,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 2 && pathSegments[1] === 'ratings' && request.method === 'POST') {
             if (!auth) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to submit ratings', null);
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to submit ratings');
             }
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
@@ -309,12 +308,12 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 2 && pathSegments[1] === 'snapshots' && request.method === 'GET') {
             if (!auth) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to view snapshots', null);
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to view snapshots');
             }
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
-                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
             }
             const { handleListModSnapshots } = await import('../handlers/mods/snapshots.js');
             const response = await handleListModSnapshots(request, env, modId, auth);
@@ -327,13 +326,13 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 3 && pathSegments[1] === 'snapshots' && request.method === 'GET') {
             if (!auth) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to load snapshots', null);
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to load snapshots');
             }
             const slugOrModId = pathSegments[0];
             const snapshotId = pathSegments[2];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
-                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
             }
             const { handleLoadSnapshot } = await import('../handlers/mods/snapshots.js');
             const response = await handleLoadSnapshot(request, env, modId, snapshotId, auth);
@@ -346,13 +345,13 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 3 && pathSegments[1] === 'versions' && request.method === 'PUT') {
             if (!auth) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required');
             }
             const slugOrModId = pathSegments[0];
             const versionId = pathSegments[2];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
-                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
             }
             const { handleUpdateVersion } = await import('../handlers/versions/update.js');
             const response = await handleUpdateVersion(request, env, modId, versionId, auth);
@@ -365,13 +364,13 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 3 && pathSegments[1] === 'versions' && request.method === 'DELETE') {
             if (!auth) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required');
             }
             const slugOrModId = pathSegments[0];
             const versionId = pathSegments[2];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
-                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
             }
             const { handleDeleteVersion } = await import('../handlers/versions/delete.js');
             const response = await handleDeleteVersion(request, env, modId, versionId, auth);
@@ -384,7 +383,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 2 && pathSegments[1] === 'versions' && request.method === 'POST') {
             if (!auth) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required');
             }
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
@@ -425,7 +424,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     modId = resolvedModId;
                     // console.log('[Router] Resolved slug to modId for thumbnail:', { slug: slugOrModId, modId });
                 } else {
-                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
                 }
             }
             
@@ -443,7 +442,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
-                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
             }
             const response = await handleOGImage(request, env, modId, auth);
             // OG images are binary images - handler returns unencrypted for public access (social media crawlers)
@@ -473,7 +472,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     console.log('[Router] Resolved slug to modId:', { slug: slugOrModId, modId });
                 } else {
                     console.error('[Router] Failed to resolve slug to modId:', { slug: slugOrModId });
-                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
                 }
             }
             
@@ -515,7 +514,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     modId = resolvedModId;
                 } else {
                     console.error('[Router] Failed to resolve slug to modId for variant versions:', { slug: slugOrModId });
-                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
                 }
             }
             
@@ -553,7 +552,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     // console.log('[Router] Resolved slug to modId for variant download:', { slug: slugOrModId, modId });
                 } else {
                     console.error('[Router] Failed to resolve slug to modId for variant download:', { slug: slugOrModId });
-                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
                 }
             }
             
@@ -582,10 +581,44 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // Frontend should use /mods/:slug/versions/:versionId routes for both main mod and variant versions
         // The ModVersion.variantId field distinguishes between main mod and variant versions
 
-        // Route: DELETE /mods/:slug/variants/:variantId or DELETE /:slug/variants/:variantId - Delete entire variant
+        // Route: POST /mods/:slug/variants or POST /:slug/variants - Create new variant
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // Normalized pathSegments = [slug, 'variants']
+        if (pathSegments.length === 2 && pathSegments[1] === 'variants' && request.method === 'POST') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to create variants');
+            }
+            
+            const slugOrModId = pathSegments[0];
+            
+            // Resolve slug to modId
+            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
+            let modId = slugOrModId;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
+            if (looksLikeSlug) {
+                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
+                if (resolvedModId) {
+                    modId = resolvedModId;
+                } else {
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
+                }
+            }
+            
+            const { handleCreateVariant } = await import('../handlers/variants/create.js');
+            const response = await handleCreateVariant(request, env, modId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: PUT /mods/:slug/variants/:variantId or PUT /:slug/variants/:variantId - Update variant metadata
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         // Normalized pathSegments = [slug, 'variants', variantId]
-        if (pathSegments.length === 3 && pathSegments[1] === 'variants' && request.method === 'DELETE') {
+        if (pathSegments.length === 3 && pathSegments[1] === 'variants' && request.method === 'PUT') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to update variants');
+            }
+            
             const slugOrModId = pathSegments[0];
             const variantId = pathSegments[2];
             
@@ -598,7 +631,160 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 if (resolvedModId) {
                     modId = resolvedModId;
                 } else {
-                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
+                }
+            }
+            
+            const { handleUpdateVariant } = await import('../handlers/variants/update.js');
+            const response = await handleUpdateVariant(request, env, modId, variantId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: POST /mods/:slug/variants/:variantId/versions or POST /:slug/variants/:variantId/versions - Upload variant version
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // Normalized pathSegments = [slug, 'variants', variantId, 'versions']
+        if (pathSegments.length === 4 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && request.method === 'POST') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to upload variant versions');
+            }
+            
+            const slugOrModId = pathSegments[0];
+            const variantId = pathSegments[2];
+            
+            // Resolve slug to modId
+            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
+            let modId = slugOrModId;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
+            if (looksLikeSlug) {
+                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
+                if (resolvedModId) {
+                    modId = resolvedModId;
+                } else {
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
+                }
+            }
+            
+            // Upload variant version using the unified version handler with variantId parameter
+            const response = await handleUploadVersion(request, env, modId, auth, variantId);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: GET /mods/:slug/variants/:variantId/versions/:versionId/download - Download specific variant version
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // Normalized pathSegments = [slug, 'variants', variantId, 'versions', versionId, 'download']
+        if (pathSegments.length === 6 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && pathSegments[5] === 'download' && request.method === 'GET') {
+            const slugOrModId = pathSegments[0];
+            const versionId = pathSegments[4];
+            
+            // Resolve slug to modId
+            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
+            let modId = slugOrModId;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
+            if (looksLikeSlug) {
+                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
+                if (resolvedModId) {
+                    modId = resolvedModId;
+                } else {
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
+                }
+            }
+            
+            // Use standard version download handler (variant versions are just versions with variantId field)
+            const { handleDownloadVersion } = await import('../handlers/versions/download.js');
+            const response = await handleDownloadVersion(request, env, modId, versionId, auth);
+            // Downloads are public - no encryption required
+            return { response, customerId: auth?.customerId || null };
+        }
+
+        // Route: PUT /mods/:slug/variants/:variantId/versions/:versionId - Update variant version metadata
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // Normalized pathSegments = [slug, 'variants', variantId, 'versions', versionId]
+        if (pathSegments.length === 5 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && request.method === 'PUT') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to update variant versions');
+            }
+            
+            const slugOrModId = pathSegments[0];
+            const versionId = pathSegments[4];
+            
+            // Resolve slug to modId
+            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
+            let modId = slugOrModId;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
+            if (looksLikeSlug) {
+                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
+                if (resolvedModId) {
+                    modId = resolvedModId;
+                } else {
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
+                }
+            }
+            
+            // Use standard version update handler (variant versions are just versions with variantId field)
+            const { handleUpdateVersion } = await import('../handlers/versions/update.js');
+            const response = await handleUpdateVersion(request, env, modId, versionId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: DELETE /mods/:slug/variants/:variantId/versions/:versionId - Delete specific variant version
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // Normalized pathSegments = [slug, 'variants', variantId, 'versions', versionId]
+        if (pathSegments.length === 5 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && request.method === 'DELETE') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to delete variant versions');
+            }
+            
+            const slugOrModId = pathSegments[0];
+            const versionId = pathSegments[4];
+            
+            // Resolve slug to modId
+            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
+            let modId = slugOrModId;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
+            if (looksLikeSlug) {
+                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
+                if (resolvedModId) {
+                    modId = resolvedModId;
+                } else {
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
+                }
+            }
+            
+            // Use standard version delete handler (variant versions are just versions with variantId field)
+            const { handleDeleteVersion } = await import('../handlers/versions/delete.js');
+            const response = await handleDeleteVersion(request, env, modId, versionId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: DELETE /mods/:slug/variants/:variantId or DELETE /:slug/variants/:variantId - Delete entire variant
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // Normalized pathSegments = [slug, 'variants', variantId]
+        if (pathSegments.length === 3 && pathSegments[1] === 'variants' && request.method === 'DELETE') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to delete variants');
+            }
+            
+            const slugOrModId = pathSegments[0];
+            const variantId = pathSegments[2];
+            
+            // Resolve slug to modId
+            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
+            let modId = slugOrModId;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
+            if (looksLikeSlug) {
+                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
+                if (resolvedModId) {
+                    modId = resolvedModId;
+                } else {
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
                 }
             }
             
@@ -624,7 +810,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 if (resolvedModId) {
                     modId = resolvedModId;
                 } else {
-                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
                 }
             }
             
@@ -650,7 +836,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 if (resolvedModId) {
                     modId = resolvedModId;
                 } else {
-                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
                 }
             }
             
@@ -687,7 +873,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 if (resolvedModId) {
                     modId = resolvedModId;
                 } else {
-                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
                 }
             }
             
@@ -699,7 +885,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         }
 
         // 404 for unknown mod routes
-        return await createErrorResponse(request, env, 404, 'Endpoint Not Found', 'The requested mod endpoint was not found', auth);
+        return await createErrorResponse(request, env, 404, 'Endpoint Not Found', 'The requested mod endpoint was not found');
     } catch (error: any) {
         console.error('Mod route handler error:', error);
         // Use createErrorResponse helper which properly handles CORS
@@ -708,8 +894,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             env,
             500,
             'Internal Server Error',
-            env.ENVIRONMENT === 'development' ? error.message : 'An internal server error occurred',
-            auth
+            env.ENVIRONMENT === 'development' ? error.message : 'An internal server error occurred'
         );
     }
 }

@@ -4,7 +4,7 @@
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
-import { useModDetail, useUpdateMod, useDeleteMod, useUploadVersion, useUpdateModStatus, useDeleteVariant } from '../hooks/useMods';
+import { useModDetail, useUpdateMod, useDeleteMod, useUploadVersion, useUpdateModStatus } from '../hooks/useMods';
 import { formatDateTime } from '@strixun/shared-config/date-utils';
 import { useUploadPermission } from '../hooks/useUploadPermission';
 import { ModManageForm } from '../components/mod/ModManageForm';
@@ -63,7 +63,6 @@ export function ModManagePage() {
     const { data, isLoading } = useModDetail(slug || '');
     const updateMod = useUpdateMod();
     const deleteMod = useDeleteMod();
-    const deleteVariant = useDeleteVariant();
     const uploadVersion = useUploadVersion();
     const updateStatus = useUpdateModStatus();
 
@@ -121,24 +120,10 @@ export function ModManagePage() {
         );
     }
 
-    const handleUpdate = async (updates: any, thumbnail?: File, variantFiles?: Record<string, File>, deletedVariantIds?: string[]) => {
+    const handleUpdate = async (updates: any, thumbnail?: File) => {
         try {
-            // First, delete any removed variants
-            if (deletedVariantIds && deletedVariantIds.length > 0 && data) {
-                console.log('[ModManagePage] Deleting variants:', deletedVariantIds);
-                for (const variantId of deletedVariantIds) {
-                    try {
-                        await deleteVariant.mutateAsync({ modId: data.mod.modId, variantId });
-                        console.log('[ModManagePage] Deleted variant:', variantId);
-                    } catch (error) {
-                        console.error('[ModManagePage] Failed to delete variant:', variantId, error);
-                        // Continue with other deletions even if one fails
-                    }
-                }
-            }
-            
-            // Then update the mod
-            const result = await updateMod.mutateAsync({ slug: slug!, updates, thumbnail, variantFiles });
+            // Update the mod (no variant files - variants are managed per-version now)
+            const result = await updateMod.mutateAsync({ slug: slug!, updates, thumbnail });
             
             // Check if slug changed in the update
             const newSlug = result?.slug;
@@ -199,7 +184,6 @@ export function ModManagePage() {
             
             <ModManageForm
                 mod={data.mod}
-                versions={data.versions}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
                 onStatusChange={handleStatusChange}
@@ -216,6 +200,7 @@ export function ModManagePage() {
                 modSlug={slug!}
                 modId={data.mod.modId}
                 versions={data.versions}
+                variants={data.mod.variants || []}
             />
         </PageContainer>
     );

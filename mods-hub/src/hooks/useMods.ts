@@ -117,13 +117,17 @@ export function useModDetail(modId: string) {
 export function useUploadMod() {
     const queryClient = useQueryClient();
     const addNotification = useUIStore((state) => state.addNotification);
+    const customer = useAuthStore((state) => state.customer);
     
     return useMutation({
         mutationFn: ({ file, metadata, thumbnail }: {
             file: File;
             metadata: ModUploadRequest;
             thumbnail?: File;
-        }) => api.uploadMod(file, metadata, thumbnail),
+        }) => api.uploadMod(file, {
+            ...metadata,
+            displayName: customer?.displayName || undefined,
+        }, thumbnail),
         onSuccess: () => {
             // Invalidate all list queries and force refetch
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });
@@ -160,6 +164,7 @@ export function useUploadMod() {
 export function useUpdateMod() {
     const queryClient = useQueryClient();
     const addNotification = useUIStore((state) => state.addNotification);
+    const customer = useAuthStore((state) => state.customer);
     
     return useMutation({
         mutationFn: ({ slug, updates, thumbnail, variantFiles }: {
@@ -167,7 +172,10 @@ export function useUpdateMod() {
             updates: ModUpdateRequest;
             thumbnail?: File;
             variantFiles?: Record<string, File>;
-        }) => api.updateMod(slug, updates, thumbnail, variantFiles),
+        }) => api.updateMod(slug, {
+            ...updates,
+            displayName: customer?.displayName || undefined,
+        }, thumbnail, variantFiles),
         onSuccess: (data, variables) => {
             // Check if slug changed in the update
             const newSlug = data?.slug;

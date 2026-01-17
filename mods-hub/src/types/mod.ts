@@ -189,6 +189,7 @@ export interface ModUploadRequest {
     status?: ModStatus; // Allow setting status (e.g., 'draft')
     variants?: ModVariant[]; // Variants for the mod
     gameId?: string; // Associated game ID (sub-category)
+    displayName?: string; // Display name from auth store - avoids extra API calls
 }
 
 export interface ModUpdateRequest {
@@ -202,6 +203,7 @@ export interface ModUpdateRequest {
     status?: ModStatus; // Allow updating status (e.g., 'draft' to 'pending')
     variants?: ModVariant[]; // Update variants
     gameId?: string; // Associated game ID (sub-category)
+    displayName?: string; // Display name from auth store - avoids extra API calls
 }
 
 export interface VersionUploadRequest {
