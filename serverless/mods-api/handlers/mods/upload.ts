@@ -470,14 +470,18 @@ export async function handleUploadMod(
             }
         }
 
-        // CRITICAL: Fetch author display name from customer data
-        // Customer is the primary data source for all customizable customer info
-        // Look up customer by auth.customerId to get displayName
-        let authorDisplayName: string | null = null;
+        // Get author display name - prefer from metadata (passed from auth store) to avoid extra API call
+        let authorDisplayName: string | null = metadata.displayName || null;
         
-        if (auth.customerId) {
+        if (authorDisplayName) {
+            console.log('[Upload] Using displayName from request metadata:', { 
+                authorDisplayName, 
+                customerId: auth.customerId
+            });
+        } else if (auth.customerId) {
+            // Fallback: fetch from Customer API if not provided in metadata
             const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
-            console.log('[Upload] Fetching authorDisplayName from customer data:', { 
+            console.log('[Upload] Fetching authorDisplayName from customer data (not in metadata):', { 
                 customerId: auth.customerId
             });
             authorDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
@@ -492,23 +496,14 @@ export async function handleUploadMod(
                     customerId: auth.customerId
                 });
             }
-        } else {
-            console.error('[Upload] CRITICAL: Missing customerId, cannot fetch displayName from customer data:', {
-                customerId: auth.customerId,
-                note: 'UI will show "Unknown Customer" - customerId should be set during authentication'
-            });
         }
         
         if (!authorDisplayName) {
-            console.error('[Upload] CRITICAL: authorDisplayName is null after customer lookup:', {
+            console.warn('[Upload] authorDisplayName is null - UI will show "Unknown User":', {
                 customerId: auth.customerId,
-                note: 'UI will show "Unknown Customer" - detail handler will attempt to fetch again on next load'
+                metadataDisplayName: metadata.displayName
             });
         }
-        
-        // CRITICAL: Never use authorEmail as fallback - email is ONLY for authentication
-        // If displayName is null, UI will show "Unknown User"
-        // Note: For previously uploaded mods with null displayName, the detail handler will attempt to fetch it
 
         // CRITICAL: Validate customerId is present before storing mod
         // This ensures proper data scoping and display name lookups

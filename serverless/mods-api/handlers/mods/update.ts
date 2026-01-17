@@ -569,19 +569,24 @@ export async function handleUpdateMod(
             });
         }
 
-        // CRITICAL: Fetch and update author display name from customer data
-        // Customer is the primary data source for all customizable customer info
-        // Look up customer by mod.customerId to get displayName
-        const storedDisplayName = mod.authorDisplayName; // Preserve as fallback only
-        let fetchedDisplayName: string | null = null;
+        // Update author display name - prefer from request (auth store) to avoid extra API call
+        const storedDisplayName = mod.authorDisplayName;
+        let newDisplayName: string | null = updateData.displayName || null;
         
-        if (mod.customerId) {
+        if (newDisplayName) {
+            console.log('[Update] Using displayName from request:', { 
+                displayName: newDisplayName, 
+                customerId: mod.customerId,
+                modId: mod.modId
+            });
+        } else if (mod.customerId) {
+            // Fallback: fetch from Customer API if not provided in request
             const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
-            fetchedDisplayName = await fetchDisplayNameByCustomerId(mod.customerId, env);
+            newDisplayName = await fetchDisplayNameByCustomerId(mod.customerId, env);
             
-            if (fetchedDisplayName) {
+            if (newDisplayName) {
                 console.log('[Update] Fetched authorDisplayName from customer data:', { 
-                    authorDisplayName: fetchedDisplayName, 
+                    displayName: newDisplayName, 
                     customerId: mod.customerId,
                     modId: mod.modId
                 });
@@ -591,29 +596,15 @@ export async function handleUpdateMod(
                     modId: mod.modId
                 });
             }
-        } else {
-            console.warn('[Update] Mod missing customerId, cannot fetch displayName from customer data:', {
-                modId: mod.modId,
-                authorId: mod.authorId
-            });
         }
         
-        // Always use fetched value from customer data - it's the source of truth
-        // Fall back to stored value only if fetch fails (for backward compatibility)
-        mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
+        // Use new value if available, otherwise keep stored value
+        mod.authorDisplayName = newDisplayName || storedDisplayName || null;
         
-        if (fetchedDisplayName && fetchedDisplayName !== storedDisplayName) {
-            console.log('[Update] Updated authorDisplayName from customer data:', { 
-                customerId: mod.customerId, 
-                oldDisplayName: storedDisplayName, 
-                newDisplayName: fetchedDisplayName 
-            });
-        } else if (!fetchedDisplayName) {
-            console.warn('[Update] authorDisplayName is null after customer lookup:', {
+        if (!mod.authorDisplayName) {
+            console.warn('[Update] authorDisplayName is null - UI will show "Unknown Author":', {
                 customerId: mod.customerId,
-                modId: mod.modId,
-                storedDisplayName: storedDisplayName,
-                note: 'Using stored value or null - UI will show "Unknown Author" if null'
+                modId: mod.modId
             });
         }
 

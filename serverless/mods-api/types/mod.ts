@@ -110,6 +110,7 @@ export interface ModUploadRequest {
     dependencies?: ModDependency[];
     visibility: ModVisibility;
     thumbnail?: string; // Base64 encoded thumbnail
+    displayName?: string; // Display name from auth store - prevents extra API calls
 }
 
 /**
@@ -124,6 +125,7 @@ export interface ModUpdateRequest {
     thumbnail?: string;
     variants?: ModVariant[];
     gameId?: string;
+    displayName?: string; // Display name from auth store - avoids extra API calls
 }
 
 /**
