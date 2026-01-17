@@ -8,10 +8,9 @@ import { useState } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModVariant, ModVersion } from '../../types/mod';
-import { FileUploader } from './FileUploader';
 import { MarkdownEditor } from '../common/MarkdownEditor';
-import { useModSettings } from '../../hooks/useMods';
 import { getButtonStyles } from '../../utils/buttonStyles';
+import { createVariant } from '../../services/mods/modVariantsApi';
 
 const Container = styled.div`
   display: flex;
@@ -133,12 +132,12 @@ const ErrorText = styled.div`
   margin-top: 2px;
 `;
 
-const MAX_MOD_FILE_SIZE = 35 * 1024 * 1024; // 35 MB
-
 interface VersionVariantManagerProps {
     version: ModVersion;
+    modSlug: string;
     existingVariants: ModVariant[];
-    onSave: (variants: Array<{ variant: Partial<ModVariant>; file?: File }>) => Promise<void>;
+    onVariantCreated?: () => void;
+    _onVariantUpdated?: () => void;
     isLoading?: boolean;
 }
 
@@ -151,18 +150,14 @@ interface VariantWithFile extends Partial<ModVariant> {
 }
 
 export function VersionVariantManager({ 
-    version, 
+    version,
+    modSlug,
     existingVariants,
-    onSave,
+    onVariantCreated,
+    _onVariantUpdated,
     isLoading = false 
 }: VersionVariantManagerProps) {
-    const { data: settings } = useModSettings();
     const [showAddForm, setShowAddForm] = useState(false);
-    const [variants, setVariants] = useState<VariantWithFile[]>(
-        existingVariants
-            .filter(v => v.parentVersionId === version.versionId)
-            .map(v => ({ ...v, isNew: false }))
-    );
     const [newVariant, setNewVariant] = useState<VariantWithFile>({
         variantId: `temp-${Date.now()}`,
         name: '',
@@ -170,6 +165,7 @@ export function VersionVariantManager({
         isNew: true,
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [saving, setSaving] = useState(false);
 
     const validateVariant = (variant: VariantWithFile): boolean => {
         const newErrors: Record<string, string> = {};
@@ -178,75 +174,47 @@ export function VersionVariantManager({
             newErrors[`${variant.variantId}-name`] = 'Variant name is required';
         }
         
-        if (variant.isNew && !variant.file) {
-            newErrors[`${variant.variantId}-file`] = 'File is required for new variants';
-        }
+        // Note: File is NOT required for variant creation
+        // Files are uploaded separately as variant versions
         
         setErrors(prev => ({ ...prev, ...newErrors }));
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleAddVariant = () => {
+    const handleAddVariant = async () => {
         if (!validateVariant(newVariant)) {
             return;
         }
         
-        setVariants(prev => [...prev, { ...newVariant, variantId: `variant-${Date.now()}` }]);
-        setNewVariant({
-            variantId: `temp-${Date.now()}`,
-            name: '',
-            description: '',
-            isNew: true,
-        });
-        setShowAddForm(false);
-        setErrors({});
-    };
-
-    const handleRemoveVariant = (variantId: string) => {
-        setVariants(prev => prev.filter(v => v.variantId !== variantId));
-    };
-
-    const handleVariantChange = (variantId: string, field: keyof VariantWithFile, value: any) => {
-        setVariants(prev => prev.map(v => 
-            v.variantId === variantId ? { ...v, [field]: value } : v
-        ));
-        // Clear error for this field
-        setErrors(prev => {
-            const next = { ...prev };
-            delete next[`${variantId}-${field}`];
-            return next;
-        });
-    };
-
-    const handleFileChange = (variantId: string, file: File | null) => {
-        handleVariantChange(variantId, 'file', file || undefined);
-    };
-
-    const handleSave = async () => {
-        // Validate all variants
-        const allValid = variants.every(v => validateVariant(v));
-        if (!allValid) {
-            return;
+        setSaving(true);
+        try {
+            // Create variant via API
+            await createVariant(modSlug, {
+                name: newVariant.name.trim(),
+                description: newVariant.description?.trim() || '',
+                parentVersionId: version.versionId,
+            });
+            
+            // Reset form
+            setNewVariant({
+                variantId: `temp-${Date.now()}`,
+                name: '',
+                description: '',
+                isNew: true,
+            });
+            setShowAddForm(false);
+            setErrors({});
+            
+            // Notify parent to refetch data
+            onVariantCreated?.();
+        } catch (error) {
+            console.error('[VersionVariantManager] Failed to create variant:', error);
+            setErrors({
+                'general': error instanceof Error ? error.message : 'Failed to create variant'
+            });
+        } finally {
+            setSaving(false);
         }
-
-        // Prepare data for save
-        const variantsToSave = variants.map(v => ({
-            variant: {
-                variantId: v.variantId,
-                modId: version.modId,
-                parentVersionId: version.versionId, // AUTO-SET to this version!
-                name: v.name,
-                description: v.description,
-                createdAt: v.createdAt || new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                currentVersionId: v.currentVersionId || null,
-                versionCount: v.versionCount || 0,
-                totalDownloads: v.totalDownloads || 0,
-            },
-            file: v.file,
-        }));
-
-        await onSave(variantsToSave);
     };
 
     const versionVariants = existingVariants.filter(v => v.parentVersionId === version.versionId);
@@ -260,7 +228,7 @@ export function VersionVariantManager({
                         <Button 
                             $variant="primary" 
                             onClick={() => setShowAddForm(true)}
-                            disabled={isLoading}
+                            disabled={isLoading || saving}
                         >
                             ✚ Add Variant
                         </Button>
@@ -272,7 +240,13 @@ export function VersionVariantManager({
                 Variants are tied to this specific version. Use variants for different mod loaders (Forge, Fabric, etc.) or platform-specific builds.
             </InfoText>
 
-            {versionVariants.length === 0 && variants.length === 0 && !showAddForm && (
+            {errors['general'] && (
+                <ErrorText style={{ padding: spacing.sm, background: `${colors.danger}20`, borderRadius: '4px' }}>
+                    {errors['general']}
+                </ErrorText>
+            )}
+
+            {versionVariants.length === 0 && !showAddForm && (
                 <EmptyState>
                     No variants for this version yet. Click &lsquo;Add Variant&rsquo; to create one.
                 </EmptyState>
@@ -297,69 +271,6 @@ export function VersionVariantManager({
                 </VariantsList>
             )}
 
-            {/* New variants being added */}
-            {variants.length > 0 && (
-                <VariantsList>
-                    {variants.map(variant => {
-                        const hasNameError = !!errors[`${variant.variantId}-name`];
-                        const hasFileError = !!errors[`${variant.variantId}-file`];
-                        const isIncomplete = hasNameError || hasFileError;
-
-                        return (
-                            <VariantCard key={variant.variantId} $isIncomplete={isIncomplete}>
-                                <VariantHeader>
-                                    <VariantName>{variant.name || 'New Variant'}</VariantName>
-                                    <Button
-                                        $variant="danger"
-                                        onClick={() => handleRemoveVariant(variant.variantId)}
-                                    >
-                                        Remove
-                                    </Button>
-                                </VariantHeader>
-
-                                <FormGroup>
-                                    <Label>Variant Name *</Label>
-                                    <Input
-                                        type="text"
-                                        value={variant.name}
-                                        onChange={(e) => handleVariantChange(variant.variantId, 'name', e.target.value)}
-                                        placeholder="e.g., Forge, Fabric, Quilt"
-                                        $hasError={hasNameError}
-                                    />
-                                    {hasNameError && <ErrorText>{errors[`${variant.variantId}-name`]}</ErrorText>}
-                                </FormGroup>
-
-                                <FormGroup>
-                                    <MarkdownEditor
-                                        label="Description (optional)"
-                                        value={variant.description || ''}
-                                        onChange={(value: string) => handleVariantChange(variant.variantId, 'description', value)}
-                                        placeholder="Describe this variant..."
-                                        height={120}
-                                        preview="edit"
-                                    />
-                                </FormGroup>
-
-                                <FormGroup>
-                                    <Label>Variant File {variant.isNew && '*'}</Label>
-                                    <FileUploader
-                                        file={variant.file || null}
-                                        onFileChange={(file) => handleFileChange(variant.variantId, file)}
-                                        maxSize={MAX_MOD_FILE_SIZE}
-                                        accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.jar,.zip,.json,.txt,.xml,.yaml,.yml'}
-                                        label={variant.isNew ? 
-                                            "Drag and drop variant file here *REQUIRED*" : 
-                                            "Drag and drop variant file here (optional)"
-                                        }
-                                        error={hasFileError ? errors[`${variant.variantId}-file`] : null}
-                                    />
-                                </FormGroup>
-                            </VariantCard>
-                        );
-                    })}
-                </VariantsList>
-            )}
-
             {/* Add new variant form */}
             {showAddForm && (
                 <AddVariantSection>
@@ -373,6 +284,7 @@ export function VersionVariantManager({
                             onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
                             placeholder="e.g., Forge, Fabric, Quilt"
                             $hasError={!!errors[`${newVariant.variantId}-name`]}
+                            disabled={saving}
                         />
                         {errors[`${newVariant.variantId}-name`] && (
                             <ErrorText>{errors[`${newVariant.variantId}-name`]}</ErrorText>
@@ -390,17 +302,9 @@ export function VersionVariantManager({
                         />
                     </FormGroup>
 
-                    <FormGroup>
-                        <Label>Variant File *</Label>
-                        <FileUploader
-                            file={newVariant.file || null}
-                            onFileChange={(file) => setNewVariant({ ...newVariant, file: file || undefined })}
-                            maxSize={MAX_MOD_FILE_SIZE}
-                            accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.jar,.zip,.json,.txt,.xml,.yaml,.yml'}
-                            label="Drag and drop variant file here *REQUIRED*"
-                            error={errors[`${newVariant.variantId}-file`] || null}
-                        />
-                    </FormGroup>
+                    <InfoText>
+                        Note: Variant files are uploaded separately after creating the variant. Create the variant first, then upload files as variant versions.
+                    </InfoText>
 
                     <ButtonGroup>
                         <Button
@@ -415,29 +319,19 @@ export function VersionVariantManager({
                                 });
                                 setErrors({});
                             }}
+                            disabled={saving}
                         >
                             Cancel
                         </Button>
                         <Button
                             $variant="primary"
                             onClick={handleAddVariant}
+                            disabled={saving}
                         >
-                            Add Variant
+                            {saving ? 'Creating...' : 'Create Variant'}
                         </Button>
                     </ButtonGroup>
                 </AddVariantSection>
-            )}
-
-            {variants.length > 0 && (
-                <ButtonGroup style={{ justifyContent: 'flex-end', marginTop: spacing.md }}>
-                    <Button
-                        $variant="primary"
-                        onClick={handleSave}
-                        disabled={isLoading}
-                    >
-                        {isLoading ? 'Saving...' : 'Save Variants'}
-                    </Button>
-                </ButtonGroup>
             )}
         </Container>
     );

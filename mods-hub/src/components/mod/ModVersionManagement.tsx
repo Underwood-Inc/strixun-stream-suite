@@ -251,34 +251,14 @@ export function ModVersionManagement({ modSlug, modId, versions, variants }: Mod
         }
     };
 
-    const handleSaveVariants = async (
-        variantsToSave: Array<{ variant: Partial<ModVariant>; file?: File }>
-    ) => {
-        try {
-            // Prepare variant files
-            const variantFiles: Record<string, File> = {};
-            const variantMetadata: ModVariant[] = [];
+    const handleVariantCreated = () => {
+        // Refetch mod data to show new variant
+        queryClient.refetchQueries({ queryKey: modKeys.detail(modSlug) });
+    };
 
-            for (const { variant, file } of variantsToSave) {
-                if (file && variant.variantId) {
-                    variantFiles[variant.variantId] = file;
-                }
-                variantMetadata.push(variant as ModVariant);
-            }
-
-            // Update mod with new/updated variants
-            await updateMod.mutateAsync({
-                slug: modSlug,
-                updates: {
-                    variants: variantMetadata,
-                },
-                variantFiles: Object.keys(variantFiles).length > 0 ? variantFiles : undefined,
-            });
-
-            setManagingVariantsFor(null);
-        } catch (error) {
-            console.error('[ModVersionManagement] Failed to save variants:', error);
-        }
+    const handleVariantUpdated = () => {
+        // Refetch mod data to show updated variant
+        queryClient.refetchQueries({ queryKey: modKeys.detail(modSlug) });
     };
 
     if (versions.length === 0) {
@@ -426,8 +406,10 @@ export function ModVersionManagement({ modSlug, modId, versions, variants }: Mod
                         {managingVariantsFor === version.versionId && (
                             <VersionVariantManager
                                 version={version}
+                                modSlug={modSlug}
                                 existingVariants={variants}
-                                onSave={handleSaveVariants}
+                                onVariantCreated={handleVariantCreated}
+                                _onVariantUpdated={handleVariantUpdated}
                                 isLoading={updateMod.isPending}
                             />
                         )}
