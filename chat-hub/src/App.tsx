@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from './stores/auth';
 import { useChatStore } from './stores/chat';
-import { ChatClient, IntegrityBadge, type ChatIntegrityInfo } from '@strixun/chat/react';
+import { ChatClient } from '@strixun/chat/react';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
 import { LandingPage } from './pages/LandingPage';

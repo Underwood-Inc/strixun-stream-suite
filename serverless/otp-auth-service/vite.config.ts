@@ -2,6 +2,14 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import path from 'path';
 import { defineConfig } from 'vite';
 
+// SCSS config - Vite 7.x types changed but includePaths still works at runtime
+const scssConfig: Record<string, unknown> = {
+  includePaths: [
+    path.resolve(__dirname, '../../shared-styles'),
+    path.resolve(__dirname, '../../shared-components')
+  ]
+};
+
 export default defineConfig({
   clearScreen: false, // Prevent console clearing in turbo dev mode
   plugins: [svelte({
@@ -34,12 +42,7 @@ export default defineConfig({
   })],
   css: {
     preprocessorOptions: {
-      scss: {
-        includePaths: [
-          path.resolve(__dirname, '../../shared-styles'),
-          path.resolve(__dirname, '../../shared-components')
-        ]
-      }
+      scss: scssConfig
     }
   },
   resolve: {

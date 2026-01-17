@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
+// SCSS config - Vite 7.x types changed but includePaths still works at runtime
+const scssConfig: Record<string, unknown> = {
+  includePaths: [path.resolve(__dirname, '../shared-styles')]
+};
+
 // https://vite.dev/config/
 export default defineConfig({
   clearScreen: false, // Prevent console clearing in turbo dev mode
@@ -62,9 +67,7 @@ export default defineConfig({
   ],
   css: {
     preprocessorOptions: {
-      scss: {
-        includePaths: [path.resolve(__dirname, '../shared-styles')]
-      }
+      scss: scssConfig
     }
   },
   resolve: {

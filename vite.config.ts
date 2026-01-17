@@ -3,6 +3,12 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// SCSS config - Vite 7.x types changed but includePaths still works at runtime
+const scssConfig: Record<string, unknown> = {
+  includePaths: [resolve(__dirname, './shared-styles')]
+};
+
 export default defineConfig({
   // Base path for GitHub Pages deployment
   // Set via VITE_BASE_PATH env var, defaults to '/' for local development
@@ -138,13 +144,7 @@ export default defineConfig({
   })],
   css: {
     preprocessorOptions: {
-      scss: {
-        // Variables are explicitly imported in each file that needs them
-        // No auto-import needed to avoid path resolution issues
-        includePaths: [
-          resolve(__dirname, './shared-styles')
-        ]
-      }
+      scss: scssConfig
     }
   },
   resolve: {
