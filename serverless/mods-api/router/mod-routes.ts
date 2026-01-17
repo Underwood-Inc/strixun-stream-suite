@@ -342,6 +342,44 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             });
         }
 
+        // Route: PUT /mods/:slug/versions/:versionId or PUT /:slug/versions/:versionId - Update version metadata
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        if (pathSegments.length === 3 && pathSegments[1] === 'versions' && request.method === 'PUT') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
+            }
+            const slugOrModId = pathSegments[0];
+            const versionId = pathSegments[2];
+            const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
+            if (!modId) {
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+            }
+            const { handleUpdateVersion } = await import('../handlers/versions/update.js');
+            const response = await handleUpdateVersion(request, env, modId, versionId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: DELETE /mods/:slug/versions/:versionId or DELETE /:slug/versions/:versionId - Delete version
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        if (pathSegments.length === 3 && pathSegments[1] === 'versions' && request.method === 'DELETE') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
+            }
+            const slugOrModId = pathSegments[0];
+            const versionId = pathSegments[2];
+            const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
+            if (!modId) {
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+            }
+            const { handleDeleteVersion } = await import('../handlers/versions/delete.js');
+            const response = await handleDeleteVersion(request, env, modId, versionId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
         // Route: POST /mods/:slug/versions or POST /:slug/versions - Upload new version
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 2 && pathSegments[1] === 'versions' && request.method === 'POST') {

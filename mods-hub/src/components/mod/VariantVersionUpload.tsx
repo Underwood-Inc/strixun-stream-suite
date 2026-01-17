@@ -10,6 +10,7 @@ import type { VariantVersionUploadRequest } from '../../types/mod';
 import { useModSettings } from '../../hooks/useMods';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
+import { MarkdownEditor } from '../common/MarkdownEditor';
 
 const Form = styled.form`
   ${getCardStyles('default')}
@@ -44,23 +45,6 @@ const Input = styled.input`
   border-radius: 4px;
   color: ${colors.text};
   font-size: 0.875rem;
-  
-  &:focus {
-    border-color: ${colors.accent};
-    outline: none;
-  }
-`;
-
-const TextArea = styled.textarea`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${colors.bg};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  color: ${colors.text};
-  font-size: 0.875rem;
-  min-height: 100px;
-  resize: vertical;
-  font-family: inherit;
   
   &:focus {
     border-color: ${colors.accent};
@@ -174,11 +158,13 @@ export function VariantVersionUpload({
             </FormGroup>
 
             <FormGroup>
-                <Label>Changelog</Label>
-                <TextArea
+                <MarkdownEditor
+                    label="Changelog"
                     value={changelog}
-                    onChange={(e) => setChangelog(e.target.value)}
-                    placeholder="What's new in this version?"
+                    onChange={setChangelog}
+                    placeholder="What's new in this version? Supports **bold**, *italic*, `code`, lists, and more..."
+                    height={200}
+                    preview="live"
                 />
             </FormGroup>
 

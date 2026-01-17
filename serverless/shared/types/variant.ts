@@ -182,6 +182,9 @@ export interface ModVariant extends Variant {
     /** Parent mod ID */
     modId: string;
     
+    /** Parent mod version ID - variants are tied to specific mod versions */
+    parentVersionId: string;
+    
     /** Included for backward compatibility with existing queries */
     versionCount?: number;
     totalDownloads?: number;
@@ -194,7 +197,7 @@ export function splitModVariant(modVariant: ModVariant): {
     variant: Variant;
     reference: VariantReference;
 } {
-    const { modId, versionCount, totalDownloads, ...variantFields } = modVariant;
+    const { modId, parentVersionId, versionCount, totalDownloads, ...variantFields } = modVariant;
     
     return {
         variant: {
@@ -202,6 +205,7 @@ export function splitModVariant(modVariant: ModVariant): {
             metadata: {
                 versionCount,
                 totalDownloads,
+                parentVersionId,
             },
         },
         reference: {
@@ -218,11 +222,13 @@ export function splitModVariant(modVariant: ModVariant): {
 export function joinToModVariant(
     variant: Variant,
     reference: VariantReference,
-    stats?: { versionCount: number; totalDownloads: number }
+    stats?: { versionCount: number; totalDownloads: number },
+    parentVersionId?: string
 ): ModVariant {
     return {
         ...variant,
         modId: reference.parentId || '',
+        parentVersionId: parentVersionId || variant.metadata?.parentVersionId || '',
         versionCount: stats?.versionCount || variant.metadata?.versionCount || 0,
         totalDownloads: stats?.totalDownloads || variant.metadata?.totalDownloads || 0,
     };

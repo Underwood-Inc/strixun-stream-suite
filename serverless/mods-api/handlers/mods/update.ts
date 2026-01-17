@@ -305,10 +305,28 @@ export async function handleUpdateMod(
         
         // Validate variant metadata before processing
         if (updateData.variants) {
+            // Get existing variants for checking if this is a new variant
+            const existingVariantIds = new Set((mod.variants || []).map(v => v.variantId));
+            
             for (const variant of updateData.variants) {
                 // Validate variant name is present and not empty
                 if (!variant.name || variant.name.trim().length === 0) {
                     const rfcError = createError(request, 400, 'Invalid Variant Data', 'Variant name is required and cannot be empty');
+                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 400,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
+                
+                // New variants MUST have parentVersionId
+                const isNewVariant = !existingVariantIds.has(variant.variantId);
+                if (isNewVariant && !variant.parentVersionId) {
+                    const rfcError = createError(request, 400, 'Invalid Variant Data', 'New variants must have parentVersionId - variants must be attached to a specific mod version');
                     const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                     });
                     return new Response(JSON.stringify(rfcError), {

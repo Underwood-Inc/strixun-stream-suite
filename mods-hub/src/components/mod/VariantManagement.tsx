@@ -11,6 +11,7 @@ import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
 import { VariantVersionList } from './VariantVersionList';
 import { VariantVersionUpload } from './VariantVersionUpload';
+import { MarkdownContent } from '../common/MarkdownContent';
 import { useVariantVersions, useDeleteModVersion, useUpdateMod } from '../../hooks/useMods';
 import type { VariantVersionUploadRequest } from '../../types/mod';
 
@@ -62,11 +63,13 @@ const VariantName = styled.h3`
   margin: 0;
 `;
 
-const VariantDescription = styled.p`
+const VariantDescription = styled.div`
   font-size: 0.875rem;
   color: ${colors.textSecondary};
   margin: 0;
   line-height: 1.5;
+  max-height: 300px;
+  overflow: hidden;
 `;
 
 const VariantMeta = styled.div`
@@ -224,7 +227,9 @@ export function VariantManagement({ modSlug, modId, variants }: VariantManagemen
                                 <VariantInfo>
                                     <VariantName>{variant.name}</VariantName>
                                     {variant.description && (
-                                        <VariantDescription>{variant.description}</VariantDescription>
+                                        <VariantDescription>
+                                            <MarkdownContent content={variant.description} />
+                                        </VariantDescription>
                                     )}
                                     <VariantMeta>
                                         <span>{variant.versionCount} version{variant.versionCount !== 1 ? 's' : ''}</span>

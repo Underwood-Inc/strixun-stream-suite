@@ -12,6 +12,17 @@ import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 import type { AuthResult } from '../../utils/auth.js';
 
 /**
+ * Sort by date descending (newest first)
+ */
+function sortByUpdatedAtDesc(a: ModMetadata, b: ModMetadata): number {
+    const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+    const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+    const aValid = !isNaN(aTime) ? aTime : 0;
+    const bValid = !isNaN(bTime) ? bTime : 0;
+    return bValid - aValid;
+}
+
+/**
  * Handle list mods request
  */
 export async function handleListMods(
@@ -166,7 +177,7 @@ export async function handleListMods(
         }
 
         // Sort by updatedAt (newest first)
-        mods.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        mods.sort(sortByUpdatedAtDesc);
 
         // CRITICAL: Ensure all mods have customerId (for data scoping)
         // Set customerId from auth context if missing (for legacy mods)

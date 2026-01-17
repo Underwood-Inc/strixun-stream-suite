@@ -64,6 +64,14 @@ const services = [
     url: 'http://localhost:5179',
     framework: 'React',
   },
+  {
+    name: 'Chat Hub',
+    location: 'chat-hub',
+    port: 5180,
+    type: 'Frontend',
+    url: 'http://localhost:5180',
+    framework: 'React',
+  },
   // Backend Workers
   {
     name: 'OTP Auth Service (Worker)',

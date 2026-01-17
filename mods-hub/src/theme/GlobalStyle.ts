@@ -1,11 +1,18 @@
+/**
+ * Global styles for Mods Hub
+ * Extends shared @strixun/shared-styles with app-specific additions
+ */
+
 import { createGlobalStyle } from 'styled-components';
-import { colors, typography } from './tokens';
+import { colors, spacing, radius, shadows, typography } from '@strixun/shared-styles';
 import { getSeasonalKeyframesCSS } from '../utils/seasonalAnimations';
 
+// Mods Hub global style - includes all shared CSS variables plus app-specific extensions
 export const GlobalStyle = createGlobalStyle`
   /* Seasonal animation keyframes */
   ${getSeasonalKeyframesCSS()}
-  * {
+
+  *, *::before, *::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -13,24 +20,70 @@ export const GlobalStyle = createGlobalStyle`
 
   html {
     font-size: 16px;
-    /* CSS variables for shared components (OTP login, etc.) */
-    --card: ${colors.card};
-    --card-hover: ${colors.cardHover};
+    
+    /* CSS Variables - from shared @strixun/shared-styles */
+    /* Backgrounds */
     --bg: ${colors.bg};
+    --bg-dark: ${colors.bgDark};
     --bg-secondary: ${colors.bgSecondary};
     --bg-tertiary: ${colors.bgTertiary};
-    --text: ${colors.text};
-    --text-secondary: ${colors.textSecondary};
-    --text-muted: ${colors.textMuted};
+    --card: ${colors.card};
+    --card-hover: ${colors.cardHover};
+    
+    /* Borders */
+    --border: ${colors.border};
+    --border-light: ${colors.borderLight};
+    
+    /* Brand Colors */
     --accent: ${colors.accent};
+    --accent-light: ${colors.accentLight};
+    --accent-dark: ${colors.accentDark};
     --accent-hover: ${colors.accentHover};
     --accent-active: ${colors.accentActive};
+    --accent2: ${colors.accent2};
+    
+    /* Status Colors */
     --success: ${colors.success};
     --warning: ${colors.warning};
     --danger: ${colors.danger};
     --info: ${colors.info};
-    --border: ${colors.border};
-    --border-light: ${colors.borderLight};
+    
+    /* Text Colors */
+    --text: ${colors.text};
+    --text-secondary: ${colors.textSecondary};
+    --text-muted: ${colors.textMuted};
+    --muted: ${colors.muted};
+    
+    /* Glass Effects */
+    --glass-bg: ${colors.glassBg};
+    --glass-bg-dark: ${colors.glassBgDark};
+    --glass-border: ${colors.glassBorder};
+    
+    /* Spacing */
+    --spacing-xs: ${spacing.xs};
+    --spacing-sm: ${spacing.sm};
+    --spacing-md: ${spacing.md};
+    --spacing-lg: ${spacing.lg};
+    --spacing-xl: ${spacing.xl};
+    --spacing-2xl: ${spacing['2xl']};
+    --spacing-3xl: ${spacing['3xl']};
+    
+    /* Border Radius */
+    --radius-sm: ${radius.sm};
+    --radius-md: ${radius.md};
+    --radius-lg: ${radius.lg};
+    --border-radius: ${radius.md};
+    --border-radius-sm: ${radius.sm};
+    
+    /* Shadows */
+    --shadow-sm: ${shadows.sm};
+    --shadow-md: ${shadows.md};
+    --shadow-lg: ${shadows.lg};
+    
+    /* Typography */
+    --font-family: ${typography.fontFamily};
+    --font-sans: ${typography.fontFamily};
+    --font-display: Georgia, serif;
   }
 
   body {
@@ -53,7 +106,7 @@ export const GlobalStyle = createGlobalStyle`
     transition: color 0.2s ease;
 
     &:hover {
-      color: ${colors.accentHover};
+      color: ${colors.accentLight};
     }
   }
 
@@ -131,4 +184,3 @@ export const GlobalStyle = createGlobalStyle`
     }
   }
 `;
-

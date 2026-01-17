@@ -165,9 +165,9 @@ const TooltipElement = styled.div<{
     background-image: repeating-linear-gradient(
       45deg,
       ${props.$theme.colors.card},
-      ${props.$theme.colors.card} 8px,
-      rgba(100, 149, 237, 0.08) 8px,
-      rgba(100, 149, 237, 0.08) 16px
+      ${props.$theme.colors.card} 10px,
+      rgba(100, 149, 237, 0.03) 10px,
+      rgba(100, 149, 237, 0.03) 20px
     );
   `}
   

@@ -6,7 +6,7 @@
 import { useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
-import type { ModMetadata, ModUpdateRequest, ModCategory, ModVisibility, ModStatus, ModVariant } from '../../types/mod';
+import type { ModMetadata, ModUpdateRequest, ModCategory, ModVisibility, ModStatus, ModVariant, ModVersion } from '../../types/mod';
 import { FileUploader } from './FileUploader';
 import { GamesPicker } from './GamesPicker';
 import { useModSettings } from '../../hooks/useMods';
@@ -15,6 +15,7 @@ import { getButtonStyles } from '../../utils/buttonStyles';
 import { getBadgeStyles } from '../../utils/sharedStyles';
 import { getStatusBadgeType } from '../../utils/badgeHelpers';
 import { ConfirmationModal } from '../common/ConfirmationModal';
+import { MarkdownEditor } from '../common/MarkdownEditor';
 
 // UI-only type that extends ModVariant with file upload fields
 // These fields are used for creating new versions, not for persisted data
@@ -99,6 +100,22 @@ const InfoSection = styled.div`
   min-width: 0; /* Allows flex item to shrink below content size */
 `;
 
+const TwoColumnRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: ${spacing.lg};
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const FullWidthSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${spacing.lg};
+`;
+
 const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
@@ -114,6 +131,22 @@ const Label = styled.label`
   margin-bottom: ${spacing.xs};
 `;
 
+const HelpText = styled.span`
+  font-size: 0.625rem;
+  color: ${colors.textMuted};
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+`;
+
+const CharCount = styled.span<{ $over?: boolean }>`
+  font-size: 0.75rem;
+  color: ${props => props.$over ? colors.danger : colors.textMuted};
+  text-align: right;
+  display: block;
+  margin-top: 4px;
+`;
+
 const Input = styled.input`
   padding: ${spacing.sm} ${spacing.md};
   background: ${colors.bg};
@@ -121,32 +154,6 @@ const Input = styled.input`
   border-radius: 6px;
   color: ${colors.text};
   font-size: 0.875rem;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  
-  &:focus {
-    border-color: ${colors.accent};
-    outline: none;
-    box-shadow: 0 0 0 3px ${colors.accent}20, 0 2px 6px rgba(0, 0, 0, 0.1);
-    transform: translateY(-1px);
-  }
-  
-  &:hover:not(:focus) {
-    border-color: ${colors.borderLight || colors.border};
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-  }
-`;
-
-const TextArea = styled.textarea`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${colors.bg};
-  border: 1px solid ${colors.border};
-  border-radius: 6px;
-  color: ${colors.text};
-  font-size: 0.875rem;
-  min-height: 100px;
-  resize: vertical;
-  font-family: inherit;
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   
@@ -226,6 +233,7 @@ const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary'; di
 
 interface ModManageFormProps {
     mod: ModMetadata;
+    versions: ModVersion[];
     onUpdate: (updates: ModUpdateRequest, thumbnail?: File, variantFiles?: Record<string, File>, deletedVariantIds?: string[]) => void;
     onDelete: () => void;
     onStatusChange?: (status: ModStatus) => void;
@@ -323,9 +331,10 @@ const RecommendationText = styled.p`
     font-size: 0.875rem;
 `;
 
-export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoading }: ModManageFormProps) {
+export function ModManageForm({ mod, versions, onUpdate, onDelete, onStatusChange, isLoading }: ModManageFormProps) {
     const { data: settings } = useModSettings();
     const [title, setTitle] = useState(mod.title);
+    const [summary, setSummary] = useState(mod.summary || '');
     const [description, setDescription] = useState(mod.description);
     const [category, setCategory] = useState<ModCategory>(mod.category);
     const [tags, setTags] = useState(mod.tags.join(', '));
@@ -483,9 +492,12 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     };
 
     const handleAddVariant = () => {
+        // Default to latest version (first in sorted array)
+        const defaultVersionId = versions.length > 0 ? versions[0].versionId : '';
         const newVariant: ModVariantWithFile = {
             variantId: `variant-${Date.now()}`,
             modId: mod.modId,
+            parentVersionId: defaultVersionId,
             name: '',
             description: '',
             createdAt: '', // Empty = NEW variant (not saved yet)
@@ -642,6 +654,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
         
         const updates: ModUpdateRequest = {
             title,
+            summary: summary || undefined,
             description,
             category,
             tags: tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -674,6 +687,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                 )}
             </StatusInfo>
 
+            {/* Top Section: Thumbnail (left) | Title, Category, Tags (right) */}
             <Header>
                 <ThumbnailSection>
                     <Label>Thumbnail (optional)</Label>
@@ -707,12 +721,15 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                     </FormGroup>
 
                     <FormGroup>
-                        <Label>Description</Label>
-                        <TextArea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            style={{ minHeight: '120px' }}
+                        <Label>Summary <HelpText>(max 150 chars - shown in list views)</HelpText></Label>
+                        <Input
+                            type="text"
+                            value={summary}
+                            onChange={(e) => setSummary(e.target.value.slice(0, 150))}
+                            placeholder="Brief one-liner about your mod..."
+                            maxLength={150}
                         />
+                        <CharCount $over={summary.length > 150}>{summary.length}/150</CharCount>
                     </FormGroup>
 
                     <FormGroup>
@@ -735,26 +752,41 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                             onChange={(e) => setTags(e.target.value)}
                         />
                     </FormGroup>
-
-                    <FormGroup>
-                        <Label>Visibility</Label>
-                        <Select value={visibility} onChange={(e) => setVisibility(e.target.value as ModVisibility)}>
-                            <option value="public">Public</option>
-                            <option value="unlisted">Unlisted</option>
-                            <option value="private">Private</option>
-                        </Select>
-                    </FormGroup>
-
-                    <FormGroup>
-                        <Label>Associated Game (optional)</Label>
-                        <GamesPicker
-                            value={gameId}
-                            onChange={setGameId}
-                            placeholder="Select a game this mod is for..."
-                        />
-                    </FormGroup>
                 </InfoSection>
             </Header>
+
+            {/* Middle Section: Visibility (left) | Associated Game (right) */}
+            <TwoColumnRow>
+                <FormGroup>
+                    <Label>Visibility</Label>
+                    <Select value={visibility} onChange={(e) => setVisibility(e.target.value as ModVisibility)}>
+                        <option value="public">Public</option>
+                        <option value="unlisted">Unlisted</option>
+                        <option value="private">Private</option>
+                    </Select>
+                </FormGroup>
+
+                <FormGroup>
+                    <Label>Associated Game (optional)</Label>
+                    <GamesPicker
+                        value={gameId}
+                        onChange={setGameId}
+                        placeholder="Select a game this mod is for..."
+                    />
+                </FormGroup>
+            </TwoColumnRow>
+
+            {/* Description: Full width */}
+            <FullWidthSection>
+                <MarkdownEditor
+                    label="Description"
+                    value={description}
+                    onChange={setDescription}
+                    placeholder="Describe your mod..."
+                    height={300}
+                    preview="live"
+                />
+            </FullWidthSection>
 
             <FormGroup>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -794,6 +826,29 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                                             Remove
                                         </Button>
                                     </div>
+                                    <FormGroup>
+                                        <Label>Parent Version <span style={{ color: colors.danger }}>*</span></Label>
+                                        <Select
+                                            value={variant.parentVersionId || ''}
+                                            onChange={(e) => handleVariantChange(variant.variantId, 'parentVersionId', e.target.value)}
+                                            style={{ 
+                                                borderColor: !variant.parentVersionId ? colors.warning : undefined 
+                                            }}
+                                        >
+                                            {versions.length === 0 ? (
+                                                <option value="">No versions available</option>
+                                            ) : (
+                                                versions.map((v) => (
+                                                    <option key={v.versionId} value={v.versionId}>
+                                                        v{v.version} ({new Date(v.createdAt).toLocaleDateString()})
+                                                    </option>
+                                                ))
+                                            )}
+                                        </Select>
+                                        <span style={{ fontSize: '0.75rem', color: colors.textMuted }}>
+                                            Select which mod version this variant belongs to
+                                        </span>
+                                    </FormGroup>
                                     <Input
                                         type="text"
                                         placeholder={isNew ? "Variant name *REQUIRED*" : "Variant name"}
@@ -803,11 +858,12 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                                             borderColor: isNew && !hasName ? colors.warning : undefined 
                                         }}
                                     />
-                                    <TextArea
-                                        placeholder="Variant description (optional)"
+                                    <MarkdownEditor
                                         value={variant.description || ''}
-                                        onChange={(e) => handleVariantChange(variant.variantId, 'description', e.target.value)}
-                                        style={{ minHeight: '60px' }}
+                                        onChange={(value) => handleVariantChange(variant.variantId, 'description', value)}
+                                        placeholder="Variant description (optional)"
+                                        height={120}
+                                        preview="edit"
                                     />
                                     <FormGroup>
                                         <Label>

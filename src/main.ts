@@ -37,8 +37,8 @@ if (typeof window !== 'undefined') {
     }
   };
   
-  // Set chat signaling server URL
-  (window as any).CHAT_SIGNALING_URL = 'https://strixun-chat-signaling.strixuns-script-suite.workers.dev';
+  // Set chat signaling server URL (API at chat-api.idling.app)
+  (window as any).CHAT_SIGNALING_URL = 'https://chat-api.idling.app';
 }
 
 import { mount } from 'svelte';

@@ -1,0 +1,255 @@
+/**
+ * P2P Storage Component Styles
+ * 
+ * Uses CSS variables for theming.
+ * Override these variables in your app to customize.
+ */
+
+/* ============ CSS Variables ============ */
+
+:root {
+  --p2p-bg: #252525;
+  --p2p-text: #f9f9f9;
+  --p2p-text-secondary: #b0b0b0;
+  --p2p-text-muted: #707070;
+  --p2p-border: #3a3a3a;
+  --p2p-accent: #d4af37;
+  --p2p-success: #4ade80;
+  --p2p-warning: #fbbf24;
+  --p2p-danger: #f87171;
+  --p2p-info: #60a5fa;
+  --p2p-radius: 6px;
+  --p2p-spacing-xs: 4px;
+  --p2p-spacing-sm: 8px;
+  --p2p-spacing-md: 12px;
+  --p2p-font-family: inherit;
+}
+
+/* ============ Integrity Badge ============ */
+
+.p2p-integrity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--p2p-spacing-xs);
+  padding: var(--p2p-spacing-xs) var(--p2p-spacing-sm);
+  border-radius: var(--p2p-radius);
+  font-family: var(--p2p-font-family);
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--p2p-bg);
+  border: 1px solid var(--p2p-border);
+}
+
+.p2p-integrity-badge__icon {
+  font-weight: bold;
+}
+
+.p2p-integrity-badge__score {
+  font-variant-numeric: tabular-nums;
+}
+
+.p2p-integrity-badge__peers {
+  color: var(--p2p-text-secondary);
+}
+
+/* Status variants */
+.p2p-integrity-badge--verified {
+  border-color: var(--p2p-success);
+  color: var(--p2p-success);
+}
+
+.p2p-integrity-badge--partial {
+  border-color: var(--p2p-accent);
+  color: var(--p2p-accent);
+}
+
+.p2p-integrity-badge--degraded {
+  border-color: var(--p2p-warning);
+  color: var(--p2p-warning);
+}
+
+.p2p-integrity-badge--unverified {
+  border-color: var(--p2p-danger);
+  color: var(--p2p-danger);
+}
+
+/* ============ Gap Warning ============ */
+
+.p2p-gap-warning {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid var(--p2p-warning);
+  border-radius: var(--p2p-radius);
+  padding: var(--p2p-spacing-md);
+  font-family: var(--p2p-font-family);
+}
+
+.p2p-gap-warning__header {
+  display: flex;
+  align-items: center;
+  gap: var(--p2p-spacing-sm);
+  margin-bottom: var(--p2p-spacing-sm);
+}
+
+.p2p-gap-warning__icon {
+  color: var(--p2p-warning);
+  font-weight: bold;
+}
+
+.p2p-gap-warning__title {
+  flex: 1;
+  color: var(--p2p-warning);
+  font-weight: 600;
+}
+
+.p2p-gap-warning__dismiss {
+  background: none;
+  border: none;
+  color: var(--p2p-text-muted);
+  cursor: pointer;
+  padding: var(--p2p-spacing-xs);
+  font-size: 12px;
+}
+
+.p2p-gap-warning__dismiss:hover {
+  color: var(--p2p-text);
+}
+
+.p2p-gap-warning__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.p2p-gap-warning__item {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--p2p-spacing-xs) 0;
+  font-size: 13px;
+  color: var(--p2p-text-secondary);
+}
+
+.p2p-gap-warning__range {
+  font-variant-numeric: tabular-nums;
+}
+
+.p2p-gap-warning__reason {
+  color: var(--p2p-text-muted);
+  font-style: italic;
+}
+
+/* ============ Peer Count ============ */
+
+.p2p-peer-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--p2p-spacing-xs);
+  font-family: var(--p2p-font-family);
+  font-size: 12px;
+}
+
+.p2p-peer-count__icon {
+  font-size: 10px;
+}
+
+.p2p-peer-count__value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.p2p-peer-count__label {
+  color: var(--p2p-text-secondary);
+}
+
+.p2p-peer-count--healthy {
+  color: var(--p2p-success);
+}
+
+.p2p-peer-count--low {
+  color: var(--p2p-warning);
+}
+
+.p2p-peer-count--offline {
+  color: var(--p2p-danger);
+}
+
+/* ============ Storage Picker ============ */
+
+.p2p-storage-picker {
+  font-family: var(--p2p-font-family);
+}
+
+.p2p-storage-picker__header {
+  margin-bottom: var(--p2p-spacing-md);
+}
+
+.p2p-storage-picker__title {
+  font-weight: 600;
+  color: var(--p2p-text);
+}
+
+.p2p-storage-picker__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--p2p-spacing-sm);
+}
+
+.p2p-storage-picker__option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--p2p-spacing-xs);
+  padding: var(--p2p-spacing-md);
+  background: var(--p2p-bg);
+  border: 1px solid var(--p2p-border);
+  border-radius: var(--p2p-radius);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.p2p-storage-picker__option:hover:not(:disabled) {
+  border-color: var(--p2p-accent);
+}
+
+.p2p-storage-picker__option--selected {
+  border-color: var(--p2p-accent);
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.p2p-storage-picker__option--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.p2p-storage-picker__option-name {
+  font-weight: 600;
+  color: var(--p2p-text);
+}
+
+.p2p-storage-picker__option-desc {
+  font-size: 13px;
+  color: var(--p2p-text-secondary);
+}
+
+.p2p-storage-picker__option-unavailable {
+  font-size: 11px;
+  color: var(--p2p-danger);
+}
+
+.p2p-storage-picker__path {
+  margin-top: var(--p2p-spacing-md);
+  padding: var(--p2p-spacing-sm);
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: var(--p2p-radius);
+  font-size: 12px;
+}
+
+.p2p-storage-picker__path-label {
+  color: var(--p2p-text-secondary);
+  margin-right: var(--p2p-spacing-xs);
+}
+
+.p2p-storage-picker__path-value {
+  color: var(--p2p-accent);
+  font-family: monospace;
+}

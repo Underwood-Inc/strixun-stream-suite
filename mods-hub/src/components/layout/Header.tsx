@@ -261,6 +261,45 @@ export function Header() {
                 </HamburgerButton>
                 <Nav $isOpen={isMobileMenuOpen}>
                     <NavLink to="/" onClick={handleNavClick}>Browse</NavLink>
+                    <Tooltip 
+                        content={
+                            <div>
+                                <strong style={{ color: '#1abc9c', display: 'block', marginBottom: '8px', fontSize: '1.15em' }}>
+                                    P2P Encrypted Chat — Coming Soon
+                                </strong>
+                                <p style={{ margin: '0 0 12px 0', fontSize: '1em' }}>
+                                    A truly decentralized messaging system where <em>no central server ever stores your messages</em>. 
+                                    Your conversations exist only on the devices of participants.
+                                </p>
+                                <div style={{ background: 'rgba(26, 188, 156, 0.1)', padding: '10px 12px', borderRadius: '6px', borderLeft: '3px solid #1abc9c' }}>
+                                    <strong style={{ display: 'block', marginBottom: '6px', fontSize: '1em' }}>Blockchain-Style Architecture</strong>
+                                    <p style={{ margin: 0, fontSize: '0.95em', color: tooltipTheme.colors.textSecondary }}>
+                                        Every message is cryptographically linked to the previous one via hash chains. 
+                                        Peers collectively maintain and verify history — if you miss messages while offline, 
+                                        other peers sync you back up. Tamper-proof, verifiable, and resilient.
+                                    </p>
+                                </div>
+                                <ul style={{ margin: '12px 0 0 0', paddingLeft: '18px', fontSize: '0.95em', color: tooltipTheme.colors.textSecondary }}>
+                                    <li>End-to-end encrypted with multi-party key exchange</li>
+                                    <li>Message integrity verified via SHA-256 hash chains</li>
+                                    <li>Automatic history sync when you reconnect</li>
+                                    <li>No subscription, no data harvesting — just pure P2P</li>
+                                </ul>
+                            </div>
+                        }
+                        position="bottom"
+                        level="info"
+                        maxWidth="420px"
+                        theme={tooltipTheme}
+                    >
+                        <NavLink 
+                            to="/chat" 
+                            onClick={handleNavClick}
+                            className="coming-soon"
+                        >
+                            Chat
+                        </NavLink>
+                    </Tooltip>
                     {isAuthenticated ? (
                         <NavActions>
                             {hasPermission && (

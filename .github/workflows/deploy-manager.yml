@@ -74,6 +74,14 @@ on:
         description: 'Deploy Access Service'
         type: boolean
         default: true
+      deploy_chat_api:
+        description: 'Deploy Chat Signaling API'
+        type: boolean
+        default: true
+      deploy_chat_hub:
+        description: 'Deploy Chat Hub (Pages) - Production only'
+        type: boolean
+        default: true
 
 # Sets permissions for GITHUB_TOKEN
 permissions:
@@ -456,6 +464,53 @@ jobs:
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: echo "⚠ No test script found in Access Service - skipping tests"
+
+  test_chat_api:
+    needs: setup
+    if: ${{ inputs.deploy_chat_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/chat-signaling
+        run: |
+          if [ -f "vitest.config.ts" ] || [ -f "vitest.config.js" ]; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          elif grep -q '"test"' package.json && ! grep -q 'Error: no test specified' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Chat API Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/chat-signaling
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: pnpm run build:deps && pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠ No test script found in Chat API - skipping tests"
 
   # Twitch API Deployment
   deploy_twitch_api:
@@ -1074,6 +1129,87 @@ jobs:
             -H "X-Service-Key: $SERVICE_API_KEY" || echo "⚠ Seed endpoint not responding - may need manual seeding"
         continue-on-error: true
 
+  # Chat Signaling API Deployment
+  deploy_chat_api:
+    needs: [setup, test_chat_api]
+    if: ${{ inputs.deploy_chat_api && (needs.test_chat_api.result == 'success' || needs.test_chat_api.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build Worker
+        working-directory: serverless/chat-signaling
+        run: pnpm run build:deps && pnpm run build:worker
+      
+      - name: Create KV Namespace (if needed)
+        working-directory: serverless/chat-signaling
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "Creating KV namespace CHAT_KV (if it doesn't exist)..."
+          pnpm exec wrangler kv namespace create "CHAT_KV" || true
+        continue-on-error: true
+      
+      - name: Deploy to Cloudflare Workers
+        id: deploy
+        working-directory: serverless/chat-signaling
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            pnpm exec wrangler deploy --env development
+          else
+            pnpm exec wrangler deploy
+          fi
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "✗ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
+      
+      - name: Set Worker Secrets
+        working-directory: serverless/chat-signaling
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          ENV_FLAG=""
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            ENV_FLAG="--env development"
+          fi
+          # CRITICAL: JWT_SECRET must match OTP auth service for token validation
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
+          fi
+          # CRITICAL: ALLOWED_ORIGINS for CORS
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+          else
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+          fi
+        continue-on-error: true
+
   # Mods Hub Deployment (Cloudflare Pages) - Production only
   deploy_mods_hub:
     needs: [setup, test_root]
@@ -1209,6 +1345,70 @@ jobs:
           pnpm exec wrangler pages project create access-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
           # Build outputs to ../dist/access-hub (relative to access-hub directory)
           pnpm exec wrangler pages deploy ../dist/access-hub --project-name=access-hub --branch=main
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "✗ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
+
+  # Chat Hub Deployment (Cloudflare Pages) - Production only
+  deploy_chat_hub:
+    needs: [setup, test_root]
+    if: ${{ inputs.deploy_chat_hub && inputs.environment == 'production' && needs.test_root.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build workspace dependencies
+        working-directory: .
+        run: |
+          # Build dependencies in correct order
+          pnpm --filter "@strixun/types" run build
+          pnpm --filter "@strixun/error-utils" run build
+          pnpm --filter "@strixun/service-client" run build
+          pnpm --filter "@strixun/api-framework" run build
+          pnpm --filter "@strixun/auth-store" run build
+          pnpm --filter "@strixun/p2p-storage" run build
+          pnpm --filter "@strixun/chat" run build
+          pnpm --filter "@strixun/otp-login" run build:react
+      
+      - name: Build Chat Hub
+        working-directory: chat-hub
+        env:
+          VITE_CHAT_SIGNALING_URL: https://chat-api.idling.app
+          VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
+        run: pnpm run build
+      
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        working-directory: chat-hub
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          # Create project if it doesn't exist (suppress error if already exists)
+          pnpm exec wrangler pages project create chat-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
+          # Build outputs to ../dist/chat-hub (relative to chat-hub directory)
+          pnpm exec wrangler pages deploy ../dist/chat-hub --project-name=chat-hub --branch=main
       
       - name: Rollback on Failure
         if: failure()
@@ -1446,7 +1646,7 @@ jobs:
 
   # Deployment Summary
   summary:
-    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, test_access_service, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_access_service, deploy_mods_hub, deploy_access_hub, deploy_storybook, deploy_pages]
+    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, test_access_service, test_chat_api, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_access_service, deploy_chat_api, deploy_mods_hub, deploy_access_hub, deploy_chat_hub, deploy_storybook, deploy_pages]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1548,6 +1748,18 @@ jobs:
             fi
           fi
           
+          if [ "${{ inputs.deploy_chat_api }}" == "true" ]; then
+            if [ "${{ needs.test_chat_api.result }}" == "success" ]; then
+              echo "✓ **Chat API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_chat_api.result }}" == "failure" ]; then
+              echo "✗ **Chat API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_chat_api.result }}" == "skipped" ]; then
+              echo "⏭️ **Chat API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Chat API Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Deployment Results" >> $GITHUB_STEP_SUMMARY
           
@@ -1607,6 +1819,14 @@ jobs:
             fi
           fi
           
+          if [ "${{ inputs.deploy_chat_api }}" == "true" ]; then
+            if [ "${{ needs.deploy_chat_api.result }}" == "success" ]; then
+              echo "✓ **Chat Signaling API** - Deployed to chat-api.idling.app" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✗ **Chat Signaling API** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
           if [ "${{ inputs.deploy_mods_hub }}" == "true" ]; then
             if [ "${{ needs.deploy_mods_hub.result }}" == "success" ]; then
               echo "✓ **Mods Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
@@ -1620,6 +1840,14 @@ jobs:
               echo "✓ **Access Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
             else
               echo "✗ **Access Hub** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_chat_hub }}" == "true" ]; then
+            if [ "${{ needs.deploy_chat_hub.result }}" == "success" ]; then
+              echo "✓ **Chat Hub** - Deployed to chat.idling.app" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✗ **Chat Hub** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           

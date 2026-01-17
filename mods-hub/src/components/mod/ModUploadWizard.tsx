@@ -12,6 +12,8 @@ import { useModSettings } from '../../hooks/useMods';
 import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixun/api-framework';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
+import { MarkdownEditor } from '../common/MarkdownEditor';
+import { MarkdownContent } from '../common/MarkdownContent';
 
 // UI-only type that extends ModVariant with file upload fields
 type ModVariantWithFile = ModVariant & {
@@ -149,6 +151,21 @@ const Required = styled.span`
   margin-left: 2px;
 `;
 
+const HelpText = styled.span`
+  font-size: 0.75rem;
+  color: ${colors.textMuted};
+  display: block;
+  margin-top: 2px;
+`;
+
+const CharCount = styled.span<{ $over?: boolean }>`
+  font-size: 0.75rem;
+  color: ${props => props.$over ? colors.danger : colors.textMuted};
+  text-align: right;
+  display: block;
+  margin-top: 4px;
+`;
+
 const Input = styled.input`
   padding: ${spacing.sm} ${spacing.md};
   background: ${colors.bg};
@@ -156,23 +173,6 @@ const Input = styled.input`
   border-radius: 4px;
   color: ${colors.text};
   font-size: 0.875rem;
-  
-  &:focus {
-    border-color: ${colors.accent};
-    outline: none;
-  }
-`;
-
-const TextArea = styled.textarea`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${colors.bg};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  color: ${colors.text};
-  font-size: 0.875rem;
-  min-height: 80px;
-  resize: vertical;
-  font-family: inherit;
   
   &:focus {
     border-color: ${colors.accent};
@@ -402,6 +402,7 @@ export function ModUploadWizard({
     const [file, setFile] = useState<File | null>(null);
     const [thumbnail, setThumbnail] = useState<File | null>(null);
     const [title, setTitle] = useState(initialData?.title || '');
+    const [summary, setSummary] = useState(initialData?.summary || '');
     const [description, setDescription] = useState(initialData?.description || '');
     const [category, setCategory] = useState<ModCategory>(initialData?.category || 'script');
     const [tags, setTags] = useState(initialData?.tags?.join(', ') || '');
@@ -539,6 +540,7 @@ export function ModUploadWizard({
         const newVariant: ModVariantWithFile = {
             variantId: `variant-${Date.now()}`,
             modId: '', // Will be set when mod is created
+            parentVersionId: '', // Will be set to initial version when mod is created
             name: '',
             description: '',
             createdAt: '',
@@ -566,6 +568,7 @@ export function ModUploadWizard({
     const buildMetadata = (status?: ModStatus): ModUploadRequest => {
         return {
             title,
+            summary: summary || undefined,
             description,
             category,
             tags: tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -816,12 +819,26 @@ export function ModUploadWizard({
                 </FormGroup>
 
                 <FormGroup>
-                    <Label>Description</Label>
-                    <TextArea
+                    <Label>Summary</Label>
+                    <HelpText>Brief one-liner for list views (max 150 chars)</HelpText>
+                    <Input
+                        type="text"
+                        value={summary}
+                        onChange={(e) => setSummary(e.target.value.slice(0, 150))}
+                        placeholder="A quick summary of what your mod does..."
+                        maxLength={150}
+                    />
+                    <CharCount $over={summary.length > 150}>{summary.length}/150</CharCount>
+                </FormGroup>
+
+                <FormGroup>
+                    <MarkdownEditor
+                        label="Description"
                         value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Describe your mod..."
-                        rows={4}
+                        onChange={setDescription}
+                        placeholder="Describe your mod... Supports **bold**, *italic*, `code`, lists, and more..."
+                        height={200}
+                        preview="live"
                     />
                 </FormGroup>
 
@@ -869,12 +886,13 @@ export function ModUploadWizard({
                 </FormGroup>
 
                 <FormGroup>
-                    <Label>Changelog</Label>
-                    <TextArea
+                    <MarkdownEditor
+                        label="Changelog"
                         value={changelog}
-                        onChange={(e) => setChangelog(e.target.value)}
-                        placeholder="What's new in this version?"
-                        rows={4}
+                        onChange={setChangelog}
+                        placeholder="What's new in this version? Supports **bold**, *italic*, `code`, lists, and more..."
+                        height={200}
+                        preview="live"
                     />
                 </FormGroup>
 
@@ -950,7 +968,9 @@ export function ModUploadWizard({
 
                 <ReviewSection>
                     <ReviewLabel>Description</ReviewLabel>
-                    <ReviewValue>{description || <ReviewEmpty>No description</ReviewEmpty>}</ReviewValue>
+                    <ReviewValue>
+                        {description ? <MarkdownContent content={description} /> : <ReviewEmpty>No description</ReviewEmpty>}
+                    </ReviewValue>
                 </ReviewSection>
 
                 <ReviewSection>
@@ -966,7 +986,9 @@ export function ModUploadWizard({
                 {changelog && (
                     <ReviewSection>
                         <ReviewLabel>Changelog</ReviewLabel>
-                        <ReviewValue>{changelog}</ReviewValue>
+                        <ReviewValue>
+                            <MarkdownContent content={changelog} />
+                        </ReviewValue>
                     </ReviewSection>
                 )}
 
@@ -1031,12 +1053,13 @@ export function ModUploadWizard({
                                 />
                             </FormGroup>
                             <FormGroup>
-                                <Label>Variant Description</Label>
-                                <TextArea
+                                <MarkdownEditor
+                                    label="Variant Description"
                                     value={variant.description || ''}
-                                    onChange={(e) => handleVariantChange(variant.variantId, 'description', e.target.value)}
+                                    onChange={(value) => handleVariantChange(variant.variantId, 'description', value)}
                                     placeholder="Describe this variant..."
-                                    rows={3}
+                                    height={150}
+                                    preview="edit"
                                 />
                             </FormGroup>
                             <FormGroup>

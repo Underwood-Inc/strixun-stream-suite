@@ -147,10 +147,14 @@ export {
   formatFileSize,
   validateFileSize,
   createFileSizeValidator,
+  calculateRichTextPayloadSize,
+  validateRichTextPayload,
 } from './upload-limits';
 
 export type {
   UploadLimitsConfig,
+  RichTextPayloadValidation,
+  EmbeddedMediaInfo,
 } from './upload-limits';
 
 // Re-export JWT utilities (canonical implementation)

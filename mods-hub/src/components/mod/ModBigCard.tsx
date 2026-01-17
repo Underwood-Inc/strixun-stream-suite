@@ -83,10 +83,6 @@ const Description = styled.p`
   font-size: 1rem;
   line-height: 1.6;
   margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
   flex: 1;
 `;
 
@@ -174,7 +170,9 @@ export function ModBigCard({ mod }: ModBigCardProps) {
                             <AuthorLabel>by</AuthorLabel>
                             <span>{mod.authorDisplayName || 'Unknown Author'}</span>
                         </Author>
-                        <Description>{mod.description || 'No description available'}</Description>
+                        <Description>
+                            {mod.summary || 'No summary available'}
+                        </Description>
                     </CardLink>
                     <Meta>
                         <MetaLeft>

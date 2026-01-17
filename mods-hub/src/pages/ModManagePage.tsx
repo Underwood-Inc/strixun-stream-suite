@@ -10,7 +10,6 @@ import { useUploadPermission } from '../hooks/useUploadPermission';
 import { ModManageForm } from '../components/mod/ModManageForm';
 import { VersionUploadForm } from '../components/mod/VersionUploadForm';
 import { ModVersionManagement } from '../components/mod/ModVersionManagement';
-import { VariantManagement } from '../components/mod/VariantManagement';
 import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
@@ -200,6 +199,7 @@ export function ModManagePage() {
             
             <ModManageForm
                 mod={data.mod}
+                versions={data.versions}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
                 onStatusChange={handleStatusChange}
@@ -217,14 +217,6 @@ export function ModManagePage() {
                 modId={data.mod.modId}
                 versions={data.versions}
             />
-            
-            {data.mod.variants && data.mod.variants.length > 0 && (
-                <VariantManagement
-                    modSlug={slug!}
-                    modId={data.mod.modId}
-                    variants={data.mod.variants}
-                />
-            )}
         </PageContainer>
     );
 }

@@ -108,8 +108,6 @@ const Description = styled.p`
   font-size: 0.875rem;
   line-height: 1.6;
   margin: 0;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
   
   ${media.mobile} {
     font-size: 0.8125rem;
@@ -402,7 +400,9 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
                     <CardContent key="content" to={`/${mod.slug}`}>
                         <CardLink>
                             <Title>{mod.title}</Title>
-                            <Description>{mod.description || 'No description'}</Description>
+                            <Description>
+                                {mod.summary || 'No summary available'}
+                            </Description>
                         </CardLink>
                         <Meta>
                             <span>{mod.downloadCount} downloads</span>

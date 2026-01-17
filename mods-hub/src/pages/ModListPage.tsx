@@ -261,7 +261,7 @@ export function ModListPage() {
     const [category, setCategory] = useState<string>('');
     const [search, setSearch] = useState('');
     const [listHeight, setListHeight] = useState(600);
-    const [itemHeight, setItemHeight] = useState(110);
+    const [itemHeight, setItemHeight] = useState(160);
     const [isMobileView, setIsMobileView] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     
@@ -300,7 +300,7 @@ export function ModListPage() {
             // Set item height for virtualized list (desktop/tablet only)
             if (!isMobile) {
                 const isTablet = window.innerWidth > 768 && window.innerWidth <= 1024;
-                setItemHeight(isTablet ? 140 : 110);
+                setItemHeight(isTablet ? 150 : 160);
             }
         };
 

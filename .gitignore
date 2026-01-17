@@ -98,6 +98,10 @@ CONTEXT_SUMMARY.md
 *PROMPT*
 *COMPLETE*
 
+# Test Coverage Output
+coverage/
+**/coverage/
+
 # Playwright E2E Test Artifacts
 test-results/
 playwright-report/

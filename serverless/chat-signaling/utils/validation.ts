@@ -71,12 +71,34 @@ const sdpSchema = z
   );
 
 /**
+ * Encrypted room key validation
+ * - JSON string containing encryption metadata
+ * - Max 10KB (room keys should be small)
+ */
+const encryptedRoomKeySchema = z
+  .string()
+  .max(10000, 'Encrypted room key must be 10KB or less')
+  .optional();
+
+/**
+ * Key hash validation (SHA-256 hex string)
+ */
+const keyHashSchema = z
+  .string()
+  .length(64, 'Key hash must be a 64-character hex string (SHA-256)')
+  .regex(/^[a-f0-9]+$/, 'Key hash must be a lowercase hex string')
+  .optional();
+
+/**
  * Create Room Request Schema
  */
 export const createRoomSchema = z.object({
   broadcasterId: userIdSchema,
   broadcasterName: userNameSchema,
   customName: roomNameSchema,
+  // P2P E2E encryption support
+  encryptedRoomKey: encryptedRoomKeySchema,
+  keyHash: keyHashSchema,
 });
 
 /**

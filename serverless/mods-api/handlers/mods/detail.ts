@@ -11,6 +11,18 @@ import type { ModMetadata, ModVersion, ModDetailResponse, VariantVersion } from 
 import type { AuthResult } from '../../utils/auth.js';
 
 /**
+ * Sort by date descending (newest first)
+ * Inline to avoid bundling issues with shared imports
+ */
+function sortByCreatedAtDesc(a: ModVersion, b: ModVersion): number {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const aValid = !isNaN(aTime) ? aTime : 0;
+    const bValid = !isNaN(bTime) ? bTime : 0;
+    return bValid - aValid;
+}
+
+/**
  * Handle get mod detail request
  * CRITICAL: modId parameter must be the actual modId, not a slug
  * Slug-to-modId resolution should happen in the router before calling this handler
@@ -238,19 +250,8 @@ export async function handleGetModDetail(
             }
         }
 
-        // Sort versions by semantic version (newest first)
-        versions.sort((a, b) => {
-            const aParts = a.version.split('.').map(Number);
-            const bParts = b.version.split('.').map(Number);
-            for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-                const aPart = aParts[i] || 0;
-                const bPart = bParts[i] || 0;
-                if (aPart !== bPart) {
-                    return bPart - aPart;
-                }
-            }
-            return 0;
-        });
+        // Sort versions by createdAt (newest first)
+        versions.sort(sortByCreatedAtDesc);
 
         // CRITICAL: Ensure mod has customerId (for data scoping)
         // Set customerId from auth context if missing (for legacy mods)

@@ -13,6 +13,7 @@ import type { ModVariant, ModVersion, ModMetadata } from '../types/mod.js';
 export interface CreateVariantRequest {
     name: string;
     description?: string;
+    parentVersionId: string; // Required: variants must be tied to a specific mod version
 }
 
 export interface UpdateVariantRequest {
@@ -56,6 +57,7 @@ export class VariantService {
         const variant: ModVariant = {
             variantId,
             modId: normalizedParentId,
+            parentVersionId: data.parentVersionId, // Tie variant to specific mod version
             name: data.name,
             description: data.description,
             currentVersionId: null, // No versions yet
