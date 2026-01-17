@@ -111,11 +111,31 @@ const Description = styled.div`
   margin: 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  max-height: 300px;
-  overflow: hidden;
+  max-height: 180px;
+  overflow-y: auto;
+  
+  /* Scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${colors.bgTertiary};
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${colors.border};
+    border-radius: 3px;
+    
+    &:hover {
+      background: ${colors.textMuted};
+    }
+  }
   
   ${media.mobile} {
     font-size: 0.8125rem;
+    max-height: 150px;
   }
 `;
 

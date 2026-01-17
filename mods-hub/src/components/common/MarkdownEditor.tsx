@@ -1,232 +1,129 @@
 /**
  * MarkdownEditor component
- * Rich markdown editor with live preview
- * Uses @uiw/react-md-editor for editing
+ * Rich markdown editor using Lexical from Meta
  */
 
-import MDEditor from '@uiw/react-md-editor';
+import { useEffect, useCallback } from 'react';
+import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
+import { ContentEditable } from '@lexical/react/LexicalContentEditable';
+import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
+import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
+import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { $convertToMarkdownString, $convertFromMarkdownString, TRANSFORMERS } from '@lexical/markdown';
+import { HeadingNode, QuoteNode } from '@lexical/rich-text';
+import { ListNode, ListItemNode } from '@lexical/list';
+import { CodeNode } from '@lexical/code';
+import { LinkNode } from '@lexical/link';
+import { ListPlugin } from '@lexical/react/LexicalListPlugin';
+import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
+import type { EditorState } from 'lexical';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 
-// Override editor styles to match our theme
 const EditorContainer = styled.div`
-  /* Base editor styling */
-  .w-md-editor {
-    background: ${colors.bgSecondary};
-    border: 1px solid ${colors.border};
-    border-radius: 4px;
+  position: relative;
+`;
+
+const EditorWrapper = styled.div<{ $height: number }>`
+  background: ${colors.bgSecondary};
+  border: 1px solid ${colors.border};
+  border-radius: 4px;
+  min-height: ${props => props.$height}px;
+  position: relative;
+  
+  &:focus-within {
+    border-color: ${colors.accent};
+    box-shadow: 0 0 0 2px ${colors.accent}20;
+  }
+`;
+
+const StyledContentEditable = styled(ContentEditable)`
+  min-height: 150px;
+  padding: ${spacing.md};
+  outline: none;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: ${colors.text};
+  
+  /* Headings */
+  h1, h2, h3, h4, h5, h6 {
     color: ${colors.text};
-    box-shadow: none;
+    margin: ${spacing.md} 0 ${spacing.sm} 0;
+    font-weight: 600;
   }
   
-  /* Toolbar */
-  .w-md-editor-toolbar {
+  h1 { font-size: 1.25rem; }
+  h2 { font-size: 1.125rem; }
+  h3 { font-size: 1rem; }
+  
+  /* Paragraphs */
+  p {
+    margin: ${spacing.sm} 0;
+  }
+  
+  /* Lists */
+  ul, ol {
+    padding-left: ${spacing.lg};
+    margin: ${spacing.sm} 0;
+  }
+  
+  li {
+    margin: ${spacing.xs} 0;
+  }
+  
+  /* Code */
+  code {
     background: ${colors.bgTertiary};
-    border-bottom: 1px solid ${colors.border};
-    padding: ${spacing.xs} ${spacing.sm};
+    padding: 0.125rem 0.25rem;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.8125rem;
+    color: ${colors.accent};
   }
   
-  .w-md-editor-toolbar li > button {
-    color: ${colors.textSecondary};
+  /* Blockquotes */
+  blockquote {
+    border-left: 3px solid ${colors.accent};
+    padding-left: ${spacing.md};
+    margin: ${spacing.md} 0;
+    color: ${colors.textMuted};
+    font-style: italic;
+  }
+  
+  /* Links */
+  a {
+    color: ${colors.accent};
+    text-decoration: none;
     
     &:hover {
-      background: ${colors.bgSecondary};
-      color: ${colors.accent};
-    }
-    
-    &:disabled {
-      color: ${colors.textMuted};
+      text-decoration: underline;
     }
   }
   
-  .w-md-editor-toolbar-divider {
-    background: ${colors.border};
-  }
-  
-  /* Text area */
-  .w-md-editor-text-input,
-  .w-md-editor-text-pre > code,
-  .w-md-editor-text-pre {
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
-    font-size: 0.875rem;
-    line-height: 1.6;
-    color: ${colors.text} !important;
-  }
-  
-  .w-md-editor-text {
-    padding: ${spacing.md};
-  }
-  
-  .w-md-editor-input {
+  /* Strong/Bold */
+  strong {
     color: ${colors.text};
-    caret-color: ${colors.accent};
+    font-weight: 600;
   }
   
-  /* Fix text selection desync - hide selection on syntax highlight layer */
-  .w-md-editor-text-pre,
-  .w-md-editor-text-pre > code,
-  .w-md-editor-text-pre * {
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    pointer-events: none;
+  /* Emphasis */
+  em {
+    font-style: italic;
   }
-  
-  /* Ensure textarea handles all selection */
-  .w-md-editor-text-input {
-    user-select: text;
-    -webkit-user-select: text;
-    pointer-events: auto;
-    background: transparent !important;
-    color: transparent !important;
-    caret-color: ${colors.accent};
-  }
-  
-  /* Selection highlight only on textarea */
-  .w-md-editor-text-input::selection {
-    background: ${colors.accent}40;
-    color: transparent;
-  }
-  
-  /* Preview pane */
-  .w-md-editor-preview {
-    background: ${colors.bg};
-    padding: ${spacing.md};
-  }
-  
-  .wmde-markdown {
-    background: transparent;
-    color: ${colors.textSecondary};
-    font-size: 0.875rem;
-    line-height: 1.6;
-    
-    /* Headings */
-    h1, h2, h3, h4, h5, h6 {
-      color: ${colors.text};
-      border-bottom: none;
-      margin: ${spacing.md} 0 ${spacing.sm} 0;
-      font-weight: 600;
-    }
-    
-    h1 { font-size: 1.25rem; }
-    h2 { font-size: 1.125rem; }
-    h3 { font-size: 1rem; }
-    h4, h5, h6 { font-size: 0.875rem; }
-    
-    /* Paragraphs */
-    p {
-      margin: ${spacing.sm} 0;
-    }
-    
-    /* Lists */
-    ul, ol {
-      padding-left: ${spacing.lg};
-      margin: ${spacing.sm} 0;
-    }
-    
-    li {
-      margin: ${spacing.xs} 0;
-    }
-    
-    /* Code */
-    code {
-      background: ${colors.bgTertiary};
-      padding: 0.125rem 0.25rem;
-      border-radius: 3px;
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      font-size: 0.8125rem;
-      color: ${colors.accent};
-    }
-    
-    pre {
-      background: ${colors.bgTertiary};
-      padding: ${spacing.md};
-      border-radius: 4px;
-      overflow-x: auto;
-      margin: ${spacing.sm} 0;
-    }
-    
-    pre code {
-      background: none;
-      padding: 0;
-      color: ${colors.text};
-    }
-    
-    /* Links */
-    a {
-      color: ${colors.accent};
-      text-decoration: none;
-      
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-    
-    /* Blockquotes */
-    blockquote {
-      border-left: 3px solid ${colors.accent};
-      padding-left: ${spacing.md};
-      margin: ${spacing.md} 0;
-      color: ${colors.textMuted};
-      font-style: italic;
-      background: transparent;
-    }
-    
-    /* Horizontal rules */
-    hr {
-      border: none;
-      border-top: 1px solid ${colors.border};
-      margin: ${spacing.md} 0;
-      background: transparent;
-    }
-    
-    /* Tables */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: ${spacing.md} 0;
-    }
-    
-    th, td {
-      border: 1px solid ${colors.border};
-      padding: ${spacing.sm};
-      text-align: left;
-    }
-    
-    th {
-      background: ${colors.bgTertiary};
-      font-weight: 600;
-    }
-    
-    /* Strong/Bold */
-    strong {
-      color: ${colors.text};
-      font-weight: 600;
-    }
-    
-    /* Images */
-    img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 4px;
-    }
-  }
-  
-  /* Divider between edit and preview */
-  .w-md-editor-content {
-    border: none;
-  }
-  
-  /* Full screen mode */
-  .w-md-editor-fullscreen {
-    z-index: 10000;
-  }
-  
-  /* Placeholder */
-  .w-md-editor-text-input::placeholder {
-    color: ${colors.textMuted};
-  }
+`;
+
+const Placeholder = styled.div`
+  position: absolute;
+  top: ${spacing.md};
+  left: ${spacing.md};
+  color: ${colors.textMuted};
+  font-size: 0.875rem;
+  pointer-events: none;
+  user-select: none;
 `;
 
 const Label = styled.label`
@@ -244,6 +141,116 @@ const HelpText = styled.span`
   font-weight: 400;
 `;
 
+// Toolbar styles
+const Toolbar = styled.div`
+  display: flex;
+  gap: ${spacing.xs};
+  padding: ${spacing.xs} ${spacing.sm};
+  background: ${colors.bgTertiary};
+  border-bottom: 1px solid ${colors.border};
+  border-radius: 4px 4px 0 0;
+  flex-wrap: wrap;
+`;
+
+const ToolbarButton = styled.button<{ $active?: boolean }>`
+  background: ${props => props.$active ? colors.accent + '20' : 'transparent'};
+  border: none;
+  color: ${props => props.$active ? colors.accent : colors.textSecondary};
+  padding: ${spacing.xs} ${spacing.sm};
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  
+  &:hover {
+    background: ${colors.bgSecondary};
+    color: ${colors.accent};
+  }
+`;
+
+const ToolbarDivider = styled.div`
+  width: 1px;
+  background: ${colors.border};
+  margin: 0 ${spacing.xs};
+`;
+
+// Plugin to sync with external value
+function ValuePlugin({ 
+  value, 
+  onChange 
+}: { 
+  value: string; 
+  onChange: (value: string) => void;
+}) {
+  const [editor] = useLexicalComposerContext();
+  
+  // Initialize with value
+  useEffect(() => {
+    if (value) {
+      editor.update(() => {
+        $convertFromMarkdownString(value, TRANSFORMERS);
+      });
+    }
+  }, []); // Only on mount
+  
+  const handleChange = useCallback((editorState: EditorState) => {
+    editorState.read(() => {
+      const markdown = $convertToMarkdownString(TRANSFORMERS);
+      onChange(markdown);
+    });
+  }, [onChange]);
+  
+  return <OnChangePlugin onChange={handleChange} />;
+}
+
+// Toolbar plugin
+function ToolbarPlugin() {
+  const [editor] = useLexicalComposerContext();
+  
+  const formatBold = () => {
+    editor.update(() => {
+      const selection = window.getSelection();
+      if (selection && selection.toString()) {
+        document.execCommand('bold');
+      }
+    });
+  };
+  
+  const formatItalic = () => {
+    editor.update(() => {
+      const selection = window.getSelection();
+      if (selection && selection.toString()) {
+        document.execCommand('italic');
+      }
+    });
+  };
+  
+  return (
+    <Toolbar>
+      <ToolbarButton onClick={formatBold} title="Bold (Ctrl+B)">
+        B
+      </ToolbarButton>
+      <ToolbarButton onClick={formatItalic} title="Italic (Ctrl+I)">
+        <em>I</em>
+      </ToolbarButton>
+      <ToolbarDivider />
+      <ToolbarButton title="Heading: Use # at start of line">
+        H
+      </ToolbarButton>
+      <ToolbarButton title="List: Use - at start of line">
+        •
+      </ToolbarButton>
+      <ToolbarButton title="Quote: Use > at start of line">
+        "
+      </ToolbarButton>
+      <ToolbarButton title="Code: Use ` around text">
+        {'</>'}
+      </ToolbarButton>
+    </Toolbar>
+  );
+}
+
 interface MarkdownEditorProps {
   /** Current value */
   value: string;
@@ -255,12 +262,39 @@ interface MarkdownEditorProps {
   placeholder?: string;
   /** Editor height in pixels */
   height?: number;
-  /** Show preview by default */
+  /** Show preview by default - ignored, Lexical shows rich text inline */
   preview?: 'edit' | 'live' | 'preview';
   /** Hide toolbar */
   hideToolbar?: boolean;
   /** Additional class name */
   className?: string;
+}
+
+const theme = {
+  paragraph: 'editor-paragraph',
+  heading: {
+    h1: 'editor-h1',
+    h2: 'editor-h2',
+    h3: 'editor-h3',
+  },
+  list: {
+    ul: 'editor-ul',
+    ol: 'editor-ol',
+    listitem: 'editor-li',
+  },
+  quote: 'editor-quote',
+  code: 'editor-code',
+  link: 'editor-link',
+  text: {
+    bold: 'editor-bold',
+    italic: 'editor-italic',
+    strikethrough: 'editor-strikethrough',
+    code: 'editor-inline-code',
+  },
+};
+
+function onError(error: Error) {
+  console.error('[MarkdownEditor] Error:', error);
 }
 
 export function MarkdownEditor({
@@ -269,37 +303,46 @@ export function MarkdownEditor({
   label,
   placeholder = 'Write your content in markdown...',
   height = 300,
-  preview = 'live',
   hideToolbar = false,
   className,
 }: MarkdownEditorProps) {
+  const initialConfig = {
+    namespace: 'MarkdownEditor',
+    theme,
+    onError,
+    nodes: [
+      HeadingNode,
+      QuoteNode,
+      ListNode,
+      ListItemNode,
+      CodeNode,
+      LinkNode,
+    ],
+  };
+
   return (
-    <EditorContainer className={className} data-color-mode="dark">
+    <EditorContainer className={className}>
       {label && (
         <Label>
           {label}
           <HelpText>Supports markdown formatting</HelpText>
         </Label>
       )}
-      <MDEditor
-        value={value}
-        onChange={(val) => onChange(val || '')}
-        height={height}
-        preview={preview}
-        hideToolbar={hideToolbar}
-        textareaProps={{
-          placeholder,
-          // Disable browser extensions (Grammarly, etc.) that cause text doubling
-          // @ts-expect-error - data attributes are valid HTML but not typed in ITextAreaProps
-          'data-gramm': 'false',
-          'data-gramm_editor': 'false',
-          'data-enable-grammarly': 'false',
-          autoComplete: 'off',
-          autoCorrect: 'off',
-          autoCapitalize: 'off',
-          spellCheck: false,
-        }}
-      />
+      <LexicalComposer initialConfig={initialConfig}>
+        <EditorWrapper $height={height}>
+          {!hideToolbar && <ToolbarPlugin />}
+          <RichTextPlugin
+            contentEditable={<StyledContentEditable />}
+            placeholder={<Placeholder>{placeholder}</Placeholder>}
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          <HistoryPlugin />
+          <ListPlugin />
+          <LinkPlugin />
+          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+          <ValuePlugin value={value} onChange={onChange} />
+        </EditorWrapper>
+      </LexicalComposer>
     </EditorContainer>
   );
 }
