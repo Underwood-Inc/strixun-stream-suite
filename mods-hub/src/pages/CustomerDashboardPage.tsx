@@ -243,7 +243,7 @@ export function CustomerDashboardPage() {
                     <List
                         height={listHeight}
                         itemCount={mods.length + 1}
-                        itemSize={110}
+                        itemSize={160}
                         width="100%"
                     >
                         {({ index, style }) => {

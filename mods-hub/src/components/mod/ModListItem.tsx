@@ -12,15 +12,14 @@ import { MarkdownContent } from '../common/MarkdownContent';
 
 const ListItemContainer = styled(Link)`
   display: flex;
-  align-items: stretch;
-  gap: ${spacing.md};
-  padding: ${spacing.md} ${spacing.lg};
+  align-items: flex-start;
+  gap: ${spacing.lg};
+  padding: ${spacing.lg};
   text-decoration: none;
   color: inherit;
   border-bottom: 1px solid ${colors.border};
   transition: background 0.2s ease;
   background: ${colors.bgSecondary};
-  min-height: 110px;
   
   &:hover {
     background: ${colors.bgTertiary};
@@ -31,8 +30,8 @@ const ListItemContainer = styled(Link)`
   }
   
   @media (max-width: 1024px) {
-    gap: ${spacing.sm};
-    padding: ${spacing.sm} ${spacing.md};
+    gap: ${spacing.md};
+    padding: ${spacing.md};
   }
   
   ${media.mobile} {
@@ -40,24 +39,22 @@ const ListItemContainer = styled(Link)`
     align-items: stretch;
     gap: ${spacing.md};
     padding: ${spacing.md};
-    min-height: auto;
-    height: auto;
   }
 `;
 
 const ThumbnailContainer = styled.div`
   flex-shrink: 0;
-  width: 120px;
-  height: 90px;
+  width: 140px;
+  height: 105px;
   position: relative;
-  border-radius: 4px;
+  border-radius: 6px;
   overflow: hidden;
   background: ${colors.bgTertiary};
   border: 1px solid ${colors.border};
   
   @media (max-width: 1024px) {
-    width: 100px;
-    height: 75px;
+    width: 120px;
+    height: 90px;
   }
   
   ${media.mobile} {
@@ -100,9 +97,8 @@ const Content = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: ${spacing.xs};
+  gap: ${spacing.sm};
   min-width: 0;
-  justify-content: center;
   
   ${media.mobile} {
     width: 100%;
@@ -160,17 +156,38 @@ const Description = styled.div`
   font-size: 0.875rem;
   line-height: 1.5;
   margin: 0;
-  max-height: 300px;
-  overflow: hidden;
+  max-height: 120px;
+  overflow-y: auto;
   word-break: break-word;
+  
+  /* Scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${colors.bgTertiary};
+    border-radius: 2px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${colors.border};
+    border-radius: 2px;
+    
+    &:hover {
+      background: ${colors.textMuted};
+    }
+  }
   
   @media (max-width: 1024px) {
     font-size: 0.8125rem;
+    max-height: 100px;
   }
   
   ${media.mobile} {
     font-size: 0.875rem;
     line-height: 1.6;
+    max-height: 150px;
   }
 `;
 
