@@ -1,25 +1,32 @@
 /**
  * Zustand Adapter for @strixun/chat
  * 
- * Provides a Zustand store for React applications
+ * Provides a Zustand store for React applications with P2P persistence.
  */
 
 import { create } from 'zustand';
 import { 
-  RoomManager, 
-  type RoomManagerConfig,
-  type ChatMessage, 
-  type RoomMetadata, 
-  type ChatConnectionState 
-} from '../core/index.js';
+  SecureRoomManager, 
+  type SecureRoomManagerConfig,
+} from '../core/secure-room-manager.js';
+import type { 
+  ChatMessage, 
+  RoomMetadata, 
+  ChatConnectionState,
+} from '../core/types.js';
+import type { StorageAdapter, IntegrityInfo } from '@strixun/p2p-storage';
 
 export interface ChatStoreConfig {
   signalingBaseUrl: string;
   /** Override fetch function for authentication */
-  authenticatedFetch?: RoomManagerConfig['authenticatedFetch'];
+  authenticatedFetch?: SecureRoomManagerConfig['authenticatedFetch'];
   /** Encryption functions */
-  encrypt?: RoomManagerConfig['encrypt'];
-  decrypt?: RoomManagerConfig['decrypt'];
+  encrypt?: SecureRoomManagerConfig['encrypt'];
+  decrypt?: SecureRoomManagerConfig['decrypt'];
+  /** Custom storage adapter (defaults to IndexedDB) */
+  storageAdapter?: StorageAdapter;
+  /** Enable P2P persistence (defaults to true) */
+  enablePersistence?: boolean;
 }
 
 export interface ChatStore {
@@ -32,8 +39,12 @@ export interface ChatStore {
   error: string | null;
   isInitialized: boolean;
   
+  // P2P Storage State
+  integrityInfo: IntegrityInfo | null;
+  peerCount: number;
+  
   // Room manager instance (internal)
-  roomManager: RoomManager | null;
+  roomManager: SecureRoomManager | null;
   
   // Actions
   initialize: (userId: string, userName: string) => void;
@@ -44,6 +55,8 @@ export interface ChatStore {
   sendTypingIndicator: (isTyping: boolean) => void;
   getActiveRooms: () => Promise<RoomMetadata[]>;
   clearMessages: () => void;
+  forceSync: () => Promise<void>;
+  getIntegrityInfo: () => Promise<IntegrityInfo | null>;
   destroy: () => void;
 }
 
@@ -61,6 +74,11 @@ export function createChatStore(config: ChatStoreConfig) {
     },
     error: null,
     isInitialized: false,
+    
+    // P2P Storage State
+    integrityInfo: null,
+    peerCount: 0,
+    
     roomManager: null,
     
     initialize: (userId: string, userName: string) => {
@@ -69,49 +87,66 @@ export function createChatStore(config: ChatStoreConfig) {
         existingManager.destroy();
       }
       
-      const roomManager = new RoomManager({
+      const roomManager = new SecureRoomManager({
         signalingBaseUrl: config.signalingBaseUrl,
         userId,
         userName,
         authenticatedFetch: config.authenticatedFetch,
         encrypt: config.encrypt,
         decrypt: config.decrypt,
-        onMessage: (message) => {
-          set((state) => ({
-            messages: [...state.messages, message],
-          }));
+        storageAdapter: config.storageAdapter,
+        onMessage: (message: ChatMessage) => {
+          set((state) => {
+            // Deduplicate messages by ID
+            const exists = state.messages.some(m => m.id === message.id);
+            if (exists) return state;
+            return {
+              messages: [...state.messages, message],
+            };
+          });
         },
-        onConnectionStateChange: (connectionState) => {
+        onConnectionStateChange: (connectionState: ChatConnectionState) => {
           set({ connectionState });
         },
-        onRoomChange: (room) => {
+        onRoomChange: (room: RoomMetadata | null) => {
           set({ room });
         },
-        onParticipantJoin: (userId) => {
+        onParticipantJoin: (participantId: string) => {
           set((state) => ({
-            participants: state.participants.includes(userId) 
+            participants: state.participants.includes(participantId) 
               ? state.participants 
-              : [...state.participants, userId],
+              : [...state.participants, participantId],
           }));
         },
-        onParticipantLeave: (userId) => {
+        onParticipantLeave: (participantId: string) => {
           set((state) => ({
-            participants: state.participants.filter((id) => id !== userId),
+            participants: state.participants.filter((id) => id !== participantId),
           }));
         },
-        onTyping: (userId, userName, isTyping) => {
+        onTyping: (typingUserId: string, typingUserName: string, isTyping: boolean) => {
           set((state) => {
             const typingUsers = new Map(state.typingUsers);
             if (isTyping) {
-              typingUsers.set(userId, userName);
+              typingUsers.set(typingUserId, typingUserName);
             } else {
-              typingUsers.delete(userId);
+              typingUsers.delete(typingUserId);
             }
             return { typingUsers };
           });
         },
-        onError: (error) => {
+        onError: (error: Error) => {
           set({ error: error.message });
+        },
+        onIntegrityChange: (integrityInfo: IntegrityInfo) => {
+          set({ integrityInfo });
+        },
+        onPeerCountChange: (peerCount: number) => {
+          set({ peerCount });
+        },
+        onHistoryLoaded: (messages: ChatMessage[]) => {
+          set((state) => ({
+            messages: [...messages, ...state.messages],
+          }));
         },
       });
       
@@ -148,6 +183,8 @@ export function createChatStore(config: ChatStoreConfig) {
         messages: [], 
         participants: [], 
         typingUsers: new Map(),
+        integrityInfo: null,
+        peerCount: 0,
       });
     },
     
@@ -178,6 +215,18 @@ export function createChatStore(config: ChatStoreConfig) {
       set({ messages: [] });
     },
     
+    forceSync: async () => {
+      const { roomManager } = get();
+      if (!roomManager) return;
+      await roomManager.forceSync();
+    },
+    
+    getIntegrityInfo: async () => {
+      const { roomManager } = get();
+      if (!roomManager) return null;
+      return roomManager.getIntegrityInfo();
+    },
+    
     destroy: () => {
       const { roomManager } = get();
       roomManager?.destroy();
@@ -190,6 +239,8 @@ export function createChatStore(config: ChatStoreConfig) {
         error: null,
         isInitialized: false,
         roomManager: null,
+        integrityInfo: null,
+        peerCount: 0,
       });
     },
   }));
@@ -200,5 +251,8 @@ export type {
   ChatMessage, 
   RoomMetadata, 
   ChatConnectionState,
-  RoomManagerConfig,
-} from '../core/index.js';
+} from '../core/types.js';
+
+export type { SecureRoomManagerConfig as RoomManagerConfig } from '../core/secure-room-manager.js';
+
+export type { StorageAdapter, IntegrityInfo } from '@strixun/p2p-storage';

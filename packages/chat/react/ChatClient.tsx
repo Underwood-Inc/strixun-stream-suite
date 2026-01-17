@@ -10,6 +10,10 @@ import { ChatMessage } from './ChatMessage.js';
 import { ChatInput } from './ChatInput.js';
 import { RoomList } from './RoomList.js';
 import { RoomCreator } from './RoomCreator.js';
+import { IntegrityBadge } from './IntegrityBadge.js';
+
+// Note: CSS should be imported by the consuming app:
+// import '@strixun/chat/react/chat.css';
 
 export interface ChatClientProps {
   /** Zustand chat store hook */
@@ -110,31 +114,16 @@ export function ChatClient({
 
   const isConnected = store.connectionState.status === 'connected';
   const typingUsers = Array.from(store.typingUsers.values());
+  
+  // P2P Persistence state
+  const integrityInfo = store.integrityInfo;
+  const peerCount = store.peerCount;
 
   return (
-    <div 
-      className={`chat-client ${className}`}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        background: 'var(--card, #252525)',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        ...style,
-      }}
-    >
+    <div className={`chat-client ${className}`} style={style}>
       {/* Error Banner */}
       {store.error && (
-        <div 
-          style={{
-            padding: '12px 16px',
-            background: 'rgba(244, 67, 54, 0.1)',
-            color: 'var(--danger, #f44336)',
-            fontSize: '0.875rem',
-            borderBottom: '1px solid var(--border, #3a3a3a)',
-          }}
-        >
+        <div className="chat-client__error">
           {store.error}
         </div>
       )}
@@ -143,50 +132,38 @@ export function ChatClient({
       {currentView === 'chat' && (
         <>
           {/* Header */}
-          <div 
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 16px',
-              background: 'var(--bg-secondary, #252525)',
-              borderBottom: '1px solid var(--border, #3a3a3a)',
-            }}
-          >
-            <div style={{ fontWeight: 600, color: 'var(--text, #f9f9f9)' }}>
+          <div className="chat-client__header">
+            <div className="chat-client__header-title">
               {store.room?.customName || store.room?.broadcasterName || 'Chat'}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {/* Connection Status */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div 
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: isConnected 
-                      ? 'var(--success, #4caf50)' 
-                      : store.connectionState.status === 'connecting'
-                        ? 'var(--warning, #ff9800)'
-                        : 'var(--text-muted, #808080)',
-                  }}
+            <div className="chat-client__header-actions">
+              {/* Integrity Badge */}
+              {integrityInfo && (
+                <IntegrityBadge 
+                  integrityInfo={integrityInfo}
+                  peerCount={peerCount}
+                  showDetails={false}
                 />
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #808080)' }}>
+              )}
+              {/* Connection Status */}
+              <div className="chat-client__connection">
+                <div 
+                  className={`chat-client__connection-dot ${
+                    isConnected 
+                      ? 'chat-client__connection-dot--connected' 
+                      : store.connectionState.status === 'connecting'
+                        ? 'chat-client__connection-dot--connecting'
+                        : ''
+                  }`}
+                />
+                <span className="chat-client__connection-text">
                   {isConnected ? 'Connected' : store.connectionState.status === 'connecting' ? 'Connecting...' : 'Disconnected'}
                 </span>
               </div>
               {/* Leave Button */}
               <button
+                className="chat-btn chat-btn--secondary chat-btn--small"
                 onClick={handleLeaveRoom}
-                style={{
-                  padding: '4px 12px',
-                  background: 'var(--bg-tertiary, #2d2d2d)',
-                  border: '1px solid var(--border, #3a3a3a)',
-                  borderRadius: '4px',
-                  color: 'var(--text, #f9f9f9)',
-                  fontSize: '0.75rem',
-                  cursor: 'pointer',
-                }}
               >
                 Leave
               </button>
@@ -194,26 +171,9 @@ export function ChatClient({
           </div>
 
           {/* Messages */}
-          <div 
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              padding: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-            }}
-          >
+          <div className="chat-client__messages">
             {store.messages.length === 0 ? (
-              <div 
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '100%',
-                  color: 'var(--text-muted, #808080)',
-                }}
-              >
+              <div className="chat-client__messages-empty">
                 No messages yet. Start the conversation!
               </div>
             ) : (
@@ -228,14 +188,7 @@ export function ChatClient({
             
             {/* Typing Indicator */}
             {typingUsers.length > 0 && (
-              <div 
-                style={{
-                  padding: '8px 12px',
-                  fontSize: '0.75rem',
-                  color: 'var(--text-muted, #808080)',
-                  fontStyle: 'italic',
-                }}
-              >
+              <div className="chat-client__typing">
                 {typingUsers.length === 1 
                   ? `${typingUsers[0]} is typing...`
                   : `${typingUsers.length} people are typing...`}

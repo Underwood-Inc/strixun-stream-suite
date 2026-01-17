@@ -1,15 +1,17 @@
 /**
  * Chat Hub - Main Application
- * Standalone P2P chat interface
+ * Standalone P2P chat interface with landing page
  */
 
 import { useEffect, useState } from 'react';
 import { useAuthStore } from './stores/auth';
 import { useChatStore } from './stores/chat';
-import { ChatClient } from '@strixun/chat/react';
+import { ChatClient, IntegrityBadge, type ChatIntegrityInfo } from '@strixun/chat/react';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
+import { LandingPage } from './pages/LandingPage';
 import '@strixun/otp-login/dist/react/otp-login.css';
+import '@strixun/chat/react/chat.css';
 
 // Use proxy in development (via Vite), direct URL in production
 const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL 
@@ -18,7 +20,40 @@ const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL
     ? '/auth-api'
     : 'https://auth.idling.app');
 
+// Simple hash-based router
+function useHashRouter() {
+  const [route, setRoute] = useState(window.location.hash.slice(1) || '/');
+  
+  useEffect(() => {
+    const handleHashChange = () => {
+      setRoute(window.location.hash.slice(1) || '/');
+    };
+    
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+  
+  return route;
+}
+
 export function App() {
+  const route = useHashRouter();
+  
+  // Show landing page for root route
+  if (route === '/' || route === '') {
+    return <LandingPage />;
+  }
+  
+  // Show chat for /chat route
+  if (route === '/chat') {
+    return <ChatApp />;
+  }
+  
+  // Default to landing
+  return <LandingPage />;
+}
+
+function ChatApp() {
   const { isAuthenticated, customer, checkAuth, logout } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
   const [loginError, setLoginError] = useState<string | null>(null);

@@ -1,17 +1,20 @@
 # @strixun/chat
 
-Framework-agnostic P2P chat client with WebRTC signaling.
+> P2P Encrypted Chat with Blockchain-Style Persistence
+
+A framework-agnostic P2P chat library with end-to-end encryption, distributed storage, and cryptographic integrity verification.
 
 ## Features
 
-- ✓ Peer-to-peer WebRTC messaging
-- ✓ Room creation and management
-- ✓ Typing indicators
-- ✓ User presence
-- ✓ Message encryption (optional)
-- ✓ Framework-agnostic core
-- ✓ React/Zustand adapter
-- ✓ Drop-in React components
+- **End-to-End Encryption**: AES-256-GCM with PBKDF2 key derivation
+- **P2P Communication**: WebRTC data channels for direct peer messaging
+- **Blockchain-Style Storage**: Messages form a hash-linked chain for tamper detection
+- **Distributed Persistence**: Chat history replicated across participating peers
+- **Gap Detection**: Clear UX for missing messages with reason attribution
+- **HMAC Integrity**: HMAC-SHA256 signatures on every message
+- **Merkle Verification**: Chunk-level integrity with Merkle tree roots
+- **Framework Agnostic**: Core library works with any framework
+- **React Components**: Drop-in UI components for React apps
 
 ## Installation
 
@@ -19,35 +22,25 @@ Framework-agnostic P2P chat client with WebRTC signaling.
 pnpm add @strixun/chat
 ```
 
-## Usage
+## Quick Start
 
-### React with Zustand
+### React
 
 ```tsx
-// 1. Create the store (stores/chat.ts)
+import { ChatClient } from '@strixun/chat/react';
 import { createChatStore } from '@strixun/chat/zustand';
 
-export const useChatStore = createChatStore({
+// Create the store
+const useChatStore = createChatStore({
   signalingBaseUrl: 'https://chat-api.idling.app',
 });
 
-// 2. Use the ChatClient component
-import { ChatClient } from '@strixun/chat/react';
-import { useChatStore } from './stores/chat';
-import { useAuthStore } from './stores/auth';
-
-function ChatPage() {
-  const { customer } = useAuthStore();
-  
-  if (!customer) {
-    return <div>Please log in to use chat</div>;
-  }
-  
+function MyChat() {
   return (
     <ChatClient
       useChatStore={useChatStore}
-      userId={customer.customerId}
-      userName={customer.displayName || customer.email}
+      userId={user.id}
+      userName={user.name}
       showRoomList={true}
       showRoomCreator={true}
     />
@@ -57,173 +50,244 @@ function ChatPage() {
 
 ### Vanilla JavaScript
 
-```ts
-import { RoomManager } from '@strixun/chat/core';
+```typescript
+import { SecureRoomManager } from '@strixun/chat/core';
 
-const roomManager = new RoomManager({
+const manager = new SecureRoomManager({
   signalingBaseUrl: 'https://chat-api.idling.app',
-  userId: 'user-123',
-  userName: 'John Doe',
+  userId: 'user_123',
+  userName: 'Alice',
+  getAuthToken: async () => localStorage.getItem('token') || '',
   onMessage: (message) => {
-    console.log('New message:', message);
-    // Update your UI
+    console.log('New message:', message.content);
   },
-  onConnectionStateChange: (state) => {
-    console.log('Connection state:', state.status);
-  },
-  onError: (error) => {
-    console.error('Chat error:', error);
+  onHistoryLoaded: (messages) => {
+    console.log('History loaded:', messages.length, 'messages');
   },
 });
 
 // Create a room
-const room = await roomManager.createRoom('My Chat Room');
-
-// Or join an existing room
-const room = await roomManager.joinRoom('room-id-here');
+const room = await manager.createRoom('My Chat Room');
 
 // Send a message
-await roomManager.sendMessage('Hello, world!');
+await manager.sendMessage('Hello, world!');
 
-// Leave room
-await roomManager.leaveRoom();
+// Clean up
+manager.destroy();
 ```
 
-### With Custom Authentication
+## Architecture
 
-```ts
-import { createChatStore } from '@strixun/chat/zustand';
+### Message Flow
 
-const useChatStore = createChatStore({
-  signalingBaseUrl: 'https://chat.idling.app',
-  // Provide custom authenticated fetch
-  authenticatedFetch: async (url, options) => {
-    const token = await getMyAuthToken();
-    return fetch(url, {
-      ...options,
-      headers: {
-        ...options?.headers,
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-  },
-});
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Message Flow                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────┐    ┌─────────────┐    ┌─────────────┐              │
+│  │  User   │───▶│  Encrypt    │───▶│   Sign      │              │
+│  │ Types   │    │ (AES-256)   │    │ (HMAC-256)  │              │
+│  └─────────┘    └─────────────┘    └─────────────┘              │
+│                                           │                      │
+│                                           ▼                      │
+│  ┌─────────────────────────────────────────────────────┐        │
+│  │              Hash Chain (Block)                      │        │
+│  │  ┌─────────┬──────────┬─────────┬──────────┐        │        │
+│  │  │  Hash   │  Prev    │  Msg    │  Sig     │        │        │
+│  │  │ a7f3... │  e9d2... │ {...}   │ hmac...  │        │        │
+│  │  └─────────┴──────────┴─────────┴──────────┘        │        │
+│  └─────────────────────────────────────────────────────┘        │
+│                       │                                          │
+│          ┌────────────┼────────────┐                            │
+│          ▼            ▼            ▼                            │
+│    ┌──────────┐ ┌──────────┐ ┌──────────┐                       │
+│    │  Peer A  │ │  Peer B  │ │  Peer C  │                       │
+│    │(IndexedDB)│ │(IndexedDB)│ │(FileSystem)│                    │
+│    └──────────┘ └──────────┘ └──────────┘                       │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Encryption
+
+1. **Room Key Generation**: 256-bit random key generated when room is created
+2. **Key Encryption**: Room key encrypted with creator's auth token
+3. **Key Sharing**: When peers join, room key is re-encrypted for them
+4. **Message Encryption**: Each message encrypted with AES-256-GCM using room key
+5. **Unique IVs**: Every encryption uses a fresh IV and salt
+
+### Integrity Verification
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Integrity Model                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Message Level:                                                  │
+│  ├── HMAC-SHA256 signature (authenticity)                       │
+│  ├── Content hash (integrity)                                   │
+│  └── Previous hash link (chain integrity)                       │
+│                                                                  │
+│  Chunk Level:                                                    │
+│  ├── Merkle root of block hashes                                │
+│  └── Peer confirmation tracking                                 │
+│                                                                  │
+│  Chain Level:                                                    │
+│  ├── Genesis block hash                                         │
+│  ├── Latest block hash                                          │
+│  └── Gap detection with reason attribution                      │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Sync Protocol
+
+When a peer joins or reconnects:
+
+1. **SYNC_REQUEST**: Peer sends last known block number
+2. **SYNC_RESPONSE**: Other peers respond with missed blocks
+3. **Verification**: Each block's signature and hash chain verified
+4. **Import**: Valid blocks imported, invalid ones marked
+5. **Gap Detection**: Missing sequences identified with reasons
 
 ## API Reference
 
-### Core
+### Core Exports
 
-#### `RoomManager`
-
-The main class for managing chat rooms and connections.
-
-```ts
-new RoomManager({
-  signalingBaseUrl: string;
-  userId: string;
-  userName: string;
-  authenticatedFetch?: AuthenticatedFetchFn;
-  encrypt?: (content: string) => Promise<EncryptedData>;
-  decrypt?: (data: EncryptedData) => Promise<string>;
-  onMessage?: (message: ChatMessage) => void;
-  onConnectionStateChange?: (state: ChatConnectionState) => void;
-  onRoomChange?: (room: RoomMetadata | null) => void;
-  onParticipantJoin?: (userId: string) => void;
-  onParticipantLeave?: (userId: string) => void;
-  onTyping?: (userId: string, userName: string, isTyping: boolean) => void;
-  onPresence?: (userId: string, userName: string, status: string) => void;
-  onError?: (error: Error) => void;
-});
-```
-
-Methods:
-- `createRoom(customName?: string): Promise<RoomMetadata>`
-- `joinRoom(roomId: string): Promise<RoomMetadata>`
-- `leaveRoom(): Promise<void>`
-- `sendMessage(content: string, emoteIds?: string[], customEmojiIds?: string[]): Promise<void>`
-- `sendTypingIndicator(isTyping: boolean): void`
-- `sendPresence(status: 'online' | 'offline' | 'away'): void`
-- `getActiveRooms(): Promise<RoomMetadata[]>`
-- `isConnected(): boolean`
-- `destroy(): void`
-
-### Zustand Adapter
-
-#### `createChatStore(config)`
-
-Creates a Zustand store for React applications.
-
-```ts
-const useChatStore = createChatStore({
-  signalingBaseUrl: string;
-  authenticatedFetch?: AuthenticatedFetchFn;
-  encrypt?: (content: string) => Promise<EncryptedData>;
-  decrypt?: (data: EncryptedData) => Promise<string>;
-});
+```typescript
+import {
+  // Room Management
+  RoomManager,
+  SecureRoomManager,
+  
+  // WebRTC
+  WebRTCService,
+  
+  // Storage
+  BlockchainStorage,
+  openDatabase,
+  
+  // Encryption
+  RoomKeyManager,
+  
+  // Sync
+  SyncProtocol,
+  
+  // Types
+  ChatMessage,
+  RoomMetadata,
+  MessageBlock,
+  ChainState,
+} from '@strixun/chat/core';
 ```
 
 ### React Components
 
-#### `ChatClient`
+```typescript
+import {
+  // Main Chat UI
+  ChatClient,
+  ChatMessage,
+  ChatInput,
+  RoomList,
+  RoomCreator,
+  
+  // Integrity & Status
+  IntegrityBadge,
+  PeerCount,
+  GapWarning,
+  
+  // Settings
+  StoragePicker,
+} from '@strixun/chat/react';
+```
 
-Main drop-in chat component.
+### Zustand Adapter
+
+```typescript
+import { createChatStore } from '@strixun/chat/zustand';
+
+const useChatStore = createChatStore({
+  signalingBaseUrl: 'https://chat-api.idling.app',
+});
+```
+
+## Storage Options
+
+Users can choose where their encrypted chat history is stored:
+
+- **IndexedDB** (default): Browser-based, persists across sessions
+- **File System API**: For supported browsers, allows folder selection
+- **Custom**: Plugin architecture for external providers
 
 ```tsx
-<ChatClient
-  useChatStore={useChatStore}
-  userId={userId}
-  userName={userName}
-  showRoomList={true}
-  showRoomCreator={true}
+import { StoragePicker } from '@strixun/chat/react';
+
+<StoragePicker
+  currentConfig={{ location: 'indexeddb' }}
+  onChange={(config) => saveStoragePreference(config)}
 />
 ```
 
-#### `ChatMessage`
+## Integrity Badge
 
-Single message display component.
-
-```tsx
-<ChatMessage message={message} currentUserId={userId} />
-```
-
-#### `ChatInput`
-
-Message input component.
+Display the integrity status of chat history:
 
 ```tsx
-<ChatInput onSend={handleSend} onTyping={handleTyping} disabled={false} />
-```
+import { IntegrityBadge } from '@strixun/chat/react';
 
-#### `RoomList`
-
-List of available rooms.
-
-```tsx
-<RoomList
-  fetchRooms={fetchRooms}
-  onJoinRoom={handleJoin}
-  onCreateRoom={handleCreate}
-  showCreateButton={true}
+<IntegrityBadge
+  integrity={{
+    score: 95,
+    status: 'verified',
+    description: 'Complete history verified across 3 peers',
+    peerCount: 3,
+    totalBlocks: 150,
+    gaps: [],
+    chunks: [...],
+  }}
+  showDetails={true}
 />
 ```
 
-#### `RoomCreator`
+## Gap Detection
 
-Room creation form.
+When messages are missing, the UI clearly communicates:
 
 ```tsx
-<RoomCreator
-  onCreateRoom={handleCreate}
-  onCancel={handleCancel}
-  loading={false}
+import { GapWarning } from '@strixun/chat/react';
+
+<GapWarning
+  gaps={[
+    { start: 10, end: 15, reasons: ['peer_offline'], detectedAt: Date.now() }
+  ]}
+  onRequestSync={() => manager.requestSync()}
 />
 ```
 
-## Types
+Gap reasons include:
+- `peer_offline`: Some peers were offline
+- `network_partition`: Network connectivity issues
+- `late_join`: User joined after messages were sent
+- `storage_corruption`: Local storage may be corrupted
+- `sync_timeout`: Sync request timed out
 
-See `@strixun/chat/core/types` for all type definitions.
+## Security Considerations
+
+- **No Central Server**: Messages never pass through a central server in plaintext
+- **Room Keys**: Only room participants have the decryption key
+- **HMAC Signatures**: Prevent message forgery
+- **Hash Chain**: Detects tampering with history order
+- **Peer Consensus**: Multiple peers must confirm message authenticity
+
+## Browser Support
+
+- Chrome/Edge 80+
+- Firefox 78+
+- Safari 14+
+- PWA supported
 
 ## License
 
-Private - Strixun Stream Suite
+Proprietary - Strixun Stream Suite

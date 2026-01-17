@@ -99,7 +99,7 @@ export async function handleCreateRoom(
       });
     }
     
-    const { broadcasterId, broadcasterName, customName } = validation.data;
+    const { broadcasterId, broadcasterName, customName, encryptedRoomKey, keyHash } = validation.data;
 
     // Generate room ID and create room metadata
     const roomId = generateRoomId();
@@ -112,6 +112,10 @@ export async function handleCreateRoom(
       isPublic: true,
       customName: customName || undefined,
       lastActivity: Date.now(),
+      // P2P E2E encryption support
+      encryptedRoomKey: encryptedRoomKey || undefined,
+      keyHash: keyHash || undefined,
+      keyVersion: encryptedRoomKey ? 1 : undefined,
     };
 
     // Store room in KV with 1 hour TTL

@@ -4,6 +4,7 @@
  */
 
 @use '@shared-styles/variables' as *;
+@use '@shared-styles/animations' as *;
 @use '@shared-styles/mixins' as *;
 
 * {
@@ -15,7 +16,11 @@
 html, body {
   height: 100%;
   width: 100%;
-  overflow: hidden;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body {
@@ -139,7 +144,8 @@ textarea {
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
+  overflow: hidden; // Prevent scroll on chat view - scroll is handled by message container
 }
 
 // ============ Chat Header ============
@@ -236,59 +242,39 @@ textarea {
   margin: 0;
 }
 
-// ============ Chat Component Button Overrides ============
-// The @strixun/chat/react components use inline styles, 
-// so we need !important to override them
+// ============ Chat Component Styles ============
+// The @strixun/chat/react components now use CSS classes.
+// Override the default chat CSS variables to match our theme.
 
-.chat-client button {
-  // Base arcade button style
-  background: var(--accent) !important;
-  border: 3px solid var(--accent-dark) !important;
-  border-radius: 0 !important;
-  color: #000 !important;
-  font-weight: 700 !important;
-  font-size: 0.875rem !important;
-  text-transform: uppercase !important;
-  letter-spacing: 1px !important;
-  padding: var(--spacing-sm) var(--spacing-md) !important;
-  cursor: pointer !important;
-  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  box-shadow: 0 4px 0 var(--accent-dark) !important;
-  position: relative !important;
-  overflow: hidden !important;
-  
-  &:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 0 var(--accent-dark) !important;
-  }
-  
-  &:active {
-    transform: translateY(2px) !important;
-    box-shadow: 0 2px 0 var(--accent-dark) !important;
-  }
-  
-  &:disabled {
-    opacity: 0.5 !important;
-    cursor: not-allowed !important;
-    transform: none !important;
-    box-shadow: 0 4px 0 var(--accent-dark) !important;
-  }
+.chat-client {
+  // Override chat CSS variables with our theme
+  --chat-bg: var(--card);
+  --chat-bg-secondary: var(--bg);
+  --chat-bg-tertiary: var(--card);
+  --chat-text: var(--text);
+  --chat-text-muted: var(--text-secondary);
+  --chat-accent: var(--accent);
+  --chat-accent-dark: var(--accent-dark);
+  --chat-border: var(--border);
+  --chat-font-family: var(--font-family);
+  --chat-radius: 0;
+  --chat-radius-sm: 0;
 }
 
-// Secondary buttons (Refresh, Leave, Cancel) - darker style
-.chat-client .room-list__header button:first-of-type,
-.chat-client button:has(+ button) {
-  background: var(--card) !important;
-  border: 3px solid var(--border) !important;
-  color: var(--text) !important;
-  box-shadow: 0 4px 0 var(--border) !important;
-  
-  &:hover {
-    background: var(--bg-dark) !important;
-    box-shadow: 0 6px 0 var(--border) !important;
-  }
-  
-  &:active {
-    box-shadow: 0 2px 0 var(--border) !important;
-  }
+// Apply arcade button styles to chat buttons
+.chat-btn {
+  @include arcade-button(var(--accent), var(--accent-dark));
+}
+
+.chat-btn--secondary {
+  @include button('secondary');
+}
+
+// Chat input arcade style
+.chat-input__field {
+  @include input;
+}
+
+.room-creator__input {
+  @include input;
 }

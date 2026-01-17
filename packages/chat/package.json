@@ -42,14 +42,21 @@
     "./react": {
       "types": "./dist/react/index.d.ts",
       "default": "./dist/react/index.js"
-    }
+    },
+    "./react/chat.css": "./react/chat.css",
+    "./react/styles": "./react/chat.css",
+    "./styles": "./react/chat.css"
   },
   "files": [
     "dist/**/*.js",
     "dist/**/*.d.ts",
     "dist/**/*.d.ts.map",
+    "react/**/*.css",
     "*.md"
   ],
+  "dependencies": {
+    "@strixun/p2p-storage": "workspace:*"
+  },
   "peerDependencies": {
     "react": "^18.0.0",
     "react-dom": "^18.0.0",

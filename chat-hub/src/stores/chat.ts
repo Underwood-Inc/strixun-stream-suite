@@ -9,6 +9,7 @@ import type {
   RoomMetadata, 
   ChatConnectionState,
   ChatStore,
+  IntegrityInfo,
 } from '@strixun/chat/adapters/zustand';
 
 // Use appropriate URL based on environment
@@ -30,4 +31,5 @@ export type {
   RoomMetadata, 
   ChatConnectionState,
   ChatStore,
+  IntegrityInfo,
 };

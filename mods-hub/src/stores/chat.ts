@@ -9,6 +9,7 @@ import type {
   RoomMetadata, 
   ChatConnectionState,
   ChatStore,
+  IntegrityInfo,
 } from '@strixun/chat/adapters/zustand';
 
 // Use Vite proxy in development, direct URL in production
@@ -31,4 +32,5 @@ export type {
   RoomMetadata, 
   ChatConnectionState,
   ChatStore,
+  IntegrityInfo,
 };

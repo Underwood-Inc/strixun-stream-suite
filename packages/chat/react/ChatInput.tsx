@@ -1,133 +1,89 @@
 /**
  * Chat Input Component
  * 
- * Text input for sending chat messages
+ * Input field for sending chat messages
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export interface ChatInputProps {
-  /** Called when user submits a message */
   onSend: (content: string) => void;
-  /** Called when user starts/stops typing */
   onTyping?: (isTyping: boolean) => void;
-  /** Disable input */
   disabled?: boolean;
-  /** Placeholder text */
   placeholder?: string;
-  /** Custom class name */
-  className?: string;
 }
 
 export function ChatInput({ 
   onSend, 
-  onTyping,
+  onTyping, 
   disabled = false,
-  placeholder = 'Type a message... (Enter to send, Shift+Enter for new line)',
-  className = ''
+  placeholder = 'Type a message...'
 }: ChatInputProps) {
-  const [message, setMessage] = useState('');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [value, setValue] = useState('');
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleTyping = useCallback(() => {
-    if (!onTyping) return;
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
     
-    onTyping(true);
+    const trimmed = value.trim();
+    if (!trimmed || disabled) return;
     
-    // Clear existing timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    
-    // Set timeout to stop typing indicator
-    typingTimeoutRef.current = setTimeout(() => {
-      onTyping(false);
-    }, 2000);
-  }, [onTyping]);
-
-  const handleSubmit = useCallback(() => {
-    const trimmedMessage = message.trim();
-    if (!trimmedMessage || disabled) return;
-    
-    onSend(trimmedMessage);
-    setMessage('');
+    onSend(trimmed);
+    setValue('');
     
     // Stop typing indicator
-    if (onTyping) {
-      onTyping(false);
-    }
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
     }
-  }, [message, disabled, onSend, onTyping]);
+    onTyping?.(false);
+  }, [value, disabled, onSend, onTyping]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value);
+    
+    // Send typing indicator
+    if (onTyping && e.target.value.length > 0) {
+      onTyping(true);
+      
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Stop typing after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        onTyping(false);
+      }, 2000);
     }
-  }, [handleSubmit]);
+  }, [onTyping]);
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessage(e.target.value);
-    handleTyping();
-  }, [handleTyping]);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
-    <div 
-      className={`chat-input ${className}`}
-      style={{
-        display: 'flex',
-        gap: '8px',
-        padding: '12px 16px',
-        background: 'var(--bg-secondary, #252525)',
-        borderTop: '1px solid var(--border, #3a3a3a)',
-      }}
-    >
-      <textarea
-        ref={textareaRef}
-        value={message}
+    <form className="chat-input" onSubmit={handleSubmit}>
+      <input
+        type="text"
+        className="chat-input__field"
+        value={value}
         onChange={handleChange}
-        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
-        rows={1}
-        style={{
-          flex: 1,
-          padding: '10px 12px',
-          background: 'var(--bg, #1a1a1a)',
-          border: '1px solid var(--border, #3a3a3a)',
-          borderRadius: '4px',
-          color: 'var(--text, #f9f9f9)',
-          fontSize: '0.875rem',
-          resize: 'none',
-          fontFamily: 'inherit',
-          outline: 'none',
-          opacity: disabled ? 0.5 : 1,
-        }}
       />
-      <button
-        onClick={handleSubmit}
-        disabled={disabled || !message.trim()}
-        style={{
-          padding: '10px 20px',
-          background: disabled || !message.trim() 
-            ? 'var(--bg-tertiary, #2d2d2d)' 
-            : 'var(--accent, #d4af37)',
-          color: disabled || !message.trim() 
-            ? 'var(--text-muted, #808080)' 
-            : 'var(--bg, #1a1a1a)',
-          border: 'none',
-          borderRadius: '4px',
-          fontWeight: 600,
-          fontSize: '0.875rem',
-          cursor: disabled || !message.trim() ? 'not-allowed' : 'pointer',
-          transition: 'all 0.15s ease',
-        }}
+      <button 
+        type="submit" 
+        className="chat-btn"
+        disabled={disabled || !value.trim()}
       >
         Send
       </button>
-    </div>
+    </form>
   );
 }

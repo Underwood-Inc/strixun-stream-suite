@@ -1,0 +1,66 @@
+{
+  "name": "@strixun/p2p-storage",
+  "version": "1.0.0",
+  "description": "Framework-agnostic P2P blockchain-style storage with integrity verification",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "default": "./dist/core/index.js"
+    },
+    "./core/blockchain": {
+      "types": "./dist/core/blockchain.d.ts",
+      "default": "./dist/core/blockchain.js"
+    },
+    "./core/storage": {
+      "types": "./dist/core/storage.d.ts",
+      "default": "./dist/core/storage.js"
+    },
+    "./core/integrity": {
+      "types": "./dist/core/integrity.d.ts",
+      "default": "./dist/core/integrity.js"
+    },
+    "./core/sync": {
+      "types": "./dist/core/sync.d.ts",
+      "default": "./dist/core/sync.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "default": "./dist/react/index.js"
+    },
+    "./react/styles": "./react/styles.css",
+    "./styles": "./react/styles.css"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "react/**/*.css",
+    "*.md"
+  ],
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "vitest": "^4.0.16"
+  }
+}

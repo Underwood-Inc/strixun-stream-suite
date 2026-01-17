@@ -1,10 +1,11 @@
 /**
  * WebRTC Connection Service
  * 
- * Framework-agnostic WebRTC connection management for P2P chat
+ * Framework-agnostic WebRTC connection management for P2P chat.
+ * Supports P2P protocol messages for history sync and room key exchange.
  */
 
-import type { ChatMessage, WebRTCIceCandidate } from './types.js';
+import type { ChatMessage, WebRTCIceCandidate, P2PProtocolMessage } from './types.js';
 
 export interface WebRTCConfig {
   iceServers?: RTCConfiguration['iceServers'];
@@ -13,6 +14,8 @@ export interface WebRTCConfig {
   onError: (error: Error) => void;
   onTyping?: (userId: string, userName: string, isTyping: boolean) => void;
   onPresence?: (userId: string, userName: string, status: 'online' | 'offline' | 'away') => void;
+  /** Handler for P2P protocol messages (sync, room key exchange) */
+  onP2PProtocolMessage?: (fromPeerId: string, message: P2PProtocolMessage) => void;
 }
 
 const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
@@ -88,7 +91,12 @@ export class WebRTCService {
       try {
         const data = JSON.parse(event.data);
         
-        if (data.type === 'typing' || data.type === 'typing_stop') {
+        // P2P Protocol messages for sync and key exchange
+        if (this.isP2PProtocolMessage(data.type)) {
+          if (this.config.onP2PProtocolMessage) {
+            this.config.onP2PProtocolMessage(data.senderId || 'unknown', data);
+          }
+        } else if (data.type === 'typing' || data.type === 'typing_stop') {
           if (this.config.onTyping) {
             this.config.onTyping(data.userId, data.userName, data.type === 'typing');
           }
@@ -235,5 +243,43 @@ export class WebRTCService {
 
   getRoomId(): string | null {
     return this.roomId;
+  }
+
+  /**
+   * Check if message type is a P2P protocol message
+   */
+  private isP2PProtocolMessage(type: string): boolean {
+    const protocolTypes = [
+      'sync_request',
+      'sync_response',
+      'room_key_request',
+      'room_key_response',
+      'chat_message',
+    ];
+    return protocolTypes.includes(type);
+  }
+
+  /**
+   * Send a P2P protocol message
+   */
+  sendP2PProtocolMessage(message: P2PProtocolMessage): void {
+    if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
+      throw new Error('Data channel not open');
+    }
+
+    // Add sender ID to message for routing
+    const messageWithSender = {
+      ...message,
+      senderId: this.localUserId,
+    };
+
+    this.dataChannel.send(JSON.stringify(messageWithSender));
+  }
+
+  /**
+   * Check if the data channel is ready for sending
+   */
+  isDataChannelReady(): boolean {
+    return this.dataChannel?.readyState === 'open';
   }
 }

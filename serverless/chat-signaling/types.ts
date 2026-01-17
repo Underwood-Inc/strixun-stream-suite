@@ -35,6 +35,12 @@ export interface RoomMetadata {
   isPublic: boolean;
   customName?: string;
   lastActivity?: number;
+  /** Encrypted room key (for P2P E2E encryption) */
+  encryptedRoomKey?: string;
+  /** Hash of room key for verification */
+  keyHash?: string;
+  /** Room key version for rotation */
+  keyVersion?: number;
 }
 
 /**
@@ -84,6 +90,10 @@ export interface CreateRoomRequest {
   broadcasterId: string;
   broadcasterName: string;
   customName?: string;
+  /** Encrypted room key (for P2P E2E encryption) */
+  encryptedRoomKey?: string;
+  /** Hash of room key for verification */
+  keyHash?: string;
 }
 
 /**
