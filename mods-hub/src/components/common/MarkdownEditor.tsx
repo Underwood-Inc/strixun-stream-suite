@@ -60,6 +60,8 @@ const StyledContentEditable = styled(ContentEditable)`
   font-size: 0.875rem;
   line-height: 1.6;
   color: ${colors.text};
+  position: relative;
+  z-index: 1; /* Ensure content area is above placeholder */
   
   /* Headings */
   h1, h2, h3, h4, h5, h6 {
@@ -144,6 +146,7 @@ const Placeholder = styled.div`
   font-size: 0.875rem;
   pointer-events: none;
   user-select: none;
+  z-index: 0; /* Ensure placeholder stays behind content */
 `;
 
 const Label = styled.label`
@@ -171,6 +174,8 @@ const Toolbar = styled.div`
   border-radius: 4px 4px 0 0;
   flex-wrap: wrap;
   align-items: center;
+  position: relative;
+  z-index: 2; /* Ensure toolbar is above placeholder and content */
 `;
 
 const ToolbarButton = styled.button<{ $active?: boolean }>`

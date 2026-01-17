@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
-import type { ModVersion, VersionUploadRequest } from '../../types/mod';
+import type { ModVersion, VersionUploadRequest, ModVariant } from '../../types/mod';
 import { formatDate } from '@strixun/shared-config/date-utils';
 import { downloadVersion } from '../../services/mods';
 import { IntegrityBadge } from './IntegrityBadge';
@@ -16,9 +16,10 @@ import { getCardStyles } from '../../utils/sharedStyles';
 import { candyShopAnimation } from '../../utils/candyShopAnimation';
 import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
-import { modKeys, useDeleteModVersion, useUpdateModVersion } from '../../hooks/useMods';
+import { modKeys, useDeleteModVersion, useUpdateModVersion, useUpdateMod } from '../../hooks/useMods';
 import { MarkdownEditor } from '../common/MarkdownEditor';
 import { MarkdownContent } from '../common/MarkdownContent';
+import { VersionVariantManager } from './VersionVariantManager';
 
 const Container = styled.div`
   ${getCardStyles('default')}
@@ -158,18 +159,21 @@ interface ModVersionManagementProps {
     modSlug: string;
     modId: string;
     versions: ModVersion[];
+    variants: ModVariant[];
 }
 
-export function ModVersionManagement({ modSlug, modId, versions }: ModVersionManagementProps) {
+export function ModVersionManagement({ modSlug, modId, versions, variants }: ModVersionManagementProps) {
     const { isAuthenticated } = useAuthStore();
     const queryClient = useQueryClient();
     const [downloading, setDownloading] = useState<Set<string>>(new Set());
     const [downloadError, setDownloadError] = useState<string | null>(null);
     const [editingVersion, setEditingVersion] = useState<string | null>(null);
     const [editFormData, setEditFormData] = useState<Partial<VersionUploadRequest>>({});
+    const [managingVariantsFor, setManagingVariantsFor] = useState<string | null>(null);
     
     const deleteVersion = useDeleteModVersion();
     const updateVersion = useUpdateModVersion();
+    const updateMod = useUpdateMod();
 
     const formatFileSize = (bytes: number): string => {
         if (bytes < 1024) return `${bytes} B`;
@@ -244,6 +248,36 @@ export function ModVersionManagement({ modSlug, modId, versions }: ModVersionMan
             });
         } catch {
             // Error handled by mutation
+        }
+    };
+
+    const handleSaveVariants = async (
+        variantsToSave: Array<{ variant: Partial<ModVariant>; file?: File }>
+    ) => {
+        try {
+            // Prepare variant files
+            const variantFiles: Record<string, File> = {};
+            const variantMetadata: ModVariant[] = [];
+
+            for (const { variant, file } of variantsToSave) {
+                if (file && variant.variantId) {
+                    variantFiles[variant.variantId] = file;
+                }
+                variantMetadata.push(variant as ModVariant);
+            }
+
+            // Update mod with new/updated variants
+            await updateMod.mutateAsync({
+                slug: modSlug,
+                updates: {
+                    variants: variantMetadata,
+                },
+                variantFiles: Object.keys(variantFiles).length > 0 ? variantFiles : undefined,
+            });
+
+            setManagingVariantsFor(null);
+        } catch (error) {
+            console.error('[ModVersionManagement] Failed to save variants:', error);
         }
     };
 
@@ -325,6 +359,13 @@ export function ModVersionManagement({ modSlug, modId, versions }: ModVersionMan
                                             Edit
                                         </ActionButton>
                                         <ActionButton 
+                                            onClick={() => setManagingVariantsFor(
+                                                managingVariantsFor === version.versionId ? null : version.versionId
+                                            )}
+                                        >
+                                            {managingVariantsFor === version.versionId ? 'Hide' : 'Manage'} Variants
+                                        </ActionButton>
+                                        <ActionButton 
                                             $variant="danger"
                                             onClick={() => handleDelete(version)}
                                         >
@@ -380,6 +421,15 @@ export function ModVersionManagement({ modSlug, modId, versions }: ModVersionMan
                                     </ActionButton>
                                 </FormButtonGroup>
                             </EditForm>
+                        )}
+                        
+                        {managingVariantsFor === version.versionId && (
+                            <VersionVariantManager
+                                version={version}
+                                existingVariants={variants}
+                                onSave={handleSaveVariants}
+                                isLoading={updateMod.isPending}
+                            />
                         )}
                     </VersionCard>
                 );

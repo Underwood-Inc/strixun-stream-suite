@@ -99,6 +99,13 @@ export default defineConfig({
     ],
     // Exclude from optimization to ensure proper module resolution
     exclude: [],
+    // esbuild options for dependency optimization
+    esbuildOptions: {
+      // Ignore source map errors during dependency optimization
+      logLevel: 'warning',
+      // Skip malformed source maps instead of erroring
+      sourcemap: false,
+    },
   },
   // Base path for production deployment (root for Cloudflare Pages)
   base: '/',

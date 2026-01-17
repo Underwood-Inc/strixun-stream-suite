@@ -323,18 +323,32 @@ export async function handleUpdateMod(
                     });
                 }
                 
-                // New variants MUST have parentVersionId
+                // Auto-set parentVersionId for new variants if not provided
+                // Defaults to latest version (first in versions list)
                 const isNewVariant = !existingVariantIds.has(variant.variantId);
                 if (isNewVariant && !variant.parentVersionId) {
-                    const rfcError = createError(request, 400, 'Invalid Variant Data', 'New variants must have parentVersionId - variants must be attached to a specific mod version');
-                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
-                    return new Response(JSON.stringify(rfcError), {
-                        status: 400,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
+                    // Get latest version from mod's version list
+                    const versionsListKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
+                    const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
+                    
+                    if (!versionsList || versionsList.length === 0) {
+                        const rfcError = createError(request, 400, 'Invalid Variant Data', 'Cannot create variant: mod has no versions. Please upload a mod version first.');
+                        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                        });
+                        return new Response(JSON.stringify(rfcError), {
+                            status: 400,
+                            headers: {
+                                'Content-Type': 'application/problem+json',
+                                ...Object.fromEntries(corsHeaders.entries()),
+                            },
+                        });
+                    }
+                    
+                    // Auto-set to latest version (first in list)
+                    variant.parentVersionId = versionsList[0];
+                    console.log('[UpdateMod] Auto-set parentVersionId for new variant:', {
+                        variantId: variant.variantId,
+                        parentVersionId: variant.parentVersionId
                     });
                 }
             }
