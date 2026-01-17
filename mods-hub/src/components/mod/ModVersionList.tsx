@@ -174,11 +174,13 @@ const VariantName = styled.span`
   color: ${colors.text};
 `;
 
-const VariantDescription = styled.p`
+const VariantDescription = styled.div`
   font-size: 0.75rem;
   color: ${colors.textSecondary};
   margin: 0;
   line-height: 1.4;
+  max-height: 300px;
+  overflow: hidden;
 `;
 
 const VariantMeta = styled.div`
@@ -406,7 +408,9 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                             <VariantInfo>
                                                 <VariantName>{variant.name}</VariantName>
                                                 {variant.description && (
-                                                    <VariantDescription>{variant.description}</VariantDescription>
+                                                    <VariantDescription>
+                                                        <MarkdownContent content={variant.description} />
+                                                    </VariantDescription>
                                                 )}
                                                 <VariantMeta>
                                                     <span>{variant.versionCount} version{variant.versionCount !== 1 ? 's' : ''}</span>

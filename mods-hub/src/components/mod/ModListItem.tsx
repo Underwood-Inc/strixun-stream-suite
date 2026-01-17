@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing, media } from '../../theme';
 import type { ModMetadata } from '../../types/mod';
+import { MarkdownContent } from '../common/MarkdownContent';
 
 const ListItemContainer = styled(Link)`
   display: flex;
@@ -154,27 +155,22 @@ const AuthorLabel = styled.span`
   color: ${colors.textSecondary};
 `;
 
-const Description = styled.p`
+const Description = styled.div`
   color: ${colors.textSecondary};
   font-size: 0.875rem;
   line-height: 1.5;
   margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  max-height: 300px;
   overflow: hidden;
   word-break: break-word;
   
   @media (max-width: 1024px) {
     font-size: 0.8125rem;
-    -webkit-line-clamp: 1;
   }
   
   ${media.mobile} {
     font-size: 0.875rem;
     line-height: 1.6;
-    -webkit-line-clamp: 4;
-    display: -webkit-box;
   }
 `;
 
@@ -298,7 +294,9 @@ export function ModListItem({
                     <AuthorLabel>by</AuthorLabel>
                     <span>{authorDisplayName || 'Unknown Author'}</span>
                 </Author>
-                <Description>{description || 'No description available'}</Description>
+                <Description>
+                    <MarkdownContent content={description || 'No description available'} />
+                </Description>
             </Content>
             <Meta>
                 <Category>{category}</Category>

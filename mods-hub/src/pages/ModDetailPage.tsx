@@ -21,6 +21,7 @@ import { getButtonStyles } from '../utils/buttonStyles';
 import { getCardStyles } from '../utils/sharedStyles';
 import { candyShopAnimation } from '../utils/candyShopAnimation';
 import { InteractiveThumbnail } from '../components/mod/InteractiveThumbnail';
+import { MarkdownContent } from '../components/common/MarkdownContent';
 
 const PageContainer = styled.div`
   display: flex;
@@ -210,7 +211,7 @@ const Title = styled.h1`
   overflow-wrap: break-word;
 `;
 
-const Description = styled.p`
+const Description = styled.div`
   color: ${colors.textSecondary};
   line-height: 1.6;
   word-wrap: break-word;
@@ -417,7 +418,9 @@ export function ModDetailPage() {
                 )}
                 <Info>
                     <Title>{mod.title}</Title>
-                    <Description>{mod.description}</Description>
+                    <Description>
+                        <MarkdownContent content={mod.description || ''} />
+                    </Description>
                     <Meta>
                         <span>By {mod.authorDisplayName || 'Unknown User'}</span>
                         <span>•</span>

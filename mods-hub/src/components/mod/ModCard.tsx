@@ -12,6 +12,7 @@ import type { ModMetadata } from '../../types/mod';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
 import { InteractiveThumbnail } from './InteractiveThumbnail';
+import { MarkdownContent } from '../common/MarkdownContent';
 
 const CardContainer = styled.div`
   ${getCardStyles('hover')}
@@ -103,13 +104,15 @@ const Title = styled.h3`
   margin: 0;
 `;
 
-const Description = styled.p`
+const Description = styled.div`
   color: ${colors.textSecondary};
   font-size: 0.875rem;
   line-height: 1.6;
   margin: 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  max-height: 300px;
+  overflow: hidden;
   
   ${media.mobile} {
     font-size: 0.8125rem;
@@ -402,7 +405,9 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
                     <CardContent key="content" to={`/${mod.slug}`}>
                         <CardLink>
                             <Title>{mod.title}</Title>
-                            <Description>{mod.description || 'No description'}</Description>
+                            <Description>
+                                <MarkdownContent content={mod.description || 'No description'} />
+                            </Description>
                         </CardLink>
                         <Meta>
                             <span>{mod.downloadCount} downloads</span>

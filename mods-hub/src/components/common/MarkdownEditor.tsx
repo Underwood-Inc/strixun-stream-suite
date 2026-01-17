@@ -262,6 +262,15 @@ export function MarkdownEditor({
         hideToolbar={hideToolbar}
         textareaProps={{
           placeholder,
+          // Disable browser extensions (Grammarly, etc.) that cause text doubling
+          // @ts-expect-error - data attributes are valid HTML but not typed in ITextAreaProps
+          'data-gramm': 'false',
+          'data-gramm_editor': 'false',
+          'data-enable-grammarly': 'false',
+          autoComplete: 'off',
+          autoCorrect: 'off',
+          autoCapitalize: 'off',
+          spellCheck: false,
         }}
       />
     </EditorContainer>

@@ -11,6 +11,7 @@ import { InteractiveThumbnail as SharedInteractiveThumbnail } from '@strixun/sha
 import type { InteractiveThumbnailTheme } from '@strixun/shared-components/react';
 import { colors, spacing } from '../../theme';
 import type { ModMetadata } from '../../types/mod';
+import { MarkdownContent } from '../common/MarkdownContent';
 
 const ThumbnailImage = styled.img`
   width: 100%;
@@ -49,7 +50,7 @@ const BackTitle = styled.h3`
   -ms-user-select: text;
 `;
 
-const BackDescription = styled.p`
+const BackDescription = styled.div`
   font-size: clamp(0.7rem, 3.5vw, 0.75rem);
   color: ${colors.textSecondary};
   line-height: 1.6;
@@ -166,7 +167,7 @@ export function InteractiveThumbnail({ mod, onError, watchElementRef }: Interact
     <>
       <BackTitle>{mod.title}</BackTitle>
       <BackDescription>
-        {mod.description || 'No description available'}
+        <MarkdownContent content={mod.description || 'No description available'} />
       </BackDescription>
       <BackMeta>
         <MetaRow>

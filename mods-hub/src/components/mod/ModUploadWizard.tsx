@@ -13,6 +13,7 @@ import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixu
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
 import { MarkdownEditor } from '../common/MarkdownEditor';
+import { MarkdownContent } from '../common/MarkdownContent';
 
 // UI-only type that extends ModVariant with file upload fields
 type ModVariantWithFile = ModVariant & {
@@ -937,7 +938,9 @@ export function ModUploadWizard({
 
                 <ReviewSection>
                     <ReviewLabel>Description</ReviewLabel>
-                    <ReviewValue>{description || <ReviewEmpty>No description</ReviewEmpty>}</ReviewValue>
+                    <ReviewValue>
+                        {description ? <MarkdownContent content={description} /> : <ReviewEmpty>No description</ReviewEmpty>}
+                    </ReviewValue>
                 </ReviewSection>
 
                 <ReviewSection>
@@ -953,7 +956,9 @@ export function ModUploadWizard({
                 {changelog && (
                     <ReviewSection>
                         <ReviewLabel>Changelog</ReviewLabel>
-                        <ReviewValue>{changelog}</ReviewValue>
+                        <ReviewValue>
+                            <MarkdownContent content={changelog} />
+                        </ReviewValue>
                     </ReviewSection>
                 )}
 

@@ -18,6 +18,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys, useDeleteModVersion, useUpdateModVersion } from '../../hooks/useMods';
 import { MarkdownEditor } from '../common/MarkdownEditor';
+import { MarkdownContent } from '../common/MarkdownContent';
 
 const Container = styled.div`
   ${getCardStyles('default')}
@@ -65,11 +66,13 @@ const VersionDate = styled.span`
   color: ${colors.textMuted};
 `;
 
-const Changelog = styled.p`
+const Changelog = styled.div`
   color: ${colors.textSecondary};
   font-size: 0.875rem;
   line-height: 1.5;
   margin: 0;
+  max-height: 300px;
+  overflow: hidden;
 `;
 
 const Meta = styled.div`
@@ -280,7 +283,11 @@ export function ModVersionManagement({ modSlug, modId, versions }: ModVersionMan
                                     <VersionNumber>v{version.version}</VersionNumber>
                                     <VersionDate>{formatDate(version.createdAt)}</VersionDate>
                                 </div>
-                                {!isEditing && version.changelog && <Changelog>{version.changelog}</Changelog>}
+                                {!isEditing && version.changelog && (
+                                    <Changelog>
+                                        <MarkdownContent content={version.changelog} />
+                                    </Changelog>
+                                )}
                                 <Meta>
                                     <span>{formatFileSize(version.fileSize)}</span>
                                     <span>•</span>
