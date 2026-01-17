@@ -7,6 +7,7 @@ import { createAPIClient } from '@strixun/api-framework/client';
 import type { 
     VariantVersion,
     VariantVersionUploadRequest,
+    ModVariant,
 } from '../../types/mod';
 import { downloadFileFromArrayBuffer } from '../../utils/fileEncryption';
 import { sharedClientConfig } from '../authConfig';
@@ -16,6 +17,50 @@ const api = createAPIClient({
     ...sharedClientConfig,
     baseURL: API_BASE_URL,
 });
+
+export interface CreateVariantRequest {
+    name: string;
+    description?: string;
+    parentVersionId: string;
+}
+
+export interface UpdateVariantRequest {
+    name?: string;
+    description?: string;
+}
+
+/**
+ * Create a new variant for a mod
+ */
+export async function createVariant(
+    modSlug: string,
+    request: CreateVariantRequest
+): Promise<{ variant: ModVariant }> {
+    try {
+        const response = await api.post<{ variant: ModVariant }>(`/mods/${modSlug}/variants`, request);
+        return response.data;
+    } catch (error) {
+        console.error(`[ModVariantsAPI] Failed to create variant for mod ${modSlug}:`, error);
+        throw new Error(`Failed to create variant: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
+/**
+ * Update variant metadata (name, description)
+ */
+export async function updateVariant(
+    modSlug: string,
+    variantId: string,
+    updates: UpdateVariantRequest
+): Promise<{ variant: ModVariant }> {
+    try {
+        const response = await api.put<{ variant: ModVariant }>(`/mods/${modSlug}/variants/${variantId}`, updates);
+        return response.data;
+    } catch (error) {
+        console.error(`[ModVariantsAPI] Failed to update variant ${variantId}:`, error);
+        throw new Error(`Failed to update variant: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
 
 /**
  * List all versions for a variant
