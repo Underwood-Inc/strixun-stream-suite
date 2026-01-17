@@ -642,6 +642,128 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             });
         }
 
+        // Route: POST /mods/:slug/variants/:variantId/versions or POST /:slug/variants/:variantId/versions - Upload variant version
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // Normalized pathSegments = [slug, 'variants', variantId, 'versions']
+        if (pathSegments.length === 4 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && request.method === 'POST') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to upload variant versions');
+            }
+            
+            const slugOrModId = pathSegments[0];
+            const variantId = pathSegments[2];
+            
+            // Resolve slug to modId
+            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
+            let modId = slugOrModId;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
+            if (looksLikeSlug) {
+                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
+                if (resolvedModId) {
+                    modId = resolvedModId;
+                } else {
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
+                }
+            }
+            
+            // Upload variant version using the unified version handler with variantId parameter
+            const response = await handleUploadVersion(request, env, modId, auth, variantId);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: GET /mods/:slug/variants/:variantId/versions/:versionId/download - Download specific variant version
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // Normalized pathSegments = [slug, 'variants', variantId, 'versions', versionId, 'download']
+        if (pathSegments.length === 6 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && pathSegments[5] === 'download' && request.method === 'GET') {
+            const slugOrModId = pathSegments[0];
+            const versionId = pathSegments[4];
+            
+            // Resolve slug to modId
+            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
+            let modId = slugOrModId;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
+            if (looksLikeSlug) {
+                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
+                if (resolvedModId) {
+                    modId = resolvedModId;
+                } else {
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
+                }
+            }
+            
+            // Use standard version download handler (variant versions are just versions with variantId field)
+            const { handleDownloadVersion } = await import('../handlers/versions/download.js');
+            const response = await handleDownloadVersion(request, env, modId, versionId, auth);
+            // Downloads are public - no encryption required
+            return { response, customerId: auth?.customerId || null };
+        }
+
+        // Route: PUT /mods/:slug/variants/:variantId/versions/:versionId - Update variant version metadata
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // Normalized pathSegments = [slug, 'variants', variantId, 'versions', versionId]
+        if (pathSegments.length === 5 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && request.method === 'PUT') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to update variant versions');
+            }
+            
+            const slugOrModId = pathSegments[0];
+            const versionId = pathSegments[4];
+            
+            // Resolve slug to modId
+            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
+            let modId = slugOrModId;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
+            if (looksLikeSlug) {
+                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
+                if (resolvedModId) {
+                    modId = resolvedModId;
+                } else {
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
+                }
+            }
+            
+            // Use standard version update handler (variant versions are just versions with variantId field)
+            const { handleUpdateVersion } = await import('../handlers/versions/update.js');
+            const response = await handleUpdateVersion(request, env, modId, versionId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: DELETE /mods/:slug/variants/:variantId/versions/:versionId - Delete specific variant version
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // Normalized pathSegments = [slug, 'variants', variantId, 'versions', versionId]
+        if (pathSegments.length === 5 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && request.method === 'DELETE') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to delete variant versions');
+            }
+            
+            const slugOrModId = pathSegments[0];
+            const versionId = pathSegments[4];
+            
+            // Resolve slug to modId
+            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
+            let modId = slugOrModId;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_');
+            if (looksLikeSlug) {
+                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
+                if (resolvedModId) {
+                    modId = resolvedModId;
+                } else {
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
+                }
+            }
+            
+            // Use standard version delete handler (variant versions are just versions with variantId field)
+            const { handleDeleteVersion } = await import('../handlers/versions/delete.js');
+            const response = await handleDeleteVersion(request, env, modId, versionId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
         // Route: DELETE /mods/:slug/variants/:variantId or DELETE /:slug/variants/:variantId - Delete entire variant
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         // Normalized pathSegments = [slug, 'variants', variantId]
