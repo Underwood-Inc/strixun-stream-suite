@@ -137,7 +137,6 @@ interface VersionVariantManagerProps {
     modSlug: string;
     existingVariants: ModVariant[];
     onVariantCreated?: () => void;
-    _onVariantUpdated?: () => void;
     isLoading?: boolean;
 }
 
@@ -154,7 +153,6 @@ export function VersionVariantManager({
     modSlug,
     existingVariants,
     onVariantCreated,
-    _onVariantUpdated,
     isLoading = false 
 }: VersionVariantManagerProps) {
     const [showAddForm, setShowAddForm] = useState(false);

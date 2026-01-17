@@ -256,11 +256,6 @@ export function ModVersionManagement({ modSlug, modId, versions, variants }: Mod
         queryClient.refetchQueries({ queryKey: modKeys.detail(modSlug) });
     };
 
-    const handleVariantUpdated = () => {
-        // Refetch mod data to show updated variant
-        queryClient.refetchQueries({ queryKey: modKeys.detail(modSlug) });
-    };
-
     if (versions.length === 0) {
         return (
             <Container>
@@ -409,7 +404,6 @@ export function ModVersionManagement({ modSlug, modId, versions, variants }: Mod
                                 modSlug={modSlug}
                                 existingVariants={variants}
                                 onVariantCreated={handleVariantCreated}
-                                _onVariantUpdated={handleVariantUpdated}
                                 isLoading={updateMod.isPending}
                             />
                         )}
