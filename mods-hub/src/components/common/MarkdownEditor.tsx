@@ -62,6 +62,33 @@ const EditorContainer = styled.div`
     caret-color: ${colors.accent};
   }
   
+  /* Fix text selection desync - hide selection on syntax highlight layer */
+  .w-md-editor-text-pre,
+  .w-md-editor-text-pre > code,
+  .w-md-editor-text-pre * {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: none;
+  }
+  
+  /* Ensure textarea handles all selection */
+  .w-md-editor-text-input {
+    user-select: text;
+    -webkit-user-select: text;
+    pointer-events: auto;
+    background: transparent !important;
+    color: transparent !important;
+    caret-color: ${colors.accent};
+  }
+  
+  /* Selection highlight only on textarea */
+  .w-md-editor-text-input::selection {
+    background: ${colors.accent}40;
+    color: transparent;
+  }
+  
   /* Preview pane */
   .w-md-editor-preview {
     background: ${colors.bg};

@@ -10,7 +10,10 @@ import { getSeasonalKeyframesCSS } from '../utils/seasonalAnimations';
 // Mods Hub global style - includes all shared CSS variables plus app-specific extensions
 export const GlobalStyle = createGlobalStyle`
   /* Seasonal animation keyframes */
-  ${getSeasonalKeyframesCSS()}                                                                                                                                                                                                                                                                                                                                       
+  ${getSeasonalKeyframesCSS()}
+
+  *, *::before, *::after {
+    margin: 0;
     padding: 0;
     box-sizing: border-box;
   }

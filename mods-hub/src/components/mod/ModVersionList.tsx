@@ -44,7 +44,7 @@ const VersionCard = styled.div<{ $isExpanded: boolean }>`
 const VersionCardHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: ${spacing.lg};
   cursor: pointer;
   user-select: none;
@@ -58,6 +58,14 @@ const VersionInfo = styled.div`
 `;
 
 const VersionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${spacing.md};
+  flex: 1;
+  justify-content: space-between;
+`;
+
+const VersionMeta = styled.div`
   display: flex;
   align-items: center;
   gap: ${spacing.md};
@@ -104,6 +112,17 @@ const Meta = styled.div`
 const DownloadButton = styled.button`
   ${getButtonStyles('primary')}
   ${candyShopAnimation}
+`;
+
+const ManageButton = styled.button`
+  ${getButtonStyles('secondary')}
+  font-size: 0.875rem;
+`;
+
+const VersionActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${spacing.sm};
 `;
 
 const ExpandButton = styled.button`
@@ -202,11 +221,13 @@ interface ModVersionListProps {
     modSlug: string; // Mod slug for constructing download URLs
     versions: ModVersion[];
     variants?: ModVariant[]; // Variants for the mod (filtered by version)
+    authorId?: string; // Mod author ID for checking ownership
 }
 
-export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionListProps) {
+export function ModVersionList({ modSlug, versions, variants = [], authorId }: ModVersionListProps) {
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuthStore();
+    const { isAuthenticated, customer } = useAuthStore();
+    const isUploader = customer?.customerId === authorId;
     const queryClient = useQueryClient();
     const [downloading, setDownloading] = useState<Set<string>>(new Set());
     const [downloadingVariants, setDownloadingVariants] = useState<Set<string>>(new Set());
@@ -334,19 +355,33 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                         <VersionCardHeader onClick={() => toggleVersion(version.versionId)}>
                             <VersionInfo>
                                 <VersionHeader>
-                                    <VersionNumber>v{version.version}</VersionNumber>
-                                    <VersionDate>{formatDate(version.createdAt)}</VersionDate>
-                                    <DownloadButton
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            celebrateClick(e.currentTarget);
-                                            handleDownload(version);
-                                        }}
-                                        disabled={downloading.has(version.versionId) || !isAuthenticated}
-                                        title={!isAuthenticated ? 'Please log in to download' : undefined}
-                                    >
-                                        {downloading.has(version.versionId) ? 'Downloading...' : 'Download'}
-                                    </DownloadButton>
+                                    <VersionMeta>
+                                        <VersionNumber>v{version.version}</VersionNumber>
+                                        <VersionDate>{formatDate(version.createdAt)}</VersionDate>
+                                    </VersionMeta>
+                                    <VersionActions>
+                                        {isUploader && (
+                                            <ManageButton
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate(`/manage/${modSlug}`);
+                                                }}
+                                            >
+                                                Manage
+                                            </ManageButton>
+                                        )}
+                                        <DownloadButton
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                celebrateClick(e.currentTarget);
+                                                handleDownload(version);
+                                            }}
+                                            disabled={downloading.has(version.versionId) || !isAuthenticated}
+                                            title={!isAuthenticated ? 'Please log in to download' : undefined}
+                                        >
+                                            {downloading.has(version.versionId) ? 'Downloading...' : 'Download'}
+                                        </DownloadButton>
+                                    </VersionActions>
                                 </VersionHeader>
                                 {version.changelog && (
                                     <ChangelogContainer>

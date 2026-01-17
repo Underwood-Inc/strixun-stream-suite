@@ -6,7 +6,7 @@
 import { useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
-import type { ModMetadata, ModUpdateRequest, ModCategory, ModVisibility, ModStatus, ModVariant } from '../../types/mod';
+import type { ModMetadata, ModUpdateRequest, ModCategory, ModVisibility, ModStatus, ModVariant, ModVersion } from '../../types/mod';
 import { FileUploader } from './FileUploader';
 import { GamesPicker } from './GamesPicker';
 import { useModSettings } from '../../hooks/useMods';
@@ -217,6 +217,7 @@ const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary'; di
 
 interface ModManageFormProps {
     mod: ModMetadata;
+    versions: ModVersion[];
     onUpdate: (updates: ModUpdateRequest, thumbnail?: File, variantFiles?: Record<string, File>, deletedVariantIds?: string[]) => void;
     onDelete: () => void;
     onStatusChange?: (status: ModStatus) => void;
@@ -314,7 +315,7 @@ const RecommendationText = styled.p`
     font-size: 0.875rem;
 `;
 
-export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoading }: ModManageFormProps) {
+export function ModManageForm({ mod, versions, onUpdate, onDelete, onStatusChange, isLoading }: ModManageFormProps) {
     const { data: settings } = useModSettings();
     const [title, setTitle] = useState(mod.title);
     const [description, setDescription] = useState(mod.description);
@@ -474,10 +475,12 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     };
 
     const handleAddVariant = () => {
+        // Default to latest version (first in sorted array)
+        const defaultVersionId = versions.length > 0 ? versions[0].versionId : '';
         const newVariant: ModVariantWithFile = {
             variantId: `variant-${Date.now()}`,
             modId: mod.modId,
-            parentVersionId: '', // TODO: UI should allow selecting which version this variant belongs to
+            parentVersionId: defaultVersionId,
             name: '',
             description: '',
             createdAt: '', // Empty = NEW variant (not saved yet)
@@ -793,6 +796,29 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                                             Remove
                                         </Button>
                                     </div>
+                                    <FormGroup>
+                                        <Label>Parent Version <span style={{ color: colors.danger }}>*</span></Label>
+                                        <Select
+                                            value={variant.parentVersionId || ''}
+                                            onChange={(e) => handleVariantChange(variant.variantId, 'parentVersionId', e.target.value)}
+                                            style={{ 
+                                                borderColor: !variant.parentVersionId ? colors.warning : undefined 
+                                            }}
+                                        >
+                                            {versions.length === 0 ? (
+                                                <option value="">No versions available</option>
+                                            ) : (
+                                                versions.map((v) => (
+                                                    <option key={v.versionId} value={v.versionId}>
+                                                        v{v.version} ({new Date(v.createdAt).toLocaleDateString()})
+                                                    </option>
+                                                ))
+                                            )}
+                                        </Select>
+                                        <span style={{ fontSize: '0.75rem', color: colors.textMuted }}>
+                                            Select which mod version this variant belongs to
+                                        </span>
+                                    </FormGroup>
                                     <Input
                                         type="text"
                                         placeholder={isNew ? "Variant name *REQUIRED*" : "Variant name"}
