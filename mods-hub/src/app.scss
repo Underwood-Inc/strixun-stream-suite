@@ -1,0 +1,43 @@
+/**
+ * Mods Hub App SCSS
+ * Imports shared mixins for status flairs and other reusable styles
+ */
+
+@use '../../shared-styles/mixins' as *;
+
+// Status flair utility classes - reuse the mixins
+.wip {
+  @include wip-state;
+}
+
+.in-testing {
+  @include in-testing-state;
+}
+
+.coming-soon {
+  @include coming-soon-state;
+  // Ensure border is visible on elements without default borders
+  border-style: solid;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.deprecated {
+  @include deprecated-state;
+}
+
+.beta {
+  @include beta-state;
+}
+
+.alpha {
+  @include alpha-state;
+}
+
+.experimental {
+  @include experimental-state;
+}
+
+.super-admin {
+  @include super-admin-state;
+}

@@ -151,6 +151,21 @@ const Required = styled.span`
   margin-left: 2px;
 `;
 
+const HelpText = styled.span`
+  font-size: 0.75rem;
+  color: ${colors.textMuted};
+  display: block;
+  margin-top: 2px;
+`;
+
+const CharCount = styled.span<{ $over?: boolean }>`
+  font-size: 0.75rem;
+  color: ${props => props.$over ? colors.danger : colors.textMuted};
+  text-align: right;
+  display: block;
+  margin-top: 4px;
+`;
+
 const Input = styled.input`
   padding: ${spacing.sm} ${spacing.md};
   background: ${colors.bg};
@@ -387,6 +402,7 @@ export function ModUploadWizard({
     const [file, setFile] = useState<File | null>(null);
     const [thumbnail, setThumbnail] = useState<File | null>(null);
     const [title, setTitle] = useState(initialData?.title || '');
+    const [summary, setSummary] = useState(initialData?.summary || '');
     const [description, setDescription] = useState(initialData?.description || '');
     const [category, setCategory] = useState<ModCategory>(initialData?.category || 'script');
     const [tags, setTags] = useState(initialData?.tags?.join(', ') || '');
@@ -552,6 +568,7 @@ export function ModUploadWizard({
     const buildMetadata = (status?: ModStatus): ModUploadRequest => {
         return {
             title,
+            summary: summary || undefined,
             description,
             category,
             tags: tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -799,6 +816,19 @@ export function ModUploadWizard({
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="My Awesome Mod"
                     />
+                </FormGroup>
+
+                <FormGroup>
+                    <Label>Summary</Label>
+                    <HelpText>Brief one-liner for list views (max 150 chars)</HelpText>
+                    <Input
+                        type="text"
+                        value={summary}
+                        onChange={(e) => setSummary(e.target.value.slice(0, 150))}
+                        placeholder="A quick summary of what your mod does..."
+                        maxLength={150}
+                    />
+                    <CharCount $over={summary.length > 150}>{summary.length}/150</CharCount>
                 </FormGroup>
 
                 <FormGroup>

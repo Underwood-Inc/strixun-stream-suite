@@ -8,7 +8,6 @@ import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing, media } from '../../theme';
 import type { ModMetadata } from '../../types/mod';
-import { MarkdownContent } from '../common/MarkdownContent';
 
 const ListItemContainer = styled(Link)`
   display: flex;
@@ -151,43 +150,19 @@ const AuthorLabel = styled.span`
   color: ${colors.textSecondary};
 `;
 
-const Description = styled.div`
+const Description = styled.p`
   color: ${colors.textSecondary};
   font-size: 0.875rem;
   line-height: 1.5;
   margin: 0;
-  max-height: 120px;
-  overflow-y: auto;
-  word-break: break-word;
-  
-  /* Scrollbar styling */
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: ${colors.bgTertiary};
-    border-radius: 2px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${colors.border};
-    border-radius: 2px;
-    
-    &:hover {
-      background: ${colors.textMuted};
-    }
-  }
   
   @media (max-width: 1024px) {
     font-size: 0.8125rem;
-    max-height: 100px;
   }
   
   ${media.mobile} {
     font-size: 0.875rem;
     line-height: 1.6;
-    max-height: 150px;
   }
 `;
 
@@ -246,7 +221,7 @@ interface ModListItemProps {
     thumbnailUrl?: string;
     title: string;
     authorDisplayName?: string;
-    description?: string;
+    summary?: string;
     category: string;
     downloadCount: number;
 }
@@ -261,7 +236,7 @@ export function mapModToListItemProps(mod: ModMetadata): ModListItemProps {
         thumbnailUrl: mod.thumbnailUrl ?? undefined,
         title: mod.title,
         authorDisplayName: mod.authorDisplayName ?? undefined,
-        description: mod.description ?? undefined,
+        summary: mod.summary ?? undefined,
         category: mod.category,
         downloadCount: mod.downloadCount,
     };
@@ -272,7 +247,7 @@ export function ModListItem({
     thumbnailUrl,
     title,
     authorDisplayName,
-    description,
+    summary,
     category,
     downloadCount
 }: ModListItemProps) {
@@ -312,7 +287,7 @@ export function ModListItem({
                     <span>{authorDisplayName || 'Unknown Author'}</span>
                 </Author>
                 <Description>
-                    <MarkdownContent content={description || 'No description available'} />
+                    {summary || 'No summary available'}
                 </Description>
             </Content>
             <Meta>

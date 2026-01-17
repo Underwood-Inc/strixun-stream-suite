@@ -12,7 +12,6 @@ import type { ModMetadata } from '../../types/mod';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
 import { InteractiveThumbnail } from './InteractiveThumbnail';
-import { MarkdownContent } from '../common/MarkdownContent';
 
 const CardContainer = styled.div`
   ${getCardStyles('hover')}
@@ -104,38 +103,14 @@ const Title = styled.h3`
   margin: 0;
 `;
 
-const Description = styled.div`
+const Description = styled.p`
   color: ${colors.textSecondary};
   font-size: 0.875rem;
   line-height: 1.6;
   margin: 0;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  max-height: 180px;
-  overflow-y: auto;
-  
-  /* Scrollbar styling */
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: ${colors.bgTertiary};
-    border-radius: 3px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${colors.border};
-    border-radius: 3px;
-    
-    &:hover {
-      background: ${colors.textMuted};
-    }
-  }
   
   ${media.mobile} {
     font-size: 0.8125rem;
-    max-height: 150px;
   }
 `;
 
@@ -426,7 +401,7 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
                         <CardLink>
                             <Title>{mod.title}</Title>
                             <Description>
-                                <MarkdownContent content={mod.description || 'No description'} />
+                                {mod.summary || 'No summary available'}
                             </Description>
                         </CardLink>
                         <Meta>

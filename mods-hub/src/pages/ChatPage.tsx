@@ -2,19 +2,17 @@
  * Chat Page
  * 
  * P2P chat interface for mods-hub users
+ * Currently in development - shows coming soon state
  */
 
 import styled from 'styled-components';
-import { ChatClient } from '@strixun/chat/react';
-import { useChatStore } from '../stores/chat';
-import { useAuthStore } from '../stores/auth';
 import { colors, spacing } from '../theme';
+import { getCardStyles } from '../utils/sharedStyles';
 
 const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 200px);
-  min-height: 500px;
+  min-height: calc(100vh - 200px);
 `;
 
 const PageHeader = styled.div`
@@ -31,79 +29,87 @@ const Title = styled.h1`
   margin: 0;
 `;
 
-const WipBadge = styled.span`
-  padding: 4px 12px;
-  background: rgba(255, 152, 0, 0.15);
-  border: 1px solid ${colors.warning};
-  border-radius: 4px;
-  color: ${colors.warning};
-  font-size: 0.75rem;
-  font-weight: 600;
-`;
-
-const ChatContainer = styled.div`
+const ComingSoonContainer = styled.div`
+  ${getCardStyles('default')}
   flex: 1;
-  min-height: 0;
-  background: ${colors.card};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  overflow: hidden;
-`;
-
-const AuthRequired = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  gap: ${spacing.md};
-  color: ${colors.textSecondary};
   text-align: center;
-  padding: ${spacing.xl};
+  min-height: 400px;
+  gap: ${spacing.lg};
 `;
 
-const AuthTitle = styled.h2`
+const ComingSoonIcon = styled.div`
+  font-size: 4rem;
+  opacity: 0.6;
+`;
+
+const ComingSoonTitle = styled.h2`
+  font-size: 1.5rem;
+  font-weight: 700;
   color: ${colors.text};
   margin: 0;
-  font-size: 1.25rem;
+`;
+
+const ComingSoonDescription = styled.p`
+  color: ${colors.textSecondary};
+  max-width: 500px;
+  line-height: 1.6;
+  margin: 0;
+`;
+
+const FeatureList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: ${spacing.lg} 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: ${spacing.sm};
+  text-align: left;
+`;
+
+const FeatureItem = styled.li`
+  color: ${colors.textMuted};
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: ${spacing.sm};
+  
+  &::before {
+    content: '✓';
+    color: ${colors.accent};
+    font-weight: 700;
+  }
 `;
 
 export function ChatPage() {
-  const { customer, isAuthenticated } = useAuthStore();
-
-  if (!isAuthenticated || !customer) {
-    return (
-      <PageContainer>
-        <PageHeader>
-          <Title>Community Chat</Title>
-          <WipBadge>Beta</WipBadge>
-        </PageHeader>
-        <ChatContainer>
-          <AuthRequired>
-            <AuthTitle>Authentication Required</AuthTitle>
-            <p>Please log in to access the community chat.</p>
-          </AuthRequired>
-        </ChatContainer>
-      </PageContainer>
-    );
-  }
-
   return (
     <PageContainer>
       <PageHeader>
         <Title>Community Chat</Title>
-        <WipBadge>Beta</WipBadge>
+        <span className="coming-soon" style={{ padding: '4px 12px', borderRadius: '4px' }}>
+          Coming Soon
+        </span>
       </PageHeader>
-      <ChatContainer>
-        <ChatClient
-          useChatStore={useChatStore}
-          userId={customer.customerId}
-          userName={customer.displayName || 'Customer'}
-          showRoomList={true}
-          showRoomCreator={true}
-          style={{ height: '100%' }}
-        />
-      </ChatContainer>
+      
+      <ComingSoonContainer className="coming-soon">
+        <ComingSoonIcon>💬</ComingSoonIcon>
+        <ComingSoonTitle>Coming Soon</ComingSoonTitle>
+        <ComingSoonDescription>
+          We&apos;re building a peer-to-peer encrypted chat system for the Strixun community. 
+          Connect with other mod creators, share ideas, and collaborate in real-time.
+        </ComingSoonDescription>
+        
+        <FeatureList>
+          <FeatureItem>End-to-end encrypted messaging</FeatureItem>
+          <FeatureItem>Peer-to-peer architecture (no central server storing messages)</FeatureItem>
+          <FeatureItem>Create public or private rooms</FeatureItem>
+          <FeatureItem>Message integrity verification with hash chains</FeatureItem>
+          <FeatureItem>History sync when you reconnect (peers share what you missed)</FeatureItem>
+        </FeatureList>
+      </ComingSoonContainer>
     </PageContainer>
   );
 }

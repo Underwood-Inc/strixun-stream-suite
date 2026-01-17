@@ -131,6 +131,22 @@ const Label = styled.label`
   margin-bottom: ${spacing.xs};
 `;
 
+const HelpText = styled.span`
+  font-size: 0.625rem;
+  color: ${colors.textMuted};
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+`;
+
+const CharCount = styled.span<{ $over?: boolean }>`
+  font-size: 0.75rem;
+  color: ${props => props.$over ? colors.danger : colors.textMuted};
+  text-align: right;
+  display: block;
+  margin-top: 4px;
+`;
+
 const Input = styled.input`
   padding: ${spacing.sm} ${spacing.md};
   background: ${colors.bg};
@@ -318,6 +334,7 @@ const RecommendationText = styled.p`
 export function ModManageForm({ mod, versions, onUpdate, onDelete, onStatusChange, isLoading }: ModManageFormProps) {
     const { data: settings } = useModSettings();
     const [title, setTitle] = useState(mod.title);
+    const [summary, setSummary] = useState(mod.summary || '');
     const [description, setDescription] = useState(mod.description);
     const [category, setCategory] = useState<ModCategory>(mod.category);
     const [tags, setTags] = useState(mod.tags.join(', '));
@@ -637,6 +654,7 @@ export function ModManageForm({ mod, versions, onUpdate, onDelete, onStatusChang
         
         const updates: ModUpdateRequest = {
             title,
+            summary: summary || undefined,
             description,
             category,
             tags: tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -700,6 +718,18 @@ export function ModManageForm({ mod, versions, onUpdate, onDelete, onStatusChang
                                 border: `2px solid ${colors.border}`,
                             }}
                         />
+                    </FormGroup>
+
+                    <FormGroup>
+                        <Label>Summary <HelpText>(max 150 chars - shown in list views)</HelpText></Label>
+                        <Input
+                            type="text"
+                            value={summary}
+                            onChange={(e) => setSummary(e.target.value.slice(0, 150))}
+                            placeholder="Brief one-liner about your mod..."
+                            maxLength={150}
+                        />
+                        <CharCount $over={summary.length > 150}>{summary.length}/150</CharCount>
                     </FormGroup>
 
                     <FormGroup>

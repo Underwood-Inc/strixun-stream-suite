@@ -52,7 +52,8 @@ export interface ModMetadata {
     authorId: string; // Customer ID from OTP auth service (used for display name lookups)
     authorDisplayName?: string | null; // Display name fetched dynamically from auth API (always fresh, fallback only)
     title: string;
-    description: string;
+    summary?: string; // Short summary for list/card views (max ~150 chars)
+    description: string; // Full markdown description for detail page
     category: ModCategory;
     tags: string[];
     thumbnailUrl?: string;
@@ -175,6 +176,7 @@ export interface ModVariantUpload {
 
 export interface ModUploadRequest {
     title: string;
+    summary?: string;
     description: string;
     category: ModCategory;
     tags: string[];
@@ -191,6 +193,7 @@ export interface ModUploadRequest {
 
 export interface ModUpdateRequest {
     title?: string;
+    summary?: string;
     description?: string;
     category?: ModCategory;
     tags?: string[];

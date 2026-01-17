@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
 import { App } from './App';
 import { GlobalStyle } from './theme';
+import './app.scss';
 
 // Create a query client with sane defaults to prevent infinite refetch loops
 const queryClient = new QueryClient({

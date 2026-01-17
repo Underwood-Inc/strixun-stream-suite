@@ -10,7 +10,6 @@ import { colors, spacing } from '../../theme';
 import type { ModMetadata } from '../../types/mod';
 import { getCardStyles } from '../../utils/sharedStyles';
 import { InteractiveThumbnail } from './InteractiveThumbnail';
-import { MarkdownContent } from '../common/MarkdownContent';
 
 const CardContainer = styled.div`
   ${getCardStyles('hover')}
@@ -79,13 +78,11 @@ const AuthorLabel = styled.span`
   color: ${colors.textSecondary};
 `;
 
-const Description = styled.div`
+const Description = styled.p`
   color: ${colors.textSecondary};
   font-size: 1rem;
   line-height: 1.6;
   margin: 0;
-  max-height: 300px;
-  overflow: hidden;
   flex: 1;
 `;
 
@@ -174,7 +171,7 @@ export function ModBigCard({ mod }: ModBigCardProps) {
                             <span>{mod.authorDisplayName || 'Unknown Author'}</span>
                         </Author>
                         <Description>
-                            <MarkdownContent content={mod.description || 'No description available'} />
+                            {mod.summary || 'No summary available'}
                         </Description>
                     </CardLink>
                     <Meta>

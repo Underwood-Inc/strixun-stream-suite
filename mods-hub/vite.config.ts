@@ -55,9 +55,17 @@ function copyFunctionsPlugin() {
 export default defineConfig({
   clearScreen: false, // Prevent console clearing in turbo dev mode
   plugins: [react(), copyFunctionsPlugin()],
+  css: {
+    preprocessorOptions: {
+      scss: {
+        includePaths: [path.resolve(__dirname, '../shared-styles')]
+      }
+    }
+  },
   resolve: {
     alias: [
       { find: '@', replacement: path.resolve(__dirname, './src') },
+      { find: '@shared-styles', replacement: path.resolve(__dirname, '../shared-styles') },
     ],
     extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue'],
     // Ensure proper module resolution to avoid circular dependencies

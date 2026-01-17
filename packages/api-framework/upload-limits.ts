@@ -34,6 +34,12 @@ export interface UploadLimitsConfig {
     maxProfilePictureSize?: number;
     /** Maximum file size for cloud saves (default: BASE_UPLOAD_LIMIT) */
     maxCloudSaveSize?: number;
+    /** Maximum file size for inline images in rich text (default: 500 KB) */
+    maxInlineImageSize?: number;
+    /** Maximum total payload size for rich text content with embedded media (default: 5 MB) */
+    maxRichTextPayloadSize?: number;
+    /** Maximum number of inline images allowed in rich text (default: 10) */
+    maxInlineImageCount?: number;
 }
 
 /**
@@ -45,6 +51,9 @@ export const DEFAULT_UPLOAD_LIMITS: Required<UploadLimitsConfig> = {
     maxThumbnailSize: 1 * 1024 * 1024, // 1 MB
     maxProfilePictureSize: 5 * 1024 * 1024, // 5 MB
     maxCloudSaveSize: BASE_UPLOAD_LIMIT,
+    maxInlineImageSize: 512 * 1024, // 512 KB per inline image
+    maxRichTextPayloadSize: 5 * 1024 * 1024, // 5 MB total for rich text with embedded media
+    maxInlineImageCount: 10, // Max 10 inline images per description
 };
 
 /**
@@ -59,6 +68,9 @@ export function getUploadLimits(overrides?: UploadLimitsConfig): Required<Upload
         maxThumbnailSize: overrides?.maxThumbnailSize ?? DEFAULT_UPLOAD_LIMITS.maxThumbnailSize,
         maxProfilePictureSize: overrides?.maxProfilePictureSize ?? DEFAULT_UPLOAD_LIMITS.maxProfilePictureSize,
         maxCloudSaveSize: overrides?.maxCloudSaveSize ?? DEFAULT_UPLOAD_LIMITS.maxCloudSaveSize,
+        maxInlineImageSize: overrides?.maxInlineImageSize ?? DEFAULT_UPLOAD_LIMITS.maxInlineImageSize,
+        maxRichTextPayloadSize: overrides?.maxRichTextPayloadSize ?? DEFAULT_UPLOAD_LIMITS.maxRichTextPayloadSize,
+        maxInlineImageCount: overrides?.maxInlineImageCount ?? DEFAULT_UPLOAD_LIMITS.maxInlineImageCount,
     };
 }
 
@@ -105,5 +117,97 @@ export function validateFileSize(fileSize: number, maxSize: number): { valid: bo
  */
 export function createFileSizeValidator(maxSize: number) {
     return (fileSize: number) => validateFileSize(fileSize, maxSize);
+}
+
+/**
+ * Rich text payload validation result
+ */
+export interface RichTextPayloadValidation {
+    valid: boolean;
+    totalSize: number;
+    imageCount: number;
+    errors: string[];
+}
+
+/**
+ * Embedded media info for rich text content
+ */
+export interface EmbeddedMediaInfo {
+    type: 'image' | 'video';
+    size: number; // Size in bytes (for images with data URIs) or 0 for external URLs
+    url: string;
+}
+
+/**
+ * Calculate the total payload size of rich text content
+ * Includes text content and base64-encoded images
+ * 
+ * @param textContent - The text/markdown content
+ * @param embeddedMedia - Array of embedded media info
+ * @returns Total size in bytes
+ */
+export function calculateRichTextPayloadSize(
+    textContent: string,
+    embeddedMedia: EmbeddedMediaInfo[] = []
+): number {
+    // Text content size (UTF-8 encoded)
+    const textSize = new TextEncoder().encode(textContent).length;
+    
+    // Sum of embedded media sizes
+    const mediaSize = embeddedMedia.reduce((sum, media) => sum + media.size, 0);
+    
+    return textSize + mediaSize;
+}
+
+/**
+ * Validate rich text content with embedded media
+ * 
+ * @param textContent - The text/markdown content
+ * @param embeddedMedia - Array of embedded media info
+ * @param limits - Upload limits configuration (uses defaults if not provided)
+ * @returns Validation result with errors if any
+ */
+export function validateRichTextPayload(
+    textContent: string,
+    embeddedMedia: EmbeddedMediaInfo[] = [],
+    limits: Partial<UploadLimitsConfig> = {}
+): RichTextPayloadValidation {
+    const config = getUploadLimits(limits);
+    const errors: string[] = [];
+    
+    // Count images
+    const images = embeddedMedia.filter(m => m.type === 'image');
+    const imageCount = images.length;
+    
+    // Validate image count
+    if (imageCount > config.maxInlineImageCount) {
+        errors.push(`Too many images (${imageCount}). Maximum allowed: ${config.maxInlineImageCount}`);
+    }
+    
+    // Validate individual image sizes
+    images.forEach((img, index) => {
+        if (img.size > config.maxInlineImageSize) {
+            errors.push(
+                `Image ${index + 1} (${formatFileSize(img.size)}) exceeds maximum size of ${formatFileSize(config.maxInlineImageSize)}`
+            );
+        }
+    });
+    
+    // Calculate total payload size
+    const totalSize = calculateRichTextPayloadSize(textContent, embeddedMedia);
+    
+    // Validate total payload size
+    if (totalSize > config.maxRichTextPayloadSize) {
+        errors.push(
+            `Total content size (${formatFileSize(totalSize)}) exceeds maximum of ${formatFileSize(config.maxRichTextPayloadSize)}`
+        );
+    }
+    
+    return {
+        valid: errors.length === 0,
+        totalSize,
+        imageCount,
+        errors,
+    };
 }
 
