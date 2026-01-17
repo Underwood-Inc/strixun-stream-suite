@@ -6,6 +6,12 @@ import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// SCSS config - Vite 7.x types changed but includePaths still works at runtime (same config in chat-hub)
+// Cast needed because Vite 7 types don't expose includePaths but Sass still supports it
+const scssConfig: Record<string, unknown> = {
+  includePaths: [path.resolve(__dirname, '../shared-styles')]
+};
+
 /**
  * Plugin to copy Cloudflare Pages Functions to build output
  * This ensures the functions directory is included in the deployment
@@ -57,9 +63,7 @@ export default defineConfig({
   plugins: [react(), copyFunctionsPlugin()],
   css: {
     preprocessorOptions: {
-      scss: {
-        includePaths: [path.resolve(__dirname, '../shared-styles')]
-      }
+      scss: scssConfig
     }
   },
   resolve: {
@@ -169,7 +173,7 @@ export default defineConfig({
         cookieDomainRewrite: 'localhost',
         cookiePathRewrite: '/',
         configure: (proxy, _options) => {
-          proxy.on('error', (err: NodeJS.ErrnoException, req, res) => {
+          proxy.on('error', (err: NodeJS.ErrnoException, _req, res) => {
             console.error('[Vite Proxy] Mods API proxy error:', err.message);
             // If connection refused, the backend isn't running
             if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
@@ -210,7 +214,7 @@ export default defineConfig({
         cookieDomainRewrite: 'localhost',
         cookiePathRewrite: '/',
         configure: (proxy, _options) => {
-          proxy.on('error', (err: NodeJS.ErrnoException, req, res) => {
+          proxy.on('error', (err: NodeJS.ErrnoException, _req, res) => {
             console.error('[Vite Proxy] Customer API proxy error:', err.message);
             // If connection refused, the backend isn't running
             if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
@@ -250,7 +254,7 @@ export default defineConfig({
         cookieDomainRewrite: 'localhost',
         cookiePathRewrite: '/',
         configure: (proxy, _options) => {
-          proxy.on('error', (err: NodeJS.ErrnoException, req, res) => {
+          proxy.on('error', (err: NodeJS.ErrnoException, _req, res) => {
             console.error('[Vite Proxy] Chat API proxy error:', err.message);
             if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
               if (res && typeof res === 'object' && 'writeHead' in res && 'headersSent' in res && !res.headersSent) {

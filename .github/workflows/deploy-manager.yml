@@ -1387,6 +1387,7 @@ jobs:
           pnpm --filter "@strixun/service-client" run build
           pnpm --filter "@strixun/api-framework" run build
           pnpm --filter "@strixun/auth-store" run build
+          pnpm --filter "@strixun/p2p-storage" run build
           pnpm --filter "@strixun/chat" run build
           pnpm --filter "@strixun/otp-login" run build:react
       
