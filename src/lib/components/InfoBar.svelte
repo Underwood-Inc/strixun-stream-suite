@@ -17,6 +17,7 @@
   import { connected, currentScene } from '../../stores/connection';
   import { animate } from '../../core/animations';
   import { Sources } from '../../modules/sources';
+  import { sortScenesByActivity } from '../../modules/scene-activity';
   
   let sceneList: Array<{ sceneName: string; sceneIndex: number }> = [];
   let hasLoadedScenes = false;
@@ -35,7 +36,8 @@
   async function loadSceneList(): Promise<void> {
     try {
       await Sources.refreshSceneList();
-      sceneList = Sources.allScenes;
+      // Sort scenes by activity (most used first)
+      sceneList = sortScenesByActivity(Sources.allScenes);
       hasLoadedScenes = true;
     } catch (e) {
       console.error('[InfoBar] Failed to load scene list:', e);
@@ -46,7 +48,8 @@
     // Update from Sources module without triggering a full refresh
     const currentScenes = Sources.allScenes;
     if (currentScenes.length > 0) {
-      sceneList = currentScenes;
+      // Sort scenes by activity (most used first)
+      sceneList = sortScenesByActivity(currentScenes);
     }
   }
   

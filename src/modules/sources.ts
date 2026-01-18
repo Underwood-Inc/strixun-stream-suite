@@ -231,6 +231,11 @@ export async function switchToScene(sceneName: string): Promise<void> {
   try {
     await request('SetCurrentProgramScene', { sceneName });
     log(`Switched to scene: ${sceneName}`, 'success');
+    
+    // Track scene activity for sorting
+    const { recordSceneSwitch } = await import('./scene-activity');
+    recordSceneSwitch(sceneName);
+    
     // The scene change will trigger CurrentProgramSceneChanged event which updates the store
   } catch (e) {
     const error = e as Error;

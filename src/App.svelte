@@ -28,6 +28,7 @@
   import { themeSettingsVisible } from './stores/theme-settings';
   
   let hasCompletedPostAuthInit = false;
+  let pageWrapper: HTMLDivElement;
   
   // Initialize app on mount
   onMount(async () => {

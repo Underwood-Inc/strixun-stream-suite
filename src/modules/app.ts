@@ -874,9 +874,25 @@ export function updateConfigIdPreview(): void {
 }
 
 export function getBrowserSourceUrl(configId?: string): string {
-  const currentPath = window.location.pathname;
-  const displayPath = currentPath.replace('control_panel.html', 'text_cycler_display.html');
-  return `file://${displayPath}?id=${configId || 'config1'}`;
+  const location = window.location;
+  let baseUrl = '';
+  
+  // Check if running from file:// protocol (local development)
+  if (location.protocol === 'file:') {
+    // For local development with file:// protocol, try to construct local path
+    const currentPath = location.pathname;
+    const directory = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
+    baseUrl = `file://${directory}text_cycler_display.html`;
+  } else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    // Local dev server - use current origin
+    baseUrl = `${location.origin}/text_cycler_display.html`;
+  } else {
+    // Production - use deployed streamkit domain
+    // This ensures the URL works even when opened in a regular browser (not as OBS dock)
+    baseUrl = 'https://streamkit.idling.app/text_cycler_display.html';
+  }
+  
+  return `${baseUrl}?id=${encodeURIComponent(configId || 'config1')}`;
 }
 
 export function updateBrowserSourceUrlPreview(): void {

@@ -9,8 +9,11 @@ import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModVariant, ModVersion } from '../../types/mod';
 import { MarkdownEditor } from '../common/MarkdownEditor';
+import { FileUploader } from './FileUploader';
 import { getButtonStyles } from '../../utils/buttonStyles';
+import { useModSettings } from '../../hooks/useMods';
 import { createVariant } from '../../services/mods/modVariantsApi';
+import { uploadVariantVersion } from '../../services/mods/modsApi';
 
 const Container = styled.div`
   display: flex;
@@ -131,6 +134,8 @@ const ErrorText = styled.div`
   color: ${colors.danger};
   margin-top: 2px;
 `;
+
+const MAX_MOD_FILE_SIZE = 35 * 1024 * 1024; // 35 MB
 
 interface VersionVariantManagerProps {
     version: ModVersion;
