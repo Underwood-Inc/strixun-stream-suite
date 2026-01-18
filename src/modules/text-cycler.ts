@@ -11,6 +11,7 @@
  */
 
 import { storage } from './storage';
+import * as cloudStorage from './cloud-storage';
 import { connected, sources } from '../stores/connection';
 import { request, getMsgId } from './websocket';
 import { get } from 'svelte/store';
@@ -73,17 +74,31 @@ export function init(deps: Partial<TextCyclerDependencies>): void {
 // ============ Config Management ============
 
 /**
- * Load configs from storage
+ * Load configs from storage (with cloud sync)
  */
 export function loadConfigs(): void {
   textCyclerConfigs = (storage.get('textCyclerConfigs') as TextCyclerConfig[]) || [];
+  // Trigger cloud sync in background (non-blocking)
+  cloudStorage.loadTextCyclerConfigs().then(cloudConfigs => {
+    if (cloudConfigs.length > 0) {
+      textCyclerConfigs = cloudConfigs;
+      renderTextCyclerConfigs();
+    }
+  }).catch(err => {
+    console.warn('[TextCycler] Cloud sync failed:', err);
+  });
 }
 
 /**
- * Save configs to storage
+ * Save configs to storage (local + cloud)
  */
 export function saveTextCyclerConfigs(): void {
   storage.set('textCyclerConfigs', textCyclerConfigs);
+  
+  // Cloud sync (debounced, async)
+  cloudStorage.saveTextCyclerConfigs(textCyclerConfigs).catch(err => {
+    console.warn('[TextCycler] Cloud save failed:', err);
+  });
   
   // OBS dock: debounced save to persistent storage for remote clients
   if (dependencies.isOBSDock() && get(connected)) {

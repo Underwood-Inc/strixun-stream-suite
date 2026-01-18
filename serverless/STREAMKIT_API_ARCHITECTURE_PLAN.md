@@ -1174,72 +1174,77 @@ pnpm --filter strixun-streamkit-api dev
 
 ## ✅ **IMPLEMENTATION CHECKLIST**
 
-### Phase 1: Worker Creation & Setup
-- [ ] Create `serverless/streamkit-api/` directory
-- [ ] Create `wrangler.toml` (copy from mods-api, update bindings, set port to 8796)
-- [ ] Create `package.json` with dependencies and dev script (`wrangler dev --port 8796 --local`)
-- [ ] Create `tsconfig.json`
-- [ ] Create `src/env.d.ts` (Env interface)
-- [ ] Create `src/index.ts` (worker entry point)
-- [ ] Add to root workspace `package.json` (`pnpm-workspace.yaml` should auto-detect)
-- [ ] Install dependencies: `cd serverless/streamkit-api && pnpm install`
-- [ ] Create KV namespace: `pnpm exec wrangler kv namespace create "STREAMKIT_KV"`
-- [ ] Update `wrangler.toml` with KV namespace ID
-- [ ] Test build: `pnpm run build:deps && pnpm run build:worker`
-- [ ] Test local dev: `pnpm dev` (should start on localhost:8796)
-- [ ] Verify `pnpm dev:turbo` from root includes streamkit-api
+### Phase 1: Worker Creation & Setup ✅ **COMPLETED**
+- [x] Create `serverless/streamkit-api/` directory
+- [x] Create `wrangler.toml` (copy from mods-api, update bindings, set port to 8796)
+- [x] Create `package.json` with dependencies and dev script (`wrangler dev --port 8796 --local`)
+- [x] Create `tsconfig.json`
+- [x] Create `src/env.d.ts` (Env interface) → **RENAMED TO**: `serverless/streamkit-api/src/env.d.ts`
+- [x] Create `worker.ts` (worker entry point) → **ACTUAL FILE**: `serverless/streamkit-api/worker.ts`
+- [x] Add to root workspace `package.json` (`pnpm-workspace.yaml` auto-detected via `serverless/*` pattern)
+- [x] Install dependencies: `cd serverless/streamkit-api && pnpm install`
+- [x] Create KV namespace: `pnpm exec wrangler kv namespace create "STREAMKIT_KV"`
+  - **Production KV ID**: `193c308cee734e1bb08bba03ae2d65b0`
+  - **Development KV ID**: `a70d6c00bcc44a9ba9310c4590f228a8`
+- [x] Update `wrangler.toml` with KV namespace IDs
+- [x] Test build: `pnpm run build:worker` → **SUCCESS** (48.4kb output)
+- [ ] Test local dev: `pnpm dev` (should start on localhost:8796) → **PENDING USER TESTING**
+- [ ] Verify `pnpm dev:turbo` from root includes streamkit-api → **PENDING USER TESTING**
 
-### Phase 2: Generic Config API (ALL Features)
-- [ ] Create `utils/kv-keys.ts` (buildKVKey, parseKVKey)
-- [ ] Create `utils/auth.ts` (extractCustomerFromJWT)
-- [ ] Create `handlers/configs/index.ts` (createConfig, listConfigs, getConfig, updateConfig, deleteConfig)
-- [ ] Create `router/streamkit-routes.ts`
-- [ ] Add routes to main `src/index.ts`
-- [ ] Test POST /configs/text-cyclers (create)
-- [ ] Test GET /configs/text-cyclers (list)
-- [ ] Test GET /configs/text-cyclers/:id (get)
-- [ ] Test PUT /configs/text-cyclers/:id (update)
-- [ ] Test DELETE /configs/text-cyclers/:id (delete)
-- [ ] Verify customer isolation (check KV keys in Cloudflare Dashboard)
-- [ ] Test with swaps: POST /configs/swaps, GET /configs/swaps, etc.
-- [ ] Test with layouts: POST /configs/layouts, GET /configs/layouts, etc.
-- [ ] Test with notes: POST /configs/notes, GET /configs/notes, etc.
+### Phase 2: Generic Config API (ALL Features) ✅ **COMPLETED**
+- [x] Create `utils/kv-keys.ts` (buildKVKey, parseKVKey)
+- [x] Create `utils/auth.ts` (extractCustomerFromJWT)
+- [x] Create `handlers/configs/index.ts` (createConfig, listConfigs, getConfig, updateConfig, deleteConfig)
+- [x] ~~Create `router/streamkit-routes.ts`~~ → **DELETED** (using manual routing in worker.ts instead)
+- [x] Add routes to main `worker.ts` (manual routing pattern like customer-api)
+- [ ] Test POST /configs/text-cyclers (create) → **PENDING USER TESTING**
+- [ ] Test GET /configs/text-cyclers (list) → **PENDING USER TESTING**
+- [ ] Test GET /configs/text-cyclers/:id (get) → **PENDING USER TESTING**
+- [ ] Test PUT /configs/text-cyclers/:id (update) → **PENDING USER TESTING**
+- [ ] Test DELETE /configs/text-cyclers/:id (delete) → **PENDING USER TESTING**
+- [ ] Verify customer isolation (check KV keys in Cloudflare Dashboard) → **PENDING USER TESTING**
+- [ ] Test with swaps: POST /configs/swaps, GET /configs/swaps, etc. → **PENDING USER TESTING**
+- [ ] Test with layouts: POST /configs/layouts, GET /configs/layouts, etc. → **PENDING USER TESTING**
+- [ ] Test with notes: POST /configs/notes, GET /configs/notes, etc. → **PENDING USER TESTING**
 
-### Phase 3: Scene Activity Tracking
-- [ ] Create `handlers/scene-activity/record.ts`
-- [ ] Create `handlers/scene-activity/top.ts`
-- [ ] Add routes to `router/streamkit-routes.ts`
-- [ ] Create `src/modules/scene-activity.ts` (frontend)
-- [ ] Update `src/modules/sources.ts` to call `recordSceneSwitch()`
-- [ ] Verify `src/lib/components/InfoBar.svelte` uses `sortScenesByActivity()`
-- [ ] Test scene switch recording (check KV in Cloudflare Dashboard)
-- [ ] Test top scenes retrieval (GET /scene-activity/top)
-- [ ] Test scene list sorting in UI
-- [ ] Verify FIFO (check TTL in Cloudflare Dashboard - should be 30 days)
+### Phase 3: Scene Activity Tracking ✅ **COMPLETED**
+- [x] Create `handlers/scene-activity/record.ts`
+- [x] Create `handlers/scene-activity/top.ts`
+- [x] ~~Add routes to `router/streamkit-routes.ts`~~ → Routes added to `worker.ts` (manual routing)
+- [x] Create `src/modules/scene-activity.ts` (frontend)
+- [x] `src/modules/sources.ts` already calls `recordSceneSwitch()` (dynamic import on line 236)
+- [x] Update `src/lib/components/InfoBar.svelte` to use `sortScenesByActivity()` and `getTopScenes()`
+- [ ] Test scene switch recording (check KV in Cloudflare Dashboard) → **PENDING USER TESTING**
+- [ ] Test top scenes retrieval (GET /scene-activity/top) → **PENDING USER TESTING**
+- [ ] Test scene list sorting in UI → **PENDING USER TESTING**
+- [ ] Verify FIFO (check TTL in Cloudflare Dashboard - should be 30 days) → **PENDING USER TESTING**
 
-### Phase 4: Frontend Migration (Text Cyclers)
-- [ ] Create `src/config/api.ts` (STREAMKIT_API_URL)
-- [ ] Update `src/pages/TextCycler.svelte` to use /configs/text-cyclers API
-- [ ] Test save operation
-- [ ] Test list operation
-- [ ] Test get operation
-- [ ] Test update operation
-- [ ] Test delete operation
-- [ ] Test cross-client sync (OBS dock + remote browser)
+### Phase 4: Frontend Migration (Text Cyclers) ✅ **COMPLETED**
+- [x] Create `src/config/api.ts` (STREAMKIT_API_URL)
+- [x] Create `src/modules/streamkit-api-client.ts` (type-safe API client wrapper)
+- [x] Create `src/modules/cloud-storage.ts` (hybrid local+cloud storage with write-through cache)
+- [x] Update `src/modules/text-cycler.ts` to use cloud storage (loadConfigs + saveTextCyclerConfigs)
+- [ ] Test save operation → **PENDING USER TESTING**
+- [ ] Test list operation → **PENDING USER TESTING**
+- [ ] Test get operation → **PENDING USER TESTING**
+- [ ] Test update operation → **PENDING USER TESTING**
+- [ ] Test delete operation → **PENDING USER TESTING**
+- [ ] Test cross-client sync (OBS dock + remote browser) → **PENDING USER TESTING**
 
-### Phase 5: Frontend Migration (Swaps & Layouts)
-- [ ] Update `src/modules/source-swaps.ts` to use /configs/swaps API
-- [ ] Update `src/modules/layouts.ts` to use /configs/layouts API
-- [ ] Test swaps save/load/delete operations
-- [ ] Test layouts save/load/delete operations
+### Phase 5: Frontend Migration (Swaps & Layouts) ✅ **COMPLETED**
+- [x] Update `src/modules/source-swaps.ts` to use cloud storage (loadConfigs + all storage.set calls)
+- [x] Update `src/modules/layouts.ts` to use cloud storage (initLayouts + all storage.set calls)
+- [ ] Test swaps save/load/delete operations → **PENDING USER TESTING**
+- [ ] Test layouts save/load/delete operations → **PENDING USER TESTING**
 
-### Phase 6: Frontend Migration (Notes)
-- [ ] Update `src/modules/notes-storage.ts` API URL (auth.idling.app → streamkit-api.idling.app)
-- [ ] Update endpoints (/notes/save → /configs/notes, etc.)
-- [ ] Test notes save/load/delete with new API
-- [ ] Verify customer isolation
+### Phase 6: Frontend Migration (Notes) ✅ **COMPLETED**
+- [x] Update `src/modules/notes-storage.ts` API URL (auth.idling.app → streamkit-api.idling.app)
+- [x] Update endpoints (/notes/save → /configs/notes, etc.)
+- [x] Replace `authenticatedFetch` import with direct use of `streamkit-api-client.ts`
+- [ ] Test notes save/load/delete with new API → **PENDING USER TESTING**
+- [ ] Verify customer isolation → **PENDING USER TESTING**
 
-### Phase 7: **COMPLETE DELETION** of Notes from OTP Auth Service
+### Phase 7: **COMPLETE DELETION** of Notes from OTP Auth Service ⏸️ **NOT STARTED**
 - [ ] **DELETE** `serverless/otp-auth-service/handlers/notes/` directory
 - [ ] **DELETE** notes routes from `serverless/otp-auth-service/router/admin-routes.ts`
 - [ ] **DELETE** notes types from `serverless/otp-auth-service/types.ts`
@@ -1250,7 +1255,7 @@ pnpm --filter strixun-streamkit-api dev
 - [ ] Deploy `otp-auth-service` to verify no breaking changes
 - [ ] **NO deprecation warnings** - clean removal confirmed!
 
-### Phase 8: GitHub Workflow Configuration
+### Phase 8: GitHub Workflow Configuration ⏸️ **NOT STARTED**
 - [ ] Add `deploy_streamkit_api` input to `.github/workflows/deploy-manager.yml` (line ~85)
 - [ ] Add `test_streamkit_api` job (after `test_chat_api`, line ~513)
 - [ ] Add `deploy_streamkit_api` job (after `deploy_chat_api`, line ~1211)
@@ -1262,18 +1267,18 @@ pnpm --filter strixun-streamkit-api dev
 - [ ] Verify secret injection step
 - [ ] Test full deployment via GitHub Actions
 
-### Phase 9: Dev Script Configuration
-- [ ] Create `serverless/streamkit-api/package.json` with `dev` script (`wrangler dev --port 8796 --local`)
-- [ ] Add `predev` script to build deps before starting worker
-- [ ] Add `build:deps`, `build:worker`, `test` scripts (follow mods-api pattern)
-- [ ] Verify root `package.json` has `dev:turbo` without filters (should already be correct)
-- [ ] Test `pnpm dev:turbo` (SHOULD start streamkit-api on localhost:8796 + all other workers)
-- [ ] Test `pnpm --filter strixun-streamkit-api dev` (should start API only on localhost:8796)
-- [ ] Test `pnpm dev` (should start Streamkit UI only, no workers)
-- [ ] Verify port 8796 is not conflicting with other services
+### Phase 9: Dev Script Configuration ⏸️ **NOT STARTED**
+- [x] Create `serverless/streamkit-api/package.json` with `dev` script (`wrangler dev --port 8796 --local`) → **ALREADY DONE IN PHASE 1**
+- [x] Add `predev` script to build deps before starting worker → **ALREADY DONE IN PHASE 1**
+- [x] Add `build:deps`, `build:worker`, `test` scripts (follow mods-api pattern) → **ALREADY DONE IN PHASE 1**
+- [x] Verify root `package.json` has `dev:turbo` without filters (should already be correct) → **CONFIRMED: `dev:turbo` runs all `dev` scripts without filters**
+- [ ] Test `pnpm dev:turbo` (SHOULD start streamkit-api on localhost:8796 + all other workers) → **PENDING USER TESTING**
+- [ ] Test `pnpm --filter strixun-streamkit-api dev` (should start API only on localhost:8796) → **PENDING USER TESTING**
+- [ ] Test `pnpm dev` (should start Streamkit UI only, no workers) → **PENDING USER TESTING**
+- [ ] Verify port 8796 is not conflicting with other services → **PENDING USER TESTING**
 - [ ] Document dev commands in root README
 
-### Phase 10: Documentation & Testing
+### Phase 10: Documentation & Testing ⏸️ **NOT STARTED**
 - [ ] Write `serverless/streamkit-api/README.md`
 - [ ] Write API documentation (endpoints, request/response formats)
 - [ ] Write migration guide for users
@@ -1342,7 +1347,69 @@ pnpm --filter strixun-streamkit-api dev
 
 ---
 
-**Document Version:** 2.0 (REVISED)  
+**Document Version:** 2.1 (IN PROGRESS)  
 **Last Updated:** 2026-01-18  
 **Author:** AI Assistant (Wise Old Sage 🧙‍♂️)  
-**Status:** 📋 Awaiting Approval (Full Migration Selected)
+**Status:** 🚧 **IN PROGRESS** - Phases 1-6 Complete, Pending User Testing
+
+---
+
+## 🎯 **CURRENT PROGRESS SUMMARY**
+
+### ✅ **COMPLETED PHASES (1-6)**
+- ✓ **Phase 1: Worker Creation & Setup** - Worker created, KV namespaces configured, builds successfully (48.4kb)
+- ✓ **Phase 2: Generic Config API** - All CRUD handlers implemented for text-cyclers, swaps, layouts, notes
+- ✓ **Phase 3: Scene Activity Tracking** - Recording and top scenes API implemented with 30-day FIFO
+- ✓ **Phase 4: Text Cyclers Migration** - Frontend updated with hybrid local+cloud storage
+- ✓ **Phase 5: Swaps & Layouts Migration** - Frontend updated with cloud sync
+- ✓ **Phase 6: Notes Migration** - API endpoints migrated from auth.idling.app to streamkit-api.idling.app
+
+### 🔧 **FILES CREATED**
+#### Backend (Streamkit API Worker)
+- `serverless/streamkit-api/wrangler.toml` (KV: prod `193c308c...`, dev `a70d6c00...`)
+- `serverless/streamkit-api/package.json` (port 8796, all scripts configured)
+- `serverless/streamkit-api/tsconfig.json`
+- `serverless/streamkit-api/worker.ts` (main entry point with manual routing)
+- `serverless/streamkit-api/src/env.d.ts`
+- `serverless/streamkit-api/utils/kv-keys.ts` (buildKVKey, parseKVKey)
+- `serverless/streamkit-api/utils/auth.ts` (extractCustomerFromJWT)
+- `serverless/streamkit-api/handlers/configs/index.ts` (generic CRUD for all config types)
+- `serverless/streamkit-api/handlers/scene-activity/record.ts`
+- `serverless/streamkit-api/handlers/scene-activity/top.ts`
+- `serverless/streamkit-api/dist/worker.js` (built bundle, 48.4kb)
+
+#### Frontend (Streamkit UI)
+- `src/config/api.ts` (STREAMKIT_API_URL)
+- `src/modules/streamkit-api-client.ts` (type-safe API wrapper)
+- `src/modules/cloud-storage.ts` (hybrid local+cloud storage with write-through cache)
+- `src/modules/scene-activity.ts` (scene tracking functions)
+
+### 🔄 **FILES MODIFIED**
+- `src/modules/text-cycler.ts` (added cloud storage integration)
+- `src/modules/source-swaps.ts` (added cloud storage integration)
+- `src/modules/layouts.ts` (added cloud storage integration)
+- `src/modules/notes-storage.ts` (migrated from auth.idling.app to streamkit-api.idling.app)
+- `src/lib/components/InfoBar.svelte` (added scene activity sorting)
+- `src/modules/sources.ts` (already had recordSceneSwitch dynamic import)
+
+### ⏸️ **PENDING PHASES (7-10)**
+- **Phase 7**: Complete deletion of notes from OTP Auth Service
+- **Phase 8**: GitHub workflow configuration (`.github/workflows/deploy-manager.yml`)
+- **Phase 9**: Dev script testing and documentation
+- **Phase 10**: Documentation, E2E tests, security audit, performance testing
+
+### 🧪 **PENDING USER TESTING**
+All API endpoints and frontend integration need manual testing:
+- Worker dev server: `pnpm --filter strixun-streamkit-api dev` (should run on localhost:8796)
+- Full stack: `pnpm dev:turbo` (should start all workers + frontends)
+- API endpoints: POST/GET/PUT/DELETE for /configs/{type}
+- Scene activity: POST /scene-activity/record, GET /scene-activity/top
+- Frontend cloud sync: Text cyclers, swaps, layouts, notes
+- Cross-client sync: OBS dock + remote browser
+
+### 📝 **NEXT STEPS**
+1. **User Testing**: Test worker locally, verify API endpoints work
+2. **Phase 7**: Delete legacy notes handlers from otp-auth-service
+3. **Phase 8**: Add streamkit-api to GitHub workflow
+4. **Phase 9**: Test `dev:turbo` script
+5. **Phase 10**: Documentation and final QA

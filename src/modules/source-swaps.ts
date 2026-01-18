@@ -12,6 +12,7 @@
  */
 
 import { storage } from './storage';
+import * as cloudStorage from './cloud-storage';
 import { connected, currentScene, sources } from '../stores/connection';
 import { request } from './websocket';
 import { get } from 'svelte/store';
@@ -700,6 +701,7 @@ export function saveCurrentSwap(): void {
   
   swapConfigs.push({ name, sourceA: nameA, sourceB: nameB });
   storage.set('swapConfigs', swapConfigs);
+  cloudStorage.saveSwapConfigs(swapConfigs).catch(err => console.warn('[Swaps] Cloud save failed:', err));
   renderSavedSwaps();
   
   // Emit EventBus event (new architecture)
@@ -756,6 +758,7 @@ export function addSwapConfig(
   
   swapConfigs.push(config);
   storage.set('swapConfigs', swapConfigs);
+  cloudStorage.saveSwapConfigs(swapConfigs).catch(err => console.warn('[Swaps] Cloud save failed:', err));
   renderSavedSwaps();
 }
 
@@ -765,6 +768,7 @@ export function addSwapConfig(
 export function deleteSwapConfig(index: number): void {
   swapConfigs.splice(index, 1);
   storage.set('swapConfigs', swapConfigs);
+  cloudStorage.saveSwapConfigs(swapConfigs).catch(err => console.warn('[Swaps] Cloud save failed:', err));
   renderSavedSwaps();
   
   // Emit EventBus event (new architecture)
@@ -845,6 +849,7 @@ export function importConfigs(): void {
     }
     
     storage.set('swapConfigs', swapConfigs);
+  cloudStorage.saveSwapConfigs(swapConfigs).catch(err => console.warn('[Swaps] Cloud save failed:', err));
     renderSavedSwaps();
     
     // Emit EventBus event (new architecture)
@@ -985,10 +990,19 @@ export function renderDashSwaps(): void {
 }
 
 /**
- * Load configs from storage
+ * Load configs from storage (with cloud sync)
  */
 export function loadConfigs(): void {
   swapConfigs = (storage.get('swapConfigs') as SwapConfig[]) || [];
+  // Trigger cloud sync in background (non-blocking)
+  cloudStorage.loadSwapConfigs().then(cloudConfigs => {
+    if (cloudConfigs.length > 0) {
+      swapConfigs = cloudConfigs;
+      renderSavedSwaps();
+    }
+  }).catch(err => {
+    console.warn('[Swaps] Cloud sync failed:', err);
+  });
 }
 
 /**

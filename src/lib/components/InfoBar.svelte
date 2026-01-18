@@ -17,10 +17,11 @@
   import { connected, currentScene } from '../../stores/connection';
   import { animate } from '../../core/animations';
   import { Sources } from '../../modules/sources';
-  import { sortScenesByActivity } from '../../modules/scene-activity';
+  import { sortScenesByActivity, getTopScenes } from '../../modules/scene-activity';
   
   let sceneList: Array<{ sceneName: string; sceneIndex: number }> = [];
   let hasLoadedScenes = false;
+  let activityData: Array<{ sceneName: string; count: number }> = [];
   
   // Load scene list when connected (only once, or when connection is re-established)
   $: if ($connected && !hasLoadedScenes) {
@@ -36,20 +37,24 @@
   async function loadSceneList(): Promise<void> {
     try {
       await Sources.refreshSceneList();
+      // Fetch scene activity data from API
+      activityData = await getTopScenes(20);
       // Sort scenes by activity (most used first)
-      sceneList = sortScenesByActivity(Sources.allScenes);
+      sceneList = sortScenesByActivity(Sources.allScenes, activityData);
       hasLoadedScenes = true;
     } catch (e) {
       console.error('[InfoBar] Failed to load scene list:', e);
     }
   }
   
-  function updateSceneList(): void {
+  async function updateSceneList(): Promise<void> {
     // Update from Sources module without triggering a full refresh
     const currentScenes = Sources.allScenes;
     if (currentScenes.length > 0) {
+      // Re-fetch activity data for up-to-date sorting
+      activityData = await getTopScenes(20);
       // Sort scenes by activity (most used first)
-      sceneList = sortScenesByActivity(currentScenes);
+      sceneList = sortScenesByActivity(currentScenes, activityData);
     }
   }
   

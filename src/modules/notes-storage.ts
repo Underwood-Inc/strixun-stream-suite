@@ -1,11 +1,11 @@
 /**
  * Notes Storage Module
  * 
- * Cloud-only storage for notes/notebooks
+ * Cloud-only storage for notes/notebooks via Streamkit API
  * All operations require authentication
  */
 
-import { authenticatedFetch } from '../stores/auth';
+import * as API from './streamkit-api-client';
 
 export interface NotebookMetadata {
   id: string;
@@ -33,21 +33,20 @@ export async function saveNotebook(
   content: string | object,
   metadata: { title: string; createdAt?: string }
 ): Promise<void> {
-  const response = await authenticatedFetch('/notes/save', {
-    method: 'POST',
-    body: JSON.stringify({
-      notebookId,
-      content,
-      metadata: {
-        ...metadata,
-        lastEdited: new Date().toISOString(),
-      },
-    }),
-  });
+  const noteData = {
+    id: notebookId,
+    title: metadata.title,
+    content: typeof content === 'string' ? content : JSON.stringify(content),
+    createdAt: metadata.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
   
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to save notebook');
+  try {
+    // Try to update existing note
+    await API.notes.update(notebookId, noteData);
+  } catch (err) {
+    // If update fails (note doesn't exist), create it
+    await API.notes.create(noteData);
   }
 }
 
@@ -55,19 +54,17 @@ export async function saveNotebook(
  * Load notebook from cloud
  */
 export async function loadNotebook(notebookId: string): Promise<Notebook> {
-  const response = await authenticatedFetch(`/notes/load?notebookId=${encodeURIComponent(notebookId)}`);
+  const data = await API.notes.get(notebookId);
   
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to load notebook');
-  }
-  
-  const data = await response.json();
   return {
-    notebookId: data.notebookId,
+    notebookId: data.id,
     content: data.content,
-    metadata: data.metadata,
-    timestamp: data.timestamp,
+    metadata: {
+      title: data.title,
+      lastEdited: data.updatedAt,
+      createdAt: data.createdAt,
+    },
+    timestamp: data.updatedAt,
   };
 }
 
@@ -75,28 +72,20 @@ export async function loadNotebook(notebookId: string): Promise<Notebook> {
  * List notebooks from cloud
  */
 export async function listNotebooks(): Promise<NotebookMetadata[]> {
-  const response = await authenticatedFetch('/notes/list');
+  const notes = await API.notes.list();
   
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to list notebooks');
-  }
-  
-  const data = await response.json();
-  return data.notebooks || [];
+  return notes.map(note => ({
+    id: note.id,
+    title: note.title,
+    lastEdited: note.updatedAt,
+    createdAt: note.createdAt,
+  }));
 }
 
 /**
  * Delete notebook from cloud
  */
 export async function deleteNotebook(notebookId: string): Promise<void> {
-  const response = await authenticatedFetch(`/notes/delete?notebookId=${encodeURIComponent(notebookId)}`, {
-    method: 'DELETE',
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to delete notebook');
-  }
+  await API.notes.delete(notebookId);
 }
 
