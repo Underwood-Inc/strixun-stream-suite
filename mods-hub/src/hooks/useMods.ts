@@ -271,13 +271,27 @@ export function useUploadVersion() {
             modId: string;
             file: File;
             metadata: VersionUploadRequest;
+            slug?: string;
         }) => api.uploadVersion(modId, file, metadata),
-        onSuccess: (_data, variables) => {
+        onSuccess: (data, variables) => {
+            // Invalidate by both modId and slug (if provided)
             queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
+            if (variables.slug) {
+                queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.slug) });
+            }
+            
             addNotification({
                 message: 'Version uploaded successfully!',
                 type: 'success',
             });
+            
+            // Smooth scroll to the new version after queries refetch
+            setTimeout(() => {
+                const versionElement = document.querySelector(`[data-version-id="${data.versionId}"]`);
+                if (versionElement) {
+                    versionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 500); // Wait for refetch to complete
         },
         onError: (error: Error) => {
             addNotification({

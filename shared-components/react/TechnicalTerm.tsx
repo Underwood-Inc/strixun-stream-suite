@@ -31,7 +31,7 @@
  * </TechnicalTerm>
  */
 
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { Tooltip } from './Tooltip';
 import styled from 'styled-components';
 
