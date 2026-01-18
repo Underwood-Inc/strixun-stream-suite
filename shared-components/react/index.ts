@@ -4,6 +4,9 @@ export type { PortalSelectProps, PortalSelectOption, PortalSelectTheme } from '.
 export { Tooltip } from './Tooltip.js';
 export type { TooltipProps, TooltipTheme } from './Tooltip.js';
 
+export { TechnicalTerm } from './TechnicalTerm.js';
+export type { TechnicalTermProps } from './TechnicalTerm.js';
+
 export { InteractiveThumbnail } from './InteractiveThumbnail.js';
 export type { InteractiveThumbnailProps, InteractiveThumbnailTheme } from './InteractiveThumbnail.js';
 
@@ -20,3 +23,7 @@ export type { InfoModalProps } from './InfoModal';
 
 export { DataTable } from './DataTable';
 export type { DataTableColumn, DataTableProps } from './DataTable';
+
+export { FooterBrand } from './FooterBrand';
+export { FooterContainer } from './FooterContainer';
+export { default as StrixunSuiteLink } from './StrixunSuiteLink';

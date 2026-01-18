@@ -7,6 +7,8 @@ import { useState, useEffect } from 'react';
 import { apiClient, type ShortUrl } from '../lib/api-client';
 import { Tooltip } from '@shared-components/react/Tooltip';
 import { ConfirmationModal } from '../components/ConfirmationModal';
+import { FooterContainer, FooterBrand } from '@shared-components/react';
+import StrixunSuiteLink from '@shared-components/react/StrixunSuiteLink';
 
 interface UrlManagerProps {
   userDisplayName: string | null;
@@ -327,6 +329,19 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
         confirmText="Delete"
         cancelText="Cancel"
       />
+
+      <FooterContainer>
+        <FooterBrand
+          serviceName="URL Shortener"
+          description="Custom URL shortening service"
+        />
+        <div style={{ textAlign: 'center', margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-secondary, #b8b8b8)' }}>
+          Part of the <StrixunSuiteLink />
+        </div>
+        <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted, #888)' }}>
+          &copy; {new Date().getFullYear()} Strixun. All rights reserved.
+        </div>
+      </FooterContainer>
     </div>
   );
 }

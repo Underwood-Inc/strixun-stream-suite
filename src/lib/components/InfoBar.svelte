@@ -6,8 +6,8 @@
    * Positioned between header and navigation.
    * 
    * Features:
-   * - Current scene display
-   * - Quick scene swap buttons
+   * - Current scene display with smart picker
+   * - Quick scene swap buttons (sorted by activity)
    * - Horizontal scrolling for multiple info items
    * - Animated value updates
    * - Connection status awareness
@@ -18,10 +18,14 @@
   import { animate } from '../../core/animations';
   import { Sources } from '../../modules/sources';
   import { sortScenesByActivity, getTopScenes } from '../../modules/scene-activity';
+  import ScenePicker from './ScenePicker.svelte';
   
   let sceneList: Array<{ sceneName: string; sceneIndex: number }> = [];
   let hasLoadedScenes = false;
   let activityData: Array<{ sceneName: string; count: number }> = [];
+  let scenePickerVisible = false;
+  let scenePickerContainer: HTMLDivElement;
+  let scenePickerTrigger: HTMLButtonElement;
   
   // Load scene list when connected (only once, or when connection is re-established)
   $: if ($connected && !hasLoadedScenes) {
@@ -37,10 +41,26 @@
   async function loadSceneList(): Promise<void> {
     try {
       await Sources.refreshSceneList();
+      console.log('[InfoBar] Raw scenes from OBS:', Sources.allScenes);
+      
       // Fetch scene activity data from API
       activityData = await getTopScenes(20);
-      // Sort scenes by activity (most used first)
+      console.log('[InfoBar] Activity data from API:', activityData);
+      
+      // Sort scenes by activity (most used first), with OBS order as tiebreaker
+      const beforeSort = [...Sources.allScenes];
       sceneList = sortScenesByActivity(Sources.allScenes, activityData);
+      
+      console.log('[InfoBar] BEFORE sort (OBS order):', 
+        beforeSort.map(s => `${s.sceneName} [idx:${s.sceneIndex}]`)
+      );
+      console.log('[InfoBar] AFTER sort (activity-based):', 
+        sceneList.map(s => {
+          const activity = activityData.find(a => a.sceneName === s.sceneName);
+          return `${s.sceneName} [idx:${s.sceneIndex}, count:${activity?.count || 0}]`;
+        })
+      );
+      
       hasLoadedScenes = true;
     } catch (e) {
       console.error('[InfoBar] Failed to load scene list:', e);
@@ -52,15 +72,40 @@
     const currentScenes = Sources.allScenes;
     if (currentScenes.length > 0) {
       // Re-fetch activity data for up-to-date sorting
-      activityData = await getTopScenes(20);
-      // Sort scenes by activity (most used first)
-      sceneList = sortScenesByActivity(currentScenes, activityData);
+      try {
+        const beforeSort = [...currentScenes];
+        activityData = await getTopScenes(20);
+        
+        // Sort scenes by activity (most used first), with OBS order as tiebreaker
+        sceneList = sortScenesByActivity(currentScenes, activityData);
+        
+        console.log('[InfoBar] Updated scene list - BEFORE:', 
+          beforeSort.map(s => `${s.sceneName} [idx:${s.sceneIndex}]`)
+        );
+        console.log('[InfoBar] Updated scene list - AFTER:', 
+          sceneList.map(s => {
+            const activity = activityData.find(a => a.sceneName === s.sceneName);
+            return `${s.sceneName} [idx:${s.sceneIndex}, count:${activity?.count || 0}]`;
+          })
+        );
+      } catch (e) {
+        console.warn('[InfoBar] Failed to fetch activity data, using unsorted list:', e);
+        sceneList = currentScenes;
+      }
     }
   }
   
   async function handleSceneSwitch(sceneName: string): Promise<void> {
     await Sources.switchToScene(sceneName);
     // Scene list will update automatically via the reactive statement when currentScene changes
+  }
+  
+  function toggleScenePicker() {
+    scenePickerVisible = !scenePickerVisible;
+  }
+  
+  function handleScenePickerSelect(event: CustomEvent<string>) {
+    handleSceneSwitch(event.detail);
   }
   
   onMount(() => {
@@ -71,28 +116,42 @@
 </script>
 
 <div class="info-bar">
+  <!-- Fixed "Current Scene:" section (doesn't scroll) -->
+  <div class="info-item info-item--fixed" bind:this={scenePickerContainer}>
+    <span class="info-item__label">Current Scene:</span>
+    {#if $connected && $currentScene}
+      <button
+        bind:this={scenePickerTrigger}
+        class="info-item__value info-item__value--active info-item__value--clickable"
+        on:click={toggleScenePicker}
+        title="Click to open scene picker"
+        use:animate={{
+          preset: 'pulse',
+          duration: 400,
+          easing: 'easeOutCubic',
+          id: 'info-scene-value',
+          trigger: 'change',
+          enabled: $connected && $currentScene
+        }}
+      >
+        {$currentScene}
+        <span class="info-item__dropdown-icon">▼</span>
+      </button>
+      
+      <ScenePicker
+        visible={scenePickerVisible}
+        currentSceneName={$currentScene}
+        triggerElement={scenePickerTrigger}
+        on:select={handleScenePickerSelect}
+        on:close={() => scenePickerVisible = false}
+      />
+    {:else}
+      <span class="info-item__value info-item__value--inactive">Not connected</span>
+    {/if}
+  </div>
+  
+  <!-- Scrollable scene buttons section -->
   <div class="info-bar__content">
-    <div class="info-item">
-      <span class="info-item__label">Current Scene:</span>
-      {#if $connected && $currentScene}
-        <span 
-          class="info-item__value info-item__value--active"
-          use:animate={{
-            preset: 'pulse',
-            duration: 400,
-            easing: 'easeOutCubic',
-            id: 'info-scene-value',
-            trigger: 'change',
-            enabled: $connected && $currentScene
-          }}
-        >
-          {$currentScene}
-        </span>
-      {:else}
-        <span class="info-item__value info-item__value--inactive">Not connected</span>
-      {/if}
-    </div>
-    
     {#if $connected && sceneList.length > 0}
       <div class="scene-swap-buttons">
         {#each sceneList as scene}
@@ -107,8 +166,6 @@
         {/each}
       </div>
     {/if}
-    
-    <!-- Future info items can be added here for horizontal scrolling -->
   </div>
 </div>
 
@@ -119,8 +176,19 @@
     background: var(--bg-dark);
     border-bottom: 1px solid var(--border);
     padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    @include gpu-accelerated;
+  }
+  
+  .info-bar__content {
+    display: flex;
+    gap: 24px;
+    align-items: center;
     overflow-x: auto;
     overflow-y: hidden;
+    flex: 1;
     @include gpu-accelerated;
     
     // Custom scrollbar styling (horizontal scrollbar - thinner)
@@ -151,19 +219,19 @@
     scrollbar-color: var(--border) transparent;
   }
   
-  .info-bar__content {
-    display: flex;
-    gap: 24px;
-    align-items: center;
-    min-width: max-content;
-  }
-  
   .info-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 8px;
     white-space: nowrap;
     flex-shrink: 0;
+    
+    &.info-item--fixed {
+      // Fixed position - doesn't scroll
+      flex-shrink: 0;
+      z-index: 10; // Above scrollable content, below dropdown
+    }
   }
   
   .info-item .info-item__label {
@@ -175,6 +243,31 @@
   .info-item .info-item__value {
     font-size: 0.9em;
     font-weight: 600;
+    
+    &.info-item__value--clickable {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        background: rgba(237, 174, 73, 0.1);
+        border-color: var(--accent);
+        
+        .info-item__dropdown-icon {
+          transform: translateY(1px);
+        }
+      }
+      
+      &:active {
+        transform: scale(0.98);
+      }
+    }
   }
   
   .info-item .info-item__value--active {
@@ -184,6 +277,12 @@
   .info-item .info-item__value--inactive {
     color: var(--muted);
     font-style: italic;
+  }
+  
+  .info-item__dropdown-icon {
+    font-size: 0.7em;
+    opacity: 0.7;
+    transition: transform 0.2s ease;
   }
   
   .scene-swap-buttons {

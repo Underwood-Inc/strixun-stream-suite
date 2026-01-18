@@ -20,10 +20,10 @@
       image: `${BASE_URL}rituals-brand.png`
     },
     {
-      title: 'strixun | Pack A',
-      description: 'Dive into my personal mega-pack with a massive collection of mods, all carefully curated for balanced progression and immersive gameplay. My Rituals mod combined with the gamerules disable raids true and disable health regen true are advised.',
-      url: 'https://modrinth.com/modpack/strixun-pack-a',
-      slug: 'strixun-pack-a',
+      title: 'Strixun: Trials of the Wild',
+      description: 'Hardcore survival modpack with ~250 mods, all carefully curated for balanced progression and immersive gameplay covering categories such as exploration, levels, magic, combat, and world-overhaul mods. Includes Rituals for totem magic, buffs, farming, and defences, plus Compressy for massive block storage. Optional no-regen/no-raids gamerules & simpleskills ironman mode enabled for true hardcore players.',
+      url: 'https://modrinth.com/modpack/strixun-trials-of-the-wild',
+      slug: 'strixun-trials-of-the-wild',
       image: `${BASE_URL}strixun-pack-a-brand.png`
     },
     {
@@ -32,7 +32,7 @@
       url: 'https://modrinth.com/mod/compressy',
       slug: 'compressy',
       image: `${BASE_URL}compressy-brand.png`,
-      status: 'Under review'
+      // status: 'Under review'
     }
   ];
 </script>

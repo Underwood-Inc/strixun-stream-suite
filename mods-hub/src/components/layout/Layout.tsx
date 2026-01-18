@@ -9,6 +9,8 @@ import { NotificationContainer } from './NotificationContainer';
 import { useAuthStore } from '../../stores/auth';
 import { colors, spacing, media } from '../../theme';
 import { getSeasonalAnimationCSS } from '../../utils/seasonalAnimations';
+import { FooterContainer, FooterBrand } from '../../../../shared-components/react';
+import StrixunSuiteLink from '../../../../shared-components/react/StrixunSuiteLink';
 
 const LayoutContainer = styled.div`
   min-height: 100vh;
@@ -63,6 +65,18 @@ export function Layout({ children }: LayoutProps) {
             <MainContent>
                 {children}
             </MainContent>
+            <FooterContainer>
+                <FooterBrand
+                    serviceName="Mods Hub"
+                    description="Community-driven mod distribution platform"
+                />
+                <div style={{ textAlign: 'center', margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-secondary, #b8b8b8)' }}>
+                    Part of the <StrixunSuiteLink />
+                </div>
+                <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted, #888)' }}>
+                    &copy; {new Date().getFullYear()} Strixun. All rights reserved.
+                </div>
+            </FooterContainer>
             <NotificationContainer />
         </LayoutContainer>
     );

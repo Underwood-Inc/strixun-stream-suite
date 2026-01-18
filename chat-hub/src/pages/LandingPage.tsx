@@ -7,6 +7,9 @@
 
 import { useState } from 'react';
 import '../landing.scss';
+import { CodeBlock } from '../../../shared-components/react/CodeBlock';
+import { FooterContainer, FooterBrand } from '../../../shared-components/react';
+import StrixunSuiteLink from '../../../shared-components/react/StrixunSuiteLink';
 
 export function LandingPage() {
   return (
@@ -308,7 +311,9 @@ function Integration() {
       <div className="landing-code-examples">
         <div className="landing-code-example">
           <h3>React</h3>
-          <pre>{`import { ChatClient } from '@strixun/chat/react';
+          <CodeBlock
+            language="tsx"
+            code={`import { ChatClient } from '@strixun/chat/react';
 import { useChatStore } from './stores/chat';
 
 function MyChat() {
@@ -319,12 +324,15 @@ function MyChat() {
       userName={user.name}
     />
   );
-}`}</pre>
+}`}
+          />
         </div>
         
         <div className="landing-code-example">
           <h3>Vanilla JS</h3>
-          <pre>{`import { SecureRoomManager } from '@strixun/chat/core';
+          <CodeBlock
+            language="javascript"
+            code={`import { SecureRoomManager } from '@strixun/chat/core';
 
 const manager = new SecureRoomManager({
   signalingBaseUrl: 'https://chat-api.idling.app',
@@ -335,7 +343,8 @@ const manager = new SecureRoomManager({
 });
 
 await manager.createRoom('My Room');
-await manager.sendMessage('Hello, world!');`}</pre>
+await manager.sendMessage('Hello, world!');`}
+          />
         </div>
       </div>
     </section>
@@ -345,27 +354,17 @@ await manager.sendMessage('Hello, world!');`}</pre>
 // ============ Footer ============
 function Footer() {
   return (
-    <footer className="landing-footer">
-      <div className="landing-footer__content">
-        <div className="landing-footer__brand">
-          <span className="landing-footer__logo">◆ Strixun Chat</span>
-          <p>P2P encrypted messaging for the modern web.</p>
-        </div>
-        <div className="landing-footer__links">
-          <a href="https://strixun.live" target="_blank" rel="noopener noreferrer">
-            Strixun Stream Suite
-          </a>
-          <a href="https://github.com/strixun" target="_blank" rel="noopener noreferrer">
-            GitHub
-          </a>
-          <a href="mailto:support@strixun.live">
-            Support
-          </a>
-        </div>
+    <FooterContainer>
+      <FooterBrand
+        serviceName="Strixun Chat"
+        description="P2P encrypted messaging for the modern web."
+      />
+      <div style={{ textAlign: 'center', margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-secondary, #b8b8b8)' }}>
+        Part of the <StrixunSuiteLink />
       </div>
-      <div className="landing-footer__copyright">
+      <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted, #888)' }}>
         &copy; {new Date().getFullYear()} Strixun. All rights reserved.
       </div>
-    </footer>
+    </FooterContainer>
   );
 }

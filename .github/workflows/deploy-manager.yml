@@ -1976,6 +1976,14 @@ jobs:
             fi
           fi
           
+          if [ "${{ inputs.deploy_streamkit_api }}" == "true" ]; then
+            if [ "${{ needs.deploy_streamkit_api.result }}" == "success" ]; then
+              echo "✓ **Streamkit API** - Deployed to streamkit-api.idling.app" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✗ **Streamkit API** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
           if [ "${{ inputs.deploy_mods_hub }}" == "true" ]; then
             if [ "${{ needs.deploy_mods_hub.result }}" == "success" ]; then
               echo "✓ **Mods Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY

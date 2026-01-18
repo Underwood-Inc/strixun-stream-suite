@@ -36,6 +36,7 @@
             <li><strong style="color: var(--text, #f9f9f9);">mods-api.idling.app</strong> - Mod Management & Storage API</li>
             <li><strong style="color: var(--text, #f9f9f9);">customer-api.idling.app</strong> - Customer Data & Profile Management</li>
             <li><strong style="color: var(--text, #f9f9f9);">access-api.idling.app</strong> - Access Control & Permissions</li>
+            <li><strong style="color: var(--text, #f9f9f9);">streamkit-api.idling.app</strong> - Streamkit Cloud Storage & Scene Activity</li>
             <li><strong style="color: var(--text, #f9f9f9);">api.idling.app</strong> - Main Gateway API</li>
             <li><strong style="color: var(--text, #f9f9f9);">chat.idling.app</strong> - WebRTC Chat Signaling</li>
           </ul>
