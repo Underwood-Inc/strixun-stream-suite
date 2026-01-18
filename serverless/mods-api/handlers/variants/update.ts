@@ -7,7 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import type { ModMetadata, ModVariant } from '../../types/mod.js';
+import type { ModMetadata } from '../../types/mod.js';
 import type { Env } from '../../worker.js';
 
 export interface UpdateVariantRequest {

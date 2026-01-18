@@ -82,6 +82,10 @@ on:
         description: 'Deploy Chat Hub (Pages) - Production only'
         type: boolean
         default: true
+      deploy_streamkit_api:
+        description: 'Deploy Streamkit API'
+        type: boolean
+        default: true
 
 # Sets permissions for GITHUB_TOKEN
 permissions:
@@ -511,6 +515,54 @@ jobs:
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: echo "⚠ No test script found in Chat API - skipping tests"
+
+  test_streamkit_api:
+    needs: setup
+    if: ${{ inputs.deploy_streamkit_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/streamkit-api
+        run: |
+          if [ -f "vitest.config.ts" ] || [ -f "vitest.config.js" ]; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          elif grep -q '"test"' package.json && ! grep -q 'Error: no test specified' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Streamkit API Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/streamkit-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+        run: pnpm run build:deps && pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠ No test script found in Streamkit API - skipping tests"
 
   # Twitch API Deployment
   deploy_twitch_api:
@@ -1210,6 +1262,91 @@ jobs:
           fi
         continue-on-error: true
 
+  # Streamkit API Deployment
+  deploy_streamkit_api:
+    needs: [setup, test_streamkit_api]
+    if: ${{ inputs.deploy_streamkit_api && (needs.test_streamkit_api.result == 'success' || needs.test_streamkit_api.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build Worker
+        working-directory: serverless/streamkit-api
+        run: pnpm run build:deps && pnpm run build:worker
+      
+      - name: Create KV Namespace (if needed)
+        working-directory: serverless/streamkit-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "Creating KV namespace STREAMKIT_KV (if it doesn't exist)..."
+          pnpm exec wrangler kv namespace create "STREAMKIT_KV" || true
+        continue-on-error: true
+      
+      - name: Deploy to Cloudflare Workers
+        id: deploy
+        working-directory: serverless/streamkit-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            pnpm exec wrangler deploy --env development
+          else
+            pnpm exec wrangler deploy
+          fi
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "✗ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
+      
+      - name: Set Worker Secrets
+        working-directory: serverless/streamkit-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          ENV_FLAG=""
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            ENV_FLAG="--env development"
+          fi
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
+          fi
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+          else
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+          fi
+          if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
+            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true
+          fi
+          if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
+            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
+          fi
+        continue-on-error: true
+
   # Mods Hub Deployment (Cloudflare Pages) - Production only
   deploy_mods_hub:
     needs: [setup, test_root]
@@ -1646,7 +1783,7 @@ jobs:
 
   # Deployment Summary
   summary:
-    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, test_access_service, test_chat_api, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_access_service, deploy_chat_api, deploy_mods_hub, deploy_access_hub, deploy_chat_hub, deploy_storybook, deploy_pages]
+    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, test_access_service, test_chat_api, test_streamkit_api, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_access_service, deploy_chat_api, deploy_streamkit_api, deploy_mods_hub, deploy_access_hub, deploy_chat_hub, deploy_storybook, deploy_pages]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1760,6 +1897,18 @@ jobs:
             fi
           fi
           
+          if [ "${{ inputs.deploy_streamkit_api }}" == "true" ]; then
+            if [ "${{ needs.test_streamkit_api.result }}" == "success" ]; then
+              echo "✓ **Streamkit API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_streamkit_api.result }}" == "failure" ]; then
+              echo "✗ **Streamkit API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_streamkit_api.result }}" == "skipped" ]; then
+              echo "⏭️ **Streamkit API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Streamkit API Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Deployment Results" >> $GITHUB_STEP_SUMMARY
           
@@ -1827,6 +1976,14 @@ jobs:
             fi
           fi
           
+          if [ "${{ inputs.deploy_streamkit_api }}" == "true" ]; then
+            if [ "${{ needs.deploy_streamkit_api.result }}" == "success" ]; then
+              echo "✓ **Streamkit API** - Deployed to streamkit-api.idling.app" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✗ **Streamkit API** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
           if [ "${{ inputs.deploy_mods_hub }}" == "true" ]; then
             if [ "${{ needs.deploy_mods_hub.result }}" == "success" ]; then
               echo "✓ **Mods Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
@@ -1848,6 +2005,14 @@ jobs:
               echo "✓ **Chat Hub** - Deployed to chat.idling.app" >> $GITHUB_STEP_SUMMARY
             else
               echo "✗ **Chat Hub** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_streamkit_api }}" == "true" ]; then
+            if [ "${{ needs.deploy_streamkit_api.result }}" == "success" ]; then
+              echo "✓ **Streamkit API** - Deployed to streamkit-api.idling.app" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✗ **Streamkit API** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           

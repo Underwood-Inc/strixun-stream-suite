@@ -13,6 +13,7 @@ import { connected, currentScene } from '../stores/connection';
 import { get } from 'svelte/store';
 import { request } from './websocket';
 import { storage } from './storage';
+import * as cloudStorage from './cloud-storage';
 import { isOBSDock } from './script-status';
 import { easeFunc, lerp } from './sources';
 
@@ -216,6 +217,7 @@ export async function captureLayout(): Promise<void> {
     
     // Save and refresh
     storage.set('layoutPresets', layoutPresets);
+    cloudStorage.saveLayoutPresets(layoutPresets).catch(err => console.warn('[Layouts] Cloud save failed:', err));
     if (layoutNameEl) layoutNameEl.value = '';
     renderSavedLayouts();
     
@@ -461,6 +463,7 @@ export function deleteLayout(index: number): void {
   if (confirm(`Delete layout "${preset.name}"?`)) {
     layoutPresets.splice(index, 1);
     storage.set('layoutPresets', layoutPresets);
+    cloudStorage.saveLayoutPresets(layoutPresets).catch(err => console.warn('[Layouts] Cloud save failed:', err));
     renderSavedLayouts();
     log(`Deleted layout: ${preset.name}`, 'info');
     
@@ -567,6 +570,16 @@ export function getRelativeTime(isoString: string): string {
 export function initLayouts(): void {
   layoutPresets = (storage.get('layoutPresets') as LayoutPreset[]) || [];
   renderSavedLayouts();
+  
+  // Trigger cloud sync in background (non-blocking)
+  cloudStorage.loadLayoutPresets().then(cloudPresets => {
+    if (cloudPresets.length > 0) {
+      layoutPresets = cloudPresets;
+      renderSavedLayouts();
+    }
+  }).catch(err => {
+    console.warn('[Layouts] Cloud sync failed:', err);
+  });
   
   // Setup search
   const searchInput = document.getElementById('layoutSearchInput');

@@ -6,8 +6,8 @@
    * Positioned between header and navigation.
    * 
    * Features:
-   * - Current scene display
-   * - Quick scene swap buttons
+   * - Current scene display with smart picker
+   * - Quick scene swap buttons (sorted by activity)
    * - Horizontal scrolling for multiple info items
    * - Animated value updates
    * - Connection status awareness
@@ -15,11 +15,20 @@
   
   import { onMount } from 'svelte';
   import { connected, currentScene } from '../../stores/connection';
-  import { animate } from '../../core/animations';
   import { Sources } from '../../modules/sources';
+  import { sortScenesByActivity, getTopScenes } from '../../modules/scene-activity';
+  import Select from './primitives/Select/Select.svelte';
   
   let sceneList: Array<{ sceneName: string; sceneIndex: number }> = [];
   let hasLoadedScenes = false;
+  let activityData: Array<{ sceneName: string; count: number }> = [];
+  
+  // Convert scenes to Select component format
+  $: sceneSelectItems = sceneList.map(scene => ({
+    value: scene.sceneName,
+    label: scene.sceneName,
+    badge: activityData.find(a => a.sceneName === scene.sceneName)?.count
+  }));
   
   // Load scene list when connected (only once, or when connection is re-established)
   $: if ($connected && !hasLoadedScenes) {
@@ -35,24 +44,67 @@
   async function loadSceneList(): Promise<void> {
     try {
       await Sources.refreshSceneList();
-      sceneList = Sources.allScenes;
+      console.log('[InfoBar] Raw scenes from OBS:', Sources.allScenes);
+      
+      // Fetch scene activity data from API
+      activityData = await getTopScenes(20);
+      console.log('[InfoBar] Activity data from API:', activityData);
+      
+      // Sort scenes by activity (most used first), with OBS order as tiebreaker
+      const beforeSort = [...Sources.allScenes];
+      sceneList = sortScenesByActivity(Sources.allScenes, activityData);
+      
+      console.log('[InfoBar] BEFORE sort (OBS order):', 
+        beforeSort.map(s => `${s.sceneName} [idx:${s.sceneIndex}]`)
+      );
+      console.log('[InfoBar] AFTER sort (activity-based):', 
+        sceneList.map(s => {
+          const activity = activityData.find(a => a.sceneName === s.sceneName);
+          return `${s.sceneName} [idx:${s.sceneIndex}, count:${activity?.count || 0}]`;
+        })
+      );
+      
       hasLoadedScenes = true;
     } catch (e) {
       console.error('[InfoBar] Failed to load scene list:', e);
     }
   }
   
-  function updateSceneList(): void {
+  async function updateSceneList(): Promise<void> {
     // Update from Sources module without triggering a full refresh
     const currentScenes = Sources.allScenes;
     if (currentScenes.length > 0) {
-      sceneList = currentScenes;
+      // Re-fetch activity data for up-to-date sorting
+      try {
+        const beforeSort = [...currentScenes];
+        activityData = await getTopScenes(20);
+        
+        // Sort scenes by activity (most used first), with OBS order as tiebreaker
+        sceneList = sortScenesByActivity(currentScenes, activityData);
+        
+        console.log('[InfoBar] Updated scene list - BEFORE:', 
+          beforeSort.map(s => `${s.sceneName} [idx:${s.sceneIndex}]`)
+        );
+        console.log('[InfoBar] Updated scene list - AFTER:', 
+          sceneList.map(s => {
+            const activity = activityData.find(a => a.sceneName === s.sceneName);
+            return `${s.sceneName} [idx:${s.sceneIndex}, count:${activity?.count || 0}]`;
+          })
+        );
+      } catch (e) {
+        console.warn('[InfoBar] Failed to fetch activity data, using unsorted list:', e);
+        sceneList = currentScenes;
+      }
     }
   }
   
   async function handleSceneSwitch(sceneName: string): Promise<void> {
     await Sources.switchToScene(sceneName);
     // Scene list will update automatically via the reactive statement when currentScene changes
+  }
+  
+  function handleSceneSelectChange(event: CustomEvent<{ value: string }>) {
+    handleSceneSwitch(event.detail.value);
   }
   
   onMount(() => {
@@ -63,28 +115,27 @@
 </script>
 
 <div class="info-bar">
+  <!-- Fixed "Current Scene:" section with dropdown (doesn't scroll) -->
+  <div class="info-item info-item--fixed info-item--with-dropdown">
+    <span class="info-item__label">Current Scene:</span>
+    {#if $connected && $currentScene}
+      <div class="info-item__scene-select">
+        <Select
+          value={$currentScene}
+          items={sceneSelectItems}
+          placeholder="Select Scene"
+          disabled={!$connected}
+          searchable={true}
+          on:change={handleSceneSelectChange}
+        />
+      </div>
+    {:else}
+      <span class="info-item__value info-item__value--inactive">Not connected</span>
+    {/if}
+  </div>
+  
+  <!-- Scrollable scene buttons section -->
   <div class="info-bar__content">
-    <div class="info-item">
-      <span class="info-item__label">Current Scene:</span>
-      {#if $connected && $currentScene}
-        <span 
-          class="info-item__value info-item__value--active"
-          use:animate={{
-            preset: 'pulse',
-            duration: 400,
-            easing: 'easeOutCubic',
-            id: 'info-scene-value',
-            trigger: 'change',
-            enabled: $connected && $currentScene
-          }}
-        >
-          {$currentScene}
-        </span>
-      {:else}
-        <span class="info-item__value info-item__value--inactive">Not connected</span>
-      {/if}
-    </div>
-    
     {#if $connected && sceneList.length > 0}
       <div class="scene-swap-buttons">
         {#each sceneList as scene}
@@ -99,8 +150,6 @@
         {/each}
       </div>
     {/if}
-    
-    <!-- Future info items can be added here for horizontal scrolling -->
   </div>
 </div>
 
@@ -111,8 +160,19 @@
     background: var(--bg-dark);
     border-bottom: 1px solid var(--border);
     padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    @include gpu-accelerated;
+  }
+  
+  .info-bar__content {
+    display: flex;
+    gap: 24px;
+    align-items: center;
     overflow-x: auto;
     overflow-y: hidden;
+    flex: 1;
     @include gpu-accelerated;
     
     // Custom scrollbar styling (horizontal scrollbar - thinner)
@@ -143,19 +203,29 @@
     scrollbar-color: var(--border) transparent;
   }
   
-  .info-bar__content {
-    display: flex;
-    gap: 24px;
-    align-items: center;
-    min-width: max-content;
-  }
-  
   .info-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 8px;
     white-space: nowrap;
     flex-shrink: 0;
+    
+    &.info-item--fixed {
+      // Fixed position - doesn't scroll
+      flex-shrink: 0;
+      z-index: 1; // Below dropdown
+    }
+    
+    &.info-item--with-dropdown {
+      // Allow dropdown to overflow
+      min-width: 200px;
+    }
+  }
+  
+  .info-item__scene-select {
+    min-width: 150px;
+    max-width: 250px;
   }
   
   .info-item .info-item__label {

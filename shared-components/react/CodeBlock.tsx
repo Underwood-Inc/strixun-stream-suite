@@ -1,5 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+/**
+ * CodeBlock - Syntax-highlighted code block component (React)
+ * 
+ * Supports 25+ programming languages with copy-to-clipboard functionality
+ * Uses Prism.js for syntax highlighting
+ * 
+ * @param code - The code string to display
+ * @param language - Programming language (default: 'javascript')
+ * @param className - Optional CSS class
+ */
+
+import React, { useEffect, useRef, useState } from 'react';
 import Prism from 'prismjs';
+// Base languages
+import 'prismjs/components/prism-markup'; // Must be first for templating
+import 'prismjs/components/prism-markup-templating'; // Required for PHP
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-jsx';
 import 'prismjs/components/prism-typescript';
@@ -10,16 +24,36 @@ import 'prismjs/components/prism-scss';
 import 'prismjs/components/prism-http';
 import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-markup';
+// Additional languages for chat and comprehensive support
+import 'prismjs/components/prism-rust';
+import 'prismjs/components/prism-go';
+import 'prismjs/components/prism-java';
+import 'prismjs/components/prism-c';
+import 'prismjs/components/prism-cpp';
+import 'prismjs/components/prism-csharp';
+import 'prismjs/components/prism-ruby';
+import 'prismjs/components/prism-php'; // Must come after markup-templating
+import 'prismjs/components/prism-swift';
+import 'prismjs/components/prism-kotlin';
+import 'prismjs/components/prism-sql';
+import 'prismjs/components/prism-yaml';
+import 'prismjs/components/prism-toml';
+import 'prismjs/components/prism-docker';
+import 'prismjs/components/prism-markdown';
 import 'prismjs/themes/prism-tomorrow.css';
 import './CodeBlock.css';
 
 interface CodeBlockProps {
   code: string;
   language?: string;
+  className?: string;
 }
 
-export function CodeBlock({ code, language = 'javascript' }: CodeBlockProps) {
+export const CodeBlock: React.FC<CodeBlockProps> = ({ 
+  code, 
+  language = 'javascript', 
+  className = '' 
+}) => {
   const codeRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
 
@@ -44,7 +78,7 @@ export function CodeBlock({ code, language = 'javascript' }: CodeBlockProps) {
     }
   };
 
-  // Highlight on mount and when code/language changes
+  // Highlight code when component mounts or code/language changes
   useEffect(() => {
     if (codeRef.current) {
       Prism.highlightElement(codeRef.current);
@@ -52,7 +86,7 @@ export function CodeBlock({ code, language = 'javascript' }: CodeBlockProps) {
   }, [code, prismLanguage]);
 
   return (
-    <div className="code-block-wrapper">
+    <div className={`code-block-wrapper ${className}`}>
       <button
         className={`copy-button ${copied ? 'copied' : ''}`}
         onClick={copyToClipboard}
@@ -77,10 +111,13 @@ export function CodeBlock({ code, language = 'javascript' }: CodeBlockProps) {
         )}
       </button>
       <pre>
-        <code ref={codeRef} className={`language-${prismLanguage}`}>
+        <code 
+          className={`language-${prismLanguage}`} 
+          ref={codeRef}
+        >
           {code}
         </code>
       </pre>
     </div>
   );
-}
+};

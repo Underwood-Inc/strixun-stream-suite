@@ -167,6 +167,7 @@ export function ModManagePage() {
         try {
             await uploadVersion.mutateAsync({
                 modId: data.mod.modId, // Still use modId for version upload API
+                slug: slug, // Pass slug for proper query invalidation
                 file: uploadData.file,
                 metadata: uploadData.metadata,
             });

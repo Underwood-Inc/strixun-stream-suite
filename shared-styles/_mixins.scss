@@ -128,22 +128,25 @@
 }
 
 // ============ Scrollbar ============
-@mixin scrollbar($width: 8px) {
+// Consistent scrollbar styling across all Strixun apps
+// Based on mods-hub design (12px, hover states, rounded thumbs)
+// Usage: @include scrollbar; or @include scrollbar(8px);
+@mixin scrollbar($width: 12px) {
   &::-webkit-scrollbar {
     width: $width;
     height: $width;
   }
   
   &::-webkit-scrollbar-track {
-    background: transparent;
+    background: var(--bg-secondary, var(--card));
   }
   
   &::-webkit-scrollbar-thumb {
     background: var(--border);
-    border-radius: 3px;
+    border-radius: 6px;
     
     &:hover {
-      background: var(--muted);
+      background: var(--border-light, var(--muted));
     }
   }
   
@@ -153,7 +156,7 @@
   
   // Firefox scrollbar
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: var(--border) var(--bg-secondary, transparent);
 }
 
 // ============ Flexbox Utilities ============
@@ -250,24 +253,26 @@
   position: relative;
   border-color: var(--info);
   border-width: 2px;
-  background: transparent;
+  background: var(--card);
   background-image: repeating-linear-gradient(
     45deg,
-    rgba(100, 149, 237, 0.08),
-    rgba(100, 149, 237, 0.08) 6px,
+    rgba(100, 149, 237, 0.12),
     rgba(100, 149, 237, 0.12) 6px,
-    rgba(100, 149, 237, 0.12) 12px
+    rgba(100, 149, 237, 0.16) 6px,
+    rgba(100, 149, 237, 0.16) 12px
   );
+  box-shadow: 0 2px 0 var(--info);
   
   &:hover {
     border-color: var(--info);
     background-image: repeating-linear-gradient(
       45deg,
-      rgba(100, 149, 237, 0.12),
-      rgba(100, 149, 237, 0.12) 6px,
+      rgba(100, 149, 237, 0.16),
       rgba(100, 149, 237, 0.16) 6px,
-      rgba(100, 149, 237, 0.16) 12px
+      rgba(100, 149, 237, 0.20) 6px,
+      rgba(100, 149, 237, 0.20) 12px
     );
+    box-shadow: 0 3px 0 var(--info);
   }
 }
 

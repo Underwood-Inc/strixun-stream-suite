@@ -285,7 +285,7 @@ export function ModVersionManagement({ modSlug, modId, versions, variants }: Mod
                 const isEditing = editingVersion === version.versionId;
                 
                 return (
-                    <VersionCard key={version.versionId}>
+                    <VersionCard key={version.versionId} data-version-id={version.versionId}>
                         <VersionHeader>
                             <VersionInfo>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
