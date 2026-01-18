@@ -73,10 +73,11 @@
   }
 }
 
-.landing-header__cta {
+.landing-header__nav .landing-header__cta {
   @include arcade-button(var(--accent), var(--accent-dark));
   font-size: 0.75rem;
   padding: var(--spacing-xs) var(--spacing-md);
+  color: var(--text);
 }
 
 // ============ Hero ============
@@ -479,6 +480,125 @@
   color: var(--text-muted);
 }
 
+// ============ Accordions ============
+.code-examples {
+  margin-top: var(--spacing-5xl);
+  padding: var(--spacing-3xl) var(--spacing-xl);
+  background: rgba(237, 174, 73, 0.02);
+  border-top: 1px solid var(--border);
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+
+  h2 {
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    font-weight: 700;
+    text-align: center;
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--accent);
+  }
+}
+
+.accordion {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  margin-bottom: var(--spacing-md);
+  overflow: hidden;
+}
+
+.accordion-header {
+  padding: var(--spacing-lg);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-dark);
+  transition: background 0.2s;
+
+  &:hover {
+    background: var(--card);
+  }
+
+  h3 {
+    font-size: 1.1rem;
+    color: var(--text);
+    margin: 0;
+  }
+}
+
+.accordion-icon {
+  transition: transform 0.3s;
+  color: var(--accent);
+  font-size: 1.25rem;
+}
+
+.accordion.active .accordion-icon {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.accordion.active .accordion-content {
+  max-height: 5000px;
+}
+
+.accordion-body {
+  padding: var(--spacing-lg);
+  color: var(--text-secondary);
+
+  h4 {
+    color: var(--accent);
+    margin-top: var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
+    font-size: 1.125rem;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  p {
+    margin-bottom: var(--spacing-md);
+    line-height: 1.6;
+  }
+
+  ul {
+    margin-left: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
+
+    li {
+      margin-bottom: var(--spacing-xs);
+      line-height: 1.6;
+    }
+  }
+}
+
+// ============ Mermaid Diagrams ============
+.mermaid-container {
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--spacing-lg);
+  margin: var(--spacing-lg) 0;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 600px;
+  -webkit-overflow-scrolling: touch;
+  @include scrollbar(8px);
+}
+
+.mermaid-container .mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 100%;
+}
+
 // ============ Responsive ============
 @media (max-width: 768px) {
   .landing-header__nav {
@@ -496,5 +616,35 @@
   .landing-hero__stats {
     flex-direction: column;
     gap: var(--spacing-lg);
+  }
+
+  .code-examples {
+    padding: var(--spacing-2xl) var(--spacing-md);
+  }
+
+  .accordion {
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .accordion-header {
+    padding: var(--spacing-md);
+
+    h3 {
+      font-size: 1rem;
+    }
+  }
+
+  .accordion-body {
+    padding: var(--spacing-md);
+
+    h4 {
+      font-size: 1rem;
+    }
+  }
+
+  .mermaid-container {
+    padding: var(--spacing-md);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }

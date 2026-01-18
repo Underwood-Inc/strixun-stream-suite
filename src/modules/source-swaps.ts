@@ -146,6 +146,40 @@ async function setTransform(sceneItemId: number, transform: SceneItemTransform):
   }
 }
 
+/**
+ * Get scene item index (z-order/layer position)
+ * Higher index = on top (in front)
+ */
+async function getSceneItemIndex(sceneItemId: number): Promise<number | null> {
+  try {
+    const data = await request('GetSceneItemIndex', {
+      sceneName: get(currentScene),
+      sceneItemId: sceneItemId
+    });
+    return (data as any).sceneItemIndex ?? null;
+  } catch (e) {
+    console.warn(`[Swap] Failed to get scene item index for item ${sceneItemId}:`, e);
+    return null;
+  }
+}
+
+/**
+ * Set scene item index (z-order/layer position)
+ * Higher index = on top (in front)
+ */
+async function setSceneItemIndex(sceneItemId: number, index: number): Promise<void> {
+  try {
+    await request('SetSceneItemIndex', {
+      sceneName: get(currentScene),
+      sceneItemId: sceneItemId,
+      sceneItemIndex: index
+    });
+  } catch (e) {
+    console.error(`[Swap] Failed to set scene item index for item ${sceneItemId}:`, e);
+    throw new Error(`Failed to set scene item index: ${e}`);
+  }
+}
+
 // ============ Easing Functions ============
 
 /**
@@ -493,6 +527,10 @@ export async function executeSwap(sourceAOverride?: string, sourceBOverride?: st
     const tA = await getTransform(idA);
     const tB = await getTransform(idB);
     
+    // Get z-indices (layer order)
+    const indexA = await getSceneItemIndex(idA);
+    const indexB = await getSceneItemIndex(idB);
+    
     const duration = parseInt((document.getElementById('swapDuration') as HTMLInputElement)?.value || '400') || 400;
     const easing = (document.getElementById('swapEasing') as HTMLSelectElement)?.value || 'ease';
     
@@ -504,6 +542,7 @@ export async function executeSwap(sourceAOverride?: string, sourceBOverride?: st
     if (debugLogging) {
       console.log('[Swap Debug] Transform A:', JSON.stringify(tA, null, 2));
       console.log('[Swap Debug] Transform B:', JSON.stringify(tB, null, 2));
+      console.log('[Swap Debug] Z-Index A:', indexA, 'Z-Index B:', indexB);
       console.log('[Swap Debug] Settings - preserveAspect:', preserveAspect, 'tempOverride:', tempOverride);
     }
     
@@ -672,6 +711,31 @@ export async function executeSwap(sourceAOverride?: string, sourceBOverride?: st
         sceneItemId: idB,
         sceneItemTransform: { boundsType }
       }).catch(e => console.warn('[Swap] Could not set bounds type for B:', e));
+    }
+    
+    // Swap z-indices (layer order) so front/back relationship is preserved
+    if (indexA !== null && indexB !== null) {
+      if (debugLogging) {
+        console.log(`[Swap Debug] Swapping z-indices: A(${indexA}) <-> B(${indexB})`);
+      }
+      
+      try {
+        await Promise.all([
+          setSceneItemIndex(idA, indexB),
+          setSceneItemIndex(idB, indexA)
+        ]);
+        
+        if (debugLogging) {
+          console.log('[Swap Debug] Z-indices swapped successfully');
+        }
+      } catch (e) {
+        console.warn('[Swap] Failed to swap z-indices:', e);
+        // Non-fatal - log warning but don't fail the swap
+      }
+    } else {
+      if (debugLogging) {
+        console.log('[Swap Debug] Could not get z-indices, skipping z-index swap');
+      }
     }
     
     dependencies.log(`Swapped ${nameA}  ${nameB}`, 'success');

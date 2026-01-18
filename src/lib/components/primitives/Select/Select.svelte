@@ -61,6 +61,11 @@
     ? items.find(i => i.value === value)?.label || value
     : placeholder;
   
+  // Reactive: Update position when dropdown opens or trigger button changes
+  $: if (isOpen && triggerButton) {
+    updateDropdownPosition();
+  }
+  
   // Select item
   function selectItem(itemValue: string): void {
     value = itemValue;
@@ -69,20 +74,43 @@
     dispatch('change', { value });
   }
   
+  // Update dropdown position
+  function updateDropdownPosition(): void {
+    if (!isOpen || !triggerButton) return;
+    
+    const rect = triggerButton.getBoundingClientRect();
+    dropdownPosition = {
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width
+    };
+  }
+  
   // Toggle dropdown
   function toggleDropdown(): void {
     isOpen = !isOpen;
     if (isOpen && triggerButton) {
-      const rect = triggerButton.getBoundingClientRect();
-      dropdownPosition = {
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: rect.width
-      };
+      updateDropdownPosition();
       if (searchInput) {
         setTimeout(() => searchInput.focus(), 0);
       }
     }
+  }
+  
+  // Reposition dropdown on scroll (but not if scrolling inside dropdown)
+  function handleScroll(event: Event): void {
+    if (!isOpen) return;
+    
+    // Don't reposition if scrolling inside the dropdown itself
+    const target = event.target as HTMLElement;
+    if (dropdownContainer?.contains(target) || portalContainer?.contains(target)) {
+      return;
+    }
+    
+    // Reposition using requestAnimationFrame for smooth updates
+    requestAnimationFrame(() => {
+      updateDropdownPosition();
+    });
   }
   
   // Clear search
@@ -116,10 +144,14 @@
     document.body.appendChild(portalContainer);
     
     document.addEventListener('click', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true); // Use capture phase to catch all scrolls
+    window.addEventListener('resize', updateDropdownPosition); // Reposition on resize too
   });
   
   onDestroy(() => {
     document.removeEventListener('click', handleClickOutside);
+    window.removeEventListener('scroll', handleScroll, true);
+    window.removeEventListener('resize', updateDropdownPosition);
     if (portalContainer && portalContainer.parentNode) {
       portalContainer.parentNode.removeChild(portalContainer);
     }

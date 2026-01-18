@@ -119,6 +119,7 @@ export function LandingPage() {
       accordion.classList.add('active');
       
       // Scroll to the accordion header with proper offset for sticky header
+      // Wait for accordion to finish expanding (300ms transition)
       setTimeout(() => {
         const headerHeight = document.querySelector('.header')?.getBoundingClientRect().height || 0;
         const accordionTop = accordion.getBoundingClientRect().top + window.scrollY;
@@ -128,7 +129,7 @@ export function LandingPage() {
           top: scrollToPosition,
           behavior: 'smooth'
         });
-      }, 50);
+      }, 350);
       
       // Re-render Mermaid diagrams when accordion opens
       const accordionTitle = header.querySelector('h3')?.textContent || '';

@@ -5,13 +5,79 @@
  * Follows the same structure as otp-auth-service landing page.
  */
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import '../landing.scss';
 import { CodeBlock } from '../../../shared-components/react/CodeBlock';
 import { FooterContainer, FooterBrand } from '../../../shared-components/react';
 import StrixunSuiteLink from '../../../shared-components/react/StrixunSuiteLink';
 
 export function LandingPage() {
+  // Initialize mermaid and accordion functionality
+  useEffect(() => {
+    // Initialize mermaid
+    if (typeof (window as any).mermaid !== 'undefined') {
+      (window as any).mermaid.initialize({
+        startOnLoad: false,
+        theme: 'dark',
+        themeVariables: {
+          primaryColor: '#edae49',
+          primaryTextColor: '#1a1611',
+          primaryBorderColor: '#c68214',
+          secondaryColor: '#252017',
+          secondaryTextColor: '#b8b8b8',
+          secondaryBorderColor: '#3d3627',
+          tertiaryColor: '#1a1611',
+          tertiaryTextColor: '#888',
+          tertiaryBorderColor: '#4a4336',
+          background: '#0f0e0b',
+          mainBkg: '#252017',
+          secondBkg: '#1a1611',
+          tertiaryBkg: '#0f0e0b',
+          textColor: '#f9f9f9',
+          border1: '#3d3627',
+          border2: '#4a4336',
+          border3: '#c68214',
+          lineColor: '#6495ed',
+          nodeBkg: '#252017',
+          nodeBorder: '#edae49',
+          clusterBkg: '#1a1611',
+          clusterBorder: '#3d3627',
+          defaultLinkColor: '#6495ed',
+          titleColor: '#edae49',
+          edgeLabelBackground: '#252017',
+          edgeLabelTextColor: '#f9f9f9',
+          arrowheadColor: '#6495ed',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
+          fontSize: '14px'
+        },
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis',
+          padding: 20,
+          nodeSpacing: 50,
+          rankSpacing: 80,
+          diagramPadding: 20
+        }
+      });
+    }
+    
+    // Smooth scroll for anchor links
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'A' && (target as HTMLAnchorElement).hash) {
+        const element = document.querySelector((target as HTMLAnchorElement).hash);
+        if (element) {
+          e.preventDefault();
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    };
+
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
+
   return (
     <div className="landing">
       <Header />
@@ -166,7 +232,9 @@ function HowItWorks() {
 
       <div className="landing-code-block">
         <h3>Message Block Structure</h3>
-        <pre>{`{
+        <CodeBlock
+          language="json"
+          code={`{
   "blockHash": "a7f3...4b2c",
   "previousHash": "e9d2...8a1f",
   "blockNumber": 42,
@@ -177,7 +245,8 @@ function HowItWorks() {
   },
   "signature": "hmac-sha256...",
   "confirmedBy": ["peer_a", "peer_b", "peer_c"]
-}`}</pre>
+}`}
+        />
       </div>
     </section>
   );
@@ -226,77 +295,257 @@ function Security() {
 
 // ============ Architecture ============
 function Architecture() {
-  const [expanded, setExpanded] = useState<string | null>(null);
-  
-  const sections = [
-    {
-      id: 'storage',
-      title: 'Storage Layer',
-      content: `
-Messages are stored in "chunks" of 100 messages each. Each chunk has a Merkle root 
-for quick integrity verification. The storage layer supports:
-
-- IndexedDB (default): Browser-based, persists across sessions
-- File System API: For browsers that support it, allows folder selection
-- Custom: Plugin architecture for external storage providers
-
-Data is always encrypted before storage using the room key.
-      `,
-    },
-    {
-      id: 'sync',
-      title: 'Sync Protocol',
-      content: `
-When a peer joins or reconnects, the sync protocol:
-
-1. Sends SYNC_REQUEST with last known block number
-2. Receives SYNC_RESPONSE with missed blocks
-3. Verifies each block's signature and hash chain
-4. Imports valid blocks, marks invalid ones
-5. Detects and reports any gaps
-
-Sync is bidirectional - all peers can serve history.
-      `,
-    },
-    {
-      id: 'consensus',
-      title: 'Peer Consensus',
-      content: `
-Unlike blockchain, we don't need full consensus for every block. Instead:
-
-- Messages are immediately available (optimistic)
-- Confirmations accumulate as peers verify
-- Integrity score reflects peer coverage
-- Conflicts resolved by earliest timestamp
-
-This gives instant messaging UX with eventual consistency guarantees.
-      `,
-    },
-  ];
+  const toggleAccordion = (header: HTMLElement) => {
+    const accordion = header.parentElement;
+    if (!accordion) return;
+    
+    const isActive = accordion.classList.contains('active');
+    
+    // Close all accordions
+    document.querySelectorAll('.accordion').forEach(acc => {
+      acc.classList.remove('active');
+    });
+    
+    // Open clicked accordion if it wasn't active
+    if (!isActive) {
+      accordion.classList.add('active');
+      
+      // Scroll to the accordion with offset for sticky header
+      // Wait for accordion to finish expanding (300ms transition)
+      setTimeout(() => {
+        const headerHeight = document.querySelector('.landing-header')?.getBoundingClientRect().height || 0;
+        const accordionTop = accordion.getBoundingClientRect().top + window.scrollY;
+        const scrollToPosition = accordionTop - headerHeight - 20;
+        
+        window.scrollTo({
+          top: scrollToPosition,
+          behavior: 'smooth'
+        });
+      }, 350);
+      
+      // Re-render Mermaid diagrams when accordion opens
+      setTimeout(() => {
+        if (typeof (window as any).mermaid !== 'undefined') {
+          (window as any).mermaid.run();
+        }
+      }, 100);
+    }
+  };
 
   return (
-    <section id="architecture" className="landing-architecture">
-      <h2 className="landing-section__title">Technical Architecture</h2>
-      
-      <div className="landing-accordion">
-        {sections.map((section) => (
-          <div key={section.id} className="landing-accordion__item">
-            <button
-              className={`landing-accordion__header ${expanded === section.id ? 'landing-accordion__header--active' : ''}`}
-              onClick={() => setExpanded(expanded === section.id ? null : section.id)}
-            >
-              <span>{section.title}</span>
-              <span className="landing-accordion__icon">
-                {expanded === section.id ? '−' : '+'}
-              </span>
-            </button>
-            {expanded === section.id && (
-              <div className="landing-accordion__content">
-                <pre>{section.content.trim()}</pre>
-              </div>
-            )}
+    <section id="architecture" className="code-examples">
+      <h2>Technical Architecture</h2>
+      <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: 'var(--spacing-xl)' }}>
+        Deep dive into how P2P chat works under the hood
+      </p>
+
+      {/* Network Architecture */}
+      <div className="accordion">
+        <div className="accordion-header" onClick={(e) => toggleAccordion(e.currentTarget)}>
+          <h3>Network Architecture</h3>
+          <span className="accordion-icon">▼</span>
+        </div>
+        <div className="accordion-content">
+          <div className="accordion-body">
+            <h4>P2P Connection Flow</h4>
+            <p>Every peer connects to every other peer using WebRTC. Signaling is handled via WebSockets, then peers establish direct connections.</p>
+            <div className="mermaid-container">
+              <div className="mermaid">{`graph TD
+    A[New Peer Joins] --> B[Connect to Signaling Server]
+    B --> C[Send OFFER to Existing Peers]
+    C --> D[Receive ANSWER from Peers]
+    D --> E[Establish WebRTC Connection]
+    E --> F[Exchange ICE Candidates]
+    F --> G[Direct P2P Connection]
+    G --> H[Start Syncing Messages]
+    
+    classDef peerStyle fill:#252017,stroke:#edae49,stroke-width:3px,color:#f9f9f9
+    classDef signalStyle fill:#1a1611,stroke:#6495ed,stroke-width:3px,color:#f9f9f9
+    classDef webrtcStyle fill:#252017,stroke:#28a745,stroke-width:3px,color:#f9f9f9
+    
+    class A,G,H peerStyle
+    class B,C,D signalStyle
+    class E,F webrtcStyle`}</div>
+            </div>
+            <h4>Full Mesh Topology</h4>
+            <p>Each peer maintains direct connections to all other peers in the room. This ensures:</p>
+            <ul>
+              <li>No single point of failure - any peer can relay messages</li>
+              <li>Low latency - messages go directly between peers</li>
+              <li>History redundancy - multiple peers store the full history</li>
+              <li>Resilience - room continues even if some peers disconnect</li>
+            </ul>
           </div>
-        ))}
+        </div>
+      </div>
+
+      {/* Message Chain Architecture */}
+      <div className="accordion">
+        <div className="accordion-header" onClick={(e) => toggleAccordion(e.currentTarget)}>
+          <h3>Blockchain-Style Message Chain</h3>
+          <span className="accordion-icon">▼</span>
+        </div>
+        <div className="accordion-content">
+          <div className="accordion-body">
+            <h4>Hash Chain Structure</h4>
+            <p>Messages form a blockchain-style chain where each message cryptographically links to the previous one:</p>
+            <div className="mermaid-container">
+              <div className="mermaid">{`graph LR
+    A[Block 0<br/>Genesis] --> B[Block 1<br/>Hash: a7f3...]
+    B --> C[Block 2<br/>Hash: e9d2...]
+    C --> D[Block 3<br/>Hash: b4c8...]
+    D --> E[Block N<br/>Hash: f2a1...]
+    
+    classDef blockStyle fill:#252017,stroke:#edae49,stroke-width:2px,color:#f9f9f9
+    class A,B,C,D,E blockStyle`}</div>
+            </div>
+            <h4>Block Contents</h4>
+            <CodeBlock
+              language="json"
+              code={`{
+  "blockHash": "a7f3...4b2c",
+  "previousHash": "e9d2...8a1f",
+  "blockNumber": 42,
+  "message": {
+    "content": "[encrypted]",
+    "senderId": "user_123",
+    "timestamp": 1705420800000
+  },
+  "signature": "hmac-sha256...",
+  "confirmedBy": ["peer_a", "peer_b", "peer_c"]
+}`}
+            />
+            <h4>Integrity Verification</h4>
+            <ul>
+              <li><strong>Hash Chain:</strong> Each block's hash includes the previous hash, making tampering evident</li>
+              <li><strong>HMAC Signatures:</strong> Each message is signed with the room key using HMAC-SHA256</li>
+              <li><strong>Merkle Trees:</strong> Chunks of 100 messages have a Merkle root for fast verification</li>
+              <li><strong>Peer Confirmations:</strong> Multiple peers confirm receipt and validity</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Storage Layer */}
+      <div className="accordion">
+        <div className="accordion-header" onClick={(e) => toggleAccordion(e.currentTarget)}>
+          <h3>Storage Layer</h3>
+          <span className="accordion-icon">▼</span>
+        </div>
+        <div className="accordion-content">
+          <div className="accordion-body">
+            <h4>Storage Options</h4>
+            <p>Messages are stored encrypted at rest using multiple storage backends:</p>
+            <div className="mermaid-container">
+              <div className="mermaid">{`graph TD
+    A[Encrypted Messages] --> B{Storage Backend}
+    B --> C[IndexedDB]
+    B --> D[File System API]
+    B --> E[Custom Plugin]
+    
+    C --> F[Browser Database]
+    D --> G[Local Folder]
+    E --> H[External Provider]
+    
+    classDef storageStyle fill:#252017,stroke:#edae49,stroke-width:3px,color:#f9f9f9
+    classDef backendStyle fill:#1a1611,stroke:#6495ed,stroke-width:3px,color:#f9f9f9
+    classDef targetStyle fill:#252017,stroke:#28a745,stroke-width:3px,color:#f9f9f9
+    
+    class A storageStyle
+    class B,C,D,E backendStyle
+    class F,G,H targetStyle`}</div>
+            </div>
+            <h4>Chunk Organization</h4>
+            <p>Messages are organized in chunks of 100 messages each for efficient storage and retrieval:</p>
+            <ul>
+              <li><strong>Chunk Size:</strong> 100 messages per chunk (configurable)</li>
+              <li><strong>Merkle Root:</strong> Each chunk has a Merkle tree root for integrity</li>
+              <li><strong>Encryption:</strong> Each chunk is encrypted with AES-256-GCM</li>
+              <li><strong>Compression:</strong> Chunks are compressed before storage</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Sync Protocol */}
+      <div className="accordion">
+        <div className="accordion-header" onClick={(e) => toggleAccordion(e.currentTarget)}>
+          <h3>Sync Protocol</h3>
+          <span className="accordion-icon">▼</span>
+        </div>
+        <div className="accordion-content">
+          <div className="accordion-body">
+            <h4>Reconnection Sync Flow</h4>
+            <p>When a peer reconnects after being offline, it syncs missed messages:</p>
+            <div className="mermaid-container">
+              <div className="mermaid">{`%%{init: {'theme':'dark', 'themeVariables': { 'actorBkg':'#252017', 'actorBorder':'#edae49', 'actorTextColor':'#f9f9f9', 'actorLineColor':'#6495ed', 'signalColor':'#6495ed', 'signalTextColor':'#f9f9f9', 'labelBoxBkgColor':'#1a1611', 'labelBoxBorderColor':'#edae49', 'labelTextColor':'#f9f9f9', 'loopTextColor':'#f9f9f9', 'noteBkgColor':'#252017', 'noteBorderColor':'#c68214', 'noteTextColor':'#f9f9f9', 'activationBkgColor':'#edae49', 'activationBorderColor':'#c68214', 'sequenceNumberColor':'#1a1611'}}}%%
+sequenceDiagram
+    participant P1 as Peer 1 (Reconnecting)
+    participant P2 as Peer 2
+    participant P3 as Peer 3
+    
+    P1->>P2: SYNC_REQUEST (last block: 42)
+    P1->>P3: SYNC_REQUEST (last block: 42)
+    P2->>P1: SYNC_RESPONSE (blocks 43-50)
+    P3->>P1: SYNC_RESPONSE (blocks 43-50)
+    P1->>P1: Verify block hashes
+    P1->>P1: Verify signatures
+    P1->>P1: Import valid blocks
+    P1->>P2: SYNC_COMPLETE (50 blocks)
+    P1->>P3: SYNC_COMPLETE (50 blocks)`}</div>
+            </div>
+            <h4>Gap Detection</h4>
+            <p>The sync protocol detects and reports gaps in message history:</p>
+            <ul>
+              <li><strong>Block Number Tracking:</strong> Each block has a sequential number</li>
+              <li><strong>Gap Detection:</strong> Missing block numbers indicate gaps</li>
+              <li><strong>Gap Reporting:</strong> UI shows clear indicators of missing messages</li>
+              <li><strong>Multiple Sources:</strong> Attempts to fetch from multiple peers</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Encryption Architecture */}
+      <div className="accordion">
+        <div className="accordion-header" onClick={(e) => toggleAccordion(e.currentTarget)}>
+          <h3>Encryption Architecture</h3>
+          <span className="accordion-icon">▼</span>
+        </div>
+        <div className="accordion-content">
+          <div className="accordion-body">
+            <h4>Key Hierarchy</h4>
+            <div className="mermaid-container">
+              <div className="mermaid">{`graph TD
+    A[User Auth Token] --> B[Room Key Generation]
+    B --> C[256-bit AES Room Key]
+    C --> D[Encrypt with Auth Token]
+    D --> E[Store Encrypted Room Key]
+    
+    C --> F[Message Encryption]
+    C --> G[Key Sharing with Peers]
+    
+    F --> H[AES-256-GCM per message]
+    G --> I[Re-encrypt for each peer]
+    
+    classDef keyStyle fill:#252017,stroke:#edae49,stroke-width:3px,color:#f9f9f9
+    classDef processStyle fill:#1a1611,stroke:#6495ed,stroke-width:3px,color:#f9f9f9
+    classDef storageStyle fill:#252017,stroke:#28a745,stroke-width:3px,color:#f9f9f9
+    
+    class A,C keyStyle
+    class B,D,F,G,I processStyle
+    class E,H storageStyle`}</div>
+              </div>
+            <h4>Encryption Details</h4>
+            <ul>
+              <li><strong>Algorithm:</strong> AES-256-GCM (Galois/Counter Mode)</li>
+              <li><strong>Key Derivation:</strong> PBKDF2 with 100,000 iterations</li>
+              <li><strong>Unique IV:</strong> Each message has a unique initialization vector</li>
+              <li><strong>Authentication:</strong> HMAC-SHA256 for message authenticity</li>
+              <li><strong>Key Rotation:</strong> Support for periodic room key rotation</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
   );
