@@ -15,17 +15,20 @@
   
   import { onMount } from 'svelte';
   import { connected, currentScene } from '../../stores/connection';
-  import { animate } from '../../core/animations';
   import { Sources } from '../../modules/sources';
   import { sortScenesByActivity, getTopScenes } from '../../modules/scene-activity';
-  import ScenePicker from './ScenePicker.svelte';
+  import Select from './primitives/Select/Select.svelte';
   
   let sceneList: Array<{ sceneName: string; sceneIndex: number }> = [];
   let hasLoadedScenes = false;
   let activityData: Array<{ sceneName: string; count: number }> = [];
-  let scenePickerVisible = false;
-  let scenePickerContainer: HTMLDivElement;
-  let scenePickerTrigger: HTMLButtonElement;
+  
+  // Convert scenes to Select component format
+  $: sceneSelectItems = sceneList.map(scene => ({
+    value: scene.sceneName,
+    label: scene.sceneName,
+    badge: activityData.find(a => a.sceneName === scene.sceneName)?.count
+  }));
   
   // Load scene list when connected (only once, or when connection is re-established)
   $: if ($connected && !hasLoadedScenes) {
@@ -100,12 +103,8 @@
     // Scene list will update automatically via the reactive statement when currentScene changes
   }
   
-  function toggleScenePicker() {
-    scenePickerVisible = !scenePickerVisible;
-  }
-  
-  function handleScenePickerSelect(event: CustomEvent<string>) {
-    handleSceneSwitch(event.detail);
+  function handleSceneSelectChange(event: CustomEvent<{ value: string }>) {
+    handleSceneSwitch(event.detail.value);
   }
   
   onMount(() => {
@@ -116,35 +115,20 @@
 </script>
 
 <div class="info-bar">
-  <!-- Fixed "Current Scene:" section (doesn't scroll) -->
-  <div class="info-item info-item--fixed" bind:this={scenePickerContainer}>
+  <!-- Fixed "Current Scene:" section with dropdown (doesn't scroll) -->
+  <div class="info-item info-item--fixed info-item--with-dropdown">
     <span class="info-item__label">Current Scene:</span>
     {#if $connected && $currentScene}
-      <button
-        bind:this={scenePickerTrigger}
-        class="info-item__value info-item__value--active info-item__value--clickable"
-        on:click={toggleScenePicker}
-        title="Click to open scene picker"
-        use:animate={{
-          preset: 'pulse',
-          duration: 400,
-          easing: 'easeOutCubic',
-          id: 'info-scene-value',
-          trigger: 'change',
-          enabled: $connected && $currentScene
-        }}
-      >
-        {$currentScene}
-        <span class="info-item__dropdown-icon">▼</span>
-      </button>
-      
-      <ScenePicker
-        visible={scenePickerVisible}
-        currentSceneName={$currentScene}
-        triggerElement={scenePickerTrigger}
-        on:select={handleScenePickerSelect}
-        on:close={() => scenePickerVisible = false}
-      />
+      <div class="info-item__scene-select">
+        <Select
+          value={$currentScene}
+          items={sceneSelectItems}
+          placeholder="Select Scene"
+          disabled={!$connected}
+          searchable={true}
+          on:change={handleSceneSelectChange}
+        />
+      </div>
     {:else}
       <span class="info-item__value info-item__value--inactive">Not connected</span>
     {/if}
@@ -230,8 +214,18 @@
     &.info-item--fixed {
       // Fixed position - doesn't scroll
       flex-shrink: 0;
-      z-index: 10; // Above scrollable content, below dropdown
+      z-index: 1; // Below dropdown
     }
+    
+    &.info-item--with-dropdown {
+      // Allow dropdown to overflow
+      min-width: 200px;
+    }
+  }
+  
+  .info-item__scene-select {
+    min-width: 150px;
+    max-width: 250px;
   }
   
   .info-item .info-item__label {
@@ -243,31 +237,6 @@
   .info-item .info-item__value {
     font-size: 0.9em;
     font-weight: 600;
-    
-    &.info-item__value--clickable {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: transparent;
-      border: 1px solid transparent;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      
-      &:hover {
-        background: rgba(237, 174, 73, 0.1);
-        border-color: var(--accent);
-        
-        .info-item__dropdown-icon {
-          transform: translateY(1px);
-        }
-      }
-      
-      &:active {
-        transform: scale(0.98);
-      }
-    }
   }
   
   .info-item .info-item__value--active {
@@ -277,12 +246,6 @@
   .info-item .info-item__value--inactive {
     color: var(--muted);
     font-style: italic;
-  }
-  
-  .info-item__dropdown-icon {
-    font-size: 0.7em;
-    opacity: 0.7;
-    transition: transform 0.2s ease;
   }
   
   .scene-swap-buttons {

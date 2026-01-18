@@ -253,24 +253,26 @@
   position: relative;
   border-color: var(--info);
   border-width: 2px;
-  background: transparent;
+  background: var(--card);
   background-image: repeating-linear-gradient(
     45deg,
-    rgba(100, 149, 237, 0.08),
-    rgba(100, 149, 237, 0.08) 6px,
+    rgba(100, 149, 237, 0.12),
     rgba(100, 149, 237, 0.12) 6px,
-    rgba(100, 149, 237, 0.12) 12px
+    rgba(100, 149, 237, 0.16) 6px,
+    rgba(100, 149, 237, 0.16) 12px
   );
+  box-shadow: 0 2px 0 var(--info);
   
   &:hover {
     border-color: var(--info);
     background-image: repeating-linear-gradient(
       45deg,
-      rgba(100, 149, 237, 0.12),
-      rgba(100, 149, 237, 0.12) 6px,
+      rgba(100, 149, 237, 0.16),
       rgba(100, 149, 237, 0.16) 6px,
-      rgba(100, 149, 237, 0.16) 12px
+      rgba(100, 149, 237, 0.20) 6px,
+      rgba(100, 149, 237, 0.20) 12px
     );
+    box-shadow: 0 3px 0 var(--info);
   }
 }
 
