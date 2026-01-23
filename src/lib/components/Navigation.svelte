@@ -87,24 +87,15 @@ import { domInterferenceDetected } from '../../stores/dom-interference';
     { 
       id: 'scripts', 
       numeral: 'VIII', 
-      label: 'Script Manager', 
+      label: 'Scripts', 
       requiresConnection: false,
       disabledReason: null,
       isWip: false,
-      inTesting: true
-    },
-    { 
-      id: 'install', 
-      numeral: 'IX', 
-      label: 'Installer', 
-      requiresConnection: false,
-      disabledReason: null,
-      isWip: false,
-      inTesting: true
+      inTesting: false
     },
     { 
       id: 'url-shortener', 
-      numeral: 'X', 
+      numeral: 'IX', 
       label: 'URL Shortener', 
       requiresConnection: false,
       disabledReason: null,
@@ -113,7 +104,7 @@ import { domInterferenceDetected } from '../../stores/dom-interference';
     },
     { 
       id: 'setup', 
-      numeral: 'XI', 
+      numeral: 'X', 
       label: 'Setup', 
       requiresConnection: false,
       disabledReason: null,

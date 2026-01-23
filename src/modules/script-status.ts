@@ -194,8 +194,8 @@ export async function checkScriptStatus(): Promise<void> {
  * Mark all scripts as available when connected
  */
 export function markScriptsAsAvailable(): void {
-  const installer = (window as any).Installer;
-  const scripts = installer?.getAvailableScripts ? installer.getAvailableScripts() as AvailableScript[] : [];
+  const scriptDownloader = (window as any).ScriptDownloader;
+  const scripts = scriptDownloader?.getAvailableScripts ? scriptDownloader.getAvailableScripts() as AvailableScript[] : [];
   scripts.forEach(script => {
     scriptStatus.scripts[script.id] = { installed: true, version: script.version || null };
   });
@@ -288,7 +288,7 @@ export function updateDashboardStatus(): void {
         <button onclick="window.showPage?.('setup')" class="btn-link">≡ Go to Setup</button> to connect to OBS WebSocket
       </p>
       <p class="hint" style="margin-top:4px">
-        <button onclick="window.showPage?.('install')" class="btn-link"> Install Scripts</button> if you haven't already
+        <button onclick="window.showPage?.('scripts')" class="btn-link">📥 Download Scripts</button> to get the latest versions
       </p>
     `;
   }
@@ -361,7 +361,7 @@ export function renderFeatureNotice(containerId: string, featureId: string, scri
       <div class="feature-notice__title"> Script Required: ${scriptName}</div>
       <div class="feature-notice__text">
         This feature requires the ${scriptName} Lua script. 
-        <button onclick="window.showPage?.('install')" class="btn-link">Go to Installer </button>
+        <button onclick="window.showPage?.('scripts')" class="btn-link">Download Scripts 📥</button>
       </div>
     `;
     container.insertBefore(notice, container.firstChild);

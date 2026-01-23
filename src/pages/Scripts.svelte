@@ -9,9 +9,9 @@
   import { stagger } from '../core/animations';
   
   onMount(() => {
-    // Render scripts list
-    if ((window as any).ScriptStatus?.renderScriptsList) {
-      (window as any).ScriptStatus.renderScriptsList();
+    // Render scripts list with download functionality
+    if ((window as any).ScriptDownloader?.renderScriptsListWithDownload) {
+      (window as any).ScriptDownloader.renderScriptsListWithDownload();
     }
   });
 </script>
@@ -20,7 +20,7 @@
   <div class="card">
     <h3> Stream Suite Scripts</h3>
     <p class="hint" style="margin-bottom:12px">
-      Lua scripts that run inside OBS Studio. Install via the Installer tab.
+      Lua scripts that run inside OBS Studio. Click the download button to save each script, then add to OBS via Tools → Scripts.
     </p>
     
     <div id="scriptsList" class="scripts-grid"></div>

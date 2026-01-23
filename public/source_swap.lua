@@ -6,17 +6,31 @@ OBS Source Swap Script (Lua)
 Smoothly swaps the position and size of two sources with animation.
 Supports MULTIPLE swap configurations, each with its own hotkey!
 
+v3.2.0:
+- MAJOR UI/UX overhaul - removed redundant EDIT and REMOVE sections
+- Inline delete buttons per config (saves ~40% vertical space)
+- Better visual hierarchy with grouped settings
+- Configs shown first, then add section (better information scent)
+- More descriptive labels and helpful error messages
+
 v3.1.0:
 - Added Temporary Aspect Override in settings
 - Override supersedes global setting for all swaps
 - Works for root sources and sources in groups
 
 Author: OBS Animation System
-Version: 3.1.0
+Version: 3.2.0
 ================================================================================
 --]]
 
 obs = obslua
+
+-- =============================================================================
+-- Version Info
+-- =============================================================================
+local SCRIPT_VERSION = "3.2.0"
+local SCRIPT_NAME = "Source Swap"
+local LAST_UPDATED = "2026-01-23"
 
 -- =============================================================================
 -- Configuration
@@ -536,18 +550,6 @@ local function add_config(name, src_a, src_b)
     return true
 end
 
-local function update_config(name, new_src_a, new_src_b)
-    for _, c in ipairs(swap_configs) do
-        if c.name == name then
-            c.source_a = new_src_a
-            c.source_b = new_src_b
-            log_info("Updated: " .. name .. " -> " .. new_src_a .. " <-> " .. new_src_b)
-            return true
-        end
-    end
-    return false
-end
-
 local function remove_config(name)
     for i, c in ipairs(swap_configs) do
         if c.name == name then
@@ -568,19 +570,26 @@ end
 -- =============================================================================
 
 function script_description()
-    return [[<h2>Source Swap v3.1</h2>
+    return [[<h2>Source Swap v3.2 - Streamlined UI</h2>
 <p>Swap position AND size of two sources with smooth animation.</p>
 
 <h3>Features:</h3>
 <ul>
-<li>★ Temporary Aspect Override in settings!</li>
-<li>Works for root sources and sources in groups</li>
-<li>Unlimited configurations with hotkeys</li>
-<li>No progressive shrinking</li>
+<li>✓ Clean, space-efficient UI design</li>
+<li>✓ Inline test and delete actions per config</li>
+<li>✓ Quick aspect override for all swaps</li>
+<li>✓ Works with root sources and grouped sources</li>
+<li>✓ Unlimited configs with individual hotkeys</li>
 </ul>
 
-<p><b>Temp Override:</b> Set it to force Preserve or Stretch for ALL swaps 
-until you set it back to Off.</p>
+<h3>Quick Start:</h3>
+<ol>
+<li>Add a swap config below (name it, pick 2 sources)</li>
+<li>Click "Test Swap" to try it, or assign a hotkey</li>
+<li>Go to Settings → Hotkeys → find "Swap: [your name]"</li>
+</ol>
+
+<p><b>Pro Tip:</b> Use the Aspect Override to quickly force letterbox or stretch mode on ALL swaps!</p>
 <hr>
 <p><i>Part of Strixun's Stream Suite</i></p>
 ]]
@@ -590,127 +599,117 @@ function script_properties()
     local props = obs.obs_properties_create()
     local sources = get_scene_source_names()
     
-    -- Settings
-    obs.obs_properties_add_text(props, "h1", "═══════════ SETTINGS ═══════════", obs.OBS_TEXT_INFO)
+    -- ═══════════════════════════════════════════════════════════════
+    -- GLOBAL ANIMATION SETTINGS
+    -- ═══════════════════════════════════════════════════════════════
+    obs.obs_properties_add_text(props, "h1", "╔═══════════════ ANIMATION SETTINGS ═══════════════╗", obs.OBS_TEXT_INFO)
+    
     obs.obs_properties_add_int_slider(props, "duration", "Duration (ms)", 100, 2000, 50)
     
-    local el = obs.obs_properties_add_list(props, "easing", "Easing", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
-    obs.obs_property_list_add_string(el, "Ease In/Out", "ease_in_out")
-    obs.obs_property_list_add_string(el, "Ease Out", "ease_out")
-    obs.obs_property_list_add_string(el, "Ease In", "ease_in")
-    obs.obs_property_list_add_string(el, "Linear", "linear")
-    obs.obs_property_list_add_string(el, "Back", "back")
-    obs.obs_property_list_add_string(el, "Bounce", "bounce")
+    local el = obs.obs_properties_add_list(props, "easing", "Easing Curve", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
+    obs.obs_property_list_add_string(el, "Ease In/Out (Smooth)", "ease_in_out")
+    obs.obs_property_list_add_string(el, "Ease Out (Start Fast)", "ease_out")
+    obs.obs_property_list_add_string(el, "Ease In (End Fast)", "ease_in")
+    obs.obs_property_list_add_string(el, "Linear (Constant)", "linear")
+    obs.obs_property_list_add_string(el, "Back (Overshoot)", "back")
+    obs.obs_property_list_add_string(el, "Bounce (Spring)", "bounce")
     
     obs.obs_properties_add_bool(props, "preserve_aspect", "Preserve Aspect Ratio (default)")
     
-    -- Temporary override that supersedes ALL config settings
-    local override = obs.obs_properties_add_list(props, "temp_override", "[PERF] Temporary Override", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_INT)
-    obs.obs_property_list_add_int(override, "Off (use config/global)", 0)
-    obs.obs_property_list_add_int(override, "Force PRESERVE aspect", 1)
-    obs.obs_property_list_add_int(override, "Force STRETCH to fill", 2)
+    -- Performance override section
+    obs.obs_properties_add_text(props, "h_perf", "─── Quick Override (applies to ALL swaps) ───", obs.OBS_TEXT_INFO)
+    local override = obs.obs_properties_add_list(props, "temp_override", "Aspect Mode Override", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_INT)
+    obs.obs_property_list_add_int(override, "⊗ Off (use default above)", 0)
+    obs.obs_property_list_add_int(override, "⊠ Force PRESERVE aspect (letterbox)", 1)
+    obs.obs_property_list_add_int(override, "⊡ Force STRETCH to fill (distort)", 2)
     
-    obs.obs_properties_add_bool(props, "debug_mode", "Debug Logging")
+    obs.obs_properties_add_bool(props, "debug_mode", "Enable Debug Logging")
     
-    -- Add config
-    obs.obs_properties_add_text(props, "h2", "═══════════ ADD SWAP ═══════════", obs.OBS_TEXT_INFO)
-    obs.obs_properties_add_button(props, "refresh", "→ Refresh Sources", function() return true end)
+    -- ═══════════════════════════════════════════════════════════════
+    -- SWAP CONFIGURATIONS
+    -- ═══════════════════════════════════════════════════════════════
+    obs.obs_properties_add_text(props, "h2", "╔═══════════════ SWAP CONFIGURATIONS ═══════════════╗", obs.OBS_TEXT_INFO)
+    
+    -- Show existing configs first (better UX - see what you have before adding more)
+    if #swap_configs > 0 then
+        obs.obs_properties_add_text(props, "h_configs", 
+            "── " .. #swap_configs .. " Config" .. (#swap_configs > 1 and "s" or "") .. " (assign hotkeys in Settings → Hotkeys) ──", 
+            obs.OBS_TEXT_INFO)
+        
+        for i, c in ipairs(swap_configs) do
+            -- Compact format: all info + actions on adjacent lines
+            local label = string.format("✓ %s  •  %s ↔ %s", c.name, c.source_a, c.source_b)
+            obs.obs_properties_add_text(props, "cfg_" .. i, label, obs.OBS_TEXT_INFO)
+            
+            -- Action buttons side by side (visually grouped)
+            obs.obs_properties_add_button(props, "swap_" .. i, "▶ Test Swap", function()
+                execute_swap(c.source_a, c.source_b, c.name)
+                return false
+            end)
+            
+            obs.obs_properties_add_button(props, "del_" .. i, "✗ Delete", function()
+                if remove_config(c.name) then
+                    save_configs(settings_ref)
+                    log_info("Deleted: " .. c.name)
+                    return true  -- Refresh UI
+                end
+                return false
+            end)
+        end
+        
+        obs.obs_properties_add_text(props, "h_spacer", "────────────────────────────────────────", obs.OBS_TEXT_INFO)
+    else
+        obs.obs_properties_add_text(props, "none", "⚠ No swap configs yet. Add one below to get started!", obs.OBS_TEXT_INFO)
+    end
+    
+    -- Add new config section (compact and clear)
+    obs.obs_properties_add_text(props, "h_add", "── Add New Swap Configuration ──", obs.OBS_TEXT_INFO)
+    
+    obs.obs_properties_add_button(props, "refresh", "🔄 Refresh Source Lists", function() return true end)
+    
     obs.obs_properties_add_text(props, "new_name", "Config Name", obs.OBS_TEXT_DEFAULT)
     
-    local la = obs.obs_properties_add_list(props, "new_a", "Source A", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
-    local lb = obs.obs_properties_add_list(props, "new_b", "Source B", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
-    obs.obs_property_list_add_string(la, "(Select)", "")
-    obs.obs_property_list_add_string(lb, "(Select)", "")
+    local la = obs.obs_properties_add_list(props, "new_a", "Source A (from)", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
+    local lb = obs.obs_properties_add_list(props, "new_b", "Source B (to)", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
+    obs.obs_property_list_add_string(la, "── Select First Source ──", "")
+    obs.obs_property_list_add_string(lb, "── Select Second Source ──", "")
     for _, s in ipairs(sources) do
         obs.obs_property_list_add_string(la, s.display, s.name)
         obs.obs_property_list_add_string(lb, s.display, s.name)
     end
     
-    obs.obs_properties_add_button(props, "add_btn", "⊕ Add Config", function()
+    obs.obs_properties_add_button(props, "add_btn", "⊕ Add Swap Config", function()
         if not settings_ref then return false end
         local n = obs.obs_data_get_string(settings_ref, "new_name")
         local a = obs.obs_data_get_string(settings_ref, "new_a")
         local b = obs.obs_data_get_string(settings_ref, "new_b")
-        if n == "" then log_error("Need name"); return false end
-        if a == "" or b == "" then log_error("Select both sources"); return false end
-        if a == b then log_error("Sources must differ"); return false end
+        
+        -- Validation with helpful messages
+        if n == "" then 
+            log_error("Please enter a config name (e.g., 'Main to Wide')")
+            return false 
+        end
+        if a == "" or b == "" then 
+            log_error("Please select both Source A and Source B")
+            return false 
+        end
+        if a == b then 
+            log_error("Source A and B must be different sources")
+            return false 
+        end
+        
         if add_config(n, a, b) then
             save_configs(settings_ref)
             obs.obs_data_set_string(settings_ref, "new_name", "")
+            log_info("✓ Added config '" .. n .. "' - assign hotkey in Settings → Hotkeys → 'Swap: " .. n .. "'")
             return true  -- Refresh UI
         end
         return false
     end)
     
-    -- Current Configs
-    obs.obs_properties_add_text(props, "h3", "═══════════ CONFIGS (" .. #swap_configs .. ") ═══════════", obs.OBS_TEXT_INFO)
-    
-    if #swap_configs == 0 then
-        obs.obs_properties_add_text(props, "none", "No configs yet. Add one above!", obs.OBS_TEXT_INFO)
-    else
-        for i, c in ipairs(swap_configs) do
-            local label = string.format("%d. %s: %s  %s", i, c.name, c.source_a, c.source_b)
-            obs.obs_properties_add_text(props, "cfg_" .. i, label, obs.OBS_TEXT_INFO)
-            obs.obs_properties_add_button(props, "swap_" .. i, "   → Swap Now", function()
-                execute_swap(c.source_a, c.source_b, c.name)
-                return false
-            end)
-        end
-    end
-    
-    -- Edit
-    obs.obs_properties_add_text(props, "h4", "═══════════ EDIT ═══════════", obs.OBS_TEXT_INFO)
-    
-    local ec = obs.obs_properties_add_list(props, "edit_cfg", "Config to Edit", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
-    obs.obs_property_list_add_string(ec, "(Select)", "")
-    for _, c in ipairs(swap_configs) do
-        obs.obs_property_list_add_string(ec, c.name, c.name)
-    end
-    
-    local ea = obs.obs_properties_add_list(props, "edit_a", "New Source A", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
-    local eb = obs.obs_properties_add_list(props, "edit_b", "New Source B", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
-    obs.obs_property_list_add_string(ea, "(Select)", "")
-    obs.obs_property_list_add_string(eb, "(Select)", "")
-    for _, s in ipairs(sources) do
-        obs.obs_property_list_add_string(ea, s.display, s.name)
-        obs.obs_property_list_add_string(eb, s.display, s.name)
-    end
-    
-    obs.obs_properties_add_button(props, "edit_btn", " Update Config", function()
-        if not settings_ref then return false end
-        local n = obs.obs_data_get_string(settings_ref, "edit_cfg")
-        local a = obs.obs_data_get_string(settings_ref, "edit_a")
-        local b = obs.obs_data_get_string(settings_ref, "edit_b")
-        if n == "" then log_error("Select config"); return false end
-        if a == "" or b == "" then log_error("Select sources"); return false end
-        if a == b then log_error("Different sources"); return false end
-        if update_config(n, a, b) then
-            save_configs(settings_ref)
-            return true  -- Refresh UI
-        end
-        return false
-    end)
-    
-    -- Remove
-    obs.obs_properties_add_text(props, "h5", "═══════════ REMOVE ═══════════", obs.OBS_TEXT_INFO)
-    local rc = obs.obs_properties_add_list(props, "rem_cfg", "Config", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
-    obs.obs_property_list_add_string(rc, "(Select)", "")
-    for _, c in ipairs(swap_configs) do
-        obs.obs_property_list_add_string(rc, c.name, c.name)
-    end
-    obs.obs_properties_add_button(props, "rem_btn", "✗ Remove", function()
-        if not settings_ref then return false end
-        local n = obs.obs_data_get_string(settings_ref, "rem_cfg")
-        if n ~= "" and remove_config(n) then
-            save_configs(settings_ref)
-            return true  -- Refresh UI
-        end
-        return false
-    end)
-    
-    -- Info
-    obs.obs_properties_add_text(props, "h6", "═══════════ INFO ═══════════", obs.OBS_TEXT_INFO)
-    obs.obs_properties_add_text(props, "tip", " ★ Hotkeys: Settings  Hotkeys  'Swap: [name]'", obs.OBS_TEXT_INFO)
+    -- Bottom info
+    obs.obs_properties_add_text(props, "h_footer", "╚════════════════════════════════════════════════╝", obs.OBS_TEXT_INFO)
+    obs.obs_properties_add_text(props, "tip", "💡 Tip: To edit a config, delete it and add a new one with the same name", obs.OBS_TEXT_INFO)
     
     return props
 end
@@ -735,7 +734,7 @@ end
 function script_load(settings)
     settings_ref = settings
     load_configs(settings)
-    log_info("Source Swap v3.1 loaded")
+    log_info("Source Swap v3.2 loaded (Streamlined UI)")
 end
 
 function script_save(settings)

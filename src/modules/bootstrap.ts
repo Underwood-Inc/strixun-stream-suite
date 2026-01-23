@@ -7,6 +7,7 @@
 import { navigateTo, restorePage } from '../stores/navigation';
 import * as App from './app';
 import { Layouts } from './layouts';
+import { ScriptDownloader } from './script-downloader';
 import { ScriptStatus, isOBSDock, openUrlOrCopy } from './script-status';
 import * as sourceSwaps from './source-swaps';
 import { Sources } from './sources';
@@ -291,6 +292,12 @@ async function initializeModules(): Promise<void> {
   // Expose to window for legacy compatibility
   (window as any).TwitchAPI = TwitchAPI;
   
+  // Initialize Script Downloader (TypeScript module)
+  // (No initialization needed, functions are called on demand)
+  
+  // Expose to window for legacy compatibility
+  (window as any).ScriptDownloader = ScriptDownloader;
+  
   // Initialize App module (TypeScript module)
   // Setup UI state persistence
   App.setupUIStatePersistence();
@@ -364,11 +371,6 @@ export async function completeAppInitialization(): Promise<void> {
     }
     App.renderTextCyclerConfigs();
     Layouts.initLayouts();
-    
-    // Initialize installer (function is global from installer.js module)
-    if (typeof (window as any).initScriptsAndInstaller === 'function') {
-      (window as any).initScriptsAndInstaller();
-    }
     
     // Load UI state
     App.loadUIState();

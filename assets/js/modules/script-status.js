@@ -120,7 +120,7 @@ async function checkScriptStatus() {
 // Mark all scripts as available when connected
 // (We can't reliably detect individual Lua scripts from WebSocket)
 function markScriptsAsAvailable() {
-    const scripts = window.Installer ? window.Installer.getAvailableScripts() : [];
+    const scripts = window.ScriptDownloader ? window.ScriptDownloader.getAvailableScripts() : [];
     scripts.forEach(script => {
         scriptStatus.scripts[script.id] = { installed: true, version: script.version };
     });
@@ -305,7 +305,7 @@ function renderFeatureNotice(containerId, featureId, scriptName) {
             <div class="feature-notice__title"> Script Required: ${scriptName}</div>
             <div class="feature-notice__text">
                 This feature requires the ${scriptName} Lua script. 
-                <button onclick="showPage('install')" class="btn-link">Go to Installer </button>
+                <button onclick="showPage('scripts')" class="btn-link">Download Scripts 📥</button>
             </div>
         `;
         container.insertBefore(notice, container.firstChild);
