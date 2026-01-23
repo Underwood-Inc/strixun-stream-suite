@@ -460,8 +460,9 @@ export async function completeInitializationAfterAuth(): Promise<void> {
     // Complete app initialization (rendering, UI state, etc.)
     await completeAppInitialization();
     
-    // Restore saved page
-    restorePage();
+    // NOTE: Do NOT call restorePage() here - the Login page handles navigation
+    // to the redirect URL. Calling restorePage() here would race with that
+    // navigation and override the intended destination.
     
     // Load saved credentials and auto-connect
     await loadCredentialsAndConnect();

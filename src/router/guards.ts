@@ -62,21 +62,28 @@ export const requireAuth: RouteGuard = async (to: ParsedRoute, _from: ParsedRout
  * Use this for routes that ALWAYS require auth, like URL shortener
  * which needs to identify the user for their URLs.
  */
-export const requireAuthStrict: RouteGuard = async (_to: ParsedRoute, _from: ParsedRoute | null): Promise<boolean | string> => {
+export const requireAuthStrict: RouteGuard = async (to: ParsedRoute, _from: ParsedRoute | null): Promise<boolean | string> => {
   const { isAuthenticated, authCheckComplete } = await import('../stores/auth');
   
   const authComplete = get(authCheckComplete);
   const authenticated = get(isAuthenticated);
   
-  // If auth check hasn't completed yet, allow navigation
+  // If auth check hasn't completed yet, redirect to login with return URL
+  // Login page will redirect back once auth is confirmed
   if (!authComplete) {
-    console.log('[Guard:requireAuthStrict] Auth check not complete, allowing for now');
-    return true;
+    console.log('[Guard:requireAuthStrict] Auth check not complete, redirecting to login');
+    const fullPath = to.query && Object.keys(to.query).length > 0
+      ? `${to.path}?${new URLSearchParams(to.query as Record<string, string>).toString()}`
+      : to.path;
+    return `/login?redirect=${encodeURIComponent(fullPath)}`;
   }
   
   if (!authenticated) {
     console.log('[Guard:requireAuthStrict] Not authenticated, redirecting to login');
-    return '/login';
+    const fullPath = to.query && Object.keys(to.query).length > 0
+      ? `${to.path}?${new URLSearchParams(to.query as Record<string, string>).toString()}`
+      : to.path;
+    return `/login?redirect=${encodeURIComponent(fullPath)}`;
   }
   
   console.log('[Guard:requireAuthStrict] Authenticated, allowing access');

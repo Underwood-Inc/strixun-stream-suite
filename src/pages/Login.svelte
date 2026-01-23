@@ -25,6 +25,9 @@
   // Track if login form is shown (vs landing screen)
   let showLoginForm = false;
   
+  // Track if we're handling login - prevents reactive statement from double-navigating
+  let isHandlingLogin = false;
+  
   /**
    * Get OTP Auth API URL
    * Priority: localhost check > VITE_AUTH_API_URL (for E2E tests) > window.getOtpAuthApiUrl() > fallback
@@ -69,22 +72,26 @@
    */
   async function handleLoginSuccess(data: LoginSuccessData): Promise<void> {
     try {
+      // Set flag to prevent reactive statement from double-navigating
+      isHandlingLogin = true;
+      
+      // Get redirect URL BEFORE processing login (while we're still on /login)
+      const redirectUrl = getRedirectUrl();
+      const destination = redirectUrl || DEFAULT_AUTHENTICATED_ROUTE;
+      
       // Process login with token
       await login(data.token);
       
       showToast({ message: 'Login successful! Welcome back.', type: 'success' });
       
-      // Navigate to redirect URL or default
-      const redirectUrl = getRedirectUrl();
-      const destination = redirectUrl || DEFAULT_AUTHENTICATED_ROUTE;
-      
       console.log('[Login] Success, navigating to:', destination);
       
-      // Small delay to ensure auth state propagates
+      // Small delay to ensure auth state propagates, then navigate
       setTimeout(() => {
         navigate(destination, { replace: true });
       }, 100);
     } catch (error) {
+      isHandlingLogin = false;
       console.error('[Login] Login processing failed:', error);
       showToast({ 
         message: 'Login failed. Please try again.', 
@@ -126,8 +133,9 @@
     }
   });
   
-  // Watch for auth state changes
-  $: if ($authCheckComplete && $isAuthenticated) {
+  // Watch for auth state changes (SSO restore case)
+  // Skip if we're already handling a login (handleLoginSuccess will navigate)
+  $: if ($authCheckComplete && $isAuthenticated && !isHandlingLogin) {
     const redirectUrl = getRedirectUrl();
     const destination = redirectUrl || DEFAULT_AUTHENTICATED_ROUTE;
     navigate(destination, { replace: true });

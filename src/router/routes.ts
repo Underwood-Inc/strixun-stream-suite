@@ -79,7 +79,7 @@ export const routes: AppRoute[] = [
   {
     path: '/text-cycler-display',
     label: 'Text Cycler Display',
-    guards: [requireAuth],
+    guards: [requireAuthStrict],
     requiresConnection: false,
     isWip: false,
     inTesting: false,
