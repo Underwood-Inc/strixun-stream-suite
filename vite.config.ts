@@ -164,8 +164,8 @@ export default defineConfig({
     cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
-        'text-cycler-display': resolve(__dirname, 'text_cycler_display.html')
+        main: resolve(__dirname, 'index.html')
+        // text-cycler-display is now a hash route within the main app: /#/text-cycler-display
       },
       output: {
         // Preserve original file structure for OBS compatibility

@@ -859,7 +859,7 @@ export function updateTextCyclerMode(): void {
   if (textStyleCard) textStyleCard.style.display = mode === 'browser' ? 'block' : 'none';
   
   if (mode === 'browser') {
-    modeInfo.textContent = 'Uses a Browser Source in OBS with smooth CSS animations. Create a Browser Source pointing to text_cycler_display.html';
+    modeInfo.textContent = 'Uses a Browser Source in OBS with smooth CSS animations. Copy the URL below and add as Browser Source in OBS.';
   } else {
     modeInfo.textContent = 'Updates an existing OBS text source directly. Limited to text scramble animations.';
   }
@@ -877,19 +877,19 @@ export function getBrowserSourceUrl(configId?: string): string {
   const location = window.location;
   let baseUrl = '';
   
-  // Check if running from file:// protocol (local development)
-  if (location.protocol === 'file:') {
-    // For local development with file:// protocol, try to construct local path
+  // Use hash-based routing for the text cycler display
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    // Local dev server - use current origin with hash route
+    baseUrl = `${location.origin}/#/text-cycler-display`;
+  } else if (location.protocol === 'file:') {
+    // For local development with file:// protocol
+    // Hash routing works with file:// but needs the index.html
     const currentPath = location.pathname;
     const directory = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
-    baseUrl = `file://${directory}text_cycler_display.html`;
-  } else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-    // Local dev server - use current origin
-    baseUrl = `${location.origin}/text_cycler_display.html`;
+    baseUrl = `file://${directory}index.html#/text-cycler-display`;
   } else {
-    // Production - use deployed streamkit domain
-    // This ensures the URL works even when opened in a regular browser (not as OBS dock)
-    baseUrl = 'https://streamkit.idling.app/text_cycler_display.html';
+    // Production - use deployed streamkit domain with hash route
+    baseUrl = 'https://streamkit.idling.app/#/text-cycler-display';
   }
   
   return `${baseUrl}?id=${encodeURIComponent(configId || 'config1')}`;

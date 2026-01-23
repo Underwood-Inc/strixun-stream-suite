@@ -2,7 +2,7 @@
   /**
    * Navigation Component
    * 
-   * Tab navigation for different pages.
+   * Tab navigation for different pages using the hash router.
    * 
    * Features:
    * - Roman numeral indicators
@@ -12,143 +12,32 @@
    * - Active page highlighting
    */
   
-import { connected } from '../../stores/connection';
-import { currentPage } from '../../stores/navigation';
-import { domInterferenceDetected } from '../../stores/dom-interference';
+  import { connected } from '../../stores/connection';
+  import { domInterferenceDetected } from '../../stores/dom-interference';
   import { celebrateClick } from '../../utils/particles';
   import Tooltip from './Tooltip.svelte';
   import { animate, stagger } from '../../core/animations';
   import { StatusFlair } from '@strixun/status-flair';
   
-  const tabs = [
-    { 
-      id: 'dashboard', 
-      numeral: 'I', 
-      label: 'Dashboard', 
-      requiresConnection: false,
-      disabledReason: null,
-      isWip: false,
-      inTesting: false
-    },
-    { 
-      id: 'sources', 
-      numeral: 'II', 
-      label: 'Sources', 
-      requiresConnection: true,
-      disabledReason: 'Connect to OBS first to use this feature',
-      isWip: false,
-      inTesting: false
-    },
-    { 
-      id: 'text', 
-      numeral: 'III', 
-      label: 'Text Cycler', 
-      requiresConnection: true,
-      disabledReason: 'Connect to OBS first to use this feature',
-      isWip: false,
-      inTesting: true
-    },
-    { 
-      id: 'swaps', 
-      numeral: 'IV', 
-      label: 'Swaps', 
-      requiresConnection: true,
-      disabledReason: 'Connect to OBS first to use this feature',
-      isWip: false,
-      inTesting: false
-    },
-    { 
-      id: 'layouts', 
-      numeral: 'V', 
-      label: 'Layouts', 
-      requiresConnection: true,
-      disabledReason: 'Connect to OBS first to use this feature',
-      isWip: false,
-      inTesting: false
-    },
-    { 
-      id: 'notes', 
-      numeral: 'VI', 
-      label: 'Notes', 
-      requiresConnection: false,
-      disabledReason: null,
-      isWip: true,
-      inTesting: false
-    },
-    { 
-      id: 'chat', 
-      numeral: 'VII', 
-      label: 'Chat', 
-      requiresConnection: false,
-      disabledReason: null,
-      isWip: true,
-      inTesting: false
-    },
-    { 
-      id: 'scripts', 
-      numeral: 'VIII', 
-      label: 'Scripts', 
-      requiresConnection: false,
-      disabledReason: null,
-      isWip: false,
-      inTesting: false
-    },
-    { 
-      id: 'url-shortener', 
-      numeral: 'IX', 
-      label: 'URL Shortener', 
-      requiresConnection: false,
-      disabledReason: null,
-      isWip: false,
-      inTesting: true
-    },
-    { 
-      id: 'setup', 
-      numeral: 'X', 
-      label: 'Setup', 
-      requiresConnection: false,
-      disabledReason: null,
-      isWip: false,
-      inTesting: false
-    }
-  ];
+  // Router imports
+  import { navigate, currentPath } from '../../router';
+  import { getNavRoutes, type AppRoute } from '../../router/routes';
+  
+  // Get navigation routes from centralized config
+  const navRoutes = getNavRoutes();
   
   // Pages restricted when DOM interference is detected
-  const RESTRICTED_PAGES_ON_INTERFERENCE = ['sources', 'text', 'swaps', 'layouts', 'chat', 'url-shortener'];
+  const RESTRICTED_PATHS_ON_INTERFERENCE = ['/sources', '/text-cycler', '/swaps', '/layouts', '/chat', '/url-shortener'];
   
-  // Redirect away from disabled pages when connection is lost or interference detected
-  $: {
-    const currentTab = tabs.find(t => t.id === $currentPage);
-    if ($domInterferenceDetected && RESTRICTED_PAGES_ON_INTERFERENCE.includes($currentPage)) {
-      // Redirect to dashboard if interference detected and on restricted page
-      currentPage.set('dashboard');
-    } else if (currentTab && currentTab.requiresConnection && !$connected) {
-      // Redirect to setup if we're on a disabled page
-      currentPage.set('setup');
-    }
-  }
-  
-  function handleTabClick(e: MouseEvent, tabId: string, requiresConnection: boolean): void {
+  /**
+   * Handle tab click - navigate via router
+   * Router guards will handle auth/connection checks
+   */
+  function handleTabClick(e: MouseEvent, route: AppRoute): void {
     e.preventDefault();
     e.stopPropagation();
     
-    // Check for DOM interference first
-    if ($domInterferenceDetected && RESTRICTED_PAGES_ON_INTERFERENCE.includes(tabId)) {
-      if (window.App?.log) {
-        window.App.log('This feature is restricted due to detected DOM interference', 'error');
-      }
-      currentPage.set('dashboard');
-      return;
-    }
-    
-    if (requiresConnection && !$connected) {
-      if (window.App?.log) {
-        window.App.log('Connect to OBS first to use this feature', 'error');
-      }
-      currentPage.set('setup');
-      return;
-    }
-    
+    // Show particle effect
     try {
       celebrateClick(e.currentTarget as HTMLElement);
     } catch (err) {
@@ -156,39 +45,80 @@ import { domInterferenceDetected } from '../../stores/dom-interference';
       console.warn('[Navigation] Particle effect failed:', err);
     }
     
-    currentPage.set(tabId);
+    // Navigate via router - guards will handle protection
+    navigate(route.path);
+  }
+  
+  /**
+   * Check if a route is disabled based on current state
+   */
+  function isRouteDisabled(route: AppRoute): boolean {
+    // Check DOM interference for restricted paths
+    if ($domInterferenceDetected && RESTRICTED_PATHS_ON_INTERFERENCE.includes(route.path)) {
+      return true;
+    }
+    
+    // Check connection requirement
+    if (route.requiresConnection && !$connected) {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Get tooltip content for a route
+   */
+  function getTooltipContent(route: AppRoute, isDisabled: boolean): string {
+    if ($domInterferenceDetected && RESTRICTED_PATHS_ON_INTERFERENCE.includes(route.path)) {
+      return `${route.label} | Restricted due to detected DOM interference`;
+    }
+    
+    if (route.inTesting) {
+      return `${route.label} | This feature is currently in testing`;
+    }
+    
+    if (route.isWip) {
+      return `${route.label} | This feature is incomplete and still in progress`;
+    }
+    
+    if (route.requiresConnection && !$connected && route.disabledReason) {
+      return `${route.label} | ${route.disabledReason}`;
+    }
+    
+    return route.label;
+  }
+  
+  /**
+   * Get tooltip level for a route
+   */
+  function getTooltipLevel(route: AppRoute): 'error' | 'warning' | 'info' | 'log' {
+    if ($domInterferenceDetected && RESTRICTED_PATHS_ON_INTERFERENCE.includes(route.path)) {
+      return 'error';
+    }
+    
+    if (route.inTesting) {
+      return 'info';
+    }
+    
+    if (route.isWip || (route.requiresConnection && !$connected)) {
+      return 'warning';
+    }
+    
+    return 'log';
   }
 </script>
 
 <nav class="tabs" use:stagger={{ preset: 'slideDown', stagger: 50, config: { duration: 250 } }}>
-  {#each tabs as tab, index}
-    {@const isRestrictedByInterference = $domInterferenceDetected && RESTRICTED_PAGES_ON_INTERFERENCE.includes(tab.id)}
-    {@const isDisabled = isRestrictedByInterference || (tab.requiresConnection && !$connected)}
-    {@const isWipDisabled = tab.isWip}
-    {@const isInTesting = tab.inTesting}
-    {@const tooltipLevel = isRestrictedByInterference
-      ? 'error'
-      : tab.inTesting 
-        ? 'info' 
-        : (tab.requiresConnection && !$connected) || tab.isWip 
-          ? 'warning' 
-          : 'log'}
-    {@const tooltipContent = isRestrictedByInterference
-      ? `${tab.label} | Restricted due to detected DOM interference`
-      : tab.inTesting
-        ? `${tab.label} | This feature is currently in testing`
-        : tab.isWip
-          ? `${tab.label} | This feature is incomplete and still in progress`
-          : tab.requiresConnection && !$connected && tab.disabledReason 
-            ? `${tab.label} | ${tab.disabledReason}` 
-            : tab.label}
-    {@const isActive = $currentPage === tab.id && !isDisabled && !isWipDisabled}
-    {@const statusFlair = isWipDisabled ? 'wip' : (isInTesting ? 'in-testing' : null)}
+  {#each navRoutes as route}
+    {@const isDisabled = isRouteDisabled(route)}
+    {@const isActive = $currentPath === route.path && !isDisabled && !route.isWip}
+    {@const statusFlair = route.isWip ? 'wip' : (route.inTesting ? 'in-testing' : null)}
     <Tooltip 
-      text={tooltipContent} 
+      text={getTooltipContent(route, isDisabled)} 
       position="bottom" 
       delay={0}
-      level={tooltipLevel}
+      level={getTooltipLevel(route)}
     >
       <StatusFlair status={statusFlair}>
         <button
@@ -199,13 +129,15 @@ import { domInterferenceDetected } from '../../stores/dom-interference';
             preset: isActive ? 'scaleIn' : 'none',
             duration: 200,
             trigger: 'change',
-            id: `nav-tab-${tab.id}`,
+            id: `nav-tab-${route.path}`,
             enabled: isActive
           }}
-          on:click={(e) => handleTabClick(e, tab.id, tab.requiresConnection)}
+          on:click={(e) => handleTabClick(e, route)}
         >
-          <span class="tab__numeral">{tab.numeral}</span>
-          <span class="tab__label">{tab.label}</span>
+          {#if route.numeral}
+            <span class="tab__numeral">{route.numeral}</span>
+          {/if}
+          <span class="tab__label">{route.label}</span>
         </button>
       </StatusFlair>
     </Tooltip>
@@ -390,4 +322,3 @@ import { domInterferenceDetected } from '../../stores/dom-interference';
     border-color: var(--info);
   }
 </style>
-

@@ -5,24 +5,30 @@
    * Text cycler configuration and management
    */
   
-  import { onMount } from 'svelte';
-  import { connected, textSources } from '../stores/connection';
+  import { onMount, onDestroy } from 'svelte';
+  import { connected } from '../stores/connection';
   import { SearchBox, Tooltip, SourceSelect } from '@components';
   import { stagger } from '../core/animations';
+  import TextCyclerDisplay from './TextCyclerDisplay.svelte';
   
-  let showEditor = false;
-  let showTextLines = false;
-  let showAnimation = false;
-  let showStyle = false;
-  let showPreview = false;
-  let showControls = false;
+  // Track current config ID for the preview
+  let currentConfigId = 'default';
   
-  let configsContainer: HTMLDivElement;
+  function handleConfigChange(e: CustomEvent<{ configId: string }>): void {
+    currentConfigId = e.detail.configId;
+  }
   
   onMount(() => {
     // Load saved configs and render
     (window as any).TextCycler?.loadConfigs();
     (window as any).TextCycler?.renderTextCyclerConfigs();
+    
+    // Listen for config changes
+    window.addEventListener('textcycler:configchange', handleConfigChange as EventListener);
+  });
+  
+  onDestroy(() => {
+    window.removeEventListener('textcycler:configchange', handleConfigChange as EventListener);
   });
   
   $: {
@@ -93,12 +99,7 @@
   }
   
   function handleLoadTextSource(): void {
-    if (textSource && (window as any).loadTextSource) {
-      // Pass the reactive value instead of reading from DOM
-      const selectEl = document.getElementById('textSource') as HTMLSelectElement;
-      if (selectEl) {
-        selectEl.value = textSource;
-      }
+    if ((window as any).loadTextSource) {
       (window as any).loadTextSource();
     }
   }
@@ -124,7 +125,7 @@
       debounceMs={150}
       showCount={true}
     />
-    <div id="textCyclerConfigs" class="config-list" bind:this={configsContainer}></div>
+    <div id="textCyclerConfigs" class="config-list"></div>
     <div class="row" style="margin-top:8px">
       <Tooltip 
         text={$connected ? 'Create a new text cycler configuration' : 'Connect to OBS first to create configs'} 
@@ -170,11 +171,11 @@
         searchable={true}
         disabled={!$connected}
         filter={(source) => 
-          source.inputKind && (
+          Boolean(source.inputKind && (
             source.inputKind.includes('text') || 
             source.inputKind === 'text_gdiplus_v2' || 
             source.inputKind === 'text_ft2_source_v2'
-          )
+          ))
         }
         on:change={handleLoadTextSource}
       />
@@ -325,7 +326,9 @@
   <!-- Preview -->
   <div class="card" id="textPreviewCard" style="display:none">
     <h3> Preview</h3>
-    <div class="text-preview" id="textPreview">Select or create a config</div>
+    <div class="preview-container" id="textPreview">
+      <TextCyclerDisplay propConfigId={currentConfigId} previewMode={true} />
+    </div>
   </div>
   
   <!-- Controls -->
@@ -401,17 +404,10 @@
       }
     }
     
-    .text-preview {
-      padding: 40px;
-      background: var(--bg-dark);
-      border-radius: 6px;
-      text-align: center;
+    .preview-container {
       min-height: 200px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2em;
-      color: var(--text);
+      border-radius: 6px;
+      overflow: hidden;
     }
   }
 </style>

@@ -262,18 +262,11 @@ export function loadConfig(index: number): void {
   if (dependencies.updateTransitionMode) dependencies.updateTransitionMode();
   if (dependencies.updateBrowserSourceUrlPreview) dependencies.updateBrowserSourceUrlPreview();
   
-  // Reset preview
-  const preview = document.getElementById('textPreview');
-  if (preview) {
-    if (config.isRunning && config.textLines && config.textLines.length > 0) {
-      const currentIndex = config.cycleIndex || 0;
-      preview.textContent = config.textLines[currentIndex] || config.textLines[0];
-    } else if (config.textLines && config.textLines.length > 0) {
-      preview.textContent = config.textLines[0];
-    } else {
-      preview.textContent = '(no text lines)';
-    }
-  }
+  // Dispatch event for preview component to update
+  const configId = config.configId || config.id;
+  window.dispatchEvent(new CustomEvent('textcycler:configchange', { 
+    detail: { configId } 
+  }));
   
   // Update button states
   const startBtn = document.getElementById('startCycleBtn') as HTMLButtonElement | null;
@@ -455,7 +448,6 @@ async function sendToDisplay(configId: string, message: TextCyclerMessage): Prom
           timestamp: messageData.timestamp
         }
       });
-      console.log('[Text Cycler] Sent via WebSocket:', configId, message.type);
     } catch (e) {
       console.warn('[Text Cycler] Failed to send via WebSocket:', e);
       dependencies.log(`Failed to send text cycler message: ${e}`, 'error');
@@ -566,19 +558,15 @@ function showConfigText(index: number, text: string): void {
   if (!config) return;
   
   if (config.mode === 'browser') {
-    // Send to browser source
+    // Send to browser source - include styles with every message to ensure they're applied
     sendToDisplay(config.configId || config.id, {
       type: 'show',
       text: text,
       transition: config.transition,
-      duration: config.transDuration
-    });
-    
-    // Only update preview if this is the currently selected config
-    if (index === currentTextConfigIndex) {
-      const preview = document.getElementById('textPreview');
-      if (preview) preview.textContent = text;
-    }
+      duration: config.transDuration,
+      styles: config.styles
+    } as any);
+    // Preview component receives the same message via BroadcastChannel
   } else {
     // Legacy: update OBS text source directly
     showTextWithTransitionLegacy(text, config, index);
@@ -663,10 +651,6 @@ function setTextFast(text: string, sourceName: string, configIndex: number): voi
   
   const now = Date.now();
   if (now - lastTextSend < MIN_TEXT_INTERVAL) {
-    if (configIndex === currentTextConfigIndex) {
-      const preview = document.getElementById('textPreview');
-      if (preview) preview.textContent = text;
-    }
     return;
   }
   lastTextSend = now;
@@ -679,11 +663,7 @@ function setTextFast(text: string, sourceName: string, configIndex: number): voi
     console.error('[Text Cycler] Failed to set text on source:', sourceName, e);
     dependencies.log(`Failed to update text source "${sourceName}": ${e}`, 'error');
   });
-  
-  if (configIndex === currentTextConfigIndex) {
-    const preview = document.getElementById('textPreview');
-    if (preview) preview.textContent = text;
-  }
+  // Legacy mode doesn't support live preview - use browser mode for preview
 }
 
 /**

@@ -44,7 +44,7 @@
         <p class="script-desc">
           Beautiful CSS-animated text display. Receives messages from the control panel for smooth text cycling effects.
         </p>
-        <div class="script-file">text_cycler_display.html</div>
+        <div class="script-file">/#/text-cycler-display?id=YOUR_ID</div>
       </div>
       
       <div class="script-card">

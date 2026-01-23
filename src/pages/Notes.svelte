@@ -7,7 +7,7 @@
    */
   
   import { onDestroy, onMount } from 'svelte';
-  import { SimpleTextEditor, LoginModal, Tooltip } from '@components';
+  import { SimpleTextEditor, Tooltip } from '@components';
   import { stagger } from '../core/animations';
   import {
     deleteNotebook,
@@ -17,8 +17,9 @@
     type Notebook,
     type NotebookMetadata
   } from '../modules/notes-storage';
-  import { clearAuth, isAuthenticated, customer } from '../stores/auth';
+  import { logout, isAuthenticated, customer } from '../stores/auth';
   import { showToast } from '../stores/toast-queue';
+  import { navigate } from '../router';
   
   let notebooks: NotebookMetadata[] = [];
   let currentNotebook: Notebook | null = null;
@@ -34,34 +35,30 @@
   let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
   let lastContentHash = '';
   let hasUnsavedChanges = false;
-  let showLoginModal = false;
   
   // Auto-save debounce (30 seconds) - saves to cloud only
   const AUTO_SAVE_DELAY = 30000;
   
   onMount(async () => {
-    // NO automatic API calls - user must manually load notebooks
-    if (!$isAuthenticated) {
-      showLoginModal = true;
-    }
+    // Auth is handled by router guards - page only renders when authenticated
+    // User must manually load notebooks
   });
   
-  // Watch for authentication changes - only show/hide login modal, NO automatic API calls
-  $: if (!$isAuthenticated && !showLoginModal) {
-    showLoginModal = true;
-  }
-  
-  function handleLoginClose(): void {
-    showLoginModal = false;
+  /**
+   * Handle session expiry - redirect to login with return URL
+   */
+  function handleUnauthorized(): void {
+    showToast({ message: 'Session expired. Please log in again.', type: 'warning' });
+    navigate('/login', { query: { redirect: '/notes' } });
   }
   
   async function handleLogout(): Promise<void> {
-    clearAuth();
+    await logout();
     currentNotebook = null;
     currentNotebookId = null;
     notebooks = [];
     showNotebookList = true;
-    showLoginModal = true;
+    navigate('/login');
   }
   
   onDestroy(() => {
@@ -74,11 +71,6 @@
    * Load list of notebooks from cloud
    */
   async function loadNotebooks(): Promise<void> {
-    if (!$isAuthenticated) {
-      showLoginModal = true;
-      return;
-    }
-    
     try {
       isLoading = true;
       notebooks = await listNotebooks();
@@ -86,7 +78,7 @@
       console.error('[Notes] Failed to load notebooks:', error);
       showToast({ message: 'Failed to load notebooks', type: 'error' });
       if (error instanceof Error && error.message.includes('Not authenticated')) {
-        showLoginModal = true;
+        handleUnauthorized();
       }
     } finally {
       isLoading = false;
@@ -97,11 +89,6 @@
    * Load a notebook from cloud
    */
   async function loadNotebookById(notebookId: string): Promise<void> {
-    if (!$isAuthenticated) {
-      showLoginModal = true;
-      return;
-    }
-    
     try {
       isLoading = true;
       currentNotebookId = notebookId;
@@ -122,7 +109,7 @@
       console.error('[Notes] Failed to load notebook:', error);
       showToast({ message: 'Failed to load notebook', type: 'error' });
       if (error instanceof Error && error.message.includes('Not authenticated')) {
-        showLoginModal = true;
+        handleUnauthorized();
       }
     } finally {
       isLoading = false;
@@ -133,11 +120,6 @@
    * Create new notebook (cloud-only)
    */
   async function createNotebook(): Promise<void> {
-    if (!$isAuthenticated) {
-      showLoginModal = true;
-      return;
-    }
-    
     if (!newNotebookTitle.trim()) {
       showToast({ message: 'Please enter a notebook title', type: 'error' });
       return;
@@ -163,7 +145,7 @@
       console.error('[Notes] Failed to create notebook:', error);
       showToast({ message: 'Failed to create notebook', type: 'error' });
       if (error instanceof Error && error.message.includes('Not authenticated')) {
-        showLoginModal = true;
+        handleUnauthorized();
       }
     }
   }
@@ -172,11 +154,6 @@
    * Save current notebook to cloud
    */
   async function saveCurrentNotebook(forceSave = false): Promise<void> {
-    if (!$isAuthenticated) {
-      showLoginModal = true;
-      return;
-    }
-    
     if (!currentNotebook) return;
     
     try {
@@ -224,7 +201,7 @@
       saveStatus = 'Save failed';
       showToast({ message: 'Failed to save notebook', type: 'error' });
       if (error instanceof Error && error.message.includes('Not authenticated')) {
-        showLoginModal = true;
+        handleUnauthorized();
       }
       setTimeout(() => saveStatus = '', 3000);
     } finally {
@@ -271,11 +248,6 @@
    * Delete notebook from cloud
    */
   async function deleteNotebookById(notebookId: string): Promise<void> {
-    if (!$isAuthenticated) {
-      showLoginModal = true;
-      return;
-    }
-    
     if (!confirm('Are you sure you want to delete this notebook? This cannot be undone.')) {
       return;
     }
@@ -295,7 +267,7 @@
       console.error('[Notes] Failed to delete notebook:', error);
       showToast({ message: 'Failed to delete notebook', type: 'error' });
       if (error instanceof Error && error.message.includes('Not authenticated')) {
-        showLoginModal = true;
+        handleUnauthorized();
       }
     }
   }
@@ -326,17 +298,7 @@
       ⚠ Work in Progress - This feature is incomplete and still in progress
     </div>
   </Tooltip>
-  {#if !$isAuthenticated}
-    <div class="auth-required">
-      <div class="auth-required-content">
-        <h1>⚠ Notes & Notebooks</h1>
-        <p>Sign in to access your notes and notebooks</p>
-        <button class="btn btn-primary" on:click={() => showLoginModal = true}>
-          Sign In
-        </button>
-      </div>
-    </div>
-  {:else if showNotebookList}
+  {#if showNotebookList}
     <div class="notebook-list">
       <div class="notebook-list-header">
         <div>
@@ -442,10 +404,6 @@
         {/if}
       </div>
     </div>
-  {/if}
-  
-  {#if showLoginModal}
-    <LoginModal onClose={handleLoginClose} />
   {/if}
 </div>
 
