@@ -395,7 +395,10 @@
     align-items: center;
     justify-content: center;
     z-index: 100;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     @include gpu-accelerated;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     
@@ -403,23 +406,38 @@
       width: 20px;
       height: 20px;
       stroke: currentColor;
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     &:hover {
       background: var(--accent);
       border-color: var(--accent-dark);
       color: #000;
-      transform: translateY(-50%) scale(1.1);
       box-shadow: 0 4px 12px rgba(237, 174, 73, 0.4);
+      
+      svg {
+        transform: scale(1.1);
+      }
     }
 
     &:active {
-      transform: translateY(-50%) scale(0.95);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+      
+      svg {
+        transform: scale(0.9);
+      }
     }
 
     &:focus-visible {
       outline: 2px solid var(--accent);
       outline-offset: 2px;
+    }
+    
+    &:disabled,
+    &.carousel__control--disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
     }
     
     @media (max-width: 640px) {

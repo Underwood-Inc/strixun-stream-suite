@@ -138,7 +138,7 @@ export default defineConfig({
       ]
     },
     devOptions: {
-      enabled: false,
+      enabled: true, // Enable PWA in dev mode to test install prompt
       type: 'module'
     }
   })],

@@ -194,8 +194,8 @@ export async function checkScriptStatus(): Promise<void> {
  * Mark all scripts as available when connected
  */
 export function markScriptsAsAvailable(): void {
-  const installer = (window as any).Installer;
-  const scripts = installer?.getAvailableScripts ? installer.getAvailableScripts() as AvailableScript[] : [];
+  const scriptDownloader = (window as any).ScriptDownloader;
+  const scripts = scriptDownloader?.getAvailableScripts ? scriptDownloader.getAvailableScripts() as AvailableScript[] : [];
   scripts.forEach(script => {
     scriptStatus.scripts[script.id] = { installed: true, version: script.version || null };
   });
@@ -288,7 +288,7 @@ export function updateDashboardStatus(): void {
         <button onclick="window.showPage?.('setup')" class="btn-link">≡ Go to Setup</button> to connect to OBS WebSocket
       </p>
       <p class="hint" style="margin-top:4px">
-        <button onclick="window.showPage?.('install')" class="btn-link"> Install Scripts</button> if you haven't already
+        <button onclick="window.showPage?.('scripts')" class="btn-link">📥 Download Scripts</button> to get the latest versions
       </p>
     `;
   }
@@ -297,27 +297,15 @@ export function updateDashboardStatus(): void {
 /**
  * Render startup banner based on current state
  * Now uses toast notifications instead of DOM banner
+ * NOTE: Disconnected warning removed - UI elements already show disabled states
  */
 export function renderStartupBanner(): void {
   // Determine banner state - use Svelte store directly
   const isConnected = get(connected);
   
-  if (!isConnected) {
-    // Show persistent warning toast (manual dismiss required)
-    currentConnectionToastId = showWarning(
-      'Connect to OBS WebSocket to enable all features. Some features require Lua scripts to be installed.',
-      {
-        title: 'Not Connected to OBS',
-        persistent: true,
-        action: {
-          label: 'Setup',
-          handler: () => {
-            navigateTo('setup', false);
-          }
-        }
-      }
-    );
-  } else {
+  // Only show success toast when connected
+  // Disconnected warning removed - UI already shows disabled states
+  if (isConnected) {
     // Connected - show success toast (auto-dismiss after 5 seconds)
     currentConnectionToastId = showSuccess(
       'All features are available. Scripts detected and ready.',
@@ -361,7 +349,7 @@ export function renderFeatureNotice(containerId: string, featureId: string, scri
       <div class="feature-notice__title"> Script Required: ${scriptName}</div>
       <div class="feature-notice__text">
         This feature requires the ${scriptName} Lua script. 
-        <button onclick="window.showPage?.('install')" class="btn-link">Go to Installer </button>
+        <button onclick="window.showPage?.('scripts')" class="btn-link">Download Scripts 📥</button>
       </div>
     `;
     container.insertBefore(notice, container.firstChild);

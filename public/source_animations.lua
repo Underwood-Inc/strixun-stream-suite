@@ -11,11 +11,18 @@ Features:
     - Full in-OBS configuration UI
 
 Author: OBS Animation System
-Version: 2.8.1 - Fixed visibility flicker on show animation
+Version: 2.8.2 - Fixed instant pop on show animation (not visible -> visible)
 ================================================================================
 --]]
 
 obs = obslua
+
+-- =============================================================================
+-- Version Info
+-- =============================================================================
+local SCRIPT_VERSION = "2.8.2"
+local SCRIPT_NAME = "Source Animation System"
+local LAST_UPDATED = "2026-01-23"
 
 -- =============================================================================
 -- Configuration
@@ -381,7 +388,8 @@ local function start_animation(scene_item, source_name, config, is_showing)
     
     -- CRITICAL: Ensure filter exists and set initial opacity BEFORE any visibility change
     if is_showing then
-        -- For show: ensure filter is at 0% IMMEDIATELY
+        -- For show: ensure source is visible FIRST, then set opacity to 0% for animation
+        obs.obs_sceneitem_set_visible(scene_item, true)
         ensure_opacity_filter(source, 0.0)
         set_source_opacity(source, 0.0)
         managed_sources[source_name] = true
@@ -639,10 +647,8 @@ local function check_visibility_changes()
                     -- causing a flicker before animation sets it to 0.0
                     local started = start_animation(scene_item, source_name, config, is_visible)
                     if not started then
-                        -- Animation didn't start (disabled), just prepare normally
-                        if not managed_sources[source_name] then
-                            prepare_source(scene_item, source_name, is_visible)
-                        end
+                        -- Animation didn't start (disabled), update opacity to match visibility state
+                        prepare_source(scene_item, source_name, is_visible)
                         visibility_cache[source_name] = is_visible
                     end
                 elseif was_visible == nil then
@@ -684,10 +690,8 @@ local function check_visibility_changes()
                             local config = get_source_config(source_name)
                             local started = start_animation(scene_item, source_name, config, is_visible)
                             if not started then
-                                -- Animation didn't start (disabled), prepare normally
-                                if not managed_sources[source_name] then
-                                    prepare_source(scene_item, source_name, is_visible)
-                                end
+                                -- Animation didn't start (disabled), update opacity to match visibility state
+                                prepare_source(scene_item, source_name, is_visible)
                                 visibility_cache[source_name] = is_visible
                             end
                         elseif was_visible == nil then
@@ -834,11 +838,11 @@ end
 -- =============================================================================
 
 function script_description()
-    return [[<h2>Source Animation System v2.8.1</h2>
+    return [[<h2>Source Animation System v2.8.2</h2>
 <p>Animate sources when visibility is toggled.</p>
 
-<h3>v2.8.1 - Fixed Visibility Flicker Bug!</h3>
-<p>Sources no longer flicker to full opacity before show animations begin. The prepare_source call is now properly deferred until AFTER animation setup.</p>
+<h3>v2.8.2 - Fixed Instant Pop Bug!</h3>
+<p>Sources no longer instantly pop to full visibility when shown. The source is now explicitly set to visible BEFORE opacity is set to 0, allowing the fade-in animation to work correctly.</p>
 
 <h3>Animation Types:</h3>
 <ul>
@@ -1022,7 +1026,7 @@ end
 
 function script_load(settings)
     settings_ref = settings
-    log_info("Loading Source Animation System v2.8.1 (Visibility Flicker Fix)...")
+    log_info("Loading Source Animation System v2.8.2 (Instant Pop Fix)...")
     
     load_source_configs(settings)
     obs.obs_frontend_add_event_callback(on_frontend_event)

@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-c28420ab'], (function (workbox) { 'use strict';
+define(['./workbox-1557d5b4'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -82,12 +82,23 @@ define(['./workbox-c28420ab'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "index.html",
-    "revision": "0.agmr928cpjk"
+    "revision": "0.0bskimcfaj"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
     allowlist: [/^\/$/]
   }));
+  workbox.registerRoute(/^https:\/\/.*\/(api|auth|admin|mods|customer|user|game|chat|url).*$/i, new workbox.NetworkOnly(), 'GET');
+  workbox.registerRoute(/^https:\/\/.*\/auth\/(request-otp|verify-otp|session|logout|refresh|me).*$/i, new workbox.NetworkOnly(), 'GET');
+  workbox.registerRoute(/^https:\/\/.*\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|otf)$/i, new workbox.CacheFirst({
+    "cacheName": "static-assets",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 100,
+      maxAgeSeconds: 31536000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
   workbox.registerRoute(/^https:\/\/cdn\.jsdelivr\.net\/.*/i, new workbox.CacheFirst({
     "cacheName": "jsdelivr-cdn",
     plugins: [new workbox.ExpirationPlugin({
@@ -97,12 +108,13 @@ define(['./workbox-c28420ab'], (function (workbox) { 'use strict';
       statuses: [0, 200]
     })]
   }), 'GET');
-  workbox.registerRoute(/^https:\/\/.*\.twitch\.tv\/.*/i, new workbox.NetworkFirst({
-    "cacheName": "twitch-api",
-    "networkTimeoutSeconds": 10,
+  workbox.registerRoute(/^https:\/\/.*\.(r2\.cloudflarestorage\.com|pub-[a-z0-9]+\.r2\.dev).*\.(webp|png|jpg|jpeg)$/i, new workbox.CacheFirst({
+    "cacheName": "profile-pictures",
     plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 50,
-      maxAgeSeconds: 300
+      maxEntries: 500,
+      maxAgeSeconds: 31536000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
     })]
   }), 'GET');
 

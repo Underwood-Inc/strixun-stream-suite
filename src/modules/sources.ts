@@ -5,9 +5,10 @@
  * - Scene list and selection
  * - Source list and rendering
  * - Source visibility toggling with animations
- * - Source opacity control
+ * - Source opacity control (independent from visibility)
+ * - Quick Hide/Show buttons that trigger animated visibility toggles
  * 
- * @version 2.0.0 (TypeScript)
+ * @version 2.1.0 (TypeScript) - Added animated Hide/Show buttons (same as eye icon)
  */
 
 import { get } from 'svelte/store';
@@ -299,6 +300,7 @@ export function renderSources(): void {
   list.innerHTML = currentSources.map(s => {
     const savedOpacity = getSourceOpacityConfig(s.sourceName);
     const opacityDisplay = savedOpacity !== null ? savedOpacity : 100;
+    const isVisible = s.sceneItemEnabled;
     const escapedName = s.sourceName.replace(/'/g, "\\'");
     const itemId = `source-item-${s.sceneItemId}`;
     
@@ -322,10 +324,18 @@ export function renderSources(): void {
                    onchange="window.Sources?.quickSetOpacityWithLoader('${escapedName}', this.value, this)">
             <span class="source-item__opacity-value" id="value-${s.sceneItemId}">${opacityDisplay}%</span>
           </div>
-          <button class="opacity-reset-btn" 
-                  id="reset-${s.sceneItemId}"
-                  onclick="window.Sources?.resetOpacityWithLoader('${escapedName}', ${s.sceneItemId}, this)"
-                  title="Reset to 100%"> Reset</button>
+          <div class="source-item__buttons">
+            <button class="visibility-toggle-btn ${isVisible ? 'is-visible' : 'is-hidden'}" 
+                    id="vis-toggle-${s.sceneItemId}"
+                    onclick="window.Sources?.quickToggleVisibility('${escapedName}', ${s.sceneItemId}, ${!s.sceneItemEnabled})"
+                    title="${isVisible ? 'Hide' : 'Show'} source">
+                    ${isVisible ? '👁️ Visible' : '🙈 Hidden'}
+            </button>
+            <button class="opacity-reset-btn" 
+                    id="reset-${s.sceneItemId}"
+                    onclick="window.Sources?.resetOpacityWithLoader('${escapedName}', ${s.sceneItemId}, this)"
+                    title="Reset opacity to 100%">Reset</button>
+          </div>
         </div>
       </div>
     `}).join('');
@@ -409,7 +419,8 @@ export async function quickSetOpacityWithLoader(sourceName: string, opacity: str
   if (resetBtn) resetBtn.classList.add('loading');
   
   try {
-    await quickSetOpacity(sourceName, parseInt(opacity));
+    const opacityValue = parseInt(opacity);
+    await quickSetOpacity(sourceName, opacityValue);
   } finally {
     // Brief loading state for feedback
     setTimeout(() => {
@@ -438,6 +449,54 @@ export async function resetOpacityWithLoader(sourceName: string, itemId: number,
       btnEl.classList.remove('loading');
       if (slider) slider.disabled = false;
     }, 400);
+  }
+}
+
+// ============ Quick Visibility Toggle ============
+
+export async function quickToggleVisibility(sourceName: string, itemId: number, newState: boolean): Promise<void> {
+  const btn = document.getElementById(`vis-toggle-${itemId}`) as HTMLButtonElement | null;
+  const eyeToggle = document.getElementById(`toggle-${itemId}`);
+  
+  if (!btn) return;
+  
+  const escapedName = sourceName.replace(/'/g, "\\'");
+  
+  try {
+    // Direct OBS API call
+    await request('SetSceneItemEnabled', {
+      sceneName: getCurrentScene(),
+      sceneItemId: itemId,
+      sceneItemEnabled: newState
+    });
+    
+    // Update button - NO RE-RENDER
+    btn.className = `visibility-toggle-btn ${newState ? 'is-visible' : 'is-hidden'}`;
+    btn.textContent = newState ? '👁️ Visible' : '🙈 Hidden';
+    btn.title = newState ? 'Hide source' : 'Show source';
+    btn.onclick = () => quickToggleVisibility(sourceName, itemId, !newState);
+    
+    // Update eye icon
+    if (eyeToggle) {
+      if (newState) {
+        eyeToggle.classList.add('on');
+      } else {
+        eyeToggle.classList.remove('on');
+      }
+      eyeToggle.onclick = () => (window as any).Sources?.toggleSourceWithLoader(escapedName, itemId, !newState, eyeToggle);
+    }
+    
+    // Update store silently (no re-render)
+    const currentSources = getSources();
+    const updatedSources = currentSources.map(s => 
+      s.sceneItemId === itemId ? { ...s, sceneItemEnabled: newState } : s
+    );
+    sources.set(updatedSources);
+    
+    log(`${sourceName}: ${newState ? 'shown' : 'hidden'}`, 'success');
+  } catch (e) {
+    const error = e as Error;
+    log(`Error toggling ${sourceName}: ${error.message}`, 'error');
   }
 }
 
@@ -831,6 +890,7 @@ export const Sources = {
   renderSources,
   toggleSource,
   toggleSourceWithLoader,
+  quickToggleVisibility,
   updateSliderValue,
   quickSetOpacityWithLoader,
   resetOpacityWithLoader,

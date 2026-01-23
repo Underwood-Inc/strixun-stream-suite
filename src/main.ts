@@ -79,4 +79,6 @@ const app = mount(App, {
 // Don't initialize here - let App.svelte handle it in onMount
 // This ensures the Svelte app is fully mounted before initialization
 
+// Service worker registration is handled by vite-plugin-pwa automatically
+
 export default app;

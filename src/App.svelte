@@ -9,7 +9,6 @@
   import { onMount } from 'svelte';
   import Chat from './pages/Chat.svelte';
   import Dashboard from './pages/Dashboard.svelte';
-  import Install from './pages/Install.svelte';
   import Layouts from './pages/Layouts.svelte';
   import Notes from './pages/Notes.svelte';
   import Scripts from './pages/Scripts.svelte';
@@ -100,8 +99,6 @@
               <Notes />
             {:else if $currentPage === 'scripts'}
               <Scripts />
-            {:else if $currentPage === 'install'}
-              <Install />
             {:else if $currentPage === 'setup'}
               <Setup />
             {:else}
@@ -125,8 +122,6 @@
               <Chat />
             {:else if $currentPage === 'scripts'}
               <Scripts />
-            {:else if $currentPage === 'install'}
-              <Install />
             {:else if $currentPage === 'url-shortener'}
               <UrlShortener />
             {:else if $currentPage === 'setup'}
