@@ -2,15 +2,19 @@
   /**
    * URL Shortener Page
    * 
-   * Create and manage short URLs with OTP authentication
-   * IN TESTING - This feature is currently in testing
+   * Create and manage short URLs with OTP authentication.
+   * IN TESTING - This feature is currently in testing.
+   * 
+   * Note: Auth is handled by the router guards. This page will only
+   * render when the user is authenticated.
    */
   
   import { onMount } from 'svelte';
-  import { LoginModal, Tooltip } from '@components';
+  import { Tooltip } from '@components';
   import { stagger } from '../core/animations';
-  import { clearAuth, isAuthenticated, customer } from '../stores/auth';
+  import { logout, customer } from '../stores/auth';
   import { showToast } from '../stores/toast-queue';
+  import { navigate } from '../router';
 
   interface ShortUrl {
     shortCode: string;
@@ -23,7 +27,6 @@
   let urls: ShortUrl[] = [];
   let isLoading = false;
   let isCreating = false;
-  let showLoginModal = false;
   let urlInput = '';
   let customCodeInput = '';
   let urlShortenerApiUrl = '';
@@ -39,7 +42,6 @@
       const mainApiUrl = (window as any).getWorkerApiUrl();
       if (mainApiUrl) {
         // Assume URL shortener is on a subdomain or different path
-        // You can customize this logic
         return mainApiUrl.replace(/\/api.*$/, '').replace(/^https?:\/\/([^.]+)\./, 'https://s.') || '';
       }
     }
@@ -48,33 +50,32 @@
 
   onMount(() => {
     urlShortenerApiUrl = getUrlShortenerApiUrl();
-    if (!$isAuthenticated) {
-      showLoginModal = true;
-    } else {
-      loadUrls();
-    }
+    // Auth is handled by router guards - just load URLs
+    loadUrls();
   });
 
-  // Watch for authentication changes
-  $: if ($isAuthenticated && urlShortenerApiUrl) {
-    loadUrls();
-  }
-
-  function handleLoginClose(): void {
-    showLoginModal = false;
-  }
-
+  /**
+   * Handle logout - navigates to login page
+   */
   async function handleLogout(): Promise<void> {
-    clearAuth();
+    await logout();
     urls = [];
-    showLoginModal = true;
+    navigate('/login');
+  }
+
+  /**
+   * Handle 401 response - session expired, redirect to login
+   */
+  function handleUnauthorized(): void {
+    showToast({ message: 'Session expired. Please log in again.', type: 'warning' });
+    navigate('/login', { query: { redirect: '/url-shortener' } });
   }
 
   /**
    * Load user's URLs
    */
   async function loadUrls(): Promise<void> {
-    if (!$isAuthenticated || !urlShortenerApiUrl) {
+    if (!urlShortenerApiUrl) {
       return;
     }
 
@@ -91,7 +92,7 @@
 
       if (!response.ok) {
         if (response.status === 401) {
-          showLoginModal = true;
+          handleUnauthorized();
           return;
         }
         throw new Error(`Failed to load URLs: ${response.statusText}`);
@@ -116,8 +117,8 @@
    * Create short URL
    */
   async function createShortUrl(): Promise<void> {
-    if (!$isAuthenticated || !urlShortenerApiUrl) {
-      showLoginModal = true;
+    if (!urlShortenerApiUrl) {
+      showToast({ message: 'URL Shortener API not configured', type: 'error' });
       return;
     }
 
@@ -160,7 +161,7 @@
 
       if (!response.ok) {
         if (response.status === 401) {
-          showLoginModal = true;
+          handleUnauthorized();
           return;
         }
         const errorData = await response.json().catch(() => ({ error: response.statusText }));
@@ -193,7 +194,7 @@
    * Delete short URL
    */
   async function deleteUrl(shortCode: string): Promise<void> {
-    if (!$isAuthenticated || !urlShortenerApiUrl) {
+    if (!urlShortenerApiUrl) {
       return;
     }
 
@@ -213,7 +214,7 @@
 
       if (!response.ok) {
         if (response.status === 401) {
-          showLoginModal = true;
+          handleUnauthorized();
           return;
         }
         throw new Error(`Failed to delete URL: ${response.statusText}`);
@@ -246,128 +247,110 @@
 
 <div class="url-shortener-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <Tooltip text="URL Shortener | This feature is currently in testing" level="info" position="bottom">
-    <div class="testing-banner in-testing"> ★ IN TESTING - This feature is currently in testing
-    </div>
+    <div class="testing-banner in-testing">★ IN TESTING - This feature is currently in testing</div>
   </Tooltip>
 
-  {#if !$isAuthenticated}
-    <div class="auth-required">
-      <div class="auth-required-content">
-        <h1> ★ URL Shortener</h1>
-        <p>Sign in to create and manage short URLs</p>
-        <button class="btn btn-primary" on:click={() => showLoginModal = true}>
-          Sign In
+  <div class="url-shortener-content">
+    <div class="header">
+      <div>
+        <h1>★ URL Shortener</h1>
+        <p class="user-info">Signed in as {$customer?.displayName || 'Customer'}</p>
+      </div>
+      <div class="header-actions">
+        <button 
+          class="btn btn-secondary" 
+          on:click={loadUrls}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Loading...' : '→ Refresh'}
+        </button>
+        <button class="btn btn-secondary" on:click={handleLogout}>
+          Logout
         </button>
       </div>
     </div>
-  {:else}
-    <div class="url-shortener-content">
-      <div class="header">
-        <div>
-          <h1> ★ URL Shortener</h1>
-          <p class="user-info">Signed in as {$customer?.displayName || 'Customer'}</p>
-        </div>
-        <div class="header-actions">
-          <button 
-            class="btn btn-secondary" 
-            on:click={loadUrls}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Loading...' : '→ Refresh'}
-          </button>
-          <button class="btn btn-secondary" on:click={handleLogout}>
-            Logout
-          </button>
-        </div>
-      </div>
 
-      <div class="create-section">
-        <h2>Create Short URL</h2>
-        <div class="create-form">
-          <div class="form-group">
-            <label for="url-input">URL to shorten</label>
-            <input 
-              id="url-input"
-              type="url" 
-              bind:value={urlInput}
-              placeholder="https://example.com/very/long/url"
-              class="url-input"
-              on:keydown={(e) => e.key === 'Enter' && createShortUrl()}
-            />
-          </div>
-          <div class="form-group">
-            <label for="custom-code-input">Custom code (optional)</label>
-            <input 
-              id="custom-code-input"
-              type="text" 
-              bind:value={customCodeInput}
-              placeholder="mycode"
-              class="custom-code-input"
-              on:keydown={(e) => e.key === 'Enter' && createShortUrl()}
-            />
-            <small>3-20 characters, letters, numbers, hyphens, and underscores only</small>
-          </div>
-          <button 
-            class="btn btn-primary" 
-            on:click={createShortUrl}
-            disabled={isCreating || !urlInput.trim()}
-          >
-            {isCreating ? 'Creating...' : 'Create Short URL'}
-          </button>
+    <div class="create-section">
+      <h2>Create Short URL</h2>
+      <div class="create-form">
+        <div class="form-group">
+          <label for="url-input">URL to shorten</label>
+          <input 
+            id="url-input"
+            type="url" 
+            bind:value={urlInput}
+            placeholder="https://example.com/very/long/url"
+            class="url-input"
+            on:keydown={(e) => e.key === 'Enter' && createShortUrl()}
+          />
         </div>
-      </div>
-
-      <div class="urls-section">
-        <h2>Your Short URLs</h2>
-        {#if isLoading}
-          <div class="loading">Loading URLs...</div>
-        {:else if urls.length === 0}
-          <div class="empty-state">
-            <p>No short URLs yet. Create your first one above!</p>
-          </div>
-        {:else}
-          <div class="urls-list">
-            {#each urls as urlItem}
-              <div class="url-card">
-                <div class="url-card-content">
-                  <div class="url-info">
-                    <div class="url-short">
-                      <strong>{urlItem.shortUrl}</strong>
-                      <button 
-                        class="btn-copy"
-                        on:click={() => copyToClipboard(urlItem.shortUrl)}
-                        title="Copy to clipboard"
-                      > ★ </button>
-                    </div>
-                    <div class="url-original">
-                      <a href={urlItem.url} target="_blank" rel="noopener noreferrer">
-                        {urlItem.url}
-                      </a>
-                    </div>
-                    <div class="url-meta">
-                      <span>Created: {new Date(urlItem.createdAt).toLocaleDateString()}</span>
-                      <span>•</span>
-                      <span>Clicks: {urlItem.clickCount}</span>
-                    </div>
-                  </div>
-                  <button 
-                    class="btn-delete"
-                    on:click={() => deleteUrl(urlItem.shortCode)}
-                    title="Delete"
-                  > ★ ️
-                  </button>
-                </div>
-              </div>
-            {/each}
-          </div>
-        {/if}
+        <div class="form-group">
+          <label for="custom-code-input">Custom code (optional)</label>
+          <input 
+            id="custom-code-input"
+            type="text" 
+            bind:value={customCodeInput}
+            placeholder="mycode"
+            class="custom-code-input"
+            on:keydown={(e) => e.key === 'Enter' && createShortUrl()}
+          />
+          <small>3-20 characters, letters, numbers, hyphens, and underscores only</small>
+        </div>
+        <button 
+          class="btn btn-primary" 
+          on:click={createShortUrl}
+          disabled={isCreating || !urlInput.trim()}
+        >
+          {isCreating ? 'Creating...' : 'Create Short URL'}
+        </button>
       </div>
     </div>
-  {/if}
 
-  {#if showLoginModal}
-    <LoginModal onClose={handleLoginClose} />
-  {/if}
+    <div class="urls-section">
+      <h2>Your Short URLs</h2>
+      {#if isLoading}
+        <div class="loading">Loading URLs...</div>
+      {:else if urls.length === 0}
+        <div class="empty-state">
+          <p>No short URLs yet. Create your first one above!</p>
+        </div>
+      {:else}
+        <div class="urls-list">
+          {#each urls as urlItem}
+            <div class="url-card">
+              <div class="url-card-content">
+                <div class="url-info">
+                  <div class="url-short">
+                    <strong>{urlItem.shortUrl}</strong>
+                    <button 
+                      class="btn-copy"
+                      on:click={() => copyToClipboard(urlItem.shortUrl)}
+                      title="Copy to clipboard"
+                    >★</button>
+                  </div>
+                  <div class="url-original">
+                    <a href={urlItem.url} target="_blank" rel="noopener noreferrer">
+                      {urlItem.url}
+                    </a>
+                  </div>
+                  <div class="url-meta">
+                    <span>Created: {new Date(urlItem.createdAt).toLocaleDateString()}</span>
+                    <span>•</span>
+                    <span>Clicks: {urlItem.clickCount}</span>
+                  </div>
+                </div>
+                <button 
+                  class="btn-delete"
+                  on:click={() => deleteUrl(urlItem.shortCode)}
+                  title="Delete"
+                >★</button>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  </div>
 </div>
 
 <style lang="scss">
@@ -401,31 +384,6 @@
     width: 100%;
     overflow-y: auto;
     @include scrollbar(6px);
-  }
-
-  .auth-required {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    min-height: 400px;
-  }
-
-  .auth-required-content {
-    text-align: center;
-    padding: 48px;
-
-    h1 {
-      margin: 0 0 16px 0;
-      font-size: 32px;
-      color: var(--text);
-    }
-
-    p {
-      margin: 0 0 24px 0;
-      color: var(--text-secondary);
-      font-size: 16px;
-    }
   }
 
   .header {
@@ -655,4 +613,3 @@
     }
   }
 </style>
-

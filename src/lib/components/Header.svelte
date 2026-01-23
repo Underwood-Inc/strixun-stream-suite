@@ -15,6 +15,7 @@
   import { onMount, tick } from 'svelte';
   import { connected } from '../../stores/connection';
   import { navigateTo } from '../../stores/navigation';
+  import { navigate } from '../../router';
   import { celebrateClick, celebrateConnection } from '../../utils/particles';
   import { showSuccess, showError, showWarning, showInfo } from '../../stores/toast-queue';
   import { isAuthenticated, logout as logoutUser, customer } from '../../stores/auth';
@@ -137,8 +138,8 @@
     try {
       await logoutUser();
       showSuccess('Logged out successfully', { title: 'Logout' });
-      // Small delay before reload to show the toast
-      setTimeout(() => location.reload(), 300);
+      // Navigate to login page
+      navigate('/login');
     } catch (error) {
       showError('Failed to logout. Please try again.', { title: 'Error' });
       console.error('[Header] Logout error:', error);

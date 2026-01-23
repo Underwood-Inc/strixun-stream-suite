@@ -20,6 +20,7 @@
   import { isAuthenticated, customer } from '../stores/auth';
   import { connected } from '../stores/connection';
   import { showToast } from '../stores/toast-queue';
+  import { navigate } from '../router';
   
   let host = 'localhost';
   let port = '4455';
@@ -48,7 +49,6 @@
   let exportCredentials = false;
   
   // Cloud save state
-  let showLoginModal = false;
   let cloudSaves: CloudSave[] = [];
   let isLoadingCloudSaves = false;
   let isSavingToCloud = false;
@@ -278,7 +278,7 @@
   
   async function handleSaveToCloud(): Promise<void> {
     if (!$isAuthenticated) {
-      showLoginModal = true;
+      navigate('/login', { query: { redirect: '/setup' } });
       return;
     }
     
@@ -310,7 +310,7 @@
   
   async function handleLoadFromCloud(slot: string): Promise<void> {
     if (!$isAuthenticated) {
-      showLoginModal = true;
+      navigate('/login', { query: { redirect: '/setup' } });
       return;
     }
     
@@ -343,10 +343,6 @@
     }
   }
   
-  function handleLoginClose(): void {
-    showLoginModal = false;
-    // NO automatic API calls - user must click "Refresh List" button to load cloud saves
-  }
   
   function handleClearCredentialsClick(): void {
     showClearCredentialsModal = true;
@@ -624,7 +620,7 @@
       <button 
         id="cloud-backup-login-btn"
         class="btn-primary btn-block" 
-        on:click={() => showLoginModal = true}
+        on:click={() => navigate('/login', { query: { redirect: '/setup' } })}
         style="padding:10px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:500"
       >
         ✓ Sign In to Use Cloud Backup
@@ -718,10 +714,6 @@
       </div>
     </StatusFlair>
   </Tooltip>
-  
-  {#if showLoginModal}
-    <LoginModal onClose={handleLoginClose} />
-  {/if}
   
   {#if showClearCredentialsModal}
     <ConfirmationModal
