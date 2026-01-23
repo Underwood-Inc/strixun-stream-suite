@@ -297,27 +297,15 @@ export function updateDashboardStatus(): void {
 /**
  * Render startup banner based on current state
  * Now uses toast notifications instead of DOM banner
+ * NOTE: Disconnected warning removed - UI elements already show disabled states
  */
 export function renderStartupBanner(): void {
   // Determine banner state - use Svelte store directly
   const isConnected = get(connected);
   
-  if (!isConnected) {
-    // Show persistent warning toast (manual dismiss required)
-    currentConnectionToastId = showWarning(
-      'Connect to OBS WebSocket to enable all features. Some features require Lua scripts to be installed.',
-      {
-        title: 'Not Connected to OBS',
-        persistent: true,
-        action: {
-          label: 'Setup',
-          handler: () => {
-            navigateTo('setup', false);
-          }
-        }
-      }
-    );
-  } else {
+  // Only show success toast when connected
+  // Disconnected warning removed - UI already shows disabled states
+  if (isConnected) {
     // Connected - show success toast (auto-dismiss after 5 seconds)
     currentConnectionToastId = showSuccess(
       'All features are available. Scripts detected and ready.',

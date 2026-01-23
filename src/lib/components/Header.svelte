@@ -33,6 +33,10 @@
   let authenticated = false;
   let currentCustomer: typeof $customer = null;
   
+  // PWA Install prompt
+  let deferredPrompt: any = null;
+  let showPWAInstall = false;
+  
   // CRITICAL: Manually sync auth state to local variables to force reactivity
   // This fixes the issue where header doesn't update after session restore
   $: {
@@ -46,13 +50,34 @@
   
   // Computed values for super admin check - use local reactive variable
   $: isSuperAdmin = currentCustomer?.isSuperAdmin ?? false;
-  $: testToastsTooltip = isSuperAdmin 
-    ? "Test Toasts | This feature is currently in testing" 
-    : "Test Toasts | Super admin only";
   
   function toggleAlerts(): void {
     alertsOpen = !alertsOpen;
   }
+  
+  // PWA install prompt handling
+  onMount(() => {
+    // Listen for the beforeinstallprompt event
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later
+      deferredPrompt = e;
+      // Show the install button
+      showPWAInstall = true;
+    };
+    
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      showPWAInstall = false;
+    }
+    
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  });
   
   $: {
     if ($connected) {
@@ -81,27 +106,30 @@
     navigateTo('setup');
   }
   
-  function handleTestToasts(e: MouseEvent): void {
+  async function handlePWAInstall(e: MouseEvent): Promise<void> {
     celebrateClick(e.currentTarget as HTMLElement);
     
-    // Test various toast types and behaviors
-    setTimeout(() => showSuccess('Operation completed successfully!', { title: 'Success' }), 0);
-    setTimeout(() => showError('Failed to connect to server. Please try again.', { title: 'Error', persistent: true }), 100);
-    setTimeout(() => showWarning('This action cannot be undone.', { title: 'Warning' }), 200);
-    setTimeout(() => showInfo('New features are available. Check the updates page.', { title: 'Information' }), 300);
-    setTimeout(() => showSuccess('Data saved successfully!', { title: 'Success' }), 400);
-    setTimeout(() => showError('Network timeout. Retrying...', { title: 'Error' }), 500);
-    setTimeout(() => showWarning('Low disk space detected.', { title: 'Warning', persistent: true, action: { label: 'Manage', handler: () => console.log('Manage storage') } }), 600);
-    setTimeout(() => showInfo('System update available.', { title: 'Update', action: { label: 'Install', handler: () => console.log('Install update') } }), 700);
-    setTimeout(() => showSuccess('Settings saved!', { title: 'Success' }), 800);
-    setTimeout(() => showError('Permission denied.', { title: 'Error' }), 900);
-    setTimeout(() => showWarning('Connection unstable.', { title: 'Warning' }), 1000);
-    setTimeout(() => showInfo('Backup completed.', { title: 'Backup' }), 1100);
+    if (!deferredPrompt) {
+      showInfo('App is already installed or install not available', { title: 'Install' });
+      return;
+    }
     
-    // Test duplicate merging - trigger same toast multiple times
-    setTimeout(() => showWarning('Duplicate test message', { title: 'Test' }), 1200);
-    setTimeout(() => showWarning('Duplicate test message', { title: 'Test' }), 1300);
-    setTimeout(() => showWarning('Duplicate test message', { title: 'Test' }), 1400);
+    // Show the install prompt
+    deferredPrompt.prompt();
+    
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      showSuccess('App installed successfully! 🎉', { title: 'Success' });
+      celebrateConnection();
+    } else {
+      showInfo('Install cancelled', { title: 'Install' });
+    }
+    
+    // Clear the deferred prompt since it can only be used once
+    deferredPrompt = null;
+    showPWAInstall = false;
   }
   
   async function handleLogout(e: MouseEvent): Promise<void> {
@@ -140,14 +168,6 @@
         </svg>
       </button>
     </Tooltip>
-    <Tooltip text="Floating Support Panel | This panel can be dragged, dimmed, and repositioned. Look for the support card in the bottom-right corner!" position="bottom">
-      <button class="btn-icon" title="Support Panel Info">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-      </button>
-    </Tooltip>
     <AlertsDropdown open={alertsOpen} onToggle={toggleAlerts} />
     {#if authenticated}
       <Tooltip text="Sign Out" position="bottom">
@@ -160,23 +180,21 @@
         </button>
       </Tooltip>
     {/if}
-    <Tooltip text={testToastsTooltip} position="bottom" level={isSuperAdmin ? "info" : "warning"}>
-      <StatusFlair status={isSuperAdmin ? "in-testing" : "super-admin"}>
+    {#if showPWAInstall}
+      <Tooltip text="Install App | Install as a standalone app for OBS dock usage with full functionality" position="bottom" level="info">
         <button 
-          class="btn-icon" 
-          class:disabled={!isSuperAdmin}
-          on:click={handleTestToasts} 
-          title="Test Toasts"
-          disabled={!isSuperAdmin}
+          class="btn-icon btn-icon--pwa" 
+          on:click={handlePWAInstall} 
+          title="Install App"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-            <path d="M2 17l10 5 10-5"/>
-            <path d="M2 12l10 5 10-5"/>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
         </button>
-      </StatusFlair>
-    </Tooltip>
+      </Tooltip>
+    {/if}
     <Tooltip text="Reload Panel" position="bottom">
       <button class="btn-icon" bind:this={reloadButton} on:click={handleReload}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -304,6 +322,24 @@
       transform: rotate(90deg);
     }
     
+    // PWA Install button special styling
+    &.btn-icon--pwa {
+      border-color: var(--accent);
+      color: var(--accent);
+      @include glow(var(--accent), 0.5);
+      animation: pulse-subtle 2s ease-in-out infinite;
+      
+      &:hover {
+        background: var(--accent);
+        color: #000;
+        @include glow(var(--accent), 1);
+        
+        svg {
+          transform: translateY(2px) rotate(0deg);
+        }
+      }
+    }
+    
     // Disabled state - but StatusFlair will handle its own disabled styling
     &:disabled:not(:global(.status-flair > *)),
     &.disabled:not(:global(.status-flair > *)) {
@@ -319,6 +355,15 @@
       svg {
         transform: none;
       }
+    }
+  }
+  
+  @keyframes pulse-subtle {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
     }
   }
   
