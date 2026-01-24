@@ -97,15 +97,23 @@ function log(msg: string, type: string = 'info'): void {
  * Detect if running in OBS dock (embedded CEF browser)
  */
 export function isOBSDock(): boolean {
-  // OBS docks have limited capabilities:
-  // 1. window.open usually fails or returns null
-  // 2. File downloads don't work properly
-  // 3. Some APIs are restricted
-  // We detect by checking the URL protocol and user agent hints
+  // Check for OBS browser API (available in both docks and browser sources)
+  const hasObsStudio = typeof (window as any).obsstudio !== 'undefined';
+  
+  // If obsstudio exists, we're in OBS. For docks, the hash typically doesn't have display routes.
+  // Browser sources for text-cycler-display have a specific hash pattern.
+  // This is a heuristic: if we're in OBS but NOT on a display route, we're the dock.
+  if (hasObsStudio) {
+    const hash = window.location.hash || '';
+    const isDisplayRoute = hash.includes('/text-cycler-display');
+    // If in OBS and NOT on a display route, this is the dock
+    return !isDisplayRoute;
+  }
+  
+  // Fallback: check file protocol (for production builds loaded locally)
   const isFileProtocol = window.location.protocol === 'file:';
   const isEmbedded = !window.opener && window.parent === window;
   
-  // If loaded via file:// and appears embedded, likely OBS dock
   return isFileProtocol && isEmbedded;
 }
 

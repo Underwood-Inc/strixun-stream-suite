@@ -7,12 +7,11 @@
  * @version 2.0.0 (TypeScript)
  */
 
-import { storage } from './storage';
-import { connected, currentScene, sources, textSources } from '../stores/connection';
+import { storage } from './storage.js';
+import { connected, currentScene, sources, textSources } from '../stores/connection.js';
 import { get } from 'svelte/store';
-import { authenticatedFetch, isAuthenticated } from '../stores/auth';
-import { isOBSDock } from './script-status';
-import type { Source } from '../types';
+import { authenticatedFetch, isAuthenticated } from '../stores/auth.js';
+import { initOBSStorage, handleOBSStorageResponse, isInOBS } from './obs-storage.js';
 
 // ============ Types ============
 interface PendingRequest {
@@ -37,6 +36,8 @@ let pendingRequests: Record<string, PendingRequest> = {};
 let aspectMode = 0;
 let reconnectAttempts = 0;
 const MAX_RECONNECT = 3;
+// Password for programmatic connection (display routes without DOM elements)
+let storedPassword: string = '';
 
 // ============ Cloud Credential Storage ============
 // OBS credentials are stored in the cloud, encrypted with the user's auth token
@@ -58,12 +59,19 @@ export async function saveCredentials(): Promise<void> {
   const password = passwordEl?.value || '';
   
   if (remember) {
-    // Always save host/port locally for quick access
+    // Always save host/port to storage (uses OBS storage when in OBS)
     storage.setRaw('obs_host', host);
     storage.setRaw('obs_port', port);
     storage.setRaw('obs_remember', 'true');
     
-    // Save password to cloud if authenticated (REQUIRED - no local fallback)
+    // CRITICAL: When in OBS, also save password to OBS storage for persistence
+    // OBS storage is isolated to OBS and persists across restarts
+    if (password && isInOBS()) {
+      storage.setRaw('obs_password', password);
+      log('Credentials saved to OBS storage', 'success');
+    }
+    
+    // Save password to cloud if authenticated (for cross-device sync)
     if (password && get(isAuthenticated)) {
       try {
         await authenticatedFetch('/obs-credentials/save', {
@@ -77,19 +85,23 @@ export async function saveCredentials(): Promise<void> {
         log('Credentials saved to cloud (expires in 7 hours)', 'success');
       } catch (e: any) {
         if (e.message === 'Not authenticated') {
-          log('Sign in to save password securely in the cloud', 'warning');
+          // Don't warn if already saved to OBS storage
+          if (!isInOBS()) {
+            log('Sign in to save password securely in the cloud', 'warning');
+          }
         } else {
           log('Failed to save credentials to cloud: ' + e.message, 'error');
         }
       }
-    } else if (password) {
+    } else if (password && !isInOBS()) {
       log('Sign in to save password securely in the cloud', 'warning');
     }
   } else {
-    // Clear local storage
+    // Clear storage (uses OBS storage when in OBS)
     storage.remove('obs_host');
     storage.remove('obs_port');
     storage.remove('obs_remember');
+    storage.remove('obs_password'); // Also clear password from OBS storage
     
     // Clear cloud storage if authenticated
     if (get(isAuthenticated)) {
@@ -116,7 +128,7 @@ export async function loadCredentials(): Promise<boolean> {
   }
   
   if (remembered) {
-    // Load host/port from local storage (always available)
+    // Load host/port from storage (uses OBS storage when in OBS)
     const host = storage.getRaw('obs_host');
     const port = storage.getRaw('obs_port');
     
@@ -125,17 +137,32 @@ export async function loadCredentials(): Promise<boolean> {
     if (host && hostEl) hostEl.value = String(host);
     if (port && portEl) portEl.value = String(port);
     
-    // Load password from cloud if authenticated
+    // CRITICAL: When in OBS, load password from OBS storage first
+    // OBS storage persists across OBS restarts and is isolated to OBS
+    if (isInOBS()) {
+      const obsPassword = storage.getRaw('obs_password') as string | null;
+      if (obsPassword) {
+        storedPassword = obsPassword;
+        const passwordEl = document.getElementById('password') as HTMLInputElement;
+        if (passwordEl) {
+          passwordEl.value = obsPassword;
+        }
+        updateSecurityWarning();
+        log('Credentials loaded from OBS storage', 'info');
+        return true;
+      }
+    }
+    
+    // Load password from cloud if authenticated (fallback, or for non-OBS environments)
     if (get(isAuthenticated)) {
       try {
         // Check if API URL is configured before attempting fetch
-        // Use window.getWorkerApiUrl to check if API is actually configured
         const apiUrl = typeof window !== 'undefined' && (window as any).getWorkerApiUrl 
           ? (window as any).getWorkerApiUrl() 
           : null;
-        if (!apiUrl || apiUrl.includes('idling.app') || apiUrl.includes('%%')) {
+        // Skip only if no API URL or contains placeholder markers
+        if (!apiUrl || apiUrl.includes('%%') || apiUrl.includes('{{')) {
           // API not configured or using placeholder - skip cloud credential load
-          // This is expected in local development
           return true; // Has host/port at least
         }
         
@@ -143,6 +170,9 @@ export async function loadCredentials(): Promise<boolean> {
         if (response.ok) {
           const data = await response.json();
           if (data.password) {
+            // Store for programmatic connection (display routes without DOM elements)
+            storedPassword = data.password;
+            
             const passwordEl = document.getElementById('password') as HTMLInputElement;
             if (passwordEl) {
               passwordEl.value = data.password;
@@ -182,16 +212,17 @@ export async function loadCredentials(): Promise<boolean> {
 }
 
 /**
- * Clear saved credentials (local and cloud)
+ * Clear saved credentials (local, OBS, and cloud)
  */
 export async function clearSavedCredentials(): Promise<void> {
-  // Clear local storage
+  // Clear storage (uses OBS storage when in OBS)
   storage.remove('obs_host');
   storage.remove('obs_port');
   storage.remove('obs_remember');
+  storage.remove('obs_password'); // Also clear password from OBS storage
   
   // Clear cloud storage if authenticated
-  if (getAuth(isAuthenticated)) {
+  if (get(isAuthenticated)) {
     try {
       await authenticatedFetch('/obs-credentials/delete', {
         method: 'DELETE'
@@ -310,16 +341,65 @@ export function toggleConnection(): void {
 }
 
 /**
- * Connect to OBS WebSocket
+ * Connect to OBS WebSocket programmatically (without DOM elements)
+ * Used by display routes that don't have the connection form
  */
-export function connect(): void {
+export function connectProgrammatic(host: string = 'localhost', port: string = '4455', password: string = ''): void {
+  console.log('[WebSocket] connectProgrammatic called:', { host, port, hasPassword: !!password });
+  
+  try {
+    ws = new WebSocket(`ws://${host}:${port}`);
+    ws.onopen = () => {
+      console.log('[WebSocket] Socket open, authenticating...');
+      reconnectAttempts = 0;
+    };
+    ws.onmessage = (e) => handleMessage(JSON.parse(e.data), password);
+    ws.onerror = () => { 
+      console.error('[WebSocket] Connection error');
+    };
+    ws.onclose = (e) => { 
+      const wasConnected = get(connected);
+      connected.set(false);
+      console.log('[WebSocket] Disconnected:', e.code);
+      
+      // Auto-reconnect on abnormal close
+      if (wasConnected && e.code !== 1000) {
+        if (reconnectAttempts < MAX_RECONNECT) {
+          reconnectAttempts++;
+          console.log(`[WebSocket] Reconnecting (${reconnectAttempts}/${MAX_RECONNECT})...`);
+          setTimeout(() => connectProgrammatic(host, port, password), 3000);
+        }
+      }
+    };
+  } catch (e: any) {
+    console.error('[WebSocket] Connect failed:', e.message);
+  }
+}
+
+/**
+ * Check if we have a stored password for programmatic connection
+ */
+export function hasStoredPassword(): boolean {
+  return !!storedPassword;
+}
+
+/**
+ * Connect to OBS WebSocket
+ * @param credentials Optional credentials for programmatic connection (display routes)
+ */
+export function connect(credentials?: { host?: string; port?: string; password?: string }): void {
   const hostEl = document.getElementById('host') as HTMLInputElement;
   const portEl = document.getElementById('port') as HTMLInputElement;
   const passwordEl = document.getElementById('password') as HTMLInputElement;
   
-  const host = hostEl?.value || 'localhost';
-  const port = portEl?.value || '4455';
-  const password = passwordEl?.value || '';
+  const host = credentials?.host || hostEl?.value || (storage.getRaw('obs_host') as string) || 'localhost';
+  const port = credentials?.port || portEl?.value || (storage.getRaw('obs_port') as string) || '4455';
+  const password = credentials?.password || passwordEl?.value || storedPassword || '';
+  
+  // Store for future reconnects
+  if (password) {
+    storedPassword = password;
+  }
   
   const statusDot = document.getElementById('statusDot');
   if (statusDot) {
@@ -415,6 +495,18 @@ async function handleMessage(data: OBSMessage, password: string): Promise<void> 
     connected.set(true);
     updateConnectionUI();
     updateConnectionState();
+    
+    // CRITICAL: Initialize OBS storage when running inside OBS
+    // This enables persistent storage using OBS WebSocket GetPersistentData/SetPersistentData
+    if (isInOBS() && ws) {
+      try {
+        await initOBSStorage(ws);
+        log('OBS storage initialized', 'success');
+      } catch (e) {
+        console.warn('[WebSocket] Failed to initialize OBS storage:', e);
+      }
+    }
+    
     await saveCredentials(); // Save on successful connection
     log('Connected to OBS!', 'success');
     
@@ -443,6 +535,10 @@ async function handleMessage(data: OBSMessage, password: string): Promise<void> 
       setTimeout((window as any).requestStorageSync, 1000);
     }
   } else if (data.op === 7) { // Response
+    // First check if this is an OBS storage response
+    if (handleOBSStorageResponse(data)) {
+      return; // Handled by OBS storage
+    }
     const req = pendingRequests[data.d?.requestId];
     if (req) {
       if (data.d?.requestStatus?.result) {
@@ -487,41 +583,25 @@ function handleEvent(event: OBSEvent): void {
     }
   }
   
-  // Handle custom storage sync events (Vendor events)
+  // Handle custom events (BroadcastCustomEvent)
   if (event.eventType === 'CustomEvent') {
-    const customData = event.eventData?.eventData;
-    console.log('[Storage Sync] CustomEvent received:', {
-      type: customData?.type,
-      source: customData?.source || customData?.clientId,
-      hasData: !!customData?.data,
-      timestamp: customData?.timestamp
-    });
+    // OBS puts BroadcastCustomEvent data directly in eventData
+    const customData = event.eventData;
     
     // Delegate storage sync events to StorageSync module
-    // Use window.StorageSync to avoid circular dependency (initialized in bootstrap)
     if ((window as any).StorageSync && (customData?.type === 'strixun_storage_broadcast' || customData?.type === 'strixun_storage_request')) {
       (window as any).StorageSync.handleCustomEvent(customData);
     } else if (customData?.type === 'strixun_text_cycler_msg') {
-      // Handle text cycler messages from remote control panel (same pattern as quick swaps)
-      // Remote sends via WebSocket, OBS dock receives and handles locally
+      // Handle text cycler messages
       const configId = customData.configId;
       const message = customData.message;
       const timestamp = customData.timestamp || Date.now();
       
       if (configId && message) {
-        // OBS dock: forward to localStorage so browser source can receive it
-        if (typeof (window as any).isOBSDock === 'function' && (window as any).isOBSDock()) {
-          try {
-            const messageData = {
-              message: message,
-              timestamp: timestamp
-            };
-            localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(messageData));
-            // Text Cycler forwarding logged via log() if needed
-          } catch (e) {
-            log(`[Text Cycler] Failed to forward: ${e instanceof Error ? e.message : String(e)}`, 'warning');
-          }
-        }
+        // Dispatch as a window event so TextCyclerDisplay can receive it
+        window.dispatchEvent(new CustomEvent('strixun_text_cycler_msg', {
+          detail: { configId, message, timestamp }
+        }));
       }
     }
   }

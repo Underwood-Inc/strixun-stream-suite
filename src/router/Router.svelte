@@ -14,7 +14,6 @@
   
   import { onMount, onDestroy } from 'svelte';
   import { 
-    currentRoute, 
     currentPath,
     isNavigating, 
     routerReady,
@@ -60,6 +59,13 @@
   // Track previous path for animations
   let previousPath = '';
   
+  // Flag to prevent reactive blocks from running during initialization
+  let hasInitialized = false;
+  
+  // Track previous auth state to detect actual changes
+  let prevAuthComplete = false;
+  let prevIsAuthenticated: boolean | undefined = undefined;
+  
   // Initialize router on mount
   onMount(() => {
     // Register routes first
@@ -67,6 +73,9 @@
     
     // Then initialize
     initRouter();
+    
+    // Mark as initialized AFTER initRouter completes
+    hasInitialized = true;
   });
   
   // Cleanup on destroy
@@ -74,21 +83,31 @@
     destroyRouter();
   });
   
-  // Re-check route when auth state changes
-  $: if ($authCheckComplete) {
-    // Auth check completed, re-run guards
-    recheckCurrentRoute();
+  // Re-check route when auth state ACTUALLY CHANGES (not just on mount)
+  // Only runs after initialization to prevent race conditions
+  $: {
+    if (hasInitialized && $routerReady) {
+      // Check if auth state actually changed
+      const authChanged = $authCheckComplete !== prevAuthComplete;
+      const authStateChanged = $isAuthenticated !== prevIsAuthenticated;
+      
+      if (authChanged || authStateChanged) {
+        console.log('[Router] Auth state changed, rechecking route:', { 
+          authChanged, 
+          authStateChanged,
+          authComplete: $authCheckComplete,
+          isAuthenticated: $isAuthenticated
+        });
+        prevAuthComplete = $authCheckComplete;
+        prevIsAuthenticated = $isAuthenticated;
+        recheckCurrentRoute();
+      }
+    }
   }
   
-  // Track auth changes to re-run guards
-  $: if ($routerReady && $authCheckComplete) {
-    // When auth state changes after router is ready, recheck
-    const _ = $isAuthenticated;
-    recheckCurrentRoute();
-  }
-  
-  // Get current component based on path
-  $: currentComponent = componentMap[$currentPath] || Dashboard;
+  // Get current component based on path - NEVER default to Dashboard for unknown paths
+  // If path isn't in componentMap, show nothing (let guards redirect properly)
+  $: currentComponent = componentMap[$currentPath] || null;
   
   // Track path changes for animation key
   $: {
@@ -109,7 +128,7 @@
   <div class="router-loading router-loading--navigating">
     <div class="router-loading__spinner"></div>
   </div>
-{:else}
+{:else if currentComponent}
   <!-- Render matched route with transition -->
   {#key $currentPath}
     <div 
@@ -125,6 +144,11 @@
       <svelte:component this={currentComponent} />
     </div>
   {/key}
+{:else}
+  <!-- Unknown route - show loading while redirect happens -->
+  <div class="router-loading">
+    <div class="router-loading__spinner"></div>
+  </div>
 {/if}
 
 <style lang="scss">

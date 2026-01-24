@@ -5,6 +5,7 @@
  */
 
 import { navigateTo, restorePage } from '../stores/navigation';
+import { setPhase, setSubstatus, setReady, setError } from '../stores/initialization';
 import * as App from './app';
 import { Layouts } from './layouts';
 import { ScriptDownloader } from './script-downloader';
@@ -13,11 +14,11 @@ import * as sourceSwaps from './source-swaps';
 import { Sources } from './sources';
 import { initIndexedDB, loadStorageCache, startAutoBackup } from './storage';
 import * as storageSync from './storage-sync';
-import * as textCycler from './text-cycler';
+import * as textCyclerStore from '../stores/text-cycler';
 import { TwitchAPI } from './twitch-api';
 import { UIUtils } from './ui-utils';
 import { Version } from './version';
-import { loadCredentials, updateConnectionState, connect as wsConnect } from './websocket';
+import { loadCredentials, updateConnectionState, connect as wsConnect, hasStoredPassword } from './websocket';
 
 /**
  * Set encryption enabled state in store
@@ -31,9 +32,46 @@ async function setEncryptionState(): Promise<void> {
 }
 
 /**
+ * Check if current URL is a display route (OBS browser source)
+ * Display routes need minimal initialization - just auth and render
+ * 
+ * Checks hash, query params, and full URL to handle various browser contexts
+ * OBS sometimes strips hash fragments, so we also check query params
+ */
+function isDisplayRouteFromHash(): boolean {
+  const hash = window.location.hash || '';
+  const href = window.location.href || '';
+  const search = window.location.search || '';
+  
+  // Check hash (standard case after redirect)
+  const hashHasDisplay = hash.includes('/text-cycler-display');
+  // Check query params (before redirect, or if hash was stripped)
+  const params = new URLSearchParams(search);
+  const queryHasDisplay = params.get('display') === 'text-cycler';
+  // Also check full URL as fallback
+  const hrefHasDisplay = href.includes('text-cycler-display');
+  
+  const isDisplay = hashHasDisplay || queryHasDisplay || hrefHasDisplay;
+  
+  console.log('[Bootstrap] isDisplayRouteFromHash:', { 
+    hash, 
+    search,
+    hashHasDisplay, 
+    queryHasDisplay,
+    hrefHasDisplay, 
+    isDisplay 
+  });
+  
+  return isDisplay;
+}
+
+/**
  * Initialize the application
  */
 export async function initializeApp(): Promise<void> {
+  // Check if this is a display route - these need streamlined initialization
+  const isDisplayRoute = isDisplayRouteFromHash();
+  
   // Get the actual addLogEntry function for use in this module
   // window.addLogEntry is already set up in main.ts, so we can use it directly
   const { addLogEntry, clearLogEntries } = await import('../stores/activity-log');
@@ -89,9 +127,11 @@ export async function initializeApp(): Promise<void> {
   
   // Test that logging works
   addLogEntry('Starting application initialization...', 'info');
+  setPhase('starting', 'Starting application...');
   
   try {
     // CRITICAL: Initialize storage system FIRST
+    setPhase('storage', 'Loading storage...', 'Initializing local database');
     await initIndexedDB();
     await loadStorageCache();
     addLogEntry('Storage system ready', 'success', 'STORAGE');
@@ -99,6 +139,7 @@ export async function initializeApp(): Promise<void> {
     // Notes storage is cloud-only, no initialization needed
     
     // Load authentication state (includes cross-domain session restoration)
+    setPhase('auth', 'Checking authentication...', 'Verifying session');
     const { loadAuthState, isAuthenticated } = await import('../stores/auth');
     try {
       await loadAuthState();
@@ -112,6 +153,7 @@ export async function initializeApp(): Promise<void> {
     }
     
     // Set encryption enabled state in store (for reactive auth checks)
+    setSubstatus('Checking security settings');
     await setEncryptionState();
     
     // CRITICAL: Mark auth check as complete AFTER determining encryption state
@@ -127,42 +169,75 @@ export async function initializeApp(): Promise<void> {
     const { get } = await import('svelte/store');
     const authenticated = get(isAuthenticated);
     
+    // DISPLAY ROUTE: Streamlined initialization for OBS browser sources
+    // OBS browser sources receive BroadcastCustomEvent via obsstudio.onBroadcastCustomMessage
+    // They don't need WebSocket connection - OBS handles the message delivery
+    console.log('[Bootstrap] isDisplayRoute check:', { isDisplayRoute, hash: window.location.hash });
+    if (isDisplayRoute) {
+      addLogEntry('Display route detected - streamlined initialization', 'info', 'INIT');
+      console.log('[Bootstrap] Taking display route path');
+      
+      // Check if we're actually in OBS browser source
+      const isInOBS = typeof (window as any).obsstudio !== 'undefined';
+      
+      if (encryptionEnabled && !authenticated) {
+        // Display route requires auth but not authenticated
+        addLogEntry('Display: Authentication required', 'warning', 'AUTH');
+        setReady();
+        return; // Will redirect to login with proper redirect URL
+      }
+      
+      if (isInOBS) {
+        // In OBS browser source - no WebSocket needed, OBS delivers messages directly
+        addLogEntry('OBS browser source ready - using OBS broadcast API', 'success', 'INIT');
+      } else {
+        // In regular browser (preview) - try WebSocket connection
+        setPhase('connecting', 'Connecting to OBS...', 'Display mode');
+        await loadCredentialsAndConnect();
+      }
+      
+      addLogEntry('Display route ready', 'success', 'INIT');
+      setReady();
+      return; // Skip full app initialization
+    }
+    
+    // MAIN APP: Full initialization path
+    console.log('[Bootstrap] Taking MAIN APP path (not display route)');
     if (encryptionEnabled && !authenticated) {
       // Encryption is enabled but customer is not authenticated - auth required
-      addLogEntry('AUTH REQUIRED: Encryption enabled but customer not authenticated', 'warning', 'AUTH');
-      addLogEntry('Customer must authenticate via email OTP to access the application', 'info', 'AUTH');
-      console.warn('[Bootstrap] AUTH REQUIRED: Encryption enabled but customer not authenticated');
-      console.warn('[Bootstrap] Customer must authenticate via email OTP to access the application');
-      
-      // Continue initialization anyway - app will show AuthScreen instead of main app
-      // Once customer authenticates, everything will be ready
-    } else if (!encryptionEnabled) {
+      // Skip heavy initialization - just show login screen
+      addLogEntry('Authentication required - showing login', 'info', 'AUTH');
+      setReady(); // Mark ready so init screen hides and login shows
+      return; // Exit early - initialization will continue after login
+    }
+    
+    if (!encryptionEnabled) {
       addLogEntry('Encryption disabled - authentication not required', 'info', 'AUTH');
     } else if (authenticated) {
       addLogEntry('Customer authenticated - encryption enabled', 'success', 'AUTH');
     }
     
-    // Initialize modules in order (even if auth is required, so app is ready when customer logs in)
+    // Initialize modules
+    setPhase('modules', 'Initializing modules...', 'Loading application components');
     await initializeModules();
     
-    // Only complete app initialization if auth is not required
-    // When auth is required, the app will show AuthScreen and initialization will continue after login
-    if (!(encryptionEnabled && !authenticated)) {
-      // Complete app initialization (rendering, UI state, etc.)
-      await completeAppInitialization();
-      
-      // Restore saved page
-      restorePage();
-      
-      // Load saved credentials and auto-connect
-      await loadCredentialsAndConnect();
-      
-      addLogEntry('Application initialized', 'success', 'INIT');
-    } else {
-      addLogEntry('Application ready - waiting for authentication', 'info', 'AUTH');
-    }
+    // Complete app initialization (rendering, UI state, etc.)
+    setPhase('config', 'Loading configurations...', 'Restoring your settings');
+    await completeAppInitialization();
+    
+    // Restore saved page (NEVER for display routes - they have their own URL)
+    restorePage();
+    
+    // Load saved credentials and auto-connect
+    setPhase('connecting', 'Connecting to OBS...', 'Establishing connection');
+    await loadCredentialsAndConnect();
+    
+    addLogEntry('Application initialized', 'success', 'INIT');
+    setReady();
   } catch (error) {
-    addLogEntry(`Initialization error: ${error instanceof Error ? error.message : String(error)}`, 'error', 'ERROR');
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    addLogEntry(`Initialization error: ${errorMessage}`, 'error', 'ERROR');
+    setError(errorMessage);
   }
 }
 
@@ -192,30 +267,8 @@ async function initializeModules(): Promise<void> {
   // Expose to window for legacy compatibility
   (window as any).SourceSwaps = sourceSwaps;
   
-  // Initialize Text Cycler (TypeScript module)
-  textCycler.init({
-    log: (msg: string, type?: string) => {
-      if (window.App?.log) {
-        window.App.log(msg, type);
-      } else {
-        console.log(`[${type || 'info'}] ${msg}`);
-      }
-    },
-    isOBSDock: window.isOBSDock || (() => false),
-    get storageSyncTimer() { return window.StorageSync?.storageSyncTimer || null; },
-    set storageSyncTimer(val) { if (window.StorageSync) window.StorageSync.storageSyncTimer = val; },
-    broadcastStorage: () => { if (window.StorageSync) window.StorageSync.scheduleBroadcast(); },
-    STORAGE_SYNC_DEBOUNCE: window.StorageSync?.STORAGE_SYNC_DEBOUNCE || 500,
-    showPage: navigateTo,
-    initSearchForList: UIUtils.initSearchForList,
-    updateTextCyclerMode: window.updateTextCyclerMode,
-    updateTransitionMode: window.updateTransitionMode,
-    updateBrowserSourceUrlPreview: window.updateBrowserSourceUrlPreview
-  });
-  textCycler.loadConfigs();
-  
-  // Expose to window for legacy compatibility
-  (window as any).TextCycler = textCycler;
+  // Text Cycler uses Svelte store pattern - no initialization needed
+  // Store auto-loads configs on import
   
   // Initialize Storage Sync (TypeScript module)
   storageSync.init({
@@ -230,13 +283,13 @@ async function initializeModules(): Promise<void> {
     // Callbacks for getting/setting configs
     getSwapConfigs: () => sourceSwaps.getConfigs(),
     setSwapConfigs: (val) => sourceSwaps.setConfigs(val),
-    getTextCyclerConfigs: () => textCycler.getConfigs(),
-    setTextCyclerConfigs: (val) => textCycler.setConfigs(val),
+    getTextCyclerConfigs: () => textCyclerStore.getConfigs(),
+    setTextCyclerConfigs: (val) => textCyclerStore.setConfigs(val),
     getLayoutPresets: () => (window.Layouts as any)?.layoutPresets || [],
     setLayoutPresets: (val) => { if (window.Layouts) (window.Layouts as any).layoutPresets = val; },
     // Render callbacks
     renderSavedSwaps: () => sourceSwaps.renderSavedSwaps(),
-    renderTextCyclerConfigs: () => textCycler.renderTextCyclerConfigs(),
+    renderTextCyclerConfigs: () => { /* Svelte store - no DOM rendering */ },
     renderSavedLayouts: window.renderSavedLayouts,
     updateStorageStatus: window.updateStorageStatus
   });
@@ -343,12 +396,12 @@ export async function completeAppInitialization(): Promise<void> {
     
     // Get config counts for logging
     const swapConfigsCount = (window as any).SourceSwaps ? (window as any).SourceSwaps.getConfigs().length : 0;
-    const textCyclerConfigs = (window as any).TextCycler ? (window as any).TextCycler.getConfigs() : [];
+    const textCyclerConfigsCount = textCyclerStore.getConfigs().length;
     const sourceOpacityConfigs = Sources.sourceOpacityConfigs;
-    addLogEntry(`Loaded configs - Swaps: ${swapConfigsCount}, TextCycler: ${textCyclerConfigs.length}, Opacity: ${Object.keys(sourceOpacityConfigs).length}`, 'info', 'CONFIG');
+    addLogEntry(`Loaded configs - Swaps: ${swapConfigsCount}, TextCycler: ${textCyclerConfigsCount}, Opacity: ${Object.keys(sourceOpacityConfigs).length}`, 'info', 'CONFIG');
     
     // Check for recovery if configs are empty
-    const totalConfigs = swapConfigsCount + textCyclerConfigs.length;
+    const totalConfigs = swapConfigsCount + textCyclerConfigsCount;
     if (totalConfigs === 0) {
       const recovered = await App.offerRecovery();
       if (recovered) {
@@ -456,6 +509,7 @@ export async function completeInitializationAfterAuth(): Promise<void> {
   const { addLogEntry } = await import('../stores/activity-log');
   try {
     addLogEntry('Completing initialization after authentication...', 'info', 'AUTH');
+    setPhase('config', 'Loading configurations...', 'Restoring your settings');
     
     // Complete app initialization (rendering, UI state, etc.)
     await completeAppInitialization();
@@ -465,11 +519,15 @@ export async function completeInitializationAfterAuth(): Promise<void> {
     // navigation and override the intended destination.
     
     // Load saved credentials and auto-connect
+    setPhase('connecting', 'Connecting to OBS...', 'Establishing connection');
     await loadCredentialsAndConnect();
     
     addLogEntry('Application initialized after authentication', 'success', 'INIT');
+    setReady();
   } catch (error) {
-    addLogEntry(`Post-auth initialization error: ${error instanceof Error ? error.message : String(error)}`, 'error', 'ERROR');
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    addLogEntry(`Post-auth initialization error: ${errorMessage}`, 'error', 'ERROR');
+    setError(errorMessage);
   }
 }
 
@@ -481,9 +539,12 @@ async function loadCredentialsAndConnect(): Promise<void> {
     const hasCreds = await loadCredentials();
     const passwordEl = document.getElementById('password') as HTMLInputElement;
     
-    if (hasCreds && passwordEl?.value) {
+    // Connect if we have password from DOM element OR stored from cloud load
+    const hasPassword = passwordEl?.value || hasStoredPassword();
+    
+    if (hasCreds && hasPassword) {
       if ((window as any).App?.log) {
-        (window as any).App.log('Credentials unlocked. Auto-connecting...', 'info');
+        (window as any).App.log('Credentials loaded. Auto-connecting...', 'info');
       }
       setTimeout(() => {
         wsConnect();

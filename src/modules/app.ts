@@ -14,6 +14,7 @@
 import { get } from 'svelte/store';
 import { connected, sources } from '../stores/connection';
 import { navigateTo } from '../stores/navigation';
+import * as textCyclerStore from '../stores/text-cycler';
 import type { StorageBackup } from '../types';
 import { checkForRecoverySnapshot, storage } from './storage';
 import { request } from './websocket';
@@ -69,7 +70,7 @@ export function updateStorageStatus(): void {
   }
   
   if (textCyclerCountEl) {
-    const count = (window as any).TextCycler ? (window as any).TextCycler.getConfigs().length : 0;
+    const count = textCyclerStore.getConfigs().length;
     textCyclerCountEl.textContent = `(${count})`;
   }
   
@@ -106,7 +107,7 @@ export function getSelectedExportData(): StorageBackup {
   }
   
   if ((document.getElementById('exportTextCyclers') as HTMLInputElement)?.checked) {
-    const configs = (window as any).TextCycler ? (window as any).TextCycler.getConfigs() : [];
+    const configs = textCyclerStore.getConfigs();
     if (configs.length) {
       backup.textCyclerConfigs = configs;
       backup.exportedCategories.push('textCyclers');
@@ -213,8 +214,8 @@ export function importBackupData(backup: StorageBackup): void {
   }
   
   // Restore text cyclers
-  if (backup.textCyclerConfigs && (window as any).TextCycler) {
-    (window as any).TextCycler.setConfigs(backup.textCyclerConfigs);
+  if (backup.textCyclerConfigs) {
+    textCyclerStore.setConfigs(backup.textCyclerConfigs);
     imported.push(`${backup.textCyclerConfigs.length} text cyclers`);
   }
   
@@ -314,15 +315,15 @@ export function importDataWithOptions(): void {
         }
       }
       
-      if (importChoices.textCyclers && backup.textCyclerConfigs && (window as any).TextCycler) {
+      if (importChoices.textCyclers && backup.textCyclerConfigs) {
         if (importChoices.merge) {
-          const existingConfigs = (window as any).TextCycler.getConfigs();
-          const existingIds = new Set(existingConfigs.map((c: any) => c.id));
+          const existingConfigs = textCyclerStore.getConfigs();
+          const existingIds = new Set(existingConfigs.map((c) => c.id));
           const newConfigs = backup.textCyclerConfigs.filter((c: any) => !existingIds.has(c.id));
-          (window as any).TextCycler.addConfigs(newConfigs);
+          textCyclerStore.addConfigs(newConfigs);
           imported.push(`${newConfigs.length} new text cyclers (merged)`);
         } else {
-          (window as any).TextCycler.setConfigs(backup.textCyclerConfigs);
+          textCyclerStore.setConfigs(backup.textCyclerConfigs);
           imported.push(`${backup.textCyclerConfigs.length} text cyclers (replaced)`);
         }
       }
@@ -402,9 +403,7 @@ export async function forceStorageSync(): Promise<void> {
   if ((window as any).SourceSwaps) {
     storage.set('swapConfigs', (window as any).SourceSwaps.getConfigs());
   }
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.saveTextCyclerConfigs();
-  }
+  textCyclerStore.saveConfigs();
   if ((window as any).Layouts) {
     storage.set('layoutPresets', (window as any).Layouts.layoutPresets);
   }
@@ -454,8 +453,8 @@ Restore this backup?`;
       }
       storage.set('swapConfigs', recovery.swapConfigs);
     }
-    if (recovery.textCyclerConfigs && (window as any).TextCycler) {
-      (window as any).TextCycler.setConfigs(recovery.textCyclerConfigs);
+    if (recovery.textCyclerConfigs) {
+      textCyclerStore.setConfigs(recovery.textCyclerConfigs);
     }
     
     renderSavedSwaps();
@@ -771,76 +770,61 @@ export function renderSavedLayouts(): void {
 }
 
 // ============ Text Cycler Wrapper Functions ============
+// These delegate to the Svelte store - used by Sidebar and other legacy code
+
 export function renderTextCyclerConfigs(): void {
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.renderTextCyclerConfigs();
-  }
+  // Svelte store handles rendering reactively - no-op
 }
 
 export function newTextConfig(): void {
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.newTextConfig();
-  }
+  textCyclerStore.createConfig();
 }
 
 export function loadTextConfig(index: number): void {
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.loadConfig(index);
-  }
+  textCyclerStore.selectConfig(index);
 }
 
 export function saveCurrentTextConfig(): void {
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.saveCurrentTextConfig();
-  }
+  textCyclerStore.saveCurrentConfig();
 }
 
 export function deleteCurrentTextConfig(): void {
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.deleteCurrentTextConfig();
-  }
+  textCyclerStore.deleteSelectedConfig();
 }
 
 export function saveTextCyclerConfigs(): void {
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.saveTextCyclerConfigs();
-  }
+  textCyclerStore.saveConfigs();
 }
 
-export function exportTextConfigs(): void {
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.exportTextConfigs();
-  }
+export async function exportTextConfigs(): Promise<void> {
+  await textCyclerStore.exportConfigs();
 }
 
-export function importTextConfigs(): void {
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.importTextConfigs();
-  }
+export async function importTextConfigs(): Promise<void> {
+  await textCyclerStore.importConfigs();
 }
 
 export function startTextCycler(): void {
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.startTextCycler();
-  }
+  textCyclerStore.startCycler();
 }
 
 export function stopTextCycler(): void {
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.stopTextCycler();
-  }
+  textCyclerStore.stopCycler();
 }
 
 export function quickStartConfig(index: number): void {
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.quickStart(index);
-  }
+  textCyclerStore.toggleCycler(index);
 }
 
 export function restoreRunningTextCyclers(): void {
-  if ((window as any).TextCycler) {
-    (window as any).TextCycler.restoreRunningTextCyclers();
-  }
+  // Auto-restore running cyclers on init
+  const configs = textCyclerStore.getConfigs();
+  configs.forEach((config, index) => {
+    if (config.isRunning) {
+      config.isRunning = false; // Reset first
+      textCyclerStore.startCycler(index);
+    }
+  });
 }
 
 // ============ Text Cycler UI Helpers ============
@@ -996,13 +980,10 @@ export function setupKeyboardShortcuts(): void {
     if (e.key === ' ') {
       e.preventDefault();
       // Check if text cycler is running
-      if ((window as any).TextCycler) {
-        const isRunning = (window as any).TextCycler.isRunning();
-        if (isRunning) {
-          (window as any).TextCycler.stopTextCycler();
-        } else {
-          (window as any).TextCycler.startTextCycler();
-        }
+      if (textCyclerStore.isRunning()) {
+        textCyclerStore.stopCycler();
+      } else {
+        textCyclerStore.startCycler();
       }
     }
   });

@@ -177,7 +177,24 @@ export function buildHash(path: string, query?: Record<string, string>): string 
  * navigate('/dashboard', { replace: true });
  */
 export function navigate(path: string, options: NavigateOptions = {}): void {
-  const hash = buildHash(path, options.query);
+  // Parse query params from path if present (e.g., '/text-cycler-display?id=text1')
+  let actualPath = path;
+  let mergedQuery = { ...options.query };
+  
+  const queryIndex = path.indexOf('?');
+  if (queryIndex !== -1) {
+    actualPath = path.substring(0, queryIndex);
+    const pathQuery = path.substring(queryIndex + 1);
+    const pathParams = new URLSearchParams(pathQuery);
+    pathParams.forEach((value, key) => {
+      // Path params are lower priority than explicit options.query
+      if (!(key in mergedQuery)) {
+        mergedQuery[key] = value;
+      }
+    });
+  }
+  
+  const hash = buildHash(actualPath, Object.keys(mergedQuery).length > 0 ? mergedQuery : undefined);
   
   if (options.replace) {
     // Replace current history entry
@@ -378,18 +395,30 @@ export function initRouter(): void {
   
   // Handle initial route
   const initialHash = window.location.hash;
+  console.log('[Router] initRouter - initial hash:', initialHash);
+  
   if (!initialHash || initialHash === '#' || initialHash === '#/') {
     // No hash or empty hash - redirect to login
+    console.log('[Router] No hash, redirecting to login');
     replace('/login');
   } else {
     // Parse and set initial route (guards will run)
+    // IMPORTANT: Parse and set the route BEFORE setting routerReady
+    // This ensures the correct route is in the store before anything reacts to routerReady
+    const parsedRoute = parseHash(initialHash);
+    console.log('[Router] Parsed initial route:', parsedRoute);
+    
+    // Set the route immediately (without guards yet) so the store has correct path
+    currentRoute.set(parsedRoute);
+    
+    // Then run guards async
     handleHashChange();
   }
   
   isInitialized = true;
   routerReady.set(true);
   
-  console.log('[Router] Initialized with hash:', window.location.hash);
+  console.log('[Router] Initialized, routerReady set to true');
 }
 
 /**

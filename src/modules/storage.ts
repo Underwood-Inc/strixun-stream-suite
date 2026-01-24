@@ -4,10 +4,16 @@
  * OBS Dock Compatible Storage with Multi-Layer Persistence
  * 
  * ARCHITECTURE:
- * - IndexedDB (PRIMARY) - Survives most OBS cache clears
+ * - OBS Native Storage (when in OBS) - Uses OBS WebSocket GetPersistentData/SetPersistentData
+ * - IndexedDB (PRIMARY for browsers) - Survives most OBS cache clears
  * - localStorage (BACKUP) - Synced on every write
  * - Recovery Snapshot - Separate key for emergency recovery
  * - **AUTOMATIC OBS SYNC** - UI state keys (starting with 'ui_') automatically trigger OBS sync
+ * 
+ * ENVIRONMENT DETECTION:
+ * - When running inside OBS (dock or browser source), uses OBS native storage
+ * - When running in a regular browser, uses IndexedDB + localStorage
+ * - Detection is done via window.obsstudio object presence
  * 
  * UI STATE PERSISTENCE:
  * - Keys starting with 'ui_' are automatically synced to OBS client
@@ -15,8 +21,10 @@
  * - When storage.set() is called with a 'ui_' key, it automatically schedules OBS sync
  * - This ensures UI preferences persist across sessions and sync to remote clients
  * 
- * @version 2.1.0 (TypeScript)
+ * @version 2.2.0 (TypeScript)
  */
+
+import { obsStorage, isInOBS } from './obs-storage.js';
 
 // ============ Types ============
 interface StorageItem {
@@ -250,35 +258,55 @@ function deleteFromIDB(key: string): void {
 /**
  * Main storage interface
  * Uses memory cache for reads, writes to both IDB and localStorage
+ * CRITICAL: When running inside OBS, delegates to OBS native storage
  */
 export const storage: StorageInterface = {
   /**
    * Get a value from storage
+   * When in OBS: prefers OBS storage if ready, falls back to local cache
+   * When not in OBS: uses local cache (localStorage/IndexedDB backed)
    */
   get(key: string): unknown | null {
+    // When in OBS and OBS storage is ready, prefer OBS storage
+    // But still fall back to local cache if key not found in OBS storage
+    if (isInOBS() && obsStorage.isReady()) {
+      const obsValue = obsStorage.get(key);
+      if (obsValue !== null) {
+        return obsValue;
+      }
+    }
+    
+    // Fall back to local cache (backed by localStorage/IndexedDB)
     const value = storageCache[key];
     return value !== undefined ? value : null;
   },
   
   /**
    * Set a value in storage (writes to IDB + localStorage)
+   * Uses OBS storage when running inside OBS (ALSO writes to localStorage for bootstrap)
    * 
    * CRITICAL: UI state keys (starting with 'ui_') automatically trigger OBS sync
    * This ensures resizable zone sizes and other UI preferences are synced to OBS client
    */
   set(key: string, value: unknown): boolean {
     try {
-      // Update memory cache
+      // Update memory cache (always)
       storageCache[key] = value;
       
       // Write to IndexedDB (primary, async)
       saveToIDB(key, value);
       
-      // Write to localStorage (backup, sync)
+      // Write to localStorage (backup, sync) - ALWAYS do this for bootstrap before OBS storage is ready
       try {
         localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
       } catch (e) {
         console.warn('[Storage] localStorage write failed:', key, e);
+      }
+      
+      // ALSO write to OBS storage when running inside OBS and connected
+      // This ensures data persists in OBS across restarts
+      if (isInOBS() && obsStorage.isReady()) {
+        obsStorage.set(key, value);
       }
       
       // Trigger auto-backup snapshot for config keys (debounced)
@@ -308,12 +336,23 @@ export const storage: StorageInterface = {
   
   /**
    * Remove a value from storage
+   * Removes from ALL storage layers (local cache, IndexedDB, localStorage, OBS storage)
    */
   remove(key: string): void {
     try {
+      // Remove from local cache
       delete storageCache[key];
+      
+      // Remove from IndexedDB
       deleteFromIDB(key);
+      
+      // Remove from localStorage
       localStorage.removeItem(STORAGE_PREFIX + key);
+      
+      // Also remove from OBS storage when in OBS and connected
+      if (isInOBS() && obsStorage.isReady()) {
+        obsStorage.remove(key);
+      }
     } catch (e) {
       console.error('[Storage] Remove error:', key, e);
     }
@@ -321,23 +360,44 @@ export const storage: StorageInterface = {
   
   /**
    * Get a raw string value (for credentials, etc)
+   * When in OBS: prefers OBS storage if ready, falls back to local cache
    */
   getRaw(key: string): unknown {
+    // When in OBS and OBS storage is ready, prefer OBS storage
+    if (isInOBS() && obsStorage.isReady()) {
+      const obsValue = obsStorage.getRaw(key);
+      if (obsValue !== null) {
+        return obsValue;
+      }
+    }
+    
+    // Fall back to local cache
     const value = storageCache[key];
     return value !== undefined ? value : null;
   },
   
   /**
    * Set a raw string value (not JSON-stringified)
+   * ALWAYS writes to localStorage for bootstrap, ALSO to OBS storage when ready
    */
   setRaw(key: string, value: string): void {
     try {
+      // Always update local cache
       storageCache[key] = value;
+      
+      // Always write to IndexedDB
       saveToIDB(key, value);
+      
+      // Always write to localStorage (for bootstrap before OBS storage is ready)
       try {
         localStorage.setItem(STORAGE_PREFIX + key, value);
       } catch (e) {
         // Ignore localStorage errors
+      }
+      
+      // ALSO write to OBS storage when in OBS and connected
+      if (isInOBS() && obsStorage.isReady()) {
+        obsStorage.setRaw(key, value);
       }
     } catch (e) {
       // Ignore errors
@@ -345,9 +405,10 @@ export const storage: StorageInterface = {
   },
   
   /**
-   * Force sync all cached data to both storages
+   * Force sync all cached data to all storage layers
    */
   async flush(): Promise<void> {
+    // Flush to local storage layers
     for (const [key, value] of Object.entries(storageCache)) {
       saveToIDB(key, value);
       try {
@@ -357,27 +418,38 @@ export const storage: StorageInterface = {
         // Ignore errors
       }
     }
+    
+    // Also flush to OBS storage when in OBS and connected
+    if (isInOBS() && obsStorage.isReady()) {
+      await obsStorage.flush();
+    }
   },
   
   /**
    * Check if storage system is ready
+   * Local storage is always ready, OBS storage requires connection
    */
   isReady(): boolean {
-    return true; // Always ready after init, may be using fallback
+    // Local storage (cache/localStorage/IndexedDB) is always ready after init
+    // OBS storage readiness is additional, not required for basic operation
+    return true;
   },
   
   /**
-   * Clear all storage
+   * Clear all storage (all layers)
    */
   clear(): void {
     try {
+      // Clear local cache
       storageCache = {};
+      
       // Clear IndexedDB
       if (idbInstance) {
         const tx = idbInstance.transaction(IDB_STORE, 'readwrite');
         const store = tx.objectStore(IDB_STORE);
         store.clear();
       }
+      
       // Clear localStorage
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -387,23 +459,46 @@ export const storage: StorageInterface = {
         }
       }
       keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Also clear OBS storage when in OBS and connected
+      if (isInOBS() && obsStorage.isReady()) {
+        obsStorage.clear();
+      }
     } catch (e) {
       console.error('[Storage] Clear error:', e);
     }
   },
   
   /**
-   * Check if a key exists in storage
+   * Check if a key exists in storage (checks local cache and OBS storage)
    */
   has(key: string): boolean {
-    return key in storageCache;
+    // Check local cache first
+    if (key in storageCache) {
+      return true;
+    }
+    // Also check OBS storage when in OBS and connected
+    if (isInOBS() && obsStorage.isReady()) {
+      return obsStorage.has(key);
+    }
+    return false;
   },
   
   /**
-   * Get all storage keys
+   * Get all storage keys (combines local cache and OBS storage)
    */
   keys(): string[] {
-    return Object.keys(storageCache);
+    const localKeys = Object.keys(storageCache);
+    
+    // Also include OBS storage keys when in OBS and connected
+    if (isInOBS() && obsStorage.isReady()) {
+      const obsKeys = obsStorage.keys();
+      // Merge and deduplicate
+      const allKeys = new Set([...localKeys, ...obsKeys]);
+      return Array.from(allKeys);
+    }
+    
+    return localKeys;
   },
   
   // Internal debounce timer

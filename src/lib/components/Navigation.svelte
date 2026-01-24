@@ -53,6 +53,11 @@
    * Check if a route is disabled based on current state
    */
   function isRouteDisabled(route: AppRoute): boolean {
+    // WIP routes are always disabled (in active development, not ready for use)
+    if (route.isWip) {
+      return true;
+    }
+    
     // Check DOM interference for restricted paths
     if ($domInterferenceDetected && RESTRICTED_PATHS_ON_INTERFERENCE.includes(route.path)) {
       return true;
@@ -67,26 +72,68 @@
   }
   
   /**
-   * Get tooltip content for a route
+   * Get rich tooltip content for a route
+   * Combines route label, flair info, and disabled reasons into structured HTML
    */
-  function getTooltipContent(route: AppRoute, isDisabled: boolean): string {
-    if ($domInterferenceDetected && RESTRICTED_PATHS_ON_INTERFERENCE.includes(route.path)) {
-      return `${route.label} | Restricted due to detected DOM interference`;
+  function getTooltipContent(route: AppRoute): string {
+    const parts: string[] = [];
+    const isDisabled = isRouteDisabled(route);
+    const hasDOMInterference = $domInterferenceDetected && RESTRICTED_PATHS_ON_INTERFERENCE.includes(route.path);
+    const needsConnection = route.requiresConnection && !$connected;
+    
+    // Title section with route label and description
+    const description = route.meta?.description || '';
+    parts.push(`<div class="nav-tooltip__header">
+      <strong class="nav-tooltip__title">${route.label}</strong>
+      ${description ? `<span class="nav-tooltip__description">${description}</span>` : ''}
+    </div>`);
+    
+    // Flair section - shows special status (in-testing, WIP)
+    if (route.inTesting || route.isWip) {
+      const flairType = route.isWip ? 'wip' : 'in-testing';
+      const flairLabel = route.isWip ? 'Work in Progress' : 'In Testing';
+      const flairIcon = route.isWip ? '★' : '⊕';
+      const flairMessage = route.isWip 
+        ? 'This feature is incomplete and still in active development'
+        : 'This feature is currently in testing phase and may have issues';
+      
+      parts.push(`<div class="nav-tooltip__flair nav-tooltip__flair--${flairType}">
+        <span class="nav-tooltip__flair-icon">${flairIcon}</span>
+        <span class="nav-tooltip__flair-label">${flairLabel}</span>
+        <span class="nav-tooltip__flair-message">${flairMessage}</span>
+      </div>`);
     }
     
-    if (route.inTesting) {
-      return `${route.label} | This feature is currently in testing`;
+    // Disabled reason section - shows why the route is currently inaccessible
+    if (isDisabled) {
+      let disabledIcon = '⚠';
+      let disabledLabel = 'Unavailable';
+      let disabledMessage = '';
+      
+      if (hasDOMInterference) {
+        disabledIcon = '✗';
+        disabledLabel = 'Restricted';
+        disabledMessage = 'Disabled due to detected DOM interference from an extension or script';
+      } else if (route.isWip) {
+        disabledIcon = '↻';
+        disabledLabel = 'Not Ready';
+        disabledMessage = 'This feature is not yet ready for use';
+      } else if (needsConnection) {
+        disabledIcon = '⇄';
+        disabledLabel = 'Connection Required';
+        disabledMessage = route.disabledReason || 'Connect to OBS first to use this feature';
+      }
+      
+      if (disabledMessage) {
+        parts.push(`<div class="nav-tooltip__disabled">
+          <span class="nav-tooltip__disabled-icon">${disabledIcon}</span>
+          <span class="nav-tooltip__disabled-label">${disabledLabel}</span>
+          <span class="nav-tooltip__disabled-message">${disabledMessage}</span>
+        </div>`);
+      }
     }
     
-    if (route.isWip) {
-      return `${route.label} | This feature is incomplete and still in progress`;
-    }
-    
-    if (route.requiresConnection && !$connected && route.disabledReason) {
-      return `${route.label} | ${route.disabledReason}`;
-    }
-    
-    return route.label;
+    return `<div class="nav-tooltip">${parts.join('')}</div>`;
   }
   
   /**
@@ -115,7 +162,7 @@
     {@const isActive = $currentPath === route.path && !isDisabled && !route.isWip}
     {@const statusFlair = route.isWip ? 'wip' : (route.inTesting ? 'in-testing' : null)}
     <Tooltip 
-      text={getTooltipContent(route, isDisabled)} 
+      text={getTooltipContent(route)} 
       position="bottom" 
       delay={0}
       level={getTooltipLevel(route)}
@@ -320,5 +367,173 @@
       rgba(100, 149, 237, 0.2) 12px
     );
     border-color: var(--info);
+  }
+
+  // Disabled state for in-testing tabs - preserve flair styling but dimmed
+  .tabs :global(.status-flair--in-testing > .tab.disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: var(--info);
+    background: var(--card);
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(100, 149, 237, 0.05),
+      rgba(100, 149, 237, 0.05) 6px,
+      rgba(100, 149, 237, 0.08) 6px,
+      rgba(100, 149, 237, 0.08) 12px
+    );
+    box-shadow: 0 1px 0 var(--info);
+    color: var(--text-secondary);
+  }
+
+  .tabs :global(.status-flair--in-testing > .tab.disabled:hover) {
+    transform: none;
+    background: var(--card);
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(100, 149, 237, 0.05),
+      rgba(100, 149, 237, 0.05) 6px,
+      rgba(100, 149, 237, 0.08) 6px,
+      rgba(100, 149, 237, 0.08) 12px
+    );
+    border-color: var(--info);
+  }
+
+  // Disabled state for WIP tabs - preserve orange flair styling but dimmed
+  .tabs :global(.status-flair--wip > .tab.disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: #ff8c00;
+    background: var(--card);
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(255, 140, 0, 0.06),
+      rgba(255, 140, 0, 0.06) 4px,
+      rgba(255, 140, 0, 0.1) 4px,
+      rgba(255, 140, 0, 0.1) 8px
+    );
+    box-shadow: 0 1px 0 #ff8c00;
+    color: var(--text-secondary);
+  }
+
+  .tabs :global(.status-flair--wip > .tab.disabled:hover) {
+    transform: none;
+    background: var(--card);
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(255, 140, 0, 0.06),
+      rgba(255, 140, 0, 0.06) 4px,
+      rgba(255, 140, 0, 0.1) 4px,
+      rgba(255, 140, 0, 0.1) 8px
+    );
+    border-color: #ff8c00;
+  }
+
+  // ========== Rich Tooltip Styles (Global - renders in portal) ==========
+  :global(.nav-tooltip) {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+  }
+
+  :global(.nav-tooltip__header) {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  :global(.nav-tooltip__title) {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text, #fff);
+    letter-spacing: 0.5px;
+  }
+
+  :global(.nav-tooltip__description) {
+    font-size: 0.8rem;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+    line-height: 1.4;
+  }
+
+  :global(.nav-tooltip__flair) {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  :global(.nav-tooltip__flair--in-testing) {
+    border-left: 3px solid var(--info, #6495ed);
+    background: rgba(100, 149, 237, 0.1);
+  }
+
+  :global(.nav-tooltip__flair--wip) {
+    border-left: 3px solid #ff8c00;
+    background: rgba(255, 140, 0, 0.1);
+  }
+
+  :global(.nav-tooltip__flair-icon) {
+    display: none;
+  }
+
+  :global(.nav-tooltip__flair-label) {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text, #fff);
+  }
+
+  :global(.nav-tooltip__flair--in-testing .nav-tooltip__flair-label) {
+    color: var(--info, #6495ed);
+  }
+
+  :global(.nav-tooltip__flair--wip .nav-tooltip__flair-label) {
+    color: #ff8c00;
+  }
+
+  :global(.nav-tooltip__flair-message) {
+    font-size: 0.8rem;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+    line-height: 1.4;
+  }
+
+  :global(.nav-tooltip__disabled) {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: rgba(234, 43, 31, 0.08);
+    border-left: 3px solid var(--danger, #ea2b1f);
+  }
+
+  :global(.nav-tooltip__disabled-icon) {
+    display: none;
+  }
+
+  :global(.nav-tooltip__disabled-label) {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--danger, #ea2b1f);
+  }
+
+  :global(.nav-tooltip__disabled-message) {
+    font-size: 0.8rem;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+    line-height: 1.4;
+  }
+
+  // When only header exists (no flair, not disabled), remove bottom border
+  :global(.nav-tooltip__header:only-child) {
+    padding-bottom: 0;
+    border-bottom: none;
   }
 </style>

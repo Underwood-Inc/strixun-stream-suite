@@ -4,6 +4,25 @@
  * Initializes the Svelte application
  */
 
+// CRITICAL: Handle display route query parameters IMMEDIATELY
+// OBS browser sources sometimes strip hash fragments, so we use query params
+// ?display=text-cycler&id=xxx → redirect to #/text-cycler-display?id=xxx
+(function handleDisplayRouteRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const displayType = params.get('display');
+  const configId = params.get('id');
+  
+  if (displayType === 'text-cycler' && configId) {
+    // Redirect to hash-based route (preserves the URL for the app)
+    const newUrl = window.location.origin + window.location.pathname + 
+      '#/text-cycler-display?id=' + encodeURIComponent(configId);
+    console.log('[MAIN.TS] Redirecting display route:', newUrl);
+    window.location.replace(newUrl);
+    // Stop execution - page will reload with correct hash
+    throw new Error('DISPLAY_ROUTE_REDIRECT');
+  }
+})();
+
 // CRITICAL: Set up window.addLogEntry IMMEDIATELY and SYNCHRONOUSLY
 // SIMPLIFIED - Direct import, no queue bullshit
 if (typeof window !== 'undefined') {
@@ -56,7 +75,6 @@ import './modules/source-swaps';
 import './modules/sources';
 import './modules/storage';
 import './modules/storage-sync';
-import './modules/text-cycler';
 import './modules/twitch-api';
 import './modules/ui-utils';
 import './modules/version';

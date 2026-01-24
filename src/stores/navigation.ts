@@ -14,10 +14,12 @@ import { storage } from '../modules/storage';
 import { 
   navigate as routerNavigate, 
   currentPath,
-  currentRoute
+  currentRoute,
+  routerReady
 } from '../router';
 import { 
-  legacyPageToPath, 
+  legacyPageToPath,
+  isDisplayRoute, 
   pathToLegacyPage 
 } from '../router/routes';
 
@@ -89,10 +91,23 @@ export function navigateToPath(path: string, options?: { replace?: boolean }): v
  * current route - the router's redirect takes priority.
  */
 export function restorePage(): void {
+  // Wait for router to be ready before checking route
+  // This prevents race condition where we restore before URL is parsed
+  if (!get(routerReady)) {
+    console.log('[Navigation] Skipping restorePage - router not ready yet');
+    return;
+  }
+  
   // Check if there's a redirect URL pending - if so, let the router handle it
   const route = get(currentRoute);
   if (route.query.redirect) {
     console.log('[Navigation] Skipping restorePage - redirect URL pending:', route.query.redirect);
+    return;
+  }
+  
+  // Don't restore for display routes (OBS browser sources) - they have their own URL
+  if (isDisplayRoute(route.path)) {
+    console.log('[Navigation] Skipping restorePage - display route:', route.path);
     return;
   }
   
