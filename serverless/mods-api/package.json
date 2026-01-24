@@ -1,6 +1,6 @@
 {
   "name": "strixun-mods-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Dedicated Cloudflare Worker for mod hosting and version control",
   "private": true,
   "packageManager": "pnpm@9.15.1",
@@ -14,7 +14,7 @@
     "deploy": "wrangler deploy",
     "deploy:prod": "wrangler deploy --env production",
     "tail": "wrangler tail",
-    "tail:prod": "wrangler tail --env production", 
+    "tail:prod": "wrangler tail --env production",
     "pretest": "pnpm run build:deps && pnpm run build:worker",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
