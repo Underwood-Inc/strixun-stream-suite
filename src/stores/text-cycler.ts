@@ -196,6 +196,17 @@ function getChannel(configId: string): BroadcastChannel | null {
 
 /** Send a message to the display */
 async function sendToDisplay(configId: string, message: TextCyclerMessage): Promise<void> {
+  const isConnected = get(connected);
+  const isDock = isOBSDock();
+  
+  console.log('[TextCycler SEND]', {
+    configId,
+    messageType: message.type,
+    isConnected,
+    isDock,
+    willSendWebSocket: isConnected && !isDock
+  });
+  
   // Same-origin mode (OBS dock): use BroadcastChannel and localStorage
   const channel = getChannel(configId);
   if (channel) {
@@ -208,13 +219,10 @@ async function sendToDisplay(configId: string, message: TextCyclerMessage): Prom
   };
   localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(messageData));
   
-  // Remote mode: send via OBS WebSocket API (same as quick swaps)
-  // OBS dock will receive via CustomEvent and forward to localStorage
-  const isConnected = get(connected);
-  const isDock = isOBSDock();
-  
+  // Remote mode: send via OBS WebSocket API
   if (isConnected && !isDock) {
     try {
+      console.log('[TextCycler SEND] Sending BroadcastCustomEvent to OBS...');
       await request('BroadcastCustomEvent', {
         eventData: {
           type: 'strixun_text_cycler_msg',
@@ -223,8 +231,9 @@ async function sendToDisplay(configId: string, message: TextCyclerMessage): Prom
           timestamp: messageData.timestamp
         }
       });
+      console.log('[TextCycler SEND] BroadcastCustomEvent sent successfully');
     } catch (e) {
-      console.warn('[Text Cycler] Failed to send via WebSocket:', e);
+      console.error('[TextCycler SEND] BroadcastCustomEvent FAILED:', e);
     }
   }
 }

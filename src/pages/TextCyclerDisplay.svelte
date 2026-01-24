@@ -20,6 +20,9 @@
   
   import { onMount, onDestroy } from 'svelte';
   import { getQueryParam } from '../router';
+  import { connected } from '../stores/connection';
+  import { storage } from '../modules/storage';
+  import { connectProgrammatic } from '../modules/websocket';
   
   // ============ Props ============
   /** Config ID - if provided, uses this instead of URL param */
@@ -78,23 +81,35 @@
       customAlign = getQueryParam('align') || 'center';
     }
     
-    // Set up BroadcastChannel
+    console.log('[TextCyclerDisplay] onMount - configId:', configId, 'previewMode:', previewMode);
+    
+    // Set up BroadcastChannel for same-origin communication (preview mode)
     try {
       channel = new BroadcastChannel('text_cycler_' + configId);
       channel.onmessage = (e) => handleMessage(e.data);
       updateStatus('BroadcastChannel connected');
     } catch (err) {
-      updateStatus('BroadcastChannel not supported, using localStorage');
+      updateStatus('BroadcastChannel not supported');
     }
     
-    // Set up localStorage listener
+    // Listen for WebSocket-relayed messages (works when connected to OBS)
+    // This is the primary receive path for OBS browser sources
+    window.addEventListener('strixun_text_cycler_msg', handleWebSocketEvent as EventListener);
+    
+    // LocalStorage fallback
     window.addEventListener('storage', handleStorageEvent);
-    
-    // Set up OBS WebSocket custom event listener (for OBS browser sources)
-    window.addEventListener('strixun_text_cycler_msg', handleOBSEvent as EventListener);
-    
-    // Set up polling for cross-origin scenarios
     pollInterval = setInterval(pollLocalStorage, 100);
+    
+    // If not in preview mode and not already connected, try to connect to OBS
+    // This allows the browser source to receive WebSocket events directly
+    if (!previewMode && !$connected) {
+      const host = (storage.getRaw('obs_host') as string) || 'localhost';
+      const port = (storage.getRaw('obs_port') as string) || '4455';
+      console.log('[TextCyclerDisplay] Attempting OBS WebSocket connection:', { host, port });
+      updateStatus('Connecting to OBS...');
+      // Note: Password is stored in cloud, not accessible here. Try without password first.
+      connectProgrammatic(host, port, '');
+    }
     
     // Load initial state
     loadInitialState();
@@ -146,13 +161,23 @@
     if (animationFrame) {
       cancelAnimationFrame(animationFrame);
     }
+    window.removeEventListener('strixun_text_cycler_msg', handleWebSocketEvent as EventListener);
     window.removeEventListener('storage', handleStorageEvent);
-    window.removeEventListener('strixun_text_cycler_msg', handleOBSEvent as EventListener);
   });
   
-  function handleOBSEvent(e: CustomEvent): void {
+  /**
+   * Handle messages received via WebSocket (relayed as window events)
+   */
+  function handleWebSocketEvent(e: CustomEvent): void {
     const data = e.detail;
+    console.log('[TextCyclerDisplay] handleWebSocketEvent fired:', {
+      eventConfigId: data?.configId,
+      ourConfigId: configId,
+      matches: data?.configId === configId,
+      messageType: data?.message?.type
+    });
     if (data && data.configId === configId && data.message) {
+      updateStatus('Received via WebSocket');
       handleMessage(data.message);
     }
   }
@@ -175,13 +200,21 @@
       const msgData = localStorage.getItem(msgKey);
       if (msgData) {
         const parsed = JSON.parse(msgData);
+        // Check if this is a new message (has timestamp and it's newer)
         if (parsed.timestamp && parsed.timestamp > lastPolledTimestamp) {
           lastPolledTimestamp = parsed.timestamp;
           handleMessage(parsed.message || parsed);
+        } else if (!parsed.timestamp) {
+          // Legacy format without timestamp - only process if we haven't seen it
+          const legacyKey = 'text_cycler_processed_' + configId + '_' + JSON.stringify(parsed);
+          if (!sessionStorage.getItem(legacyKey)) {
+            sessionStorage.setItem(legacyKey, '1');
+            handleMessage(parsed);
+          }
         }
       }
     } catch (err) {
-      // Silently ignore
+      // Silently ignore parse errors
     }
   }
   

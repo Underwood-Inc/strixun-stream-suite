@@ -61,21 +61,38 @@ export const requireAuth: RouteGuard = async (to: ParsedRoute, _from: ParsedRout
  * 
  * Use this for routes that ALWAYS require auth, like URL shortener
  * which needs to identify the user for their URLs.
+ * 
+ * This guard waits for auth check to complete before making a decision,
+ * which is important for SSO in OBS browser sources.
  */
 export const requireAuthStrict: RouteGuard = async (to: ParsedRoute, _from: ParsedRoute | null): Promise<boolean | string> => {
   const { isAuthenticated, authCheckComplete } = await import('../stores/auth');
   
-  const authComplete = get(authCheckComplete);
-  const authenticated = get(isAuthenticated);
+  let authComplete = get(authCheckComplete);
+  let authenticated = get(isAuthenticated);
   
-  // If auth check hasn't completed yet, redirect to login with return URL
-  // Login page will redirect back once auth is confirmed
+  // If auth check hasn't completed yet, wait for it (up to 3 seconds)
+  // This allows SSO to complete before we decide to redirect
   if (!authComplete) {
-    console.log('[Guard:requireAuthStrict] Auth check not complete, redirecting to login');
-    const fullPath = to.query && Object.keys(to.query).length > 0
-      ? `${to.path}?${new URLSearchParams(to.query as Record<string, string>).toString()}`
-      : to.path;
-    return `/login?redirect=${encodeURIComponent(fullPath)}`;
+    console.log('[Guard:requireAuthStrict] Auth check not complete, waiting...');
+    const maxWait = 3000;
+    const checkInterval = 50;
+    let waited = 0;
+    
+    while (!authComplete && waited < maxWait) {
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      waited += checkInterval;
+      authComplete = get(authCheckComplete);
+      authenticated = get(isAuthenticated);
+    }
+    
+    if (!authComplete) {
+      console.log('[Guard:requireAuthStrict] Auth check timed out, redirecting to login');
+      const fullPath = to.query && Object.keys(to.query).length > 0
+        ? `${to.path}?${new URLSearchParams(to.query as Record<string, string>).toString()}`
+        : to.path;
+      return `/login?redirect=${encodeURIComponent(fullPath)}`;
+    }
   }
   
   if (!authenticated) {

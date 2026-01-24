@@ -310,6 +310,42 @@ export function toggleConnection(): void {
 }
 
 /**
+ * Connect to OBS WebSocket programmatically (without DOM elements)
+ * Used by display routes that don't have the connection form
+ */
+export function connectProgrammatic(host: string = 'localhost', port: string = '4455', password: string = ''): void {
+  console.log('[WebSocket] connectProgrammatic called:', { host, port, hasPassword: !!password });
+  
+  try {
+    ws = new WebSocket(`ws://${host}:${port}`);
+    ws.onopen = () => {
+      console.log('[WebSocket] Socket open, authenticating...');
+      reconnectAttempts = 0;
+    };
+    ws.onmessage = (e) => handleMessage(JSON.parse(e.data), password);
+    ws.onerror = () => { 
+      console.error('[WebSocket] Connection error');
+    };
+    ws.onclose = (e) => { 
+      const wasConnected = get(connected);
+      connected.set(false);
+      console.log('[WebSocket] Disconnected:', e.code);
+      
+      // Auto-reconnect on abnormal close
+      if (wasConnected && e.code !== 1000) {
+        if (reconnectAttempts < MAX_RECONNECT) {
+          reconnectAttempts++;
+          console.log(`[WebSocket] Reconnecting (${reconnectAttempts}/${MAX_RECONNECT})...`);
+          setTimeout(() => connectProgrammatic(host, port, password), 3000);
+        }
+      }
+    };
+  } catch (e: any) {
+    console.error('[WebSocket] Connect failed:', e.message);
+  }
+}
+
+/**
  * Connect to OBS WebSocket
  */
 export function connect(): void {
@@ -317,8 +353,8 @@ export function connect(): void {
   const portEl = document.getElementById('port') as HTMLInputElement;
   const passwordEl = document.getElementById('password') as HTMLInputElement;
   
-  const host = hostEl?.value || 'localhost';
-  const port = portEl?.value || '4455';
+  const host = hostEl?.value || (storage.getRaw('obs_host') as string) || 'localhost';
+  const port = portEl?.value || (storage.getRaw('obs_port') as string) || '4455';
   const password = passwordEl?.value || '';
   
   const statusDot = document.getElementById('statusDot');
@@ -502,25 +538,31 @@ function handleEvent(event: OBSEvent): void {
     if ((window as any).StorageSync && (customData?.type === 'strixun_storage_broadcast' || customData?.type === 'strixun_storage_request')) {
       (window as any).StorageSync.handleCustomEvent(customData);
     } else if (customData?.type === 'strixun_text_cycler_msg') {
-      // Handle text cycler messages from remote control panel (same pattern as quick swaps)
-      // Remote sends via WebSocket, OBS dock receives and handles locally
+      // Handle text cycler messages from remote control panel
       const configId = customData.configId;
       const message = customData.message;
       const timestamp = customData.timestamp || Date.now();
       
+      console.log('[TextCycler RECV] Got strixun_text_cycler_msg via WebSocket:', {
+        configId,
+        messageType: message?.type,
+        timestamp,
+        hash: window.location.hash
+      });
+      
       if (configId && message) {
-        // OBS dock: forward to localStorage so browser source can receive it
-        if (typeof (window as any).isOBSDock === 'function' && (window as any).isOBSDock()) {
-          try {
-            const messageData = {
-              message: message,
-              timestamp: timestamp
-            };
-            localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(messageData));
-            // Text Cycler forwarding logged via log() if needed
-          } catch (e) {
-            log(`[Text Cycler] Failed to forward: ${e instanceof Error ? e.message : String(e)}`, 'warning');
-          }
+        // Dispatch as a window event so TextCyclerDisplay can receive it directly
+        console.log('[TextCycler RECV] Dispatching window CustomEvent...');
+        window.dispatchEvent(new CustomEvent('strixun_text_cycler_msg', {
+          detail: { configId, message, timestamp }
+        }));
+        
+        // Also try localStorage for same-origin scenarios (dock forwarding)
+        try {
+          const messageData = { message, timestamp };
+          localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(messageData));
+        } catch (e) {
+          // localStorage might not be available in all contexts
         }
       }
     }
