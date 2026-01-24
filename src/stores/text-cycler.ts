@@ -372,7 +372,9 @@ export async function importConfigs(): Promise<number> {
 /** Get browser source URL for a config */
 export function getBrowserSourceUrl(configId: string): string {
   const baseUrl = window.location.origin + window.location.pathname;
-  return `${baseUrl}#/text-cycler-display?id=${encodeURIComponent(configId)}`;
+  // Use query param (more reliable in OBS) which will redirect to hash route
+  // OBS sometimes strips hash fragments, but query params are preserved
+  return `${baseUrl}?display=text-cycler&id=${encodeURIComponent(configId)}`;
 }
 
 /** Copy browser source URL to clipboard */

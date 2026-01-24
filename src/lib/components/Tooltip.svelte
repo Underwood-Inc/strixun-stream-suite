@@ -22,7 +22,7 @@
    * </Tooltip>
    */
   
-  import { onMount, onDestroy, tick } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { animate } from '../../core/animations';
   
   // Portal action to render tooltip at body level
@@ -357,7 +357,9 @@
     style="max-width: {calculatedMaxWidth}; min-width: {calculatedMinWidth};"
     use:portal={portalContainer}
   >
-    {text}
+    <div class="tooltip__content">
+      {@html text}
+    </div>
   </div>
 {/if}
 
@@ -372,7 +374,7 @@
   .tooltip {
     position: fixed;
     z-index: 100002; // Highest - above alerts (100001) and toasts (99999)
-    padding: 6px 10px;
+    padding: 12px 16px;
     background: var(--card);
     border: 1px solid var(--border);
     color: var(--text);
@@ -388,7 +390,7 @@
     white-space: normal;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    text-align: center;
+    text-align: left;
     display: inline-block;
     
     // Log level (default) - no special styling
@@ -605,6 +607,11 @@
       }
     }
     
+  }
+  
+  .tooltip .tooltip__content {
+    display: block;
+    width: 100%;
   }
 </style>
 

@@ -20,6 +20,7 @@
   
   import { onMount, onDestroy } from 'svelte';
   import { getQueryParam } from '../router';
+  import { storage } from '../modules/storage.js';
   
   // ============ Props ============
   /** Config ID - if provided, uses this instead of URL param */
@@ -79,7 +80,7 @@
     
     console.log('[TextCyclerDisplay] onMount - configId:', configId, 'previewMode:', previewMode);
     
-    // BroadcastChannel for same-origin (preview in same browser)
+    // 1. BroadcastChannel for same-origin (preview in same browser)
     try {
       channel = new BroadcastChannel('text_cycler_' + configId);
       channel.onmessage = (e) => handleMessage(e.data);
@@ -88,12 +89,37 @@
       updateStatus('BroadcastChannel not supported');
     }
     
-    // WebSocket events - primary path for OBS browser sources
-    // App bootstrap handles WebSocket connection, we just listen for events
+    // 2. OBS Browser Source API - PRIMARY path for OBS browser sources
+    // This receives BroadcastCustomEvent directly from OBS without needing WebSocket
+    // OBS calls this callback when BroadcastCustomEvent is sent
+    const obsStudio = (window as any).obsstudio;
+    if (obsStudio) {
+      console.log('[TextCyclerDisplay] OBS detected, registering broadcast listener');
+      obsStudio.onBroadcastCustomMessage = processObsBroadcast;
+      updateStatus('OBS broadcast listener registered');
+    }
+    
+    // 3. WebSocket events - fallback for when connected via WebSocket
     window.addEventListener('strixun_text_cycler_msg', handleWebSocketEvent as EventListener);
     
     updateStatus('Display ready - waiting for messages');
   });
+  
+  /**
+   * Handle OBS BroadcastCustomMessage (direct from OBS, no WebSocket needed)
+   * This is called by OBS when BroadcastCustomEvent is sent
+   */
+  function processObsBroadcast(data: any): void {
+    console.log('[TextCyclerDisplay] OBS broadcast received:', data);
+    
+    // Check if this is a text cycler message for us
+    if (data?.type === 'strixun_text_cycler_msg' && data?.configId === configId) {
+      updateStatus('Received via OBS broadcast');
+      if (data.message) {
+        handleMessage(data.message);
+      }
+    }
+  }
   
   // Reactive: reinitialize when propConfigId changes
   $: if (propConfigId && propConfigId !== configId) {
@@ -173,7 +199,8 @@
     if (channel) {
       channel.postMessage(data);
     }
-    localStorage.setItem('text_cycler_response_' + configId, JSON.stringify(data));
+    // Use storage module which automatically uses OBS storage when in OBS
+    storage.set('text_cycler_response_' + configId, data);
   }
   
   function updateStatus(msg: string): void {

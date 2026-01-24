@@ -5,10 +5,16 @@
  * Implements a "write-through" cache pattern:
  * - Writes: Local storage (immediate) + Cloud API (async)
  * - Reads: Local storage (fast) with periodic cloud sync
+ * 
+ * Cloud sync only happens when:
+ * - User is authenticated
+ * - API URL is configured (not localhost in dev unless servers are running)
  */
 
 import { storage } from './storage';
 import * as API from './streamkit-api-client';
+import { isAuthenticated } from '../stores/auth';
+import { get } from 'svelte/store';
 import type { TextCyclerConfig, SwapConfig, LayoutPreset } from '../types';
 
 /**
@@ -17,6 +23,18 @@ import type { TextCyclerConfig, SwapConfig, LayoutPreset } from '../types';
 let isSyncing = false;
 let lastSyncTime: Record<string, number> = {};
 const SYNC_DEBOUNCE_MS = 2000; // Wait 2s after last write before syncing to cloud
+
+/**
+ * Check if cloud sync should be attempted
+ * Skip if not authenticated or no API configured
+ */
+function shouldSyncToCloud(): boolean {
+  // Must be authenticated
+  if (!get(isAuthenticated)) {
+    return false;
+  }
+  return true;
+}
 
 /**
  * Save text cycler configs (local + cloud)
@@ -107,8 +125,14 @@ function scheduleCloudSync(type: string, data: any[]): void {
 
 /**
  * Sync data to cloud
+ * Only syncs if authenticated
  */
 async function syncToCloud(type: string, data: any[]): Promise<void> {
+  // Skip if not authenticated
+  if (!shouldSyncToCloud()) {
+    return;
+  }
+  
   if (isSyncing) {
     console.log(`[Cloud Storage] Sync already in progress for ${type}, skipping`);
     return;
@@ -156,8 +180,14 @@ async function syncToCloud(type: string, data: any[]): Promise<void> {
 
 /**
  * Sync data from cloud (overwrites local if cloud is newer)
+ * Only syncs if authenticated
  */
 async function syncFromCloud(type: string): Promise<void> {
+  // Skip if not authenticated
+  if (!shouldSyncToCloud()) {
+    return;
+  }
+  
   try {
     const apiType = type as 'text-cyclers' | 'swaps' | 'layouts';
     const cloudConfigs = await API.listConfigs(apiType);
@@ -180,8 +210,14 @@ async function syncFromCloud(type: string): Promise<void> {
 
 /**
  * Force a full sync from cloud (overwrites local)
+ * Only syncs if authenticated
  */
 export async function forceCloudSync(): Promise<void> {
+  if (!shouldSyncToCloud()) {
+    console.log('[Cloud Storage] Skipping cloud sync - not authenticated');
+    return;
+  }
+  
   console.log('[Cloud Storage] Forcing full cloud sync...');
   await Promise.all([
     syncFromCloud('text-cyclers'),

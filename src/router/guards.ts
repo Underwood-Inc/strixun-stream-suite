@@ -71,12 +71,18 @@ export const requireAuthStrict: RouteGuard = async (to: ParsedRoute, _from: Pars
   let authComplete = get(authCheckComplete);
   let authenticated = get(isAuthenticated);
   
-  // If auth check hasn't completed yet, wait for it (up to 3 seconds)
-  // This allows SSO to complete before we decide to redirect
+  console.log('[Guard:requireAuthStrict] Checking:', { 
+    path: to.path, 
+    authComplete, 
+    authenticated,
+    query: to.query 
+  });
+  
+  // If auth check hasn't completed yet, wait for it (up to 5 seconds for OBS)
   if (!authComplete) {
     console.log('[Guard:requireAuthStrict] Auth check not complete, waiting...');
-    const maxWait = 3000;
-    const checkInterval = 50;
+    const maxWait = 5000; // Increased for OBS browser sources
+    const checkInterval = 100;
     let waited = 0;
     
     while (!authComplete && waited < maxWait) {
@@ -85,6 +91,8 @@ export const requireAuthStrict: RouteGuard = async (to: ParsedRoute, _from: Pars
       authComplete = get(authCheckComplete);
       authenticated = get(isAuthenticated);
     }
+    
+    console.log('[Guard:requireAuthStrict] After wait:', { waited, authComplete, authenticated });
     
     if (!authComplete) {
       console.log('[Guard:requireAuthStrict] Auth check timed out, redirecting to login');
@@ -103,7 +111,7 @@ export const requireAuthStrict: RouteGuard = async (to: ParsedRoute, _from: Pars
     return `/login?redirect=${encodeURIComponent(fullPath)}`;
   }
   
-  console.log('[Guard:requireAuthStrict] Authenticated, allowing access');
+  console.log('[Guard:requireAuthStrict] Authenticated, allowing access to:', to.path);
   return true;
 };
 

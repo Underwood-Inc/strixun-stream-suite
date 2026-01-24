@@ -14,6 +14,7 @@ export { default as Tooltip } from './Tooltip.svelte';
 export { default as TruncatedText } from './TruncatedText.svelte';
 export { default as ProgressRing } from './ProgressRing.svelte';
 export { default as LoadingSkeleton } from './LoadingSkeleton.svelte';
+export { default as InitializationScreen } from './InitializationScreen.svelte';
 export { default as SearchBox } from './SearchBox.svelte';
 export { default as SourceSelect } from './SourceSelect.svelte';
 export { default as EncryptionSettings } from './EncryptionSettings.svelte';

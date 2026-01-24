@@ -122,8 +122,23 @@
     showLoginForm = false;
   }
   
+  // Check if we're actually on the login page (safety check)
+  function isOnLoginPage(): boolean {
+    return window.location.hash === '#/login' || 
+           window.location.hash.startsWith('#/login?') ||
+           window.location.hash === '' ||
+           window.location.hash === '#' ||
+           window.location.hash === '#/';
+  }
+  
   // Check if already authenticated on mount
   onMount(() => {
+    // Only redirect if we're actually on the login page
+    if (!isOnLoginPage()) {
+      console.log('[Login] Not on login page, skipping redirect check');
+      return;
+    }
+    
     // If auth check complete and authenticated, redirect immediately
     if ($authCheckComplete && $isAuthenticated) {
       const redirectUrl = getRedirectUrl();
@@ -135,7 +150,8 @@
   
   // Watch for auth state changes (SSO restore case)
   // Skip if we're already handling a login (handleLoginSuccess will navigate)
-  $: if ($authCheckComplete && $isAuthenticated && !isHandlingLogin) {
+  // CRITICAL: Only redirect if actually on login page to prevent hijacking other routes
+  $: if ($authCheckComplete && $isAuthenticated && !isHandlingLogin && isOnLoginPage()) {
     const redirectUrl = getRedirectUrl();
     const destination = redirectUrl || DEFAULT_AUTHENTICATED_ROUTE;
     navigate(destination, { replace: true });
