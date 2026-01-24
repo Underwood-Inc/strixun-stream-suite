@@ -8,6 +8,7 @@
 
   import { onMount } from 'svelte';
   import { connected, currentScene } from '../../stores/connection';
+  import * as textCyclerStore from '../../stores/text-cycler';
 
   interface SwapConfig {
     name: string;
@@ -46,13 +47,10 @@
   }
 
   function handleToggleTextCycler(): void {
-    if ((window as any).TextCycler) {
-      const isRunning = (window as any).TextCycler.isRunning();
-      if (isRunning) {
-        (window as any).TextCycler.stopTextCycler();
-      } else {
-        (window as any).TextCycler.startTextCycler();
-      }
+    if (textCyclerStore.isRunning()) {
+      textCyclerStore.stopCycler();
+    } else {
+      textCyclerStore.startCycler();
     }
   }
 

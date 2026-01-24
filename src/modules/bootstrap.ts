@@ -13,7 +13,7 @@ import * as sourceSwaps from './source-swaps';
 import { Sources } from './sources';
 import { initIndexedDB, loadStorageCache, startAutoBackup } from './storage';
 import * as storageSync from './storage-sync';
-import * as textCycler from './text-cycler';
+import * as textCyclerStore from '../stores/text-cycler';
 import { TwitchAPI } from './twitch-api';
 import { UIUtils } from './ui-utils';
 import { Version } from './version';
@@ -192,30 +192,8 @@ async function initializeModules(): Promise<void> {
   // Expose to window for legacy compatibility
   (window as any).SourceSwaps = sourceSwaps;
   
-  // Initialize Text Cycler (TypeScript module)
-  textCycler.init({
-    log: (msg: string, type?: string) => {
-      if (window.App?.log) {
-        window.App.log(msg, type);
-      } else {
-        console.log(`[${type || 'info'}] ${msg}`);
-      }
-    },
-    isOBSDock: window.isOBSDock || (() => false),
-    get storageSyncTimer() { return window.StorageSync?.storageSyncTimer || null; },
-    set storageSyncTimer(val) { if (window.StorageSync) window.StorageSync.storageSyncTimer = val; },
-    broadcastStorage: () => { if (window.StorageSync) window.StorageSync.scheduleBroadcast(); },
-    STORAGE_SYNC_DEBOUNCE: window.StorageSync?.STORAGE_SYNC_DEBOUNCE || 500,
-    showPage: navigateTo,
-    initSearchForList: UIUtils.initSearchForList,
-    updateTextCyclerMode: window.updateTextCyclerMode,
-    updateTransitionMode: window.updateTransitionMode,
-    updateBrowserSourceUrlPreview: window.updateBrowserSourceUrlPreview
-  });
-  textCycler.loadConfigs();
-  
-  // Expose to window for legacy compatibility
-  (window as any).TextCycler = textCycler;
+  // Text Cycler uses Svelte store pattern - no initialization needed
+  // Store auto-loads configs on import
   
   // Initialize Storage Sync (TypeScript module)
   storageSync.init({
@@ -230,13 +208,13 @@ async function initializeModules(): Promise<void> {
     // Callbacks for getting/setting configs
     getSwapConfigs: () => sourceSwaps.getConfigs(),
     setSwapConfigs: (val) => sourceSwaps.setConfigs(val),
-    getTextCyclerConfigs: () => textCycler.getConfigs(),
-    setTextCyclerConfigs: (val) => textCycler.setConfigs(val),
+    getTextCyclerConfigs: () => textCyclerStore.getConfigs(),
+    setTextCyclerConfigs: (val) => textCyclerStore.setConfigs(val),
     getLayoutPresets: () => (window.Layouts as any)?.layoutPresets || [],
     setLayoutPresets: (val) => { if (window.Layouts) (window.Layouts as any).layoutPresets = val; },
     // Render callbacks
     renderSavedSwaps: () => sourceSwaps.renderSavedSwaps(),
-    renderTextCyclerConfigs: () => textCycler.renderTextCyclerConfigs(),
+    renderTextCyclerConfigs: () => { /* Svelte store - no DOM rendering */ },
     renderSavedLayouts: window.renderSavedLayouts,
     updateStorageStatus: window.updateStorageStatus
   });
@@ -343,12 +321,12 @@ export async function completeAppInitialization(): Promise<void> {
     
     // Get config counts for logging
     const swapConfigsCount = (window as any).SourceSwaps ? (window as any).SourceSwaps.getConfigs().length : 0;
-    const textCyclerConfigs = (window as any).TextCycler ? (window as any).TextCycler.getConfigs() : [];
+    const textCyclerConfigsCount = textCyclerStore.getConfigs().length;
     const sourceOpacityConfigs = Sources.sourceOpacityConfigs;
-    addLogEntry(`Loaded configs - Swaps: ${swapConfigsCount}, TextCycler: ${textCyclerConfigs.length}, Opacity: ${Object.keys(sourceOpacityConfigs).length}`, 'info', 'CONFIG');
+    addLogEntry(`Loaded configs - Swaps: ${swapConfigsCount}, TextCycler: ${textCyclerConfigsCount}, Opacity: ${Object.keys(sourceOpacityConfigs).length}`, 'info', 'CONFIG');
     
     // Check for recovery if configs are empty
-    const totalConfigs = swapConfigsCount + textCyclerConfigs.length;
+    const totalConfigs = swapConfigsCount + textCyclerConfigsCount;
     if (totalConfigs === 0) {
       const recovered = await App.offerRecovery();
       if (recovered) {

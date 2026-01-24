@@ -90,6 +90,9 @@
     // Set up localStorage listener
     window.addEventListener('storage', handleStorageEvent);
     
+    // Set up OBS WebSocket custom event listener (for OBS browser sources)
+    window.addEventListener('strixun_text_cycler_msg', handleOBSEvent as EventListener);
+    
     // Set up polling for cross-origin scenarios
     pollInterval = setInterval(pollLocalStorage, 100);
     
@@ -144,7 +147,15 @@
       cancelAnimationFrame(animationFrame);
     }
     window.removeEventListener('storage', handleStorageEvent);
+    window.removeEventListener('strixun_text_cycler_msg', handleOBSEvent as EventListener);
   });
+  
+  function handleOBSEvent(e: CustomEvent): void {
+    const data = e.detail;
+    if (data && data.configId === configId && data.message) {
+      handleMessage(data.message);
+    }
+  }
   
   function handleStorageEvent(e: StorageEvent): void {
     if (e.key === 'text_cycler_msg_' + configId && e.newValue) {

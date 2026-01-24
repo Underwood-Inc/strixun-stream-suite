@@ -56,7 +56,6 @@ import './modules/source-swaps';
 import './modules/sources';
 import './modules/storage';
 import './modules/storage-sync';
-import './modules/text-cycler';
 import './modules/twitch-api';
 import './modules/ui-utils';
 import './modules/version';
