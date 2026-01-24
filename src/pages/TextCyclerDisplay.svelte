@@ -20,9 +20,6 @@
   
   import { onMount, onDestroy } from 'svelte';
   import { getQueryParam } from '../router';
-  import { connected } from '../stores/connection';
-  import { storage } from '../modules/storage';
-  import { connectProgrammatic } from '../modules/websocket';
   
   // ============ Props ============
   /** Config ID - if provided, uses this instead of URL param */
@@ -35,7 +32,8 @@
   let debug = false;
   
   // State
-  let displayText = 'Ready';
+  let displayText = '';
+  let hasReceivedMessage = false;
   let statusText = 'Waiting for connection...';
   let animationClass = '';
   let animationFrame: number | null = null;
@@ -59,8 +57,6 @@
   
   // Communication
   let channel: BroadcastChannel | null = null;
-  let pollInterval: ReturnType<typeof setInterval> | null = null;
-  let lastPolledTimestamp = 0;
   
   onMount(() => {
     // Use prop configId if provided, otherwise parse from URL
@@ -83,7 +79,7 @@
     
     console.log('[TextCyclerDisplay] onMount - configId:', configId, 'previewMode:', previewMode);
     
-    // Set up BroadcastChannel for same-origin communication (preview mode)
+    // BroadcastChannel for same-origin (preview in same browser)
     try {
       channel = new BroadcastChannel('text_cycler_' + configId);
       channel.onmessage = (e) => handleMessage(e.data);
@@ -92,31 +88,11 @@
       updateStatus('BroadcastChannel not supported');
     }
     
-    // Listen for WebSocket-relayed messages (works when connected to OBS)
-    // This is the primary receive path for OBS browser sources
+    // WebSocket events - primary path for OBS browser sources
+    // App bootstrap handles WebSocket connection, we just listen for events
     window.addEventListener('strixun_text_cycler_msg', handleWebSocketEvent as EventListener);
     
-    // LocalStorage fallback
-    window.addEventListener('storage', handleStorageEvent);
-    pollInterval = setInterval(pollLocalStorage, 100);
-    
-    // If not in preview mode and not already connected, try to connect to OBS
-    // This allows the browser source to receive WebSocket events directly
-    if (!previewMode && !$connected) {
-      const host = (storage.getRaw('obs_host') as string) || 'localhost';
-      const port = (storage.getRaw('obs_port') as string) || '4455';
-      console.log('[TextCyclerDisplay] Attempting OBS WebSocket connection:', { host, port });
-      updateStatus('Connecting to OBS...');
-      // Note: Password is stored in cloud, not accessible here. Try without password first.
-      connectProgrammatic(host, port, '');
-    }
-    
-    // Load initial state
-    loadInitialState();
-    
-    // Announce presence
-    sendResponse({ type: 'ready', configId });
-    updateStatus('Display ready');
+    updateStatus('Display ready - waiting for messages');
   });
   
   // Reactive: reinitialize when propConfigId changes
@@ -133,9 +109,6 @@
     // Update configId
     configId = newConfigId;
     
-    // Reset polling timestamp to receive new messages
-    lastPolledTimestamp = 0;
-    
     // Set up new BroadcastChannel
     try {
       channel = new BroadcastChannel('text_cycler_' + configId);
@@ -143,26 +116,16 @@
     } catch (err) {
       // BroadcastChannel not supported
     }
-    
-    // Load initial state for new config
-    loadInitialState();
-    
-    // Poll immediately for any pending messages
-    pollLocalStorage();
   }
   
   onDestroy(() => {
     if (channel) {
       channel.close();
     }
-    if (pollInterval) {
-      clearInterval(pollInterval);
-    }
     if (animationFrame) {
       cancelAnimationFrame(animationFrame);
     }
     window.removeEventListener('strixun_text_cycler_msg', handleWebSocketEvent as EventListener);
-    window.removeEventListener('storage', handleStorageEvent);
   });
   
   /**
@@ -182,60 +145,8 @@
     }
   }
   
-  function handleStorageEvent(e: StorageEvent): void {
-    if (e.key === 'text_cycler_msg_' + configId && e.newValue) {
-      try {
-        const parsed = JSON.parse(e.newValue);
-        // Extract message from wrapper (same structure as pollLocalStorage)
-        handleMessage(parsed.message || parsed);
-      } catch (err) {
-        // Ignore parse errors
-      }
-    }
-  }
-  
-  function pollLocalStorage(): void {
-    try {
-      const msgKey = 'text_cycler_msg_' + configId;
-      const msgData = localStorage.getItem(msgKey);
-      if (msgData) {
-        const parsed = JSON.parse(msgData);
-        // Check if this is a new message (has timestamp and it's newer)
-        if (parsed.timestamp && parsed.timestamp > lastPolledTimestamp) {
-          lastPolledTimestamp = parsed.timestamp;
-          handleMessage(parsed.message || parsed);
-        } else if (!parsed.timestamp) {
-          // Legacy format without timestamp - only process if we haven't seen it
-          const legacyKey = 'text_cycler_processed_' + configId + '_' + JSON.stringify(parsed);
-          if (!sessionStorage.getItem(legacyKey)) {
-            sessionStorage.setItem(legacyKey, '1');
-            handleMessage(parsed);
-          }
-        }
-      }
-    } catch (err) {
-      // Silently ignore parse errors
-    }
-  }
-  
-  function loadInitialState(): void {
-    try {
-      const savedState = localStorage.getItem('text_cycler_state_' + configId);
-      if (savedState) {
-        const state = JSON.parse(savedState);
-        if (state.text) {
-          displayText = state.text;
-        }
-        if (state.styles) {
-          applyStyles(state.styles);
-        }
-      }
-    } catch (err) {
-      // Ignore
-    }
-  }
-  
   function handleMessage(msg: any): void {
+    hasReceivedMessage = true;
     updateStatus(`Received: ${msg.type}`);
     
     switch (msg.type) {
@@ -549,7 +460,7 @@
       -webkit-text-stroke: {customStroke};
     "
   >
-    {displayText}
+    {hasReceivedMessage ? displayText : 'Ready'}
   </p>
   {#if !previewMode}
     <small class="status">{statusText}</small>

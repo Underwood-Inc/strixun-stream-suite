@@ -9,7 +9,6 @@ import { writable, derived, get } from 'svelte/store';
 import { connected } from './connection';
 import { storage } from '../modules/storage';
 import { request } from '../modules/websocket';
-import { isOBSDock } from '../modules/script-status';
 
 // ============================================================================
 // Types
@@ -197,32 +196,22 @@ function getChannel(configId: string): BroadcastChannel | null {
 /** Send a message to the display */
 async function sendToDisplay(configId: string, message: TextCyclerMessage): Promise<void> {
   const isConnected = get(connected);
-  const isDock = isOBSDock();
-  
-  console.log('[TextCycler SEND]', {
-    configId,
-    messageType: message.type,
-    isConnected,
-    isDock,
-    willSendWebSocket: isConnected && !isDock
-  });
-  
-  // Same-origin mode (OBS dock): use BroadcastChannel and localStorage
-  const channel = getChannel(configId);
-  if (channel) {
-    channel.postMessage(message);
-  }
   
   const messageData = {
     message: message,
     timestamp: Date.now()
   };
-  localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(messageData));
   
-  // Remote mode: send via OBS WebSocket API
-  if (isConnected && !isDock) {
+  // BROWSER MODE: BroadcastChannel for same-origin (preview, same browser tab)
+  const channel = getChannel(configId);
+  if (channel) {
+    channel.postMessage(message);
+  }
+  
+  // OBS MODE: Send via WebSocket - OBS broadcasts to all connected clients
+  // Browser sources receive this via their WebSocket connection
+  if (isConnected) {
     try {
-      console.log('[TextCycler SEND] Sending BroadcastCustomEvent to OBS...');
       await request('BroadcastCustomEvent', {
         eventData: {
           type: 'strixun_text_cycler_msg',
@@ -231,9 +220,8 @@ async function sendToDisplay(configId: string, message: TextCyclerMessage): Prom
           timestamp: messageData.timestamp
         }
       });
-      console.log('[TextCycler SEND] BroadcastCustomEvent sent successfully');
     } catch (e) {
-      console.error('[TextCycler SEND] BroadcastCustomEvent FAILED:', e);
+      console.error('[TextCycler] BroadcastCustomEvent failed:', e);
     }
   }
 }

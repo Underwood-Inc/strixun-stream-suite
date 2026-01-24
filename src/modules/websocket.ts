@@ -523,47 +523,25 @@ function handleEvent(event: OBSEvent): void {
     }
   }
   
-  // Handle custom storage sync events (Vendor events)
+  // Handle custom events (BroadcastCustomEvent)
   if (event.eventType === 'CustomEvent') {
-    const customData = event.eventData?.eventData;
-    console.log('[Storage Sync] CustomEvent received:', {
-      type: customData?.type,
-      source: customData?.source || customData?.clientId,
-      hasData: !!customData?.data,
-      timestamp: customData?.timestamp
-    });
+    // OBS puts BroadcastCustomEvent data directly in eventData
+    const customData = event.eventData;
     
     // Delegate storage sync events to StorageSync module
-    // Use window.StorageSync to avoid circular dependency (initialized in bootstrap)
     if ((window as any).StorageSync && (customData?.type === 'strixun_storage_broadcast' || customData?.type === 'strixun_storage_request')) {
       (window as any).StorageSync.handleCustomEvent(customData);
     } else if (customData?.type === 'strixun_text_cycler_msg') {
-      // Handle text cycler messages from remote control panel
+      // Handle text cycler messages
       const configId = customData.configId;
       const message = customData.message;
       const timestamp = customData.timestamp || Date.now();
       
-      console.log('[TextCycler RECV] Got strixun_text_cycler_msg via WebSocket:', {
-        configId,
-        messageType: message?.type,
-        timestamp,
-        hash: window.location.hash
-      });
-      
       if (configId && message) {
-        // Dispatch as a window event so TextCyclerDisplay can receive it directly
-        console.log('[TextCycler RECV] Dispatching window CustomEvent...');
+        // Dispatch as a window event so TextCyclerDisplay can receive it
         window.dispatchEvent(new CustomEvent('strixun_text_cycler_msg', {
           detail: { configId, message, timestamp }
         }));
-        
-        // Also try localStorage for same-origin scenarios (dock forwarding)
-        try {
-          const messageData = { message, timestamp };
-          localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(messageData));
-        } catch (e) {
-          // localStorage might not be available in all contexts
-        }
       }
     }
   }
