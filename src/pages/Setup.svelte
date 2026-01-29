@@ -12,6 +12,7 @@
   import { EventBus } from '../core/events/EventBus';
   import * as App from '../modules/app';
   import { deleteCloudSave, listCloudSaves, loadFromCloud, saveToCloud, type CloudSave } from '../modules/cloud-save';
+  import { forceCloudSync } from '../modules/cloud-storage';
   import { openUrlOrCopy } from '../modules/script-status';
   import { storage } from '../modules/storage';
   import { manualStorageSync, requestStorageFromOBS, saveAutoSyncPref } from '../modules/storage-sync';
@@ -55,6 +56,7 @@
   let saveSlotName = 'default';
   let saveDescription = '';
   let hasLoadedCloudSaves = false; // Guard to prevent infinite loop
+  let isSyncingConfigs = false; // For manual config sync button
   
   // Confirmation modal state
   let showClearCredentialsModal = false;
@@ -344,6 +346,24 @@
   }
   
   
+  async function handleSyncConfigsFromCloud(): Promise<void> {
+    if (!$isAuthenticated) {
+      navigate('/login', { query: { redirect: '/setup' } });
+      return;
+    }
+    
+    try {
+      isSyncingConfigs = true;
+      await forceCloudSync();
+      showToast({ message: 'Configs synced from cloud', type: 'success' });
+    } catch (error) {
+      console.error('[Setup] Failed to sync configs from cloud:', error);
+      showToast({ message: error instanceof Error ? error.message : 'Failed to sync configs', type: 'error' });
+    } finally {
+      isSyncingConfigs = false;
+    }
+  }
+  
   function handleClearCredentialsClick(): void {
     showClearCredentialsModal = true;
   }
@@ -629,6 +649,23 @@
       <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px">
         Signed in as <strong>{$customer?.displayName || 'Customer'}</strong>
       </p>
+      
+      <!-- Sync Configs from Cloud -->
+      <div style="margin-bottom:16px;padding:12px;background:rgba(100,255,100,0.08);border-radius:6px;border:1px solid rgba(100,255,100,0.2)">
+        <div style="font-size:0.8em;color:var(--success);margin-bottom:8px;font-weight:600">SYNC CONFIGS FROM CLOUD:</div>
+        <p style="font-size:0.8em;color:var(--muted);margin-bottom:8px">
+          Pull your saved swap configs, layout presets, and text cycler configs from the cloud.
+          This happens automatically on login, but you can manually sync anytime.
+        </p>
+        <button 
+          class="btn-primary btn-block" 
+          on:click={handleSyncConfigsFromCloud}
+          disabled={isSyncingConfigs}
+          style="padding:10px;background:var(--success);border:none;color:#000;border-radius:6px;cursor:pointer;font-weight:500;opacity:{isSyncingConfigs ? 0.5 : 1}"
+        >
+          {isSyncingConfigs ? 'Syncing...' : '⇅ Sync Configs from Cloud'}
+        </button>
+      </div>
       
       <!-- Save to Cloud -->
       <div style="margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.05);border-radius:6px">

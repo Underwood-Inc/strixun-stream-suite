@@ -38,7 +38,7 @@ async function handleHealth(env, request) {
         jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
     }
 
-    // Create health check response
+    // Create health check response with CORS headers
     const healthData = { 
         status: 'ok', 
         message: 'Twitch API worker is running',
@@ -46,9 +46,15 @@ async function handleHealth(env, request) {
         timestamp: new Date().toISOString()
     };
     
+    const corsHeaders = createCORSHeaders(request, {
+        credentials: true,
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    });
+    
     const response = new Response(JSON.stringify(healthData), {
         headers: {
             'Content-Type': 'application/json',
+            ...Object.fromEntries(corsHeaders.entries()),
         },
     });
 
@@ -276,6 +282,7 @@ export async function route(request, env) {
             error.message || 'An internal server error occurred'
         );
         const corsHeaders = createCORSHeaders(request, {
+            credentials: true,
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {

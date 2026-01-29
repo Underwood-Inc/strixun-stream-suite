@@ -22,6 +22,7 @@ async function handleHealth(request: Request, env: Env): Promise<Response> {
   const envName = env.ENVIRONMENT || 'production';
   const corsHeaders = createCORSHeaders(request, {
     allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    credentials: true,
   });
   
   return new Response(JSON.stringify({
@@ -43,6 +44,28 @@ async function handleHealth(request: Request, env: Env): Promise<Response> {
 }
 
 /**
+ * Helper to add CORS headers to any response
+ */
+function withCORSHeaders(response: Response, request: Request, env: Env): Response {
+  const corsHeaders = createCORSHeaders(request, {
+    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    credentials: true,
+  });
+  
+  // Clone response and add CORS headers
+  const newHeaders = new Headers(response.headers);
+  for (const [key, value] of corsHeaders.entries()) {
+    newHeaders.set(key, value);
+  }
+  
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders,
+  });
+}
+
+/**
  * Main request handler
  */
 async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -54,7 +77,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return handleHealth(request, env);
   }
   
-  // Route handling
+  // Route handling - all responses get CORS headers added
   const pathParts = path.split('/').filter(Boolean);
   
   // /configs/:type or /configs/:type/:id
@@ -62,38 +85,47 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     const configType = pathParts[1];
     const configId = pathParts[2];
     
+    let response: Response | undefined;
+    
     if (configId) {
       // /configs/:type/:id
       if (request.method === 'GET') {
-        return await getConfig(request, env);
+        response = await getConfig(request, env);
       } else if (request.method === 'PUT') {
-        return await updateConfig(request, env);
+        response = await updateConfig(request, env);
       } else if (request.method === 'DELETE') {
-        return await deleteConfig(request, env);
+        response = await deleteConfig(request, env);
       }
     } else {
       // /configs/:type
       if (request.method === 'GET') {
-        return await listConfigs(request, env);
+        response = await listConfigs(request, env);
       } else if (request.method === 'POST') {
-        return await createConfig(request, env);
+        response = await createConfig(request, env);
       }
+    }
+    
+    if (response) {
+      return withCORSHeaders(response, request, env);
     }
   }
   
   // /scene-activity/record
   if (path === '/scene-activity/record' && request.method === 'POST') {
-    return await recordSceneSwitch(request, env);
+    const response = await recordSceneSwitch(request, env);
+    return withCORSHeaders(response, request, env);
   }
   
   // /scene-activity/top
   if (path === '/scene-activity/top' && request.method === 'GET') {
-    return await getTopScenes(request, env);
+    const response = await getTopScenes(request, env);
+    return withCORSHeaders(response, request, env);
   }
   
   // 404
   const corsHeaders = createCORSHeaders(request, {
     allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    credentials: true,
   });
   
   return new Response(JSON.stringify({
@@ -120,6 +152,7 @@ export default {
     if (request.method === 'OPTIONS') {
       const corsHeaders = createCORSHeaders(request, {
         allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        credentials: true,
       });
       return new Response(null, {
         status: 204,
@@ -134,6 +167,7 @@ export default {
       
       const corsHeaders = createCORSHeaders(request, {
         allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        credentials: true,
       });
       
       return new Response(JSON.stringify({

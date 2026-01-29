@@ -6,37 +6,29 @@ main = "dist/worker.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Environment variables (secrets should be set via wrangler secret put)
-# DO NOT put actual secrets here - use wrangler CLI:
-#   wrangler secret put JWT_SECRET                   # REQUIRED: JWT signing secret (must match OTP auth service)
-#   wrangler secret put ALLOWED_ORIGINS              # OPTIONAL: Comma-separated CORS origins (recommended for production)
-#   wrangler secret put SERVICE_API_KEY              # OPTIONAL: Service API key for service-to-service auth
-#   wrangler secret put NETWORK_INTEGRITY_KEYPHRASE  # OPTIONAL: Network integrity verification keyphrase
-#
-# IMPORTANT: 
-#   - JWT_SECRET must match the OTP auth service secret for authentication to work
-#   - All Streamkit data is stored in STREAMKIT_KV namespace
-
-# Development environment (only used with --env development)
-[env.development]
-vars = { ENVIRONMENT = "development" }
-
-# Development KV Namespace
-[[env.development.kv_namespaces]]
-binding = "STREAMKIT_KV"
-id = "a70d6c00bcc44a9ba9310c4590f228a8"
-
-# Default configuration (production)
+# Default vars for LOCAL DEVELOPMENT (wrangler dev)
+# Production secrets are set via wrangler secret put
 [vars]
-ENVIRONMENT = "production"
+ENVIRONMENT = "development"
+JWT_SECRET = "test-jwt-secret-for-local-development-12345678901234567890123456789012"
+ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:5175,http://localhost:5178,http://localhost:3001,http://localhost:8787"
+NETWORK_INTEGRITY_KEYPHRASE = "test-integrity-keyphrase-for-integration-tests"
+SERVICE_API_KEY = "test-service-key-12345"
 
-# Default KV Namespace
+# Default KV Namespace (used in local dev)
 [[kv_namespaces]]
 binding = "STREAMKIT_KV"
 id = "193c308cee734e1bb08bba03ae2d65b0"
 
-# Default routes (production)
-[[routes]]
+# Production environment
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+[[env.production.kv_namespaces]]
+binding = "STREAMKIT_KV"
+id = "193c308cee734e1bb08bba03ae2d65b0"
+
+[[env.production.routes]]
 pattern = "streamkit-api.idling.app/*"
 zone_name = "idling.app"
 

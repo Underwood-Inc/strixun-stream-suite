@@ -25,6 +25,23 @@ interface Env {
 }
 
 /**
+ * Helper to ensure CORS headers are on response
+ */
+function ensureCORSHeaders(response: Response, corsHeaders: Record<string, string>): Response {
+  // Clone response and merge CORS headers (CORS headers take precedence)
+  const newHeaders = new Headers(response.headers);
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    newHeaders.set(key, value);
+  }
+  
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders,
+  });
+}
+
+/**
  * Cloudflare Worker fetch handler
  * 
  * @param request - The incoming request
@@ -41,7 +58,8 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
 
-    // Route to appropriate handler (router handles CORS headers in responses)
-    return route(request, env);
+    // Route to appropriate handler and ensure CORS headers
+    const response = await route(request, env);
+    return ensureCORSHeaders(response, corsHeaders);
   },
 };

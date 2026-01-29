@@ -14,6 +14,7 @@ import { get } from 'svelte/store';
 import { request } from './websocket';
 import { storage } from './storage';
 import * as cloudStorage from './cloud-storage';
+import { onCloudSyncComplete } from './cloud-storage';
 import { isOBSDock } from './script-status';
 import { easeFunc, lerp } from './sources';
 
@@ -611,4 +612,14 @@ export const Layouts = {
 if (typeof window !== 'undefined') {
   (window as any).Layouts = Layouts;
 }
+
+// Listen for cloud sync events to refresh data
+onCloudSyncComplete(() => {
+  console.log('[Layouts] Cloud sync complete - refreshing presets');
+  const saved = storage.get('layoutPresets') as LayoutPreset[] | null;
+  if (saved && Array.isArray(saved)) {
+    layoutPresets = saved;
+    renderSavedLayouts();
+  }
+});
 

@@ -13,6 +13,7 @@
 
 import { storage } from './storage';
 import * as cloudStorage from './cloud-storage';
+import { onCloudSyncComplete } from './cloud-storage';
 import { connected, currentScene, sources } from '../stores/connection';
 import { request } from './websocket';
 import { get } from 'svelte/store';
@@ -1082,4 +1083,14 @@ export function getConfigs(): SwapConfig[] {
 export function setConfigs(configs: SwapConfig[]): void {
   swapConfigs = configs || [];
 }
+
+// Listen for cloud sync events to refresh data
+onCloudSyncComplete(() => {
+  console.log('[Swaps] Cloud sync complete - refreshing configs');
+  const saved = storage.get('swapConfigs') as SwapConfig[] | null;
+  if (saved && Array.isArray(saved)) {
+    swapConfigs = saved;
+    renderSavedSwaps();
+  }
+});
 
