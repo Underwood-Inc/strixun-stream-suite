@@ -10,6 +10,7 @@ import { ServiceRegistry } from './services/ServiceRegistry';
 import { SERVICE_KEYS } from './services/interfaces';
 import { getModuleAdapter } from './communication/ModuleAdapter';
 import { EventBus } from './events/EventBus';
+import { initCloudStorage } from '../modules/cloud-storage';
 
 /**
  * Initialize the core communication layer
@@ -32,6 +33,9 @@ export async function initializeCore(): Promise<void> {
       return originalEmit(event, data);
     };
   }
+
+  // Initialize cloud storage (subscribes to auth state for automatic sync on login)
+  initCloudStorage();
 
   // Emit initialization complete event
   EventBus.emitSync('core:initialized', {

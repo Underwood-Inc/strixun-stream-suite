@@ -8,41 +8,13 @@
 import { writable, derived, get } from 'svelte/store';
 import { connected } from './connection';
 import { storage } from '../modules/storage';
+import * as cloudStorage from '../modules/cloud-storage';
+import { onCloudSyncComplete } from '../modules/cloud-storage';
 import { request } from '../modules/websocket';
+import type { TextCyclerConfig, TextCyclerStyles } from '../types';
 
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface TextCyclerStyles {
-  fontFamily?: string;
-  fontSize?: string;
-  fontWeight?: string;
-  fontStyle?: string;
-  color?: string;
-  textAlign?: string;
-  letterSpacing?: string;
-  lineHeight?: string;
-  textTransform?: string;
-  shadow?: string;
-  strokeWidth?: string;
-  strokeColor?: string;
-}
-
-export interface TextCyclerConfig {
-  id: string;
-  name: string;
-  mode: 'browser' | 'legacy';
-  configId: string;
-  textSource: string;
-  textLines: string[];
-  transition: string;
-  transDuration: number;
-  cycleDuration: number;
-  styles: TextCyclerStyles;
-  isRunning: boolean;
-  cycleIndex?: number;
-}
+// Re-export types for consumers
+export type { TextCyclerConfig, TextCyclerStyles };
 
 interface TextCyclerMessage {
   type: 'show' | 'clear' | 'style' | 'ping';
@@ -78,18 +50,34 @@ const intervals: Record<string, ReturnType<typeof setInterval>> = {};
 // Initialization
 // ============================================================================
 
-/** Load configs from storage */
+/** Load configs from storage (local first, then sync from cloud) */
 export function loadConfigs(): void {
   const saved = storage.get('textCyclerConfigs') as TextCyclerConfig[] | null;
   if (saved && Array.isArray(saved)) {
     configs.set(saved);
   }
+  
+  // Also try to sync from cloud in background (don't block)
+  cloudStorage.loadTextCyclerConfigs().then(cloudConfigs => {
+    if (cloudConfigs && cloudConfigs.length > 0) {
+      // Cloud data takes precedence - update local state
+      configs.set(cloudConfigs);
+      console.log('[TextCycler] Synced', cloudConfigs.length, 'configs from cloud');
+    }
+  }).catch(err => {
+    console.warn('[TextCycler] Cloud load failed:', err);
+  });
 }
 
-/** Save configs to storage */
+/** Save configs to storage (local + cloud) */
 export function saveConfigs(): void {
   const current = get(configs);
   storage.set('textCyclerConfigs', current);
+  
+  // Also sync to cloud storage (async, fire-and-forget)
+  cloudStorage.saveTextCyclerConfigs(current).catch(err => {
+    console.warn('[TextCycler] Cloud save failed:', err);
+  });
 }
 
 // ============================================================================
@@ -415,3 +403,12 @@ export function isRunning(): boolean {
 
 // Initialize on import
 loadConfigs();
+
+// Listen for cloud sync events to refresh data
+onCloudSyncComplete(() => {
+  console.log('[TextCycler] Cloud sync complete - refreshing configs');
+  const saved = storage.get('textCyclerConfigs') as TextCyclerConfig[] | null;
+  if (saved && Array.isArray(saved)) {
+    configs.set(saved);
+  }
+});

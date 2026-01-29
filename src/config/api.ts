@@ -7,8 +7,8 @@
 /**
  * Streamkit API URL
  * - Production: https://streamkit-api.idling.app
- * - Development: http://localhost:8796
+ * - Development: Goes through Vite proxy at /streamkit-api for cookie forwarding
  */
 export const STREAMKIT_API_URL = import.meta.env.PROD 
   ? 'https://streamkit-api.idling.app' 
-  : 'http://localhost:8796';
+  : '/streamkit-api';

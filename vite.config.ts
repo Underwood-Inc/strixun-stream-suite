@@ -234,6 +234,22 @@ export default defineConfig({
           });
         },
       },
+      '/streamkit-api': {
+        target: 'http://localhost:8796',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/streamkit-api/, ''),
+        secure: false,
+        // CRITICAL: Forward cookies for HttpOnly cookie SSO
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) {
+              console.log('[Vite Proxy] /streamkit-api - Cookies sent:', req.headers.cookie);
+            }
+          });
+        },
+      },
     },
   },
   // Optimize for OBS dock environment
