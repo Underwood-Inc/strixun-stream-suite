@@ -53,7 +53,7 @@ export function getKvNamespaceId(wranglerPath, kvBinding) {
 export function isMigrationRun(namespaceId, servicePrefix, migrationId) {
     const key = `migration_${servicePrefix}_${migrationId}`;
     try {
-        const result = execSync(`pnpm exec wrangler kv key get "${key}" --namespace-id ${namespaceId}`, {
+        const result = execSync(`pnpm exec wrangler kv key get "${key}" --namespace-id ${namespaceId} --remote`, {
             encoding: 'utf8',
             stdio: ['pipe', 'pipe', 'pipe']
         });
@@ -69,7 +69,7 @@ export function isMigrationRun(namespaceId, servicePrefix, migrationId) {
 export function markMigrationRun(namespaceId, servicePrefix, migrationId) {
     const key = `migration_${servicePrefix}_${migrationId}`;
     try {
-        execSync(`pnpm exec wrangler kv key put "${key}" "true" --namespace-id ${namespaceId}`, {
+        execSync(`pnpm exec wrangler kv key put "${key}" "true" --namespace-id ${namespaceId} --remote`, {
             encoding: 'utf8',
             stdio: 'inherit'
         });
@@ -85,7 +85,7 @@ export function markMigrationRun(namespaceId, servicePrefix, migrationId) {
  */
 export function listKeys(namespaceId, prefix) {
     try {
-        const result = execSync(`pnpm exec wrangler kv key list --namespace-id ${namespaceId} --prefix "${prefix}"`, {
+        const result = execSync(`pnpm exec wrangler kv key list --namespace-id ${namespaceId} --prefix "${prefix}" --remote`, {
             encoding: 'utf8',
             stdio: ['pipe', 'pipe', 'pipe'],
             maxBuffer: 50 * 1024 * 1024
@@ -101,7 +101,7 @@ export function listKeys(namespaceId, prefix) {
  */
 export function kvGet(namespaceId, key) {
     try {
-        return execSync(`pnpm exec wrangler kv key get "${key}" --namespace-id ${namespaceId}`, {
+        return execSync(`pnpm exec wrangler kv key get "${key}" --namespace-id ${namespaceId} --remote`, {
             encoding: 'utf8',
             stdio: ['pipe', 'pipe', 'pipe']
         });
@@ -117,7 +117,7 @@ export function kvPut(namespaceId, key, value) {
     try {
         const tempFile = `/tmp/kv-value-${Date.now()}-${Math.random().toString(36).substring(7)}.txt`;
         fs.writeFileSync(tempFile, value);
-        execSync(`pnpm exec wrangler kv key put "${key}" --namespace-id ${namespaceId} --path "${tempFile}"`, {
+        execSync(`pnpm exec wrangler kv key put "${key}" --namespace-id ${namespaceId} --path "${tempFile}" --remote`, {
             encoding: 'utf8',
             stdio: 'inherit'
         });
@@ -134,7 +134,7 @@ export function kvPut(namespaceId, key, value) {
  */
 export function kvDelete(namespaceId, key) {
     try {
-        execSync(`pnpm exec wrangler kv key delete "${key}" --namespace-id ${namespaceId} --force`, {
+        execSync(`pnpm exec wrangler kv key delete "${key}" --namespace-id ${namespaceId} --force --remote`, {
             encoding: 'utf8',
             stdio: 'inherit'
         });

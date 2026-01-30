@@ -55,7 +55,6 @@ runMigrations({
     kvBinding: 'ACCESS_KV',
     wranglerPath: path.join(__dirname, '..', 'wrangler.toml'),
     migrations: [
-        { id: '001_fix_customer_upload_permissions', description: 'Fix customer upload permissions (manual)' },
         { id: '002_migrate_to_unified_keys', description: 'Migrate to unified key pattern', run: migration002 },
     ]
 }).catch(err => {

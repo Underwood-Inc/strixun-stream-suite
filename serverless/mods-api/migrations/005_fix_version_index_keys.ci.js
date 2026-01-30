@@ -10,7 +10,7 @@
  * This migration recreates indexes with correct keys.
  */
 export const migration = {
-    id: '004_fix_version_index_keys',
+    id: '005_fix_version_index_keys',
     description: 'Fix version index keys to use full modId',
     
     run(namespaceId, kv) {

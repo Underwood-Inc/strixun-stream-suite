@@ -8,7 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { runMigrations } from '../../../scripts/ci-migration-runner.js';
 
-import { migration as migration004 } from '../migrations/004_fix_version_index_keys.ci.js';
+import { migration as migration005 } from '../migrations/005_fix_version_index_keys.ci.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -17,7 +17,7 @@ runMigrations({
     kvBinding: 'MODS_KV',
     wranglerPath: path.join(__dirname, '..', 'wrangler.toml'),
     migrations: [
-        migration004,
+        migration005,
     ]
 }).catch(err => {
     console.error('❌ Migration failed:', err.message);
