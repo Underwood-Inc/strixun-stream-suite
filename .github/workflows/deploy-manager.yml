@@ -732,6 +732,10 @@ jobs:
           if [ -n "${{ secrets.MODS_ENCRYPTION_KEY }}" ]; then
             echo "${{ secrets.MODS_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put MODS_ENCRYPTION_KEY $ENV_FLAG || true
           fi
+          # CUSTOMER_API_URL for fetching customer data in admin endpoints
+          if [ -n "${{ secrets.CUSTOMER_API_URL }}" ]; then
+            echo "${{ secrets.CUSTOMER_API_URL }}" | pnpm exec wrangler secret put CUSTOMER_API_URL $ENV_FLAG || true
+          fi
         continue-on-error: true
 
   # OTP Auth Service Deployment
