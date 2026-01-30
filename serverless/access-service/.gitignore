@@ -6,6 +6,7 @@ dist/
 # Except config files
 !*.config.js
 !vitest.config.ts
+!scripts/run-migrations-ci.js
 
 # Dependencies
 node_modules/
