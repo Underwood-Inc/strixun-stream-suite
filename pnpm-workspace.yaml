@@ -24,6 +24,7 @@ packages:
   - 'packages/error-utils'
   - 'packages/chat'
   - 'packages/p2p-storage'
+  - 'packages/kv-entities'
   - 'dice-board-game'
   - 'control-panel'
   - 'mods-hub'

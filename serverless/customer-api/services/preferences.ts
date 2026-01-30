@@ -4,6 +4,8 @@
  * 
  * CRITICAL: Uses CUSTOMER_KV (not OTP_AUTH_KV)
  * CRITICAL: Uses customerId as primary identifier (not userId)
+ * 
+ * Uses kv-entities pattern for consistent key management.
  */
 
 import * as v from 'valibot';
@@ -13,6 +15,7 @@ import {
   type CustomerPreferences,
   type DisplayNameChangeReason,
 } from '@strixun/schemas/customer';
+import { getEntity, putEntity } from '@strixun/kv-entities';
 
 export interface Env {
   CUSTOMER_KV: KVNamespace;
@@ -36,6 +39,9 @@ export function getDefaultPreferences(): CustomerPreferences {
 
 /**
  * Get customer preferences
+ * 
+ * Retrieves customer preferences from CUSTOMER_KV using the entity pattern.
+ * Returns default preferences if not found or validation fails.
  */
 export async function getCustomerPreferences(
   customerId: string,
@@ -46,8 +52,7 @@ export async function getCustomerPreferences(
     throw new Error('Customer ID is MANDATORY for preferences lookup');
   }
   
-  const preferencesKey = `customer_${customerId}_preferences`;
-  const stored = await env.CUSTOMER_KV.get(preferencesKey, { type: 'json' });
+  const stored = await getEntity<CustomerPreferences>(env.CUSTOMER_KV, 'customer', 'preferences', customerId);
 
   if (stored) {
     // Validate with schema
@@ -67,6 +72,7 @@ export async function getCustomerPreferences(
 
 /**
  * Store customer preferences
+ * 
  * No TTL - customer preferences persist indefinitely like customer data
  */
 export async function storeCustomerPreferences(
@@ -85,13 +91,14 @@ export async function storeCustomerPreferences(
     throw new Error(`Invalid preferences data: ${JSON.stringify(result.issues)}`);
   }
   
-  const preferencesKey = `customer_${customerId}_preferences`;
   // No TTL - preferences persist indefinitely like customer data
-  await env.CUSTOMER_KV.put(preferencesKey, JSON.stringify(result.output));
+  await putEntity(env.CUSTOMER_KV, 'customer', 'preferences', customerId, result.output);
 }
 
 /**
  * Update customer preferences (partial update)
+ * 
+ * Merges updates with existing preferences.
  */
 export async function updateCustomerPreferences(
   customerId: string,
@@ -114,6 +121,8 @@ export async function updateCustomerPreferences(
 
 /**
  * Add display name to history
+ * 
+ * Tracks display name changes for audit purposes.
  */
 export async function addDisplayNameToHistory(
   customerId: string,
@@ -186,7 +195,8 @@ export async function canChangeDisplayName(
 
 /**
  * Update display name with history tracking
- * Updates both customer record and preferences
+ * 
+ * Updates both customer record and preferences.
  */
 export async function updateDisplayName(
   customerId: string,
@@ -218,7 +228,7 @@ export async function updateDisplayName(
 
   // Also update customer record displayName
   const { getCustomer, storeCustomer } = await import('./customer.js');
-  const customer = await getCustomer(customerId, env);
+  const customer = await getCustomer(env.CUSTOMER_KV, customerId);
   if (customer) {
     customer.displayName = newDisplayName;
     customer.updatedAt = new Date().toISOString();

@@ -6,8 +6,8 @@
  */
 
 import type { Migration } from '../../shared/migration-runner.js';
-import { migration as migration001 } from './fix-and-normalize-variants.js';
-import { migration as migration002 } from './attach-variants-to-first-version.js';
+import { migration as migration001 } from './attach-variants-to-first-version.js';
+import { migration as migration002 } from './002_migrate_to_unified_keys.js';
 
 /**
  * All migrations in order

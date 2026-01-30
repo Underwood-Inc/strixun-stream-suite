@@ -6,7 +6,7 @@
 import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { verifyApiKey } from '../../services/api-key.js';
 import { verifyJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
-import { getCustomerKey } from '../../services/customer.js';
+import { getEntity } from '@strixun/kv-entities';
 // CRITICAL: wrapWithEncryption removed - main router handles ALL encryption (avoids double-encryption)
 
 interface Env {
@@ -75,8 +75,9 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
         // Check if token is blacklisted (for security)
         const customerId = payload.customerId || null;
         const tokenHash = await hashEmail(token);
-        const blacklistKey = getCustomerKey(customerId, `blacklist_${tokenHash}`);
-        const blacklisted = await env.OTP_AUTH_KV.get(blacklistKey);
+        const blacklisted = await getEntity<{ token: string; revokedAt: string }>(
+            env.OTP_AUTH_KV, 'auth', 'blacklist', tokenHash
+        );
         if (blacklisted) {
             return null; // Token has been revoked
         }

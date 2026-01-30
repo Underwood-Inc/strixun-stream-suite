@@ -1,11 +1,15 @@
 /**
  * Update Version Handler
- * Updates metadata for a specific version of a mod
+ * PATCH /mods/:modId/versions/:versionId
  */
 
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCorsHeaders } from '../../utils/cors.js';
-import { KVKeys } from '../../utils/kv-keys.js';
+import {
+    getEntity,
+    putEntity,
+    canModify,
+} from '@strixun/kv-entities';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 interface Env {
@@ -33,135 +37,73 @@ export async function handleUpdateVersion(
     versionId: string,
     auth: Auth | null
 ): Promise<Response> {
-    const corsHeaders = getCorsHeaders(env, request);
-
     if (!auth) {
-        const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to update versions');
-        return new Response(JSON.stringify(rfcError), {
-            status: 401,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        return errorResponse(request, env, 401, 'Unauthorized', 'Authentication required');
     }
 
     try {
-        // Parse request body
         let updates: VersionUpdateRequest;
         try {
             updates = await request.json() as VersionUpdateRequest;
         } catch {
-            const rfcError = createError(request, 400, 'Invalid Request', 'Request body must be valid JSON');
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 400, 'Invalid Request', 'Request body must be valid JSON');
         }
 
-        // Get mod metadata to verify ownership
-        const modKey = KVKeys.mod(auth.customerId, modId);
-        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+        const mod = await getEntity<ModMetadata>(env.MODS_KV, 'mods', 'mod', modId);
 
         if (!mod) {
-            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
         }
 
-        // Verify ownership
-        if (mod.customerId !== auth.customerId) {
-            const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to update this version');
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        if (!canModify({ ...mod, id: mod.modId }, { customerId: auth.customerId, isAdmin: false })) {
+            return errorResponse(request, env, 403, 'Forbidden', 'You do not have permission to update this version');
         }
 
-        // Get the version
-        const versionKey = KVKeys.version(auth.customerId, versionId);
-        const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
+        const version = await getEntity<ModVersion>(env.MODS_KV, 'mods', 'version', versionId);
 
         if (!version) {
-            const rfcError = createError(request, 404, 'Version Not Found', 'The requested version was not found');
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 404, 'Version Not Found', 'The requested version was not found');
         }
 
-        // Verify the version belongs to this mod (normalize both for comparison)
-        const normalizedModId = KVKeys.normalizeModId(modId);
-        const normalizedVersionModId = KVKeys.normalizeModId(version.modId);
-        if (normalizedVersionModId !== normalizedModId) {
-            const rfcError = createError(request, 400, 'Invalid Version', 'This version does not belong to the specified mod');
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        if (version.modId !== modId) {
+            return errorResponse(request, env, 400, 'Invalid Version', 'This version does not belong to the specified mod');
         }
 
-        // Update allowed fields
         if (updates.version !== undefined) {
             version.version = updates.version;
         }
         if (updates.changelog !== undefined) {
             version.changelog = updates.changelog;
         }
-        version.updatedAt = new Date().toISOString();
+        (version as any).updatedAt = new Date().toISOString();
 
-        // Save updated version
-        await env.MODS_KV.put(versionKey, JSON.stringify(version));
-
-        // Update global key if public
-        if (mod.visibility === 'public') {
-            await env.MODS_KV.put(KVKeys.versionGlobal(versionId), JSON.stringify(version));
-        }
-
-        console.log('[UpdateVersion] Successfully updated version:', {
-            modId,
-            versionId,
-            updates: Object.keys(updates),
-        });
+        await putEntity(env.MODS_KV, 'mods', 'version', versionId, version);
 
         return new Response(JSON.stringify(version), {
             status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
+            headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
         });
     } catch (error: any) {
         console.error('[UpdateVersion] Error:', error);
-        const rfcError = createError(
-            request,
-            500,
-            'Update Failed',
+        return errorResponse(
+            request, env, 500, 'Update Failed',
             env.ENVIRONMENT === 'development' ? error.message : 'Failed to update version'
         );
-        return new Response(JSON.stringify(rfcError), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
     }
+}
+
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+    const headers = createCORSHeaders(request, {
+        credentials: true,
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    });
+    return Object.fromEntries(headers.entries());
+}
+
+function errorResponse(request: Request, env: Env, status: number, title: string, detail: string): Response {
+    const rfcError = createError(request, status, title, detail);
+    return new Response(JSON.stringify(rfcError), {
+        status,
+        headers: { 'Content-Type': 'application/problem+json', ...corsHeaders(request, env) },
+    });
 }

@@ -8,7 +8,7 @@
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { getCustomerKey } from '../../services/customer.js';
+import { entityKey } from '@strixun/kv-entities';
 import { verifyJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
 import { MAX_PROFILE_PICTURE_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 
@@ -147,7 +147,7 @@ export async function handleUploadProfilePicture(
       : `https://pub-${(env.PROFILE_PICTURES_R2 as any).id}.r2.dev/${r2Key}`;
 
     const emailHash = await hashEmail(auth.email!);
-    const customerKey = getCustomerKey(auth.customerId || null, `customer_${emailHash}`);
+    const customerKey = entityKey('otp-auth', 'customer-session', `${auth.customerId}_${emailHash}`).key;
     const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as any | null;
 
     if (customer) {
@@ -216,7 +216,7 @@ export async function handleGetProfilePicture(
     const auth = await authenticateRequest(request, env);
     if (auth.authenticated && auth.customerId === customerId) {
       const emailHash = await hashEmail(auth.email!);
-      const customerKey = getCustomerKey(auth.customerId || null, `customer_${emailHash}`);
+      const customerKey = entityKey('otp-auth', 'customer-session', `${auth.customerId}_${emailHash}`).key;
       const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as any | null;
 
       if (customer && customer.profilePicture) {
@@ -262,7 +262,7 @@ export async function handleDeleteProfilePicture(
     }
 
     const emailHash = await hashEmail(auth.email!);
-    const customerKey = getCustomerKey(auth.customerId || null, `customer_${emailHash}`);
+    const customerKey = entityKey('otp-auth', 'customer-session', `${auth.customerId}_${emailHash}`).key;
     const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as any | null;
 
     if (!customer || !customer.profilePicture) {

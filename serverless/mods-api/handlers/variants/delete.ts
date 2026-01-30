@@ -1,20 +1,26 @@
 /**
  * Delete Variant Handler
- * Deletes an entire variant and all its versions
+ * DELETE /mods/:modId/variants/:variantId
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
+import {
+    getEntity,
+    putEntity,
+    deleteEntity,
+    deleteEntities,
+    getExistingEntities,
+    indexGet,
+    indexClear,
+    canModify,
+} from '@strixun/kv-entities';
 import { isSuperAdmin as checkIsSuperAdmin } from '../../utils/admin.js';
-import type { ModMetadata } from '../../types/mod.js';
+import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
-    MODS_PUBLIC_URL?: string;
-    MODS_ENCRYPTION_KEY?: string;
-    ALLOWED_EMAILS?: string;
     ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
     [key: string]: any;
@@ -28,118 +34,56 @@ export async function handleDeleteVariant(
     auth: { customerId: string; jwtToken?: string }
 ): Promise<Response> {
     try {
-        const normalizedModId = normalizeModId(modId);
-        const modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-        let mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
-
-        // Try superadmin context if not found in customer context
-        // Extract JWT token from auth object or from cookie
-        let jwtToken: string | null = null;
-        if (auth.jwtToken) {
-            jwtToken = auth.jwtToken;
-        } else {
-            // Fallback: extract from cookie if not in auth object
-            const cookieHeader = request.headers.get('Cookie');
-            if (cookieHeader) {
-                const cookies = cookieHeader.split(';').map(c => c.trim());
-                const authCookie = cookies.find(c => c.startsWith('auth_token='));
-                if (authCookie) {
-                    jwtToken = authCookie.substring('auth_token='.length).trim();
-                }
-            }
-        }
-        const isSuperAdmin = auth.customerId && jwtToken ? await checkIsSuperAdmin(auth.customerId, jwtToken, env) : false;
-        if (!mod && isSuperAdmin) {
-            const superadminModKey = `mod_${normalizedModId}`;
-            mod = await env.MODS_KV.get(superadminModKey, { type: 'json' }) as ModMetadata | null;
-        }
+        const mod = await getEntity<ModMetadata>(env.MODS_KV, 'mods', 'mod', modId);
 
         if (!mod) {
-            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
         }
 
-        // Check authorization
-        const isOwner = mod.authorId === auth.customerId || mod.customerId === auth.customerId;
+        const isSuperAdmin = auth.jwtToken 
+            ? await checkIsSuperAdmin(auth.customerId, auth.jwtToken, env) 
+            : false;
 
-        if (!isSuperAdmin && !isOwner) {
-            const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to delete this variant');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        const accessContext = { customerId: auth.customerId, isAdmin: isSuperAdmin };
+        if (!canModify({ ...mod, id: mod.modId }, accessContext)) {
+            return errorResponse(request, env, 403, 'Forbidden', 'You do not have permission to delete this variant');
         }
 
-        // Find the variant
         const variant = mod.variants?.find(v => v.variantId === variantId);
         if (!variant) {
-            const rfcError = createError(request, 404, 'Variant Not Found', 'The requested variant was not found');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 404, 'Variant Not Found', 'The requested variant was not found');
         }
 
-        // Remove variant from mod metadata
-        mod.variants = (mod.variants || []).filter(v => v.variantId !== variantId);
-        mod.updatedAt = new Date().toISOString();
-
-        // Save updated mod metadata
-        await env.MODS_KV.put(modKey, JSON.stringify(mod));
-
-        // UNIFIED SYSTEM: Delete all variant version metadata and files from R2
-        // List all variant versions (using unified key pattern)
-        const variantVersionListKey = getCustomerKey(auth.customerId, `variant_${variantId}_versions`);
-        const versionList = await env.MODS_KV.get(variantVersionListKey, { type: 'json' }) as string[] | null;
-
-        if (versionList && versionList.length > 0) {
-            // Delete each version's metadata and R2 file
-            for (const versionId of versionList) {
-                // UNIFIED SYSTEM: Variant versions are stored as ModVersion with same key pattern as main versions
-                const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
-                await env.MODS_KV.delete(versionKey);
-
-                // UNIFIED SYSTEM: Delete version file from R2 using unified path pattern
-                // R2 keys follow pattern: {customerId}/mods/{modId}/variants/{variantId}/versions/{versionId}.{ext}
-                const r2KeyPrefix = auth.customerId 
-                    ? `${auth.customerId}/mods/${normalizedModId}/variants/${variantId}/versions/${versionId}`
-                    : `mods/${normalizedModId}/variants/${variantId}/versions/${versionId}`;
-
-                // Try common extensions
-                for (const ext of ['zip', 'jar', 'lua', 'js', 'mod', 'dat', 'json']) {
-                    try {
-                        await env.MODS_R2.delete(`${r2KeyPrefix}.${ext}`);
-                    } catch (error) {
-                        // Continue with other extensions
-                    }
+        // Get all variant version IDs
+        const versionIds = await indexGet(env.MODS_KV, 'mods', 'versions-for-variant', variantId);
+        
+        // Get versions to delete R2 files
+        const versions = await getExistingEntities<ModVersion>(env.MODS_KV, 'mods', 'version', versionIds);
+        
+        // Delete R2 files
+        for (const version of versions) {
+            if (version.r2Key) {
+                try {
+                    await env.MODS_R2.delete(version.r2Key);
+                } catch (error) {
+                    console.error(`[DeleteVariant] Failed to delete R2 file ${version.r2Key}:`, error);
                 }
             }
-
-            // Delete the version list
-            await env.MODS_KV.delete(variantVersionListKey);
         }
 
-        const corsHeaders = createCORSHeaders(request, {
-            allowedMethods: ['DELETE', 'OPTIONS'],
-        });
+        // Delete version entities
+        await deleteEntities(env.MODS_KV, 'mods', 'version', versionIds);
+
+        // Clear versions index
+        await indexClear(env.MODS_KV, 'mods', 'versions-for-variant', variantId);
+
+        // Delete variant entity
+        await deleteEntity(env.MODS_KV, 'mods', 'variant', variantId);
+
+        // Remove variant from mod
+        mod.variants = (mod.variants || []).filter(v => v.variantId !== variantId);
+        mod.updatedAt = new Date().toISOString();
+        await putEntity(env.MODS_KV, 'mods', 'mod', modId, mod);
 
         return new Response(JSON.stringify({ 
             success: true,
@@ -147,22 +91,29 @@ export async function handleDeleteVariant(
             variantId 
         }), {
             status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
+            headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
         });
     } catch (error: any) {
         console.error('[DeleteVariant] Error:', error);
-        const rfcError = createError(request, 500, 'Internal Server Error', `Failed to delete variant: ${error.message}`);
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
-        return new Response(JSON.stringify(rfcError), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        return errorResponse(
+            request, env, 500, 'Internal Server Error',
+            `Failed to delete variant: ${error.message}`
+        );
     }
+}
+
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+    const headers = createCORSHeaders(request, { 
+        credentials: true, 
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    });
+    return Object.fromEntries(headers.entries());
+}
+
+function errorResponse(request: Request, env: Env, status: number, title: string, detail: string): Response {
+    const rfcError = createError(request, status, title, detail);
+    return new Response(JSON.stringify(rfcError), {
+        status,
+        headers: { 'Content-Type': 'application/problem+json', ...corsHeaders(request, env) },
+    });
 }

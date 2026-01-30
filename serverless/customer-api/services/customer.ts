@@ -3,9 +3,11 @@
  * Customer management, storage, and retrieval
  * 
  * This service uses the dedicated CUSTOMER_KV namespace
+ * and the kv-entities pattern for consistent key management.
  */
 
 import { hashEmail } from '../utils/crypto.js';
+import { getEntity, putEntity, indexSetSingle, indexGetSingle } from '@strixun/kv-entities';
 
 interface Env {
     CUSTOMER_KV: KVNamespace;
@@ -76,14 +78,10 @@ export interface CustomerData {
 }
 
 /**
- * Get customer key with prefix for isolation
- */
-export function getCustomerKey(customerId: string | null, key: string): string {
-    return customerId ? `cust_${customerId}_${key}` : key;
-}
-
-/**
  * Generate customer ID
+ * 
+ * Creates a unique customer ID with cust_ prefix
+ * using cryptographically random values.
  */
 export function generateCustomerId(): string {
     const array = new Uint8Array(6);
@@ -96,16 +94,27 @@ export function generateCustomerId(): string {
 
 /**
  * Get customer by ID
+ * 
+ * Retrieves customer data from CUSTOMER_KV using the entity pattern.
+ * 
+ * @param kv - The CUSTOMER_KV namespace
+ * @param customerId - The customer ID to look up
+ * @returns Customer data or null if not found
  */
-export async function getCustomer(customerId: string, env: Env): Promise<CustomerData | null> {
-    const customerKey = `customer_${customerId}`;
-    const customer = await env.CUSTOMER_KV.get(customerKey, { type: 'json' }) as CustomerData | null;
-    return customer;
+export async function getCustomer(kv: KVNamespace, customerId: string): Promise<CustomerData | null> {
+    return await getEntity<CustomerData>(kv, 'customer', 'customer', customerId);
 }
 
 /**
  * Store customer
- * Customer accounts persist indefinitely (no TTL) to allow account recovery
+ * 
+ * Stores customer data and creates an email-to-customer index for lookup.
+ * Customer accounts persist indefinitely (no TTL) to allow account recovery.
+ * 
+ * @param customerId - The customer ID
+ * @param customerData - The customer data to store
+ * @param env - Worker environment with KV binding
+ * @param expirationTtl - Optional TTL for the data (defaults to indefinite)
  */
 export async function storeCustomer(
     customerId: string, 
@@ -113,32 +122,33 @@ export async function storeCustomer(
     env: Env,
     expirationTtl?: number
 ): Promise<void> {
-    const customerKey = `customer_${customerId}`;
-    
-    // Customer accounts persist indefinitely (no TTL) to allow account recovery
+    // Store customer entity (indefinite TTL by default)
     const putOptions = expirationTtl ? { expirationTtl } : undefined;
-    await env.CUSTOMER_KV.put(customerKey, JSON.stringify(customerData), putOptions);
+    await putEntity(env.CUSTOMER_KV, 'customer', 'customer', customerId, customerData, putOptions);
     
-    // Store email -> customerId mapping for lookup (also persists indefinitely)
+    // Store email -> customerId index for lookup (also persists indefinitely)
     if (customerData.email) {
         const emailHash = await hashEmail(customerData.email.toLowerCase().trim());
-        const emailMappingKey = `email_to_customer_${emailHash}`;
-        await env.CUSTOMER_KV.put(emailMappingKey, customerId, putOptions);
+        await indexSetSingle(env.CUSTOMER_KV, 'customer', 'email-to-customer', emailHash, customerId, putOptions);
     }
 }
 
 /**
  * Get customer by email
+ * 
+ * Looks up customer by email using the email-to-customer index.
+ * 
+ * @param email - The email address to look up
+ * @param env - Worker environment with KV binding
+ * @returns Customer data or null if not found
  */
 export async function getCustomerByEmail(email: string, env: Env): Promise<CustomerData | null> {
     const emailHash = await hashEmail(email.toLowerCase().trim());
-    const emailMappingKey = `email_to_customer_${emailHash}`;
-    const customerId = await env.CUSTOMER_KV.get(emailMappingKey);
+    const customerId = await indexGetSingle(env.CUSTOMER_KV, 'customer', 'email-to-customer', emailHash);
     
     if (!customerId) {
         return null;
     }
     
-    return await getCustomer(customerId, env);
+    return await getCustomer(env.CUSTOMER_KV, customerId);
 }
-

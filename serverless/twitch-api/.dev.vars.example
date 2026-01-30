@@ -1,0 +1,18 @@
+# Cloudflare Worker Development Environment Variables
+# Copy this file to .dev.vars and fill in your values
+# .dev.vars is gitignored and used by wrangler dev
+
+# ENVIRONMENT: development for local dev
+ENVIRONMENT=development
+
+# JWT Secret (REQUIRED - must match other services like otp-auth-service)
+# Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+JWT_SECRET=your-jwt-secret-here-at-least-32-chars-long
+
+# Allowed CORS origins (comma-separated)
+# Include localhost ports for local development
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5175,http://localhost:5178,http://localhost:3000,http://localhost:3001,http://localhost:8787,http://localhost:8788,http://localhost:8789,http://localhost:8790
+
+# Twitch API credentials (REQUIRED)
+TWITCH_CLIENT_ID=your-twitch-client-id
+TWITCH_CLIENT_SECRET=your-twitch-client-secret

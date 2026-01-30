@@ -4,6 +4,8 @@
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
+// Import landing.html directly as text (esbuild --loader:.html=text)
+import landingHtml from '../landing.html';
 
 interface Env {
     ENVIRONMENT?: string;
@@ -87,36 +89,14 @@ export async function handleLandingPage(request: Request, env: Env): Promise<Res
         });
     }
     
-    // In dev mode, always try Vite first (don't even try to load built assets)
+    // In dev mode, serve landing.html directly (it's self-contained with inline CSS and CDN scripts)
     if (isDev) {
-        // Proxy to Vite dev server in development
-        try {
-            const viteUrl = new URL(request.url);
-            viteUrl.hostname = 'localhost';
-            viteUrl.port = '5174';
-            viteUrl.protocol = 'http:';
-            
-            // Create a new request with the updated URL
-            const proxiedRequest = new Request(viteUrl.toString(), {
-                method: request.method,
-                headers: request.headers,
-                body: request.body,
-            });
-            
-            // Wrap fetch in Promise to handle rejections properly
-            const fetchPromise = fetch(proxiedRequest);
-            const timeoutPromise = new Promise<Response>((_, reject) => {
-                setTimeout(() => reject(new Error('Vite proxy timeout')), 2000);
-            });
-            
-            return await Promise.race([fetchPromise, timeoutPromise]);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            return new Response(`Landing page dev server not running. Start with: pnpm dev:landing\n\nError: ${errorMessage}`, {
-                status: 503,
-                headers: { 'Content-Type': 'text/plain' },
-            });
-        }
+        return new Response(landingHtml, {
+            status: 200,
+            headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+            },
+        });
     }
     
     // Production mode: load and serve built assets

@@ -13,6 +13,7 @@ import { createApiKeyForCustomer } from '../../services/api-key.js';
 import { logSecurityEvent } from '../../services/security.js';
 import { decryptData, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomer } from '@strixun/api-framework';
+import { entityKey } from '@strixun/kv-entities';
 // Uses shared encryption suite from serverless/shared/encryption
 
 interface Env {
@@ -105,7 +106,7 @@ export async function handleListApiKeys(
     jwtToken: string | null = null
 ): Promise<Response> {
     try {
-        const customerApiKeysKey = `customer_${customerId}_apikeys`;
+        const customerApiKeysKey = entityKey('otp-auth', 'customer-apikeys', customerId).key;
         const keys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) as ApiKeyData[] | null || [];
         
         // Decrypt API keys from storage (server-side encryption with JWT_SECRET)
@@ -295,7 +296,7 @@ export async function handleRotateApiKey(
 ): Promise<Response> {
     try {
         // Find the API key in customer's list
-        const customerApiKeysKey = `customer_${customerId}_apikeys`;
+        const customerApiKeysKey = entityKey('otp-auth', 'customer-apikeys', customerId).key;
         const customerKeys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) as ApiKeyData[] | null || [];
         const keyIndex = customerKeys.findIndex(k => k.keyId === keyId);
         
@@ -374,7 +375,7 @@ export async function handleRevealApiKey(
         }
         
         // Find the API key in customer's list
-        const customerApiKeysKey = `customer_${customerId}_apikeys`;
+        const customerApiKeysKey = entityKey('otp-auth', 'customer-apikeys', customerId).key;
         const customerKeys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) as ApiKeyData[] | null || [];
         const keyData = customerKeys.find(k => k.keyId === keyId);
         
@@ -438,7 +439,7 @@ export async function handleRevokeApiKey(
 ): Promise<Response> {
     try {
         // Find the API key in customer's list
-        const customerApiKeysKey = `customer_${customerId}_apikeys`;
+        const customerApiKeysKey = entityKey('otp-auth', 'customer-apikeys', customerId).key;
         const customerKeys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) as ApiKeyData[] | null || [];
         const keyIndex = customerKeys.findIndex(k => k.keyId === keyId);
         

@@ -629,6 +629,13 @@ jobs:
           echo "${{ secrets.RESEND_API_KEY }}" | pnpm exec wrangler secret put RESEND_API_KEY $ENV_FLAG || true
           echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL $ENV_FLAG || true
           echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+          else
+            echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
+            echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
+          fi
         continue-on-error: true
 
   # Mods API Deployment

@@ -4,15 +4,13 @@
  */
 
 import { hashEmail } from '../utils/crypto.js';
+import { getEntity, putEntity, indexSetSingle, indexGetSingle } from '@strixun/kv-entities';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
     [key: string]: any;
 }
 
-/**
- * Subscription information
- */
 export interface Subscription {
     planId: string;
     status: 'active' | 'cancelled' | 'expired' | 'pending';
@@ -25,9 +23,6 @@ export interface Subscription {
     [key: string]: any;
 }
 
-/**
- * Flair/badge information
- */
 export interface Flair {
     flairId: string;
     name: string;
@@ -38,33 +33,21 @@ export interface Flair {
     [key: string]: any;
 }
 
-/**
- * Customer tier level
- */
 export type CustomerTier = 'free' | 'basic' | 'premium' | 'enterprise';
 
-/**
- * Customer data structure
- * 
- * Enhanced with subscriptions, tiers, and flairs for comprehensive customer management
- */
 export interface CustomerData {
     customerId: string;
     name?: string;
     email?: string;
     companyName?: string;
-    plan?: string; // Legacy field - use tier instead
-    tier?: CustomerTier; // Current tier level
+    plan?: string;
+    tier?: CustomerTier;
     status?: string;
     createdAt?: string;
     updatedAt?: string;
-    
-    // Enhanced fields
-    subscriptions?: Subscription[]; // Array of subscription history
-    flairs?: Flair[]; // Array of earned flairs/badges
-    displayName: string; // MANDATORY - Randomly generated display name (globally unique, required for customer account)
-    
-    // Configuration
+    subscriptions?: Subscription[];
+    flairs?: Flair[];
+    displayName: string;
     config?: {
         allowedOrigins?: string[];
         [key: string]: any;
@@ -72,27 +55,13 @@ export interface CustomerData {
     features?: {
         [key: string]: any;
     };
-    
-    // Allow additional fields for extensibility
     [key: string]: any;
 }
 
 /**
- * Get customer key with prefix for isolation
- * @param customerId - Customer ID (optional for backward compatibility)
- * @param key - Base key
- * @returns Prefixed key
- */
-export function getCustomerKey(customerId: string | null, key: string): string {
-    return customerId ? `cust_${customerId}_${key}` : key;
-}
-
-/**
  * Generate customer ID
- * @returns Customer ID
  */
 export function generateCustomerId(): string {
-    // Generate 12 random hex characters
     const array = new Uint8Array(6);
     crypto.getRandomValues(array);
     const hex = Array.from(array)
@@ -103,23 +72,13 @@ export function generateCustomerId(): string {
 
 /**
  * Get customer by ID
- * @param customerId - Customer ID
- * @param env - Worker environment
- * @returns Customer data or null
  */
 export async function getCustomer(customerId: string, env: Env): Promise<CustomerData | null> {
-    const customerKey = `customer_${customerId}`;
-    const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as CustomerData | null;
-    return customer;
+    return await getEntity<CustomerData>(env.OTP_AUTH_KV, 'auth', 'customer', customerId);
 }
 
 /**
  * Store customer
- * @param customerId - Customer ID
- * @param customerData - Customer data
- * @param env - Worker environment
- * @param expirationTtl - Optional TTL in seconds (default: no expiration - customer accounts persist indefinitely)
- * @returns Promise that resolves when customer is stored
  */
 export async function storeCustomer(
     customerId: string, 
@@ -127,31 +86,22 @@ export async function storeCustomer(
     env: Env,
     expirationTtl?: number
 ): Promise<void> {
-    const customerKey = `customer_${customerId}`;
+    await putEntity(env.OTP_AUTH_KV, 'auth', 'customer', customerId, customerData, 
+        expirationTtl ? { expirationTtl } : undefined);
     
-    // Customer accounts persist indefinitely (no TTL) to allow account recovery
-    // Only set TTL if explicitly provided (for testing or special cases)
-    const putOptions = expirationTtl ? { expirationTtl } : undefined;
-    await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customerData), putOptions);
-    
-    // Store email -> customerId mapping for lookup (also persists indefinitely)
     if (customerData.email) {
         const emailHash = await hashEmail(customerData.email.toLowerCase().trim());
-        const emailMappingKey = `email_to_customer_${emailHash}`;
-        await env.OTP_AUTH_KV.put(emailMappingKey, customerId, putOptions);
+        await indexSetSingle(env.OTP_AUTH_KV, 'auth', 'email-to-customer', emailHash, customerId,
+            expirationTtl ? { expirationTtl } : undefined);
     }
 }
 
 /**
  * Get customer by email
- * @param email - Customer email
- * @param env - Worker environment
- * @returns Customer data or null
  */
 export async function getCustomerByEmail(email: string, env: Env): Promise<CustomerData | null> {
     const emailHash = await hashEmail(email.toLowerCase().trim());
-    const emailMappingKey = `email_to_customer_${emailHash}`;
-    const customerId = await env.OTP_AUTH_KV.get(emailMappingKey);
+    const customerId = await indexGetSingle(env.OTP_AUTH_KV, 'auth', 'email-to-customer', emailHash);
     
     if (!customerId) {
         return null;
@@ -159,4 +109,3 @@ export async function getCustomerByEmail(email: string, env: Env): Promise<Custo
     
     return await getCustomer(customerId, env);
 }
-

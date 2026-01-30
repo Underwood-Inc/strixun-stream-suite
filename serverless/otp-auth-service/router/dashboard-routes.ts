@@ -11,15 +11,10 @@
 import { getCorsHeaders, getCorsHeadersRecord } from '../utils/cors.js';
 import { requireSuperAdmin } from '../utils/super-admin.js';
 // CRITICAL: wrapWithEncryption removed - main router handles ALL encryption (avoids double-encryption)
-// @ts-ignore - JS handlers don't have type declarations
 import * as adminHandlers from '../handlers/admin.js';
-// @ts-ignore - JS handlers don't have type declarations
 import * as domainHandlers from '../handlers/domain.js';
-// @ts-ignore - JS handlers don't have type declarations
 import * as publicHandlers from '../handlers/public.js';
-// @ts-ignore - JS handlers don't have type declarations
 import * as debugHandlers from '../handlers/auth/debug.js';
-// @ts-ignore - JS handlers don't have type declarations
 import * as dataRequestHandlers from '../handlers/admin/data-requests.js';
 
 // Import auth helpers

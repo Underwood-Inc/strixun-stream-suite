@@ -17,7 +17,8 @@ import { createJWT } from '../utils/crypto.js';
 
 // Only mock external dependencies (KV, handlers), NOT auth functions
 vi.mock('../services/customer.js', () => ({
-    getCustomerKey: vi.fn().mockReturnValue('customer:key'),
+    getCustomer: vi.fn(),
+    storeCustomer: vi.fn(),
     getCustomerByEmail: vi.fn(),
 }));
 

@@ -1,17 +1,31 @@
 /**
  * Delete mod handler
  * DELETE /mods/:modId
- * Deletes mod and all its versions
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
+import {
+    getEntity,
+    deleteEntity,
+    getExistingEntities,
+    deleteEntities,
+    indexGet,
+    indexRemove,
+    indexDeleteSingle,
+    indexClear,
+    canModify,
+} from '@strixun/kv-entities';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
-/**
- * Handle delete mod request
- */
+interface Env {
+    MODS_KV: KVNamespace;
+    MODS_R2: R2Bucket;
+    ALLOWED_ORIGINS?: string;
+    ENVIRONMENT?: string;
+    [key: string]: any;
+}
+
 export async function handleDeleteMod(
     request: Request,
     env: Env,
@@ -19,233 +33,124 @@ export async function handleDeleteMod(
     auth: { customerId: string }
 ): Promise<Response> {
     try {
-        // All authenticated users can delete their own mods (authorization check happens below)
-        
-        // CRITICAL: Validate customerId is present - required for data scoping
         if (!auth.customerId) {
-            console.error('[DeleteMod] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
-                note: 'Rejecting mod deletion - customerId is required for data scoping'
-            });
-            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod deletion. Please ensure your account has a valid customer association.');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 400, 'Missing Customer ID', 'Customer ID is required');
         }
 
-        // Get mod metadata by modId only (slug should be resolved to modId before calling this)
-        let mod: ModMetadata | null = null;
-        const normalizedModId = normalizeModId(modId);
-        let modKey: string | null = null;
-        
-        // Try customer scope first
-        modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-        mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
-        console.log('[DeleteMod] Customer scope lookup:', { modKey, found: !!mod });
-        
-        // If not found in customer scope, try global scope (for public mods)
-        if (!mod) {
-            const globalModKey = `mod_${normalizedModId}`;
-            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-            console.log('[DeleteMod] Global scope lookup:', { globalModKey, found: !!mod });
-            if (mod) {
-                modKey = globalModKey; // Use global key for deletion
-            }
-        }
-        
-        // If still not found, search all customer scopes
-        if (!mod) {
-            const customerListPrefix = 'customer_';
-            let cursor: string | undefined;
-            
-            do {
-                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
-                for (const key of listResult.keys) {
-                    if (key.name.endsWith('_mods_list')) {
-                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                        const customerId = match ? match[1] : null;
-                        if (customerId) {
-                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
-                            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-                            if (mod) {
-                                modKey = customerModKey;
-                                console.log('[DeleteMod] Found mod in customer scope:', { customerId, modId: mod.modId, modKey });
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (mod) break;
-                cursor = listResult.list_complete ? undefined : listResult.cursor;
-            } while (cursor);
-        }
+        const mod = await getEntity<ModMetadata>(env.MODS_KV, 'mods', 'mod', modId);
         
         if (!mod) {
-            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
         }
 
-        // Check authorization
-        if (mod.authorId !== auth.customerId) {
-            const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to delete this mod');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
-        // Use mod.modId from metadata (this is the canonical modId)
-        const actualModId = mod.modId;
-
-        // Get all versions - check both customer scope and global scope
-        let versionsListKey = getCustomerKey(auth.customerId, `mod_${actualModId}_versions`);
-        let versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
+        const accessContext = { customerId: auth.customerId, isAdmin: false };
+        const modForAccess = { ...mod, id: mod.modId };
         
-        // If not found in customer scope, try global scope
-        if (!versionsList) {
-            const globalVersionsKey = `mod_${actualModId}_versions`;
-            versionsList = await env.MODS_KV.get(globalVersionsKey, { type: 'json' }) as string[] | null;
-            if (versionsList) {
-                versionsListKey = globalVersionsKey;
-            }
+        if (!canModify(modForAccess, accessContext)) {
+            return errorResponse(request, env, 403, 'Forbidden', 'You do not have permission to delete this mod');
         }
-        
-        const versionIds = versionsList || [];
 
-        // Delete all version files from R2 and metadata from KV
-        for (const versionId of versionIds) {
-            const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
-            const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
-            
-            if (version) {
-                // Delete file from R2
+        // Get all version IDs
+        const versionIds = await indexGet(env.MODS_KV, 'mods', 'versions-for', modId);
+        
+        // Get all versions to delete R2 files
+        const versions = await getExistingEntities<ModVersion>(env.MODS_KV, 'mods', 'version', versionIds);
+        
+        // Delete R2 files for all versions
+        for (const version of versions) {
+            if (version.r2Key) {
                 try {
                     await env.MODS_R2.delete(version.r2Key);
                 } catch (error) {
                     console.error(`Failed to delete R2 file ${version.r2Key}:`, error);
                 }
-                
-                // Delete version metadata
-                await env.MODS_KV.delete(versionKey);
             }
         }
-
-        // Delete thumbnail if exists
-        if (mod.thumbnailUrl) {
-            try {
-                // Try multiple extensions since we don't know which one was used
-                const normalizedModId = normalizeModId(actualModId);
-                const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
-                for (const ext of extensions) {
-                    const thumbnailKey = getCustomerR2Key(auth.customerId, `thumbnails/${normalizedModId}.${ext}`);
-                    await env.MODS_R2.delete(thumbnailKey);
-                }
-            } catch (error) {
-                console.error('Failed to delete thumbnail:', error);
-            }
-        }
-
-        // Delete mod metadata from both scopes if it exists
-        await env.MODS_KV.delete(modKey);
-        await env.MODS_KV.delete(versionsListKey);
         
-        // Also delete from global scope if it exists there
-        const globalModKey = `mod_${actualModId}`;
-        const globalVersionsKey = `mod_${actualModId}_versions`;
-        if (modKey !== globalModKey) {
-            // Only delete global if we didn't already delete it
-            await env.MODS_KV.delete(globalModKey);
-        }
-        if (versionsListKey !== globalVersionsKey) {
-            // Only delete global if we didn't already delete it
-            await env.MODS_KV.delete(globalVersionsKey);
-        }
-
-        // Remove from customer-specific list
-        const modsListKey = getCustomerKey(auth.customerId, 'mods_list');
-        const modsList = await env.MODS_KV.get(modsListKey, { type: 'json' }) as string[] | null;
-        if (modsList) {
-            const updatedList = modsList.filter(id => id !== actualModId);
-            await env.MODS_KV.put(modsListKey, JSON.stringify(updatedList));
-        }
-
-        // Remove from global public list if it was public
-        if (mod.visibility === 'public') {
-            const globalListKey = 'mods_list_public';
-            const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
-            if (globalModsList) {
-                const updatedGlobalList = globalModsList.filter(id => id !== actualModId);
-                await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
+        // Delete variant versions too
+        if (mod.variants?.length) {
+            for (const variant of mod.variants) {
+                const variantVersionIds = await indexGet(env.MODS_KV, 'mods', 'versions-for-variant', variant.variantId);
+                const variantVersions = await getExistingEntities<ModVersion>(env.MODS_KV, 'mods', 'version', variantVersionIds);
+                
+                for (const vv of variantVersions) {
+                    if (vv.r2Key) {
+                        try {
+                            await env.MODS_R2.delete(vv.r2Key);
+                        } catch (error) {
+                            console.error(`Failed to delete variant R2 file ${vv.r2Key}:`, error);
+                        }
+                    }
+                }
+                
+                // Delete variant version entities
+                await deleteEntities(env.MODS_KV, 'mods', 'version', variantVersionIds);
+                
+                // Clear variant versions index
+                await indexClear(env.MODS_KV, 'mods', 'versions-for-variant', variant.variantId);
+                
+                // Delete variant entity
+                await deleteEntity(env.MODS_KV, 'mods', 'variant', variant.variantId);
             }
         }
 
-        // CRITICAL: Release slug indexes immediately when mod is deleted
-        // This ensures the slug is immediately available for reuse by anyone
-        if (mod.slug) {
-            // Delete customer slug index
-            const customerSlugKey = getCustomerKey(auth.customerId, `slug_${mod.slug}`);
-            await env.MODS_KV.delete(customerSlugKey);
-            console.log('[DeleteMod] Released customer slug index:', { slug: mod.slug, customerSlugKey });
-            
-            // Delete global slug index (if it exists - mod might have been public)
-            const globalSlugKey = `slug_${mod.slug}`;
-            await env.MODS_KV.delete(globalSlugKey);
-            console.log('[DeleteMod] Released global slug index:', { slug: mod.slug, globalSlugKey });
+        // Delete thumbnail
+        if (mod.thumbnailUrl) {
+            const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+            for (const ext of extensions) {
+                try {
+                    await env.MODS_R2.delete(`thumbnails/${modId}.${ext}`);
+                } catch {
+                    // Continue
+                }
+            }
         }
 
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
+        // Delete all version entities
+        await deleteEntities(env.MODS_KV, 'mods', 'version', versionIds);
+
+        // Delete mod entity
+        await deleteEntity(env.MODS_KV, 'mods', 'mod', modId);
+
+        // Remove from indexes
+        if (mod.customerId) {
+            await indexRemove(env.MODS_KV, 'mods', 'by-customer', mod.customerId, modId);
+        }
+        if (mod.visibility === 'public') {
+            await indexRemove(env.MODS_KV, 'mods', 'by-visibility', 'public', modId);
+        }
+        if (mod.slug) {
+            await indexDeleteSingle(env.MODS_KV, 'mods', 'by-slug', mod.slug);
+        }
+        
+        // Clear versions index
+        await indexClear(env.MODS_KV, 'mods', 'versions-for', modId);
+
         return new Response(JSON.stringify({ success: true }), {
             status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
+            headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
         });
     } catch (error: any) {
         console.error('Delete mod error:', error);
-        const rfcError = createError(
-            request,
-            500,
-            'Failed to Delete Mod',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while deleting the mod'
+        return errorResponse(
+            request, env, 500, 'Failed to Delete Mod',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred'
         );
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
-        return new Response(JSON.stringify(rfcError), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
     }
 }
 
-interface Env {
-    MODS_KV: KVNamespace;
-    MODS_R2: R2Bucket;
-    ALLOWED_EMAILS?: string;
-    ALLOWED_ORIGINS?: string;
-    ENVIRONMENT?: string;
-    [key: string]: any;
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+    const headers = createCORSHeaders(request, { 
+        credentials: true, 
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    });
+    return Object.fromEntries(headers.entries());
 }
 
+function errorResponse(request: Request, env: Env, status: number, title: string, detail: string): Response {
+    const rfcError = createError(request, status, title, detail);
+    return new Response(JSON.stringify(rfcError), {
+        status,
+        headers: { 'Content-Type': 'application/problem+json', ...corsHeaders(request, env) },
+    });
+}
