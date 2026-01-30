@@ -60,17 +60,23 @@ export async function handleThumbnail(
             : ['png', 'jpg', 'jpeg', 'webp', 'gif'];
 
         let thumbnail: R2ObjectBody | null = null;
+        let foundExt = '';
+
+        console.log(`[Thumbnail] Looking for thumbnail: modId=${modId}, extensions=${extensions.join(',')}`);
 
         for (const ext of extensions) {
             const r2Key = `thumbnails/${modId}.${ext}`;
             const file = await env.MODS_R2.get(r2Key);
             if (file) {
                 thumbnail = file;
+                foundExt = ext;
+                console.log(`[Thumbnail] Found: ${r2Key}, size=${file.size}`);
                 break;
             }
         }
 
         if (!thumbnail) {
+            console.log(`[Thumbnail] NOT FOUND: modId=${modId}, tried extensions=${extensions.join(',')}`);
             return errorResponse(request, env, 404, 'Thumbnail Not Found', 'Thumbnail file not found in storage');
         }
 
