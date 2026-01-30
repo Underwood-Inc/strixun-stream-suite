@@ -72,13 +72,13 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
             return null;
         }
         
-        // Check if token is blacklisted (for security)
+        // Check if token is in deny list (for security)
         const customerId = payload.customerId || null;
         const tokenHash = await hashEmail(token);
-        const blacklisted = await getEntity<{ token: string; revokedAt: string }>(
-            env.OTP_AUTH_KV, 'auth', 'blacklist', tokenHash
+        const denied = await getEntity<{ token: string; revokedAt: string }>(
+            env.OTP_AUTH_KV, 'otp-auth', 'jwt-denylist', `${customerId}_${tokenHash}`
         );
-        if (blacklisted) {
+        if (denied) {
             return null; // Token has been revoked
         }
         

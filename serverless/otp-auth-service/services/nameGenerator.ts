@@ -363,7 +363,8 @@ export async function isNameUnique(
   env: CloudflareEnv
 ): Promise<boolean> {
   // Always use global scope - display names must be globally unique
-  const nameKey = `displayname_${name.toLowerCase()}`;
+  // Uses unified key pattern: customer:displayname:{name}
+  const nameKey = `customer:displayname:${name.toLowerCase()}`;
   
   const existing = await env.OTP_AUTH_KV.get(nameKey);
   return !existing;
@@ -382,7 +383,8 @@ export async function reserveDisplayName(
   env: CloudflareEnv
 ): Promise<void> {
   // Always use global scope - display names must be globally unique
-  const nameKey = `displayname_${name.toLowerCase()}`;
+  // Uses unified key pattern: customer:displayname:{name}
+  const nameKey = `customer:displayname:${name.toLowerCase()}`;
   
   const reservation: NameReservation = {
     userId,
@@ -405,7 +407,8 @@ export async function releaseDisplayName(
   env: CloudflareEnv
 ): Promise<void> {
   // Always use global scope - display names are globally unique
-  const nameKey = `displayname_${name.toLowerCase()}`;
+  // Uses unified key pattern: customer:displayname:{name}
+  const nameKey = `customer:displayname:${name.toLowerCase()}`;
   await env.OTP_AUTH_KV.delete(nameKey);
 }
 

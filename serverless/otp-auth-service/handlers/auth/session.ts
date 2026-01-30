@@ -344,10 +344,10 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             });
         }
         
-        // Add token to blacklist with customer isolation
+        // Add token to deny list with customer isolation
         const tokenHash = await hashEmail(token);
-        const blacklistKey = entityKey('otp-auth', 'jwt-blacklist', `${customerId}_${tokenHash}`).key;
-        await env.OTP_AUTH_KV.put(blacklistKey, JSON.stringify({
+        const denyListKey = entityKey('otp-auth', 'jwt-denylist', `${customerId}_${tokenHash}`).key;
+        await env.OTP_AUTH_KV.put(denyListKey, JSON.stringify({
             token: tokenHash,
             revokedAt: new Date().toISOString(),
         }), { expirationTtl: 25200 }); // 7 hours (matches token expiration)
