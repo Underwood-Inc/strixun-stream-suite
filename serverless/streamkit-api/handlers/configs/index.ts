@@ -14,7 +14,8 @@ import { buildKVKey } from '../../utils/kv-keys.js';
  * Create a new config
  * POST /configs/:type
  */
-export const createConfig = createEnhancedHandler<Env>(async (request, env) => {
+export const createConfig = createEnhancedHandler<Env>(async (request, context) => {
+  const env = context.env as Env;
   const customerId = await extractCustomerFromJWT(request, env);
   const url = new URL(request.url);
   const configType = url.pathname.split('/')[2]; // e.g. "text-cyclers"
@@ -47,7 +48,8 @@ export const createConfig = createEnhancedHandler<Env>(async (request, env) => {
  * List all configs of a type
  * GET /configs/:type
  */
-export const listConfigs = createEnhancedHandler<Env>(async (request, env) => {
+export const listConfigs = createEnhancedHandler<Env>(async (request, context) => {
+  const env = context.env as Env;
   const customerId = await extractCustomerFromJWT(request, env);
   const url = new URL(request.url);
   const configType = url.pathname.split('/')[2];
@@ -73,7 +75,8 @@ export const listConfigs = createEnhancedHandler<Env>(async (request, env) => {
  * Get a specific config
  * GET /configs/:type/:id
  */
-export const getConfig = createEnhancedHandler<Env>(async (request, env) => {
+export const getConfig = createEnhancedHandler<Env>(async (request, context) => {
+  const env = context.env as Env;
   const customerId = await extractCustomerFromJWT(request, env);
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/');
@@ -98,7 +101,8 @@ export const getConfig = createEnhancedHandler<Env>(async (request, env) => {
  * Update a config
  * PUT /configs/:type/:id
  */
-export const updateConfig = createEnhancedHandler<Env>(async (request, env) => {
+export const updateConfig = createEnhancedHandler<Env>(async (request, context) => {
+  const env = context.env as Env;
   const customerId = await extractCustomerFromJWT(request, env);
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/');
@@ -137,7 +141,8 @@ export const updateConfig = createEnhancedHandler<Env>(async (request, env) => {
  * Delete a config
  * DELETE /configs/:type/:id
  */
-export const deleteConfig = createEnhancedHandler<Env>(async (request, env) => {
+export const deleteConfig = createEnhancedHandler<Env>(async (request, context) => {
+  const env = context.env as Env;
   const customerId = await extractCustomerFromJWT(request, env);
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/');

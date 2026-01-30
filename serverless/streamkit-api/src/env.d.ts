@@ -4,6 +4,13 @@
  * This defines all available environment variables, KV namespaces, and secrets
  * for the Streamkit API Cloudflare Worker.
  */
+
+// Allow importing HTML files as strings (esbuild --loader:.html=text)
+declare module '*.html' {
+  const content: string;
+  export default content;
+}
+
 export interface Env {
   // KV Namespaces
   STREAMKIT_KV: KVNamespace;

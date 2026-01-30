@@ -14,6 +14,7 @@ import type { Env } from './src/env.d.js';
 import { createConfig, listConfigs, getConfig, updateConfig, deleteConfig } from './handlers/configs/index.js';
 import { recordSceneSwitch } from './handlers/scene-activity/record.js';
 import { getTopScenes } from './handlers/scene-activity/top.js';
+import { handleLandingPage } from './handlers/landing.js';
 
 /**
  * Get CORS headers for cross-origin requests
@@ -95,8 +96,13 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   const url = new URL(request.url);
   const path = url.pathname;
   
-  // Health check
-  if (path === '/health' || path === '/') {
+  // Landing page at root
+  if (path === '/' || path === '') {
+    return handleLandingPage(request, env);
+  }
+  
+  // Health check (API endpoint)
+  if (path === '/health') {
     return handleHealth(request, env);
   }
   
@@ -113,18 +119,18 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     if (configId) {
       // /configs/:type/:id
       if (request.method === 'GET') {
-        response = await getConfig(request, env);
+        response = await getConfig(request, env, ctx);
       } else if (request.method === 'PUT') {
-        response = await updateConfig(request, env);
+        response = await updateConfig(request, env, ctx);
       } else if (request.method === 'DELETE') {
-        response = await deleteConfig(request, env);
+        response = await deleteConfig(request, env, ctx);
       }
     } else {
       // /configs/:type
       if (request.method === 'GET') {
-        response = await listConfigs(request, env);
+        response = await listConfigs(request, env, ctx);
       } else if (request.method === 'POST') {
-        response = await createConfig(request, env);
+        response = await createConfig(request, env, ctx);
       }
     }
     
@@ -135,13 +141,13 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   
   // /scene-activity/record
   if (path === '/scene-activity/record' && request.method === 'POST') {
-    const response = await recordSceneSwitch(request, env);
+    const response = await recordSceneSwitch(request, env, ctx);
     return withCORSHeaders(response, request, env);
   }
   
   // /scene-activity/top
   if (path === '/scene-activity/top' && request.method === 'GET') {
-    const response = await getTopScenes(request, env);
+    const response = await getTopScenes(request, env, ctx);
     return withCORSHeaders(response, request, env);
   }
   

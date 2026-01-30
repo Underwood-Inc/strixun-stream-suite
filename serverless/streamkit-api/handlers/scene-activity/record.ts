@@ -9,7 +9,8 @@ import { createEnhancedHandler } from '@strixun/api-framework';
 import type { Env } from '../../src/env.d.js';
 import { extractCustomerFromJWT } from '../../utils/auth.js';
 
-export const recordSceneSwitch = createEnhancedHandler<Env>(async (request, env) => {
+export const recordSceneSwitch = createEnhancedHandler<Env>(async (request, context) => {
+  const env = context.env as Env;
   const customerId = await extractCustomerFromJWT(request, env);
   const { sceneName } = await request.json();
   

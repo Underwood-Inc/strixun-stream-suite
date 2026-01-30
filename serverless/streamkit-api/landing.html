@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streamkit API - Cloud Storage for Streamers</title>
+    <meta name="description" content="Secure cloud storage API for streaming configurations. Store text cyclers, source swaps, layouts, notes, and scene activity with real-time sync.">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://streamkit-api.idling.app/">
+    <meta property="og:title" content="Streamkit API - Cloud Storage for Streamers">
+    <meta property="og:description" content="Secure cloud storage API for streaming configurations. Store text cyclers, source swaps, layouts, notes, and scene activity with real-time sync.">
+    <meta property="og:site_name" content="Streamkit API">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://streamkit-api.idling.app/">
+    <meta name="twitter:title" content="Streamkit API - Cloud Storage for Streamers">
+    <meta name="twitter:description" content="Secure cloud storage API for streaming configurations. Store text cyclers, source swaps, layouts, notes, and scene activity with real-time sync.">
+    
+    <!-- Prism.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Swagger UI -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css" />
+    <!-- Mermaid.js for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <!-- Prism.js scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Swagger UI scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js"></script>
+    <style>
+        /**
+         * Streamkit API Landing Page
+         * Matches Strixun's Stream Suite Design System
+         */
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Strixun Stream Suite Design System */
+            --bg: #1a1611;
+            --bg-dark: #0f0e0b;
+            --card: #252017;
+            --border: #3d3627;
+            --border-light: #4a4336;
+            
+            /* Brand Colors */
+            --accent: #edae49;
+            --accent-light: #f9df74;
+            --accent-dark: #c68214;
+            --accent2: #6495ed;
+            
+            /* Status Colors */
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #ea2b1f;
+            --info: #6495ed;
+            
+            /* Text Colors */
+            --text: #f9f9f9;
+            --text-secondary: #b8b8b8;
+            --muted: #888;
+            
+            /* Spacing */
+            --spacing-xs: 8px;
+            --spacing-sm: 12px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+            --spacing-3xl: 64px;
+            
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            
+            /* Shadows */
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            color: var(--accent-light);
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-dark);
+            border-bottom: 1px solid var(--border);
+            padding: var(--spacing-md) 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .logo-icon {
+            font-size: 1.5rem;
+        }
+
+        .nav {
+            display: flex;
+            gap: var(--spacing-lg);
+        }
+
+        .nav a {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            transition: color 0.2s;
+        }
+
+        .nav a:hover {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg) 100%);
+            padding: var(--spacing-3xl) 0;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: var(--spacing-md);
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto var(--spacing-xl);
+        }
+
+        .hero-badges {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .badge {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-xs) var(--spacing-md);
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .badge-icon {
+            font-size: 1rem;
+        }
+
+        .hero-actions {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-md);
+        }
+
+        .btn {
+            padding: var(--spacing-sm) var(--spacing-lg);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg-dark);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-light);
+            text-decoration: none;
+        }
+
+        .btn-secondary {
+            background: var(--card);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* Features Section */
+        .features {
+            padding: var(--spacing-3xl) 0;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .feature-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            transition: all 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+            box-shadow: var(--shadow-md);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+        }
+
+        /* API Endpoints Section */
+        .endpoints {
+            padding: var(--spacing-3xl) 0;
+            background: var(--bg-dark);
+        }
+
+        .endpoint-group {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .endpoint-group h3 {
+            font-size: 1.25rem;
+            margin-bottom: var(--spacing-md);
+            color: var(--accent);
+        }
+
+        .endpoint-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .endpoint {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .method {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .method-get { background: #28a745; color: white; }
+        .method-post { background: #0d6efd; color: white; }
+        .method-put { background: #fd7e14; color: white; }
+        .method-delete { background: #dc3545; color: white; }
+
+        .endpoint-path {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.875rem;
+            color: var(--text);
+            flex: 1;
+        }
+
+        .endpoint-desc {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Architecture Section */
+        .architecture {
+            padding: var(--spacing-3xl) 0;
+        }
+
+        .mermaid-container {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            overflow-x: auto;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        /* Code Examples Section */
+        .code-examples {
+            padding: var(--spacing-3xl) 0;
+            background: var(--bg-dark);
+        }
+
+        .code-tabs {
+            display: flex;
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .code-tab {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            padding: var(--spacing-sm) var(--spacing-md);
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .code-tab.active {
+            background: var(--border);
+            color: var(--text);
+            border-bottom-color: var(--border);
+        }
+
+        .code-block {
+            background: #0d0d0d;
+            border: 1px solid var(--border);
+            border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);
+            overflow: hidden;
+        }
+
+        .code-block pre {
+            margin: 0;
+            padding: var(--spacing-lg);
+            overflow-x: auto;
+        }
+
+        .code-block code {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        /* Swagger Section */
+        .swagger-section {
+            padding: var(--spacing-3xl) 0;
+        }
+
+        #swagger-ui {
+            background: var(--card);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+        }
+
+        /* Swagger UI Dark Theme Override */
+        .swagger-ui .opblock-tag {
+            color: var(--text) !important;
+        }
+
+        .swagger-ui .opblock .opblock-summary-description {
+            color: var(--text-secondary) !important;
+        }
+
+        .swagger-ui .btn {
+            color: var(--bg-dark) !important;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--bg-dark);
+            border-top: 1px solid var(--border);
+            padding: var(--spacing-xl) 0;
+            text-align: center;
+        }
+
+        .footer-brand {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .footer-desc {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .footer-copy {
+            color: var(--muted);
+            font-size: 0.75rem;
+        }
+
+        /* Accordion */
+        .accordion {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-md);
+            overflow: hidden;
+        }
+
+        .accordion-header {
+            padding: var(--spacing-md) var(--spacing-lg);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .accordion-header:hover {
+            background: var(--border);
+        }
+
+        .accordion-header h3 {
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .accordion-icon {
+            transition: transform 0.3s;
+        }
+
+        .accordion.active .accordion-icon {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .accordion.active .accordion-content {
+            max-height: 2000px;
+        }
+
+        .accordion-body {
+            padding: var(--spacing-lg);
+            border-top: 1px solid var(--border);
+        }
+
+        /* Tooltip */
+        [data-tooltip] {
+            position: relative;
+            cursor: help;
+        }
+
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 1000;
+        }
+
+        [data-tooltip]:hover::after {
+            opacity: 1;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .nav {
+                display: none;
+            }
+
+            .endpoint {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <span class="logo-icon">☁️</span>
+                <span>Streamkit API</span>
+            </div>
+            <nav class="nav">
+                <a href="#features">Features</a>
+                <a href="#endpoints">Endpoints</a>
+                <a href="#architecture">Architecture</a>
+                <a href="#examples">Examples</a>
+                <a href="#api-docs">API Docs</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>☁️ Streamkit API</h1>
+            <p class="subtitle">
+                Secure cloud storage for streaming configurations. Sync your text cyclers, source swaps, layouts, and notes across devices.
+            </p>
+            <div class="hero-badges">
+                <span class="badge" data-tooltip="Deployed on Cloudflare's edge network">
+                    <span class="badge-icon">⚡</span> Edge-Powered
+                </span>
+                <span class="badge" data-tooltip="All configs isolated per customer">
+                    <span class="badge-icon">🔒</span> Multi-Tenant
+                </span>
+                <span class="badge" data-tooltip="JWT-based authentication via HttpOnly cookies">
+                    <span class="badge-icon">🍪</span> SSO Ready
+                </span>
+                <span class="badge" data-tooltip="Built for Strixun Stream Suite">
+                    <span class="badge-icon">🎮</span> OBS Integration
+                </span>
+            </div>
+            <div class="hero-actions">
+                <a href="#api-docs" class="btn btn-primary">📖 View API Docs</a>
+                <a href="https://streamkit.idling.app" class="btn btn-secondary">🚀 Open Streamkit</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <h2 class="section-title">✨ Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📝</div>
+                    <h3>Text Cyclers</h3>
+                    <p>Store rotating text configurations for dynamic stream overlays. Cycle through messages, tips, and announcements.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>Source Swaps</h3>
+                    <p>Save source swap configurations for quick scene transitions. Switch between cameras, games, and overlays.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📐</div>
+                    <h3>Layout Presets</h3>
+                    <p>Store layout presets with source positions, scales, and visibility. Perfect for multi-scene setups.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h3>Notes & Checklists</h3>
+                    <p>Keep stream notes, checklists, and reminders synced. Never forget your pre-stream routine.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Scene Activity</h3>
+                    <p>Track scene usage with 30-day rolling analytics. See which scenes you use most often.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔐</div>
+                    <h3>Customer Isolation</h3>
+                    <p>All data is isolated per customer. Your configs are yours alone, secured with JWT auth.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- API Endpoints Section -->
+    <section id="endpoints" class="endpoints">
+        <div class="container">
+            <h2 class="section-title">🔌 API Endpoints</h2>
+            
+            <div class="endpoint-group">
+                <h3>📦 Generic Config API</h3>
+                <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                    One API for all config types: text-cyclers, swaps, layouts, notes
+                </p>
+                <div class="endpoint-list">
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/configs/:type</span>
+                        <span class="endpoint-desc">List all configs of a type</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-post">POST</span>
+                        <span class="endpoint-path">/configs/:type</span>
+                        <span class="endpoint-desc">Create a new config</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/configs/:type/:id</span>
+                        <span class="endpoint-desc">Get a specific config</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-put">PUT</span>
+                        <span class="endpoint-path">/configs/:type/:id</span>
+                        <span class="endpoint-desc">Update a config</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-delete">DELETE</span>
+                        <span class="endpoint-path">/configs/:type/:id</span>
+                        <span class="endpoint-desc">Delete a config</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="endpoint-group">
+                <h3>📊 Scene Activity API</h3>
+                <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                    Track scene usage with 30-day TTL (FIFO rolling)
+                </p>
+                <div class="endpoint-list">
+                    <div class="endpoint">
+                        <span class="method method-post">POST</span>
+                        <span class="endpoint-path">/scene-activity/record</span>
+                        <span class="endpoint-desc">Record a scene switch</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/scene-activity/top</span>
+                        <span class="endpoint-desc">Get top N most active scenes</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="endpoint-group">
+                <h3>💚 Health Check</h3>
+                <div class="endpoint-list">
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/health</span>
+                        <span class="endpoint-desc">Service health status</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section id="architecture" class="architecture">
+        <div class="container">
+            <h2 class="section-title">🏗️ Architecture</h2>
+            <div class="mermaid-container">
+                <div class="mermaid">
+flowchart TB
+    subgraph Client["🌐 Client"]
+        SK["Streamkit App<br/>(streamkit.idling.app)"]
+    end
+    
+    subgraph Auth["🔐 Authentication"]
+        OTP["OTP Auth Service<br/>(auth.idling.app)"]
+        Cookie["HttpOnly Cookie<br/>(auth_token)"]
+    end
+    
+    subgraph API["☁️ Streamkit API"]
+        Worker["Cloudflare Worker<br/>(streamkit-api.idling.app)"]
+        JWT["JWT Verification"]
+        Routes["Route Handler"]
+    end
+    
+    subgraph Storage["💾 Storage"]
+        KV["Cloudflare KV<br/>(STREAMKIT_KV)"]
+    end
+    
+    subgraph Data["📦 Data Types"]
+        TC["Text Cyclers"]
+        SW["Swaps"]
+        LY["Layouts"]
+        NT["Notes"]
+        SA["Scene Activity"]
+    end
+    
+    SK -->|"1. Login"| OTP
+    OTP -->|"2. Set Cookie"| Cookie
+    SK -->|"3. API Request<br/>+ Cookie"| Worker
+    Worker --> JWT
+    JWT -->|"4. Verify"| Routes
+    Routes -->|"5. Read/Write"| KV
+    KV --> TC
+    KV --> SW
+    KV --> LY
+    KV --> NT
+    KV --> SA
+    
+    style SK fill:#252017,stroke:#edae49,color:#f9f9f9
+    style OTP fill:#252017,stroke:#6495ed,color:#f9f9f9
+    style Cookie fill:#252017,stroke:#28a745,color:#f9f9f9
+    style Worker fill:#252017,stroke:#edae49,color:#f9f9f9
+    style KV fill:#252017,stroke:#6495ed,color:#f9f9f9
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Code Examples Section -->
+    <section id="examples" class="code-examples">
+        <div class="container">
+            <h2 class="section-title">💻 Code Examples</h2>
+            
+            <div class="accordion">
+                <div class="accordion-header" onclick="toggleAccordion(this.parentElement)">
+                    <h3>📝 List Text Cyclers</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <div class="code-block">
+                            <pre><code class="language-javascript">// Fetch all text cycler configs
+const response = await fetch('https://streamkit-api.idling.app/configs/text-cyclers', {
+  method: 'GET',
+  credentials: 'include', // Include HttpOnly cookie
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+const data = await response.json();
+console.log(data.configs); // Array of text cycler configs
+console.log(data.count);   // Total count</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="accordion">
+                <div class="accordion-header" onclick="toggleAccordion(this.parentElement)">
+                    <h3>➕ Create a Layout Preset</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <div class="code-block">
+                            <pre><code class="language-javascript">// Create a new layout preset
+const response = await fetch('https://streamkit-api.idling.app/configs/layouts', {
+  method: 'POST',
+  credentials: 'include',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    id: 'gaming-layout-v1',
+    name: 'Gaming Layout',
+    sources: [
+      { name: 'Game Capture', x: 0, y: 0, width: 1920, height: 1080 },
+      { name: 'Webcam', x: 1600, y: 800, width: 320, height: 180 },
+      { name: 'Chat', x: 0, y: 800, width: 400, height: 280 },
+    ],
+  }),
+});
+
+const result = await response.json();
+console.log(result.configId); // 'gaming-layout-v1'</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="accordion">
+                <div class="accordion-header" onclick="toggleAccordion(this.parentElement)">
+                    <h3>📊 Record Scene Activity</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <div class="code-block">
+                            <pre><code class="language-javascript">// Record a scene switch
+const response = await fetch('https://streamkit-api.idling.app/scene-activity/record', {
+  method: 'POST',
+  credentials: 'include',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    sceneName: 'Gaming Scene',
+  }),
+});
+
+// Get top scenes
+const topResponse = await fetch('https://streamkit-api.idling.app/scene-activity/top?limit=5', {
+  method: 'GET',
+  credentials: 'include',
+});
+
+const topScenes = await topResponse.json();
+console.log(topScenes.scenes); // [{ sceneName, count, lastUsed }, ...]</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="accordion">
+                <div class="accordion-header" onclick="toggleAccordion(this.parentElement)">
+                    <h3>🔄 Update a Config</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <div class="code-block">
+                            <pre><code class="language-javascript">// Update an existing config
+const response = await fetch('https://streamkit-api.idling.app/configs/text-cyclers/my-cycler-id', {
+  method: 'PUT',
+  credentials: 'include',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'Updated Cycler Name',
+    messages: ['Message 1', 'Message 2', 'Message 3'],
+    interval: 30000, // 30 seconds
+  }),
+});
+
+const result = await response.json();
+console.log(result.message); // 'Config updated'</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Swagger/OpenAPI Section -->
+    <section id="api-docs" class="swagger-section">
+        <div class="container">
+            <h2 class="section-title">📖 Interactive API Documentation</h2>
+            <div id="swagger-ui"></div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-brand">☁️ Streamkit API</div>
+            <div class="footer-desc">Cloud storage for streaming configurations</div>
+            <div class="footer-links">
+                <a href="https://streamkit.idling.app">Streamkit App</a>
+                <a href="https://auth.idling.app">Auth Service</a>
+                <a href="https://mods.idling.app">Mods Hub</a>
+                <a href="https://docs.idling.app">Documentation</a>
+            </div>
+            <div class="footer-copy">
+                Part of the <a href="https://idling.app">Strixun Stream Suite</a> &copy; 2024-2026
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#edae49',
+                primaryTextColor: '#1a1611',
+                primaryBorderColor: '#c68214',
+                secondaryColor: '#252017',
+                secondaryTextColor: '#b8b8b8',
+                secondaryBorderColor: '#3d3627',
+                tertiaryColor: '#1a1611',
+                tertiaryTextColor: '#888',
+                tertiaryBorderColor: '#4a4336',
+                background: '#0f0e0b',
+                mainBkg: '#252017',
+                secondBkg: '#1a1611',
+                textColor: '#f9f9f9',
+                lineColor: '#6495ed',
+                nodeBkg: '#252017',
+                nodeBorder: '#edae49',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            },
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis',
+            },
+        });
+
+        // Accordion toggle
+        function toggleAccordion(accordion) {
+            const isActive = accordion.classList.contains('active');
+            
+            // Close all accordions
+            document.querySelectorAll('.accordion').forEach(acc => {
+                acc.classList.remove('active');
+            });
+            
+            // Open clicked accordion if it wasn't active
+            if (!isActive) {
+                accordion.classList.add('active');
+            }
+        }
+
+        // Initialize Swagger UI with inline spec
+        const openApiSpec = {
+            openapi: '3.0.3',
+            info: {
+                title: 'Streamkit API',
+                version: '1.0.0',
+                description: 'Cloud storage API for streaming configurations. Supports text cyclers, source swaps, layouts, notes, and scene activity tracking.',
+            },
+            servers: [
+                { url: 'https://streamkit-api.idling.app', description: 'Production' },
+            ],
+            paths: {
+                '/health': {
+                    get: {
+                        summary: 'Health Check',
+                        tags: ['Health'],
+                        responses: {
+                            '200': {
+                                description: 'Service is healthy',
+                                content: {
+                                    'application/json': {
+                                        schema: {
+                                            type: 'object',
+                                            properties: {
+                                                status: { type: 'string', example: 'healthy' },
+                                                service: { type: 'string', example: 'streamkit-api' },
+                                                version: { type: 'string', example: '1.0.0' },
+                                                timestamp: { type: 'string', format: 'date-time' },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                '/configs/{type}': {
+                    get: {
+                        summary: 'List configs',
+                        tags: ['Configs'],
+                        security: [{ cookieAuth: [] }],
+                        parameters: [
+                            { name: 'type', in: 'path', required: true, schema: { type: 'string', enum: ['text-cyclers', 'swaps', 'layouts', 'notes'] } },
+                        ],
+                        responses: {
+                            '200': {
+                                description: 'List of configs',
+                                content: {
+                                    'application/json': {
+                                        schema: {
+                                            type: 'object',
+                                            properties: {
+                                                configs: { type: 'array', items: { type: 'object' } },
+                                                type: { type: 'string' },
+                                                count: { type: 'integer' },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    post: {
+                        summary: 'Create config',
+                        tags: ['Configs'],
+                        security: [{ cookieAuth: [] }],
+                        parameters: [
+                            { name: 'type', in: 'path', required: true, schema: { type: 'string', enum: ['text-cyclers', 'swaps', 'layouts', 'notes'] } },
+                        ],
+                        requestBody: {
+                            required: true,
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        required: ['id'],
+                                        properties: {
+                                            id: { type: 'string', description: 'Unique config ID' },
+                                        },
+                                        additionalProperties: true,
+                                    },
+                                },
+                            },
+                        },
+                        responses: {
+                            '201': { description: 'Config created' },
+                        },
+                    },
+                },
+                '/configs/{type}/{id}': {
+                    get: {
+                        summary: 'Get config',
+                        tags: ['Configs'],
+                        security: [{ cookieAuth: [] }],
+                        parameters: [
+                            { name: 'type', in: 'path', required: true, schema: { type: 'string' } },
+                            { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+                        ],
+                        responses: {
+                            '200': { description: 'Config data' },
+                            '404': { description: 'Config not found' },
+                        },
+                    },
+                    put: {
+                        summary: 'Update config',
+                        tags: ['Configs'],
+                        security: [{ cookieAuth: [] }],
+                        parameters: [
+                            { name: 'type', in: 'path', required: true, schema: { type: 'string' } },
+                            { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+                        ],
+                        requestBody: {
+                            required: true,
+                            content: { 'application/json': { schema: { type: 'object' } } },
+                        },
+                        responses: {
+                            '200': { description: 'Config updated' },
+                            '404': { description: 'Config not found' },
+                        },
+                    },
+                    delete: {
+                        summary: 'Delete config',
+                        tags: ['Configs'],
+                        security: [{ cookieAuth: [] }],
+                        parameters: [
+                            { name: 'type', in: 'path', required: true, schema: { type: 'string' } },
+                            { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+                        ],
+                        responses: {
+                            '200': { description: 'Config deleted' },
+                        },
+                    },
+                },
+                '/scene-activity/record': {
+                    post: {
+                        summary: 'Record scene switch',
+                        tags: ['Scene Activity'],
+                        security: [{ cookieAuth: [] }],
+                        requestBody: {
+                            required: true,
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        required: ['sceneName'],
+                                        properties: {
+                                            sceneName: { type: 'string', description: 'Name of the scene' },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                        responses: {
+                            '200': { description: 'Scene activity recorded' },
+                        },
+                    },
+                },
+                '/scene-activity/top': {
+                    get: {
+                        summary: 'Get top scenes',
+                        tags: ['Scene Activity'],
+                        security: [{ cookieAuth: [] }],
+                        parameters: [
+                            { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Number of scenes to return' },
+                        ],
+                        responses: {
+                            '200': {
+                                description: 'Top scenes',
+                                content: {
+                                    'application/json': {
+                                        schema: {
+                                            type: 'object',
+                                            properties: {
+                                                scenes: {
+                                                    type: 'array',
+                                                    items: {
+                                                        type: 'object',
+                                                        properties: {
+                                                            sceneName: { type: 'string' },
+                                                            count: { type: 'integer' },
+                                                            lastUsed: { type: 'string', format: 'date-time' },
+                                                        },
+                                                    },
+                                                },
+                                                total: { type: 'integer' },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            components: {
+                securitySchemes: {
+                    cookieAuth: {
+                        type: 'apiKey',
+                        in: 'cookie',
+                        name: 'auth_token',
+                        description: 'HttpOnly cookie set by auth.idling.app',
+                    },
+                },
+            },
+        };
+
+        // Initialize Swagger UI
+        window.onload = function() {
+            SwaggerUIBundle({
+                spec: openApiSpec,
+                dom_id: '#swagger-ui',
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                layout: 'StandaloneLayout',
+                deepLinking: true,
+                defaultModelsExpandDepth: 1,
+                defaultModelExpandDepth: 1,
+            });
+        };
+    </script>
+</body>
+</html>
