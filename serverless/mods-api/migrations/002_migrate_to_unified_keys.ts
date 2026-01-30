@@ -335,7 +335,7 @@ export async function verifyMigration(env: Env): Promise<{
  * Migration export for the migration runner
  */
 export const migration: Migration = {
-    id: '003_migrate_to_unified_keys',
+    id: '002_migrate_to_unified_keys',
     description: 'Migrate from scattered key patterns to unified entity/index pattern',
     
     async up(kv): Promise<void> {

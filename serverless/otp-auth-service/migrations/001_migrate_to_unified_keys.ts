@@ -298,3 +298,36 @@ export async function verifyMigration(env: Env): Promise<{
     
     return { oldKeyCount, newKeyCount };
 }
+
+/**
+ * Migration export for the migration runner
+ */
+import type { Migration } from '../../shared/migration-runner.js';
+
+export const migration: Migration = {
+    id: '001_migrate_to_unified_keys',
+    description: 'Migrate from scattered key patterns to unified entity/index pattern',
+    
+    async up(kv, env): Promise<void> {
+        console.log('[Migration 001] Starting unified key migration for otp-auth-service...');
+        
+        const result = await runMigration(
+            { OTP_AUTH_KV: kv } as Env,
+            {
+                dryRun: false,
+                deleteOld: false,
+                verbose: true,
+            }
+        );
+        
+        if (!result.success) {
+            console.error('[Migration 001] Migration completed with errors:', result.errors);
+        }
+        
+        console.log('[Migration 001] Complete. Stats:', result.stats);
+    },
+    
+    async down(): Promise<void> {
+        console.log('[Migration 001] Down migration not implemented - manual rollback required');
+    }
+};

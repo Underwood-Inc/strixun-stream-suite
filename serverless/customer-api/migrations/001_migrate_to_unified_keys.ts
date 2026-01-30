@@ -234,3 +234,36 @@ export async function verifyMigration(env: Env): Promise<{
     
     return { oldKeyCount, newKeyCount, indexCount };
 }
+
+/**
+ * Migration export for the migration runner
+ */
+import type { Migration } from '../../shared/migration-runner.js';
+
+export const migration: Migration = {
+    id: '001_migrate_to_unified_keys',
+    description: 'Migrate from scattered key patterns to unified entity/index pattern',
+    
+    async up(kv, env): Promise<void> {
+        console.log('[Migration 001] Starting unified key migration for customer-api...');
+        
+        const result = await runMigration(
+            { CUSTOMER_KV: kv, OTP_AUTH_KV: env?.OTP_AUTH_KV } as Env,
+            {
+                dryRun: false,
+                deleteOld: false,
+                verbose: true,
+            }
+        );
+        
+        if (!result.success) {
+            console.error('[Migration 001] Migration completed with errors:', result.errors);
+        }
+        
+        console.log('[Migration 001] Complete. Stats:', result.stats);
+    },
+    
+    async down(): Promise<void> {
+        console.log('[Migration 001] Down migration not implemented - manual rollback required');
+    }
+};
