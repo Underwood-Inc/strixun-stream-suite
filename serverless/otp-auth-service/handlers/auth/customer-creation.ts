@@ -357,10 +357,10 @@ export async function cleanupOTPAuthKV(
         
         const { hashEmail } = await import('../../utils/crypto.js');
         const emailHash = await hashEmail(email);
-        const { getCustomerKey } = await import('../../services/customer.js');
+        const { entityKey } = await import('@strixun/kv-entities');
         
         // Get customer session from OTP_AUTH_KV
-        const sessionKey = getCustomerKey(customerId, `user_${emailHash}`);
+        const sessionKey = entityKey('otp-auth', 'customer-session', `${customerId}_${emailHash}`).key;
         const session = await env.OTP_AUTH_KV.get(sessionKey, { type: 'json' }) as any;
         
         if (session) {
@@ -381,7 +381,7 @@ export async function cleanupOTPAuthKV(
         }
         
         // Remove preferences from OTP_AUTH_KV (now in CUSTOMER_KV)
-        const prefsKey = getCustomerKey(customerId, `customer_preferences_${customerId}`);
+        const prefsKey = entityKey('otp-auth', 'customer-preferences', customerId).key;
         const oldPrefs = await env.OTP_AUTH_KV.get(prefsKey);
         if (oldPrefs) {
             await env.OTP_AUTH_KV.delete(prefsKey);

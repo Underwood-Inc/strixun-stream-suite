@@ -3,6 +3,8 @@
  * 
  * Dedicated worker for fetching copyright-free music from external sources
  * Provides API endpoints for searching and retrieving music tracks
+ * 
+ * @version 1.1.0 - Added migration architecture
  */
 
 import type { ExecutionContext } from '@cloudflare/workers-types';

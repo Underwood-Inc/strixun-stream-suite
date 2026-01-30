@@ -8,6 +8,14 @@
 import { createEnhancedHandler } from '@strixun/api-framework';
 import type { Env } from '../../src/env.d.js';
 import { extractCustomerFromJWT } from '../../utils/auth.js';
+import { getEntity, putEntity } from '@strixun/kv-entities';
+
+interface SceneActivity {
+  sceneName: string;
+  customerId: string;
+  count: number;
+  lastUsed: string;
+}
 
 export const recordSceneSwitch = createEnhancedHandler<Env>(async (request, context) => {
   const env = context.env as Env;
@@ -18,16 +26,20 @@ export const recordSceneSwitch = createEnhancedHandler<Env>(async (request, cont
     return Response.json({ detail: 'Scene name is required' }, { status: 400 });
   }
   
-  const kvKey = `cust_${customerId}_scene_activity_${sceneName}`;
-  const existing = await env.STREAMKIT_KV.get(kvKey);
+  // Entity ID combines customer and scene for unique lookup
+  const entityId = `${customerId}:${sceneName}`;
+  const existing = await getEntity<SceneActivity>(env.STREAMKIT_KV, 'streamkit', 'scene-activity', entityId);
   
-  const data = existing ? JSON.parse(existing) : { count: 0, lastUsed: null };
-  data.count++;
-  data.lastUsed = new Date().toISOString();
+  const data: SceneActivity = {
+    sceneName,
+    customerId,
+    count: (existing?.count || 0) + 1,
+    lastUsed: new Date().toISOString(),
+  };
   
   // Store with 30-day TTL (FIFO rolling overwrite)
-  await env.STREAMKIT_KV.put(kvKey, JSON.stringify(data), {
-    expirationTtl: 60 * 60 * 24 * 30, // 30 days in seconds
+  await putEntity(env.STREAMKIT_KV, 'streamkit', 'scene-activity', entityId, data, {
+    expirationTtl: 60 * 60 * 24 * 30,
   });
   
   return Response.json({ 

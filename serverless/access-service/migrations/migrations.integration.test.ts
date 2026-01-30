@@ -94,8 +94,8 @@ describe('Access Service Migrations (Integration)', () => {
             
             await runner.runPending([migration!]);
             
-            // Check that customer role was updated in REAL KV
-            const roleData = await kv.get('role_customer');
+            // Check that customer role was updated in REAL KV (using unified key pattern)
+            const roleData = await kv.get('access:role:customer');
             expect(roleData).toBeDefined();
             
             const role = JSON.parse(roleData!);
@@ -115,8 +115,8 @@ describe('Access Service Migrations (Integration)', () => {
             await runner.runPending([migration!]);
             await runner.rollback(migration!);
             
-            // Check that customer role was reverted in REAL KV
-            const roleData = await kv.get('role_customer');
+            // Check that customer role was reverted in REAL KV (using unified key pattern)
+            const roleData = await kv.get('access:role:customer');
             expect(roleData).toBeDefined();
             
             const role = JSON.parse(roleData!);

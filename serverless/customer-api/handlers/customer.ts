@@ -41,7 +41,7 @@ export async function handleUpdateCustomerById(
 
     try {
         // Get existing customer
-        const customer = await getCustomer(customerId, env);
+        const customer = await getCustomer(env.CUSTOMER_KV, customerId);
         if (!customer) {
             const rfcError = createError(request, 404, 'Not Found', 'Customer not found');
             return new Response(JSON.stringify(rfcError), {
@@ -140,7 +140,7 @@ export async function handleGetCustomer(
         }
 
         // Get customer by customerId only
-        const customer = await getCustomer(targetCustomerId, env);
+        const customer = await getCustomer(env.CUSTOMER_KV, targetCustomerId);
 
         if (!customer) {
             const rfcError = createError(request, 404, 'Not Found', 'Customer not found');
@@ -450,7 +450,7 @@ export async function handleUpdateCustomer(
         }
 
         // Get existing customer
-        const customer = await getCustomer(auth.customerId, env);
+        const customer = await getCustomer(env.CUSTOMER_KV, auth.customerId);
         if (!customer) {
             const rfcError = createError(request, 404, 'Not Found', 'Customer not found');
             return new Response(JSON.stringify(rfcError), {

@@ -8,7 +8,7 @@
 import { getCorsHeaders } from '../../utils/cors.js';
 import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
 import { hashEmail } from '../../utils/crypto.js';
-import { getCustomerKey } from '../../services/customer.js';
+import { entityKey } from '@strixun/kv-entities';
 import {
     getDataRequest,
     getCustomerDataRequests,
@@ -81,8 +81,8 @@ export async function handleGetCustomerDataRequests(request: Request, env: Env):
 
         // Get customer from KV to ensure they exist
         const emailHash = await hashEmail(auth.email!);
-        const customerKey = getCustomerKey(auth.customerId, `customer_${emailHash}`);
-        const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as Customer | null;
+        const customerKey = entityKey('otp-auth', 'customer-session', `${auth.customerId}_${emailHash}`).key;
+        const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as Record<string, unknown> | null;
 
         if (!customer) {
             return new Response(JSON.stringify({ error: 'Customer not found' }), {

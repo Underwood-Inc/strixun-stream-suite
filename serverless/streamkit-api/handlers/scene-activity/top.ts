@@ -9,32 +9,41 @@ import { createEnhancedHandler } from '@strixun/api-framework';
 import type { Env } from '../../src/env.d.js';
 import { extractCustomerFromJWT } from '../../utils/auth.js';
 
+interface SceneActivity {
+  sceneName: string;
+  customerId: string;
+  count: number;
+  lastUsed: string;
+}
+
 export const getTopScenes = createEnhancedHandler<Env>(async (request, context) => {
   const env = context.env as Env;
   const customerId = await extractCustomerFromJWT(request, env);
   const url = new URL(request.url);
   const limit = parseInt(url.searchParams.get('limit') || '10');
   
-  const prefix = `cust_${customerId}_scene_activity_`;
+  // Use entity key prefix pattern from kv-entities
+  const prefix = `streamkit:scene-activity:${customerId}:`;
   const list = await env.STREAMKIT_KV.list({ prefix });
   
   const scenes = await Promise.all(
     list.keys.map(async (key) => {
-      const value = await env.STREAMKIT_KV.get(key.name);
-      const sceneName = key.name.replace(prefix, '');
-      const data = value ? JSON.parse(value) : { count: 0, lastUsed: null };
-      return { sceneName, ...data };
+      const value = await env.STREAMKIT_KV.get(key.name, { type: 'json' }) as SceneActivity | null;
+      if (!value) return null;
+      return value;
     })
   );
   
+  const validScenes = scenes.filter((s): s is SceneActivity => s !== null);
+  
   // Sort by count DESC, then by lastUsed DESC
-  scenes.sort((a, b) => {
+  validScenes.sort((a, b) => {
     if (b.count !== a.count) return b.count - a.count;
     return new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime();
   });
   
   return Response.json({ 
-    scenes: scenes.slice(0, limit),
-    total: scenes.length 
+    scenes: validScenes.slice(0, limit),
+    total: validScenes.length 
   });
 });

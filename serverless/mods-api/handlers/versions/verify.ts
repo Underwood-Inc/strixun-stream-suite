@@ -1,19 +1,15 @@
 /**
  * File verification handler
  * GET /mods/:modId/versions/:versionId/verify
- * Verifies file integrity using SHA-256 hash
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
+import { getEntity, canAccessVisible } from '@strixun/kv-entities';
 import { calculateStrixunHash, verifyStrixunHash, formatStrixunHash } from '../../utils/hash.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 import type { Env } from '../../worker.js';
 
-/**
- * Handle file verification request
- */
 export async function handleVerifyVersion(
     request: Request,
     env: Env,
@@ -22,183 +18,54 @@ export async function handleVerifyVersion(
     auth: { customerId: string } | null
 ): Promise<Response> {
     try {
-        // Get mod metadata by modId only (slug should be resolved to modId before calling this)
-        let mod: ModMetadata | null = null;
-        const normalizedModId = normalizeModId(modId);
-        
-        // Check customer scope first if authenticated
-        if (auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-        }
-        
-        // Fall back to global scope
-        if (!mod) {
-            const globalModKey = `mod_${normalizedModId}`;
-            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-        }
-        
-        // If still not found, search all customer scopes (for cross-customer access)
-        if (!mod) {
-            const customerListPrefix = 'customer_';
-            let cursor: string | undefined;
-            
-            do {
-                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
-                for (const key of listResult.keys) {
-                    if (key.name.endsWith('_mods_list')) {
-                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                        const customerId = match ? match[1] : null;
-                        if (customerId) {
-                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
-                            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-                            if (mod) break;
-                        }
-                    }
-                }
-                if (mod) break;
-                cursor = listResult.list_complete ? undefined : listResult.cursor;
-            } while (cursor);
-        }
+        const mod = await getEntity<ModMetadata>(env.MODS_KV, 'mods', 'mod', modId);
 
         if (!mod) {
-            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
         }
 
-        // Check visibility
-        if (mod.visibility === 'private' && mod.authorId !== auth?.customerId) {
-            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        const modForAccess = { ...mod, id: mod.modId, visibility: mod.visibility || 'public' as const };
+        if (!canAccessVisible(modForAccess, { customerId: auth?.customerId || null, isAdmin: false })) {
+            return errorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
         }
 
-        // Get version metadata - use mod's customerId (not auth customerId)
-        let version: ModVersion | null = null;
-        
-        // Check mod's customer scope first (where version was stored)
-        if (mod.customerId) {
-            const modCustomerVersionKey = getCustomerKey(mod.customerId, `version_${versionId}`);
-            version = await env.MODS_KV.get(modCustomerVersionKey, { type: 'json' }) as ModVersion | null;
-        }
-        
-        // Also check auth customer scope (in case they match)
-        if (!version && auth?.customerId && auth.customerId !== mod.customerId) {
-            const authCustomerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
-            version = await env.MODS_KV.get(authCustomerVersionKey, { type: 'json' }) as ModVersion | null;
-        }
-        
-        // Fall back to global scope
-        if (!version) {
-            const globalVersionKey = `version_${versionId}`;
-            version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+        const version = await getEntity<ModVersion>(env.MODS_KV, 'mods', 'version', versionId);
+
+        if (!version || version.modId !== modId) {
+            return errorResponse(request, env, 404, 'Version Not Found', 'The requested version was not found');
         }
 
-        // Check version belongs to mod - use mod.modId (source of truth), not the input parameter
-        // Normalize both modIds before comparison to handle cases where one has mod_ prefix and the other doesn't
-        const normalizedVersionModId = version ? normalizeModId(version.modId) : null;
-        const normalizedModModId = normalizeModId(mod.modId);
-        if (!version || normalizedVersionModId !== normalizedModModId) {
-            const rfcError = createError(request, 404, 'Version Not Found', 'The requested version was not found');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
-        // Get file from R2 and verify hash
         const encryptedFile = await env.MODS_R2.get(version.r2Key);
-        
+
         if (!encryptedFile) {
-            const rfcError = createError(request, 404, 'File Not Found', 'The requested file was not found in storage');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 404, 'File Not Found', 'The requested file was not found in storage');
         }
 
-        // CRITICAL: Hash must be calculated on DECRYPTED content (same as upload)
-        // During upload, hash is calculated on decrypted content, so we must decrypt here too
         let decryptedFileData: ArrayBuffer;
-        
         const isEncrypted = encryptedFile.customMetadata?.encrypted === 'true';
         const encryptionFormat = encryptedFile.customMetadata?.encryptionFormat;
-        
+
         if (isEncrypted) {
-            // File is encrypted - decrypt it first (same process as download)
+            const cookieHeader = request.headers.get('Cookie');
+            const authCookie = cookieHeader?.split(';').find(c => c.trim().startsWith('auth_token='));
+
+            if (!authCookie) {
+                return errorResponse(request, env, 401, 'Authentication Required', 'JWT token required to decrypt and verify files');
+            }
+
+            const jwtToken = authCookie.split('=')[1]?.trim();
+
             try {
-                // Get JWT token for decryption - ONLY from HttpOnly cookie, NO fallbacks
-                // CRITICAL: Trim token to ensure it matches the token used for encryption
-                const cookieHeader = request.headers.get('Cookie');
-                if (!cookieHeader) {
-                    const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and verify files. Please authenticate with HttpOnly cookie.');
-                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-                    });
-                    return new Response(JSON.stringify(rfcError), {
-                        status: 401,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    });
-                }
-                
-                const cookies = cookieHeader.split(';').map(c => c.trim());
-                const authCookie = cookies.find(c => c.startsWith('auth_token='));
-                if (!authCookie) {
-                    const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and verify files. Please authenticate with HttpOnly cookie.');
-                    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-                    });
-                    return new Response(JSON.stringify(rfcError), {
-                        status: 401,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    });
-                }
-                
-                const jwtToken = authCookie.substring('auth_token='.length).trim();
-                
-                // Decrypt based on format
-                if (encryptionFormat === 'binary-v4') {
+                if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
                     const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
                     const encryptedBinary = await encryptedFile.arrayBuffer();
                     const decryptedBytes = await decryptBinaryWithJWT(new Uint8Array(encryptedBinary), jwtToken);
                     decryptedFileData = decryptedBytes.buffer as ArrayBuffer;
                 } else {
-                    // Legacy JSON encrypted format
                     const { decryptWithJWT } = await import('@strixun/api-framework');
                     const encryptedData = await encryptedFile.text();
                     const encryptedJson = JSON.parse(encryptedData);
                     const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-                    
-                    // Convert base64 back to binary
                     const binaryString = atob(decryptedBase64);
                     const fileBytes = new Uint8Array(binaryString.length);
                     for (let i = 0; i < binaryString.length; i++) {
@@ -207,29 +74,15 @@ export async function handleVerifyVersion(
                     decryptedFileData = fileBytes.buffer;
                 }
             } catch (error) {
-                console.error('[Verify] File decryption error:', error);
-                const rfcError = createError(request, 500, 'Decryption Failed', 'Failed to decrypt file for verification. Please ensure you are authenticated.');
-                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-                });
-                return new Response(JSON.stringify(rfcError), {
-                    status: 500,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
+                return errorResponse(request, env, 500, 'Decryption Failed', 'Failed to decrypt file for verification');
             }
         } else {
-            // Legacy file (not encrypted) - use as-is
             decryptedFileData = await encryptedFile.arrayBuffer();
         }
 
-        // Calculate current file hash using HMAC-SHA256 with secret keyphrase
-        // CRITICAL: Hash is calculated on decrypted content (same as upload)
         const currentHash = await calculateStrixunHash(decryptedFileData, env);
         const isValid = await verifyStrixunHash(decryptedFileData, version.sha256, env);
 
-        // Return verification result
         const verificationResult = {
             verified: isValid,
             modId: version.modId,
@@ -240,35 +93,34 @@ export async function handleVerifyVersion(
             expectedHash: formatStrixunHash(version.sha256),
             actualHash: formatStrixunHash(currentHash),
             verifiedAt: new Date().toISOString(),
-            strixunVerified: isValid, // Strixun verification marker
+            strixunVerified: isValid,
         };
 
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        });
         return new Response(JSON.stringify(verificationResult, null, 2), {
             status: isValid ? 200 : 400,
-            headers: {
-                'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
+            headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
         });
     } catch (error: any) {
         console.error('Verify version error:', error);
-        const rfcError = createError(
-            request,
-            500,
-            'Failed to Verify Version',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while verifying the version'
+        return errorResponse(
+            request, env, 500, 'Failed to Verify Version',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred'
         );
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        });
-        return new Response(JSON.stringify(rfcError), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
     }
 }
 
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+    const headers = createCORSHeaders(request, {
+        credentials: true,
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    });
+    return Object.fromEntries(headers.entries());
+}
+
+function errorResponse(request: Request, env: Env, status: number, title: string, detail: string): Response {
+    const rfcError = createError(request, status, title, detail);
+    return new Response(JSON.stringify(rfcError), {
+        status,
+        headers: { 'Content-Type': 'application/problem+json', ...corsHeaders(request, env) },
+    });
+}

@@ -10,9 +10,11 @@
  * - Customer (data owner) can approve/reject request
  * - When approved, request key is encrypted with requester's JWT
  * - Requester can use request key + owner's JWT to decrypt double-encrypted data
+ * 
+ * Uses kv-entities pattern for consistent key management.
  */
 
-import { getCustomerKey } from './customer.js';
+import { getEntity, putEntity, indexGet, indexAdd } from '@strixun/kv-entities';
 // Uses shared encryption suite from serverless/shared/encryption
 import { encryptWithJWT, decryptWithJWT } from '@strixun/api-framework';
 import { generateRequestKey } from '../utils/two-stage-encryption.js';
@@ -58,31 +60,6 @@ interface Env {
 }
 
 const DEFAULT_EXPIRES_IN = 30 * 24 * 60 * 60; // 30 days in seconds
-const REQUEST_KEY_PREFIX = 'data_request_';
-const CUSTOMER_REQUESTS_INDEX_PREFIX = 'customer_requests_'; // Index: customer_requests_{targetCustomerId}
-const REQUESTER_REQUESTS_INDEX_PREFIX = 'requester_requests_'; // Index: requester_requests_{requesterId}
-
-/**
- * Get KV key for data request
- */
-function getRequestKey(requestId: string, customerId: string | null): string {
-    return getCustomerKey(customerId, `${REQUEST_KEY_PREFIX}${requestId}`);
-}
-
-/**
- * Get KV key for customer's requests index
- */
-function getCustomerRequestsIndexKey(targetUserId: string, customerId: string | null): string {
-    // Use targetUserId directly (it's actually an email, which is unique) - legacy field name
-    return getCustomerKey(customerId, `${CUSTOMER_REQUESTS_INDEX_PREFIX}${targetUserId}`);
-}
-
-/**
- * Get KV key for requester's requests index
- */
-function getRequesterRequestsIndexKey(requesterId: string, customerId: string | null): string {
-    return getCustomerKey(customerId, `${REQUESTER_REQUESTS_INDEX_PREFIX}${requesterId}`);
-}
 
 /**
  * Generate unique request ID
@@ -96,6 +73,9 @@ function generateRequestId(): string {
 
 /**
  * Create a new data request
+ * 
+ * Stores the request entity and updates indexes for both
+ * the target customer and the requester.
  */
 export async function createDataRequest(
     params: CreateDataRequestParams,
@@ -120,41 +100,32 @@ export async function createDataRequest(
         expiresIn,
     };
 
-    // Store request
-    const requestKey = getRequestKey(requestId, params.targetCustomerId);
-    await env.OTP_AUTH_KV.put(requestKey, JSON.stringify(request), {
+    // Store request entity
+    await putEntity(env.OTP_AUTH_KV, 'auth', 'data-request', requestId, request, {
         expirationTtl: expiresIn,
     });
 
-    // Add to customer's requests index
-    const customerIndexKey = getCustomerRequestsIndexKey(params.targetUserId, params.targetCustomerId);
-    const customerIndex = await env.OTP_AUTH_KV.get(customerIndexKey, { type: 'json' }) as string[] | null;
-    const updatedCustomerIndex = customerIndex ? [...customerIndex, requestId] : [requestId];
-    await env.OTP_AUTH_KV.put(customerIndexKey, JSON.stringify(updatedCustomerIndex), {
-        expirationTtl: expiresIn,
-    });
+    // Add to customer's requests index (by target email)
+    await indexAdd(env.OTP_AUTH_KV, 'auth', 'requests-for-customer', params.targetUserId, requestId);
 
     // Add to requester's requests index
-    const requesterIndexKey = getRequesterRequestsIndexKey(params.requesterId, params.targetCustomerId);
-    const requesterIndex = await env.OTP_AUTH_KV.get(requesterIndexKey, { type: 'json' }) as string[] | null;
-    const updatedRequesterIndex = requesterIndex ? [...requesterIndex, requestId] : [requestId];
-    await env.OTP_AUTH_KV.put(requesterIndexKey, JSON.stringify(updatedRequesterIndex), {
-        expirationTtl: expiresIn,
-    });
+    await indexAdd(env.OTP_AUTH_KV, 'auth', 'requests-by-requester', params.requesterId, requestId);
 
     return request;
 }
 
 /**
  * Get data request by ID
+ * 
+ * Also handles expiration - if a pending request has expired,
+ * updates its status to 'expired'.
  */
 export async function getDataRequest(
     requestId: string,
-    targetCustomerId: string | null,
+    _targetCustomerId: string | null,
     env: Env
 ): Promise<DataRequest | null> {
-    const requestKey = getRequestKey(requestId, targetCustomerId);
-    const request = await env.OTP_AUTH_KV.get(requestKey, { type: 'json' }) as DataRequest | null;
+    const request = await getEntity<DataRequest>(env.OTP_AUTH_KV, 'auth', 'data-request', requestId);
     
     if (!request) {
         return null;
@@ -163,7 +134,7 @@ export async function getDataRequest(
     // Check if expired
     if (new Date(request.expiresAt) < new Date() && request.status === 'pending') {
         request.status = 'expired';
-        await env.OTP_AUTH_KV.put(requestKey, JSON.stringify(request), {
+        await putEntity(env.OTP_AUTH_KV, 'auth', 'data-request', requestId, request, {
             expirationTtl: request.expiresIn,
         });
     }
@@ -173,16 +144,18 @@ export async function getDataRequest(
 
 /**
  * Get all requests for a customer (target)
+ * 
+ * Returns all data requests where the specified customer is the target
+ * (i.e., their data is being requested).
  */
 export async function getCustomerDataRequests(
     targetUserId: string,
     targetCustomerId: string | null,
     env: Env
 ): Promise<DataRequest[]> {
-    const customerIndexKey = getCustomerRequestsIndexKey(targetUserId, targetCustomerId);
-    const requestIds = await env.OTP_AUTH_KV.get(customerIndexKey, { type: 'json' }) as string[] | null;
+    const requestIds = await indexGet(env.OTP_AUTH_KV, 'auth', 'requests-for-customer', targetUserId);
     
-    if (!requestIds || requestIds.length === 0) {
+    if (requestIds.length === 0) {
         return [];
     }
 
@@ -204,16 +177,18 @@ export async function getCustomerDataRequests(
 
 /**
  * Get all requests created by a requester
+ * 
+ * Returns all data requests created by the specified requester
+ * (typically a super admin).
  */
 export async function getRequesterDataRequests(
     requesterId: string,
     targetCustomerId: string | null,
     env: Env
 ): Promise<DataRequest[]> {
-    const requesterIndexKey = getRequesterRequestsIndexKey(requesterId, targetCustomerId);
-    const requestIds = await env.OTP_AUTH_KV.get(requesterIndexKey, { type: 'json' }) as string[] | null;
+    const requestIds = await indexGet(env.OTP_AUTH_KV, 'auth', 'requests-by-requester', requesterId);
     
-    if (!requestIds || requestIds.length === 0) {
+    if (requestIds.length === 0) {
         return [];
     }
 
@@ -241,6 +216,10 @@ export async function getRequesterDataRequests(
  * 2. Encrypt request key with requester's JWT
  * 3. Store encrypted request key in request
  * 4. Update request status to 'approved'
+ * 
+ * @param params - Approval parameters including owner and requester tokens
+ * @param env - Worker environment
+ * @returns Updated data request
  */
 export async function approveDataRequest(
     params: ApproveDataRequestParams,
@@ -281,8 +260,7 @@ export async function approveDataRequest(
     delete request.requestKey;
 
     // Store updated request
-    const requestKeyKV = getRequestKey(params.requestId, request.targetCustomerId);
-    await env.OTP_AUTH_KV.put(requestKeyKV, JSON.stringify(request), {
+    await putEntity(env.OTP_AUTH_KV, 'auth', 'data-request', params.requestId, request, {
         expirationTtl: request.expiresIn,
     });
 
@@ -291,6 +269,14 @@ export async function approveDataRequest(
 
 /**
  * Reject a data request
+ * 
+ * Updates the request status to 'rejected' and records the rejection time.
+ * 
+ * @param requestId - ID of the request to reject
+ * @param ownerUserId - Email of the data owner (must match target)
+ * @param targetCustomerId - Customer ID for scoping (nullable)
+ * @param env - Worker environment
+ * @returns Updated data request
  */
 export async function rejectDataRequest(
     requestId: string,
@@ -318,8 +304,7 @@ export async function rejectDataRequest(
     request.rejectedAt = new Date().toISOString();
 
     // Store updated request
-    const requestKeyKV = getRequestKey(requestId, targetCustomerId);
-    await env.OTP_AUTH_KV.put(requestKeyKV, JSON.stringify(request), {
+    await putEntity(env.OTP_AUTH_KV, 'auth', 'data-request', requestId, request, {
         expirationTtl: request.expiresIn,
     });
 
@@ -331,6 +316,12 @@ export async function rejectDataRequest(
  * 
  * This is used by the requester to decrypt double-encrypted data.
  * The requester must provide their JWT token to decrypt the request key.
+ * 
+ * @param requestId - ID of the approved request
+ * @param requesterToken - Requester's JWT token for decryption
+ * @param targetCustomerId - Customer ID for scoping (nullable)
+ * @param env - Worker environment
+ * @returns Decrypted request key string
  */
 export async function getDecryptedRequestKey(
     requestId: string,
@@ -362,4 +353,3 @@ export async function getDecryptedRequestKey(
 
     return requestKey;
 }
-

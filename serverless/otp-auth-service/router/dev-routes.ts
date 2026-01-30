@@ -4,12 +4,12 @@
  * 
  * SECURITY: These routes are ABSOLUTELY DISABLED in production, staging, and all non-test/development environments
  * 
- * WHITELIST APPROACH (not blacklist):
+ * ALLOWLIST APPROACH (not denylist):
  * - ONLY ENVIRONMENT='test' or 'development' is allowed
  * - Everything else is explicitly blocked: 'production', 'staging', undefined, etc.
  * 
  * Requirements for dev routes to work (ALL must be true):
- * 1. ENVIRONMENT must be 'test' or 'development' (whitelist - only these values allowed)
+ * 1. ENVIRONMENT must be 'test' or 'development' (allowlist - only these values allowed)
  * 2. RESEND_API_KEY must start with 're_test_' (test key, never in production)
  * 
  * Production Safety:
@@ -60,8 +60,8 @@ function isDevModeEnabled(env: Env): boolean {
     const envMode = env.ENVIRONMENT?.toLowerCase();
     const resendKey = env.RESEND_API_KEY;
     
-    // CRITICAL WHITELIST: Only allow if ENVIRONMENT is 'test' or 'development'
-    // This is a strict whitelist - ONLY 'test' and 'development' are allowed
+    // CRITICAL ALLOWLIST: Only allow if ENVIRONMENT is 'test' or 'development'
+    // This is a strict allowlist - ONLY 'test' and 'development' are allowed
     // Explicitly blocks: 'production', 'staging', undefined, or any other value
     // PRODUCTION: envMode will be 'production' -> returns false immediately
     const ALLOWED_ENVIRONMENTS = ['test', 'development'] as const;
@@ -89,7 +89,7 @@ function isDevModeEnabled(env: Env): boolean {
  * GET /dev/otp?email=user@example.com
  */
 async function handleGetOTP(request: Request, env: Env): Promise<Response> {
-    // SECURITY: Explicit whitelist check - ONLY 'test' or 'development' environment allowed
+    // SECURITY: Explicit allowlist check - ONLY 'test' or 'development' environment allowed
     // Returns 403 for production, staging, undefined, or any other value
     if (!isDevModeEnabled(env)) {
         const envMode = env.ENVIRONMENT?.toLowerCase();

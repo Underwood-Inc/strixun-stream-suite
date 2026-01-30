@@ -4,12 +4,7 @@
  * Dedicated worker for mod hosting and version control
  * Handles mod uploads, downloads, versioning, and metadata management
  * 
- * @version 2.0.0 - Migrated to use shared API framework
- * 
- * NOTE: This is a partial migration. Full migration requires:
- * 1. Updating all handlers to use createEnhancedHandler
- * 2. Removing utils/cors.ts and utils/auth.ts (use framework instead)
- * 3. Adding type definitions for mods
+ * @version 2.1.0 - KV Migration System Active
  */
 
 import type { ExecutionContext } from '@cloudflare/workers-types';
@@ -18,8 +13,9 @@ import { getCorsHeadersRecord } from './utils/cors.js';
 import { handleModRoutes } from './router/mod-routes.js';
 import { handleAdminRoutes } from './router/admin-routes.js';
 import { handleR2Cleanup } from './handlers/admin/r2-cleanup.js';
-import { MigrationRunner } from '../shared/migration-runner.js';
-import { migrations } from './migrations/index.js';
+// Worker version for deployment verification
+const WORKER_VERSION = '2.2.0';
+console.log(`[ModsAPI] Worker loaded: v${WORKER_VERSION}`);
 
 /**
  * Route configuration interface
@@ -56,42 +52,6 @@ function parseRoutes(env: Env): RouteConfig[] {
     } catch (error) {
         console.warn('Failed to parse ROUTES environment variable:', error);
         return [];
-    }
-}
-
-/**
- * Auto-run migrations on startup
- * 
- * SAFE FOR PRODUCTION: Idempotent
- * - Tracks which migrations have been run
- * - Skips duplicates automatically
- * - Only runs new/pending migrations
- * - Runs on ALL environments (dev + production)
- * 
- * This ensures database schema/data is always up-to-date on every deploy.
- */
-async function autoRunMigrations(env: Env): Promise<void> {
-    const envName = env.ENVIRONMENT || 'production';
-    console.log(`[ModsAPI] 🔄 Checking for pending migrations in ${envName}...`);
-    
-    try {
-        const runner = new MigrationRunner(env.MODS_KV, 'mods');
-        const result = await runner.runPending(migrations, env);
-        
-        if (result.ran.length > 0) {
-            console.log(`[ModsAPI] ✅ Ran ${result.ran.length} migrations:`, result.ran);
-        }
-        
-        if (result.skipped.length > 0) {
-            console.log(`[ModsAPI] ⏭️  Skipped ${result.skipped.length} migrations (already run)`);
-        }
-        
-        if (result.ran.length === 0 && result.skipped.length === 0) {
-            console.log(`[ModsAPI] ✓ No migrations to run`);
-        }
-    } catch (error) {
-        console.error(`[ModsAPI] ❌ Failed to run migrations in ${envName}:`, error);
-        // Don't throw - migration failure shouldn't break the service
     }
 }
 
@@ -195,17 +155,7 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
 /**
  * Main request handler with API framework
  */
-// Track if migrations have been run (per worker instance)
-let migrationsRun = false;
-
 async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // Auto-run migrations on first request (idempotent, safe for production)
-    // Use ctx.waitUntil to run async without blocking the request
-    if (!migrationsRun) {
-        migrationsRun = true;
-        ctx.waitUntil(autoRunMigrations(env));
-    }
-    
     const url = new URL(request.url);
     // Dev-proxy normalization: allow apps to call through /mods-api/* without 404s
     let path = url.pathname;

@@ -4,7 +4,7 @@
  * Dedicated worker for idle game API endpoints
  * Handles all game-related operations with JWT authentication
  * 
- * @version 2.1.0 - Uses standardized CORS from api-framework
+ * @version 2.2.0 - Added migration architecture
  */
 
 import type { ExecutionContext } from '@strixun/types';

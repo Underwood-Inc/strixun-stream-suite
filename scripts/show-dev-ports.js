@@ -78,8 +78,9 @@ const services = [
     location: 'serverless/otp-auth-service',
     port: 8787,
     type: 'Backend (Worker)',
-    url: null,
+    url: 'http://localhost:8787',
     framework: 'Cloudflare Worker',
+    hasLandingPage: true,
   },
   {
     name: 'Mods API',
@@ -133,6 +134,23 @@ const services = [
     name: 'Access Service API',
     location: 'serverless/access-service',
     port: 8795,
+    type: 'Backend (Worker)',
+    url: null,
+    framework: 'Cloudflare Worker',
+  },
+  {
+    name: 'Streamkit API',
+    location: 'serverless/streamkit-api',
+    port: 8796,
+    type: 'Backend (Worker)',
+    url: 'http://localhost:8796',
+    framework: 'Cloudflare Worker',
+    hasLandingPage: true,
+  },
+  {
+    name: 'Music API',
+    location: 'serverless/music-api',
+    port: 8791,
     type: 'Backend (Worker)',
     url: null,
     framework: 'Cloudflare Worker',
@@ -203,24 +221,37 @@ async function formatTable(data) {
 
   if (backends.length > 0) {
     console.log('BACKEND WORKERS\n');
-    console.log(padRight('Service', 36) + ' | ' + padRight('Port', 6) + ' | Framework');
-    console.log('-'.repeat(80));
+    console.log(padRight('Service', 36) + ' | ' + padRight('Port', 6) + ' | ' + padRight('Landing', 8) + ' | URL');
+    console.log('-'.repeat(90));
     backends.forEach(service => {
+      const landingStatus = service.hasLandingPage ? 'Yes' : '-';
+      const urlDisplay = service.url || '-';
       console.log(
         padRight(service.name, 36) +
           ' | ' +
           padRight(service.port, 6) +
           ' | ' +
-          service.framework
+          padRight(landingStatus, 8) +
+          ' | ' +
+          urlDisplay
       );
     });
     console.log('');
   }
 
+  // Quick access includes frontends and backend workers with landing pages
+  const workersWithLanding = backends.filter(s => s.hasLandingPage);
   console.log('Quick access:\n');
   for (const service of frontends) {
     const resolved = await resolveFrontendUrl(service);
     console.log('  ' + padRight(service.name, 30) + ' -> ' + resolved.url);
+  }
+  if (workersWithLanding.length > 0) {
+    console.log('');
+    console.log('  Backend Landing Pages:');
+    for (const service of workersWithLanding) {
+      console.log('  ' + padRight(service.name, 30) + ' -> ' + service.url);
+    }
   }
 
   console.log('\n' + '='.repeat(80));

@@ -4,7 +4,7 @@
  * Cloudflare Worker for URL shortening with OTP authentication integration
  * Provides free URL shortening service with user authentication
  * 
- * @version 2.1.0 - Uses standardized CORS from api-framework
+ * @version 2.2.0 - Added migration architecture
  */
 
 import { initializeServiceTypes, type ExecutionContext } from '@strixun/types';

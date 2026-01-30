@@ -8,7 +8,7 @@
  * - API key management
  * - JWT token generation and validation
  * 
- * @version 2.2.1 - Fixed: CORS now properly handled by router with env.ALLOWED_ORIGINS
+ * @version 2.2.2 - Added: Auto-run migrations on startup
  */
 
 import { initializeServiceTypes, type ExecutionContext } from '@strixun/types';
@@ -27,16 +27,10 @@ initializeServiceTypes();
 /**
  * Main request handler
  * Delegates to router for all routing logic including CORS
- * 
- * CORS is handled by router.ts using getCorsHeaders(env, request) which:
- * - Reads from env.ALLOWED_ORIGINS
- * - Sets Access-Control-Allow-Credentials: true
- * - Supports localhost in development
- * - Uses the api-framework's standardized CORS implementation
  */
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-        // Route handles everything including CORS preflight via getCorsHeaders(env, request)
+        // Route handles everything including CORS preflight
         return route(request, env, ctx);
     }
 };

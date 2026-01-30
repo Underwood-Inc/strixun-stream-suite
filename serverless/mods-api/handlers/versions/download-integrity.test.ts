@@ -58,18 +58,18 @@ describe('File Download Integrity', () => {
         
         vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string, options?: any) => {
             if (options?.type === 'json') {
-                if (key === 'mod_test-mod-123') {
+                if (key === 'mods:mod:test-mod-123') {
                     return Promise.resolve(mockMod);
                 }
-                if (key === 'version_version-123') {
+                if (key === 'mods:version:version-123') {
                     return Promise.resolve(mockVersion);
                 }
                 return Promise.resolve(null);
             }
-            if (key === 'mod_test-mod-123') {
+            if (key === 'mods:mod:test-mod-123') {
                 return Promise.resolve(JSON.stringify(mockMod));
             }
-            if (key === 'version_version-123') {
+            if (key === 'mods:version:version-123') {
                 return Promise.resolve(JSON.stringify(mockVersion));
             }
             return Promise.resolve(null);
@@ -115,18 +115,18 @@ describe('File Download Integrity', () => {
             const versionWithoutHash = { ...mockVersion, sha256: undefined };
             vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string, options?: any) => {
                 if (options?.type === 'json') {
-                    if (key === 'mod_test-mod-123') {
+                    if (key === 'mods:mod:test-mod-123') {
                         return Promise.resolve(mockMod);
                     }
-                    if (key === 'version_version-123') {
+                    if (key === 'mods:version:version-123') {
                         return Promise.resolve(versionWithoutHash);
                     }
                     return Promise.resolve(null);
                 }
-                if (key === 'mod_test-mod-123') {
+                if (key === 'mods:mod:test-mod-123') {
                     return Promise.resolve(JSON.stringify(mockMod));
                 }
-                if (key === 'version_version-123') {
+                if (key === 'mods:version:version-123') {
                     return Promise.resolve(JSON.stringify(versionWithoutHash));
                 }
                 return Promise.resolve(null);

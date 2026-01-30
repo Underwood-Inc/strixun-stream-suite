@@ -5,7 +5,14 @@
  */
 
 import { hashEmail } from '../../utils/crypto.js';
-import { getCustomerKey } from '../../services/customer.js';
+
+/**
+ * Build a scoped key for OTP storage
+ * OTP keys are ephemeral (10 minute TTL) and need simple scoping
+ */
+function buildOtpKey(customerId: string | null, suffix: string): string {
+    return customerId ? `cust_${customerId}_${suffix}` : suffix;
+}
 
 interface OTPData {
     email: string;
@@ -32,7 +39,7 @@ export async function storeOTP(
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     
     // Store OTP in KV with customer isolation
-    const otpKey = getCustomerKey(customerId, `otp_${emailHash}_${Date.now()}`);
+    const otpKey = buildOtpKey(customerId, `otp_${emailHash}_${Date.now()}`);
     await env.OTP_AUTH_KV.put(otpKey, JSON.stringify({
         email: email.toLowerCase().trim(),
         otp,
@@ -41,7 +48,7 @@ export async function storeOTP(
     }), { expirationTtl: 600 }); // 10 minutes TTL
     
     // Also store latest OTP for quick lookup (overwrites previous)
-    const latestOtpKey = getCustomerKey(customerId, `otp_latest_${emailHash}`);
+    const latestOtpKey = buildOtpKey(customerId, `otp_latest_${emailHash}`);
     await env.OTP_AUTH_KV.put(latestOtpKey, otpKey, { expirationTtl: 600 });
     
     return { otpKey, latestOtpKey, expiresAt: expiresAt.toISOString() };
@@ -59,7 +66,7 @@ export async function retrieveOTP(
     const emailHash = await hashEmail(email);
     
     // Try to get latest OTP key - try with customer prefix first, then without (for backward compatibility)
-    let latestOtpKey = getCustomerKey(customerId, `otp_latest_${emailHash}`);
+    let latestOtpKey = buildOtpKey(customerId, `otp_latest_${emailHash}`);
     let latestOtpKeyValue = await env.OTP_AUTH_KV.get(latestOtpKey);
     
     // If not found with customer prefix and customerId is null, try without prefix

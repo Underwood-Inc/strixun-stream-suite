@@ -17,7 +17,7 @@ import { candyShopAnimation } from '../../utils/candyShopAnimation';
 import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys } from '../../hooks/useMods';
-import { formatDate } from '@strixun/shared-config/date-utils';
+import { formatDateTime, formatRelativeTime } from '@strixun/shared-config/date-utils';
 import { MarkdownContent } from '../common/MarkdownContent';
 
 const Container = styled.div`
@@ -26,11 +26,27 @@ const Container = styled.div`
   gap: ${spacing.md};
 `;
 
+const TitleRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${spacing.md};
+`;
+
 const Title = styled.h2`
   font-size: 1.5rem;
   font-weight: 600;
   color: ${colors.text};
-  margin-bottom: ${spacing.md};
+  margin: 0;
+`;
+
+const SortButton = styled.button`
+  ${getButtonStyles('secondary')}
+  font-size: 0.75rem;
+  padding: ${spacing.xs} ${spacing.sm};
+  display: flex;
+  align-items: center;
+  gap: ${spacing.xs};
 `;
 
 const VersionCard = styled.div<{ $isExpanded: boolean }>`
@@ -224,6 +240,8 @@ interface ModVersionListProps {
     authorId?: string; // Mod author ID for checking ownership
 }
 
+type SortOrder = 'newest' | 'oldest';
+
 export function ModVersionList({ modSlug, versions, variants = [], authorId }: ModVersionListProps) {
     const navigate = useNavigate();
     const { isAuthenticated, customer } = useAuthStore();
@@ -233,6 +251,21 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId }: M
     const [downloadingVariants, setDownloadingVariants] = useState<Set<string>>(new Set());
     const [downloadError, setDownloadError] = useState<string | null>(null);
     const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set());
+    const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+
+    // Sort versions by createdAt timestamp (includes full time precision)
+    const sortedVersions = [...versions].sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        // Newest first (descending) or oldest first (ascending)
+        return sortOrder === 'newest' 
+            ? (isNaN(bTime) ? 0 : bTime) - (isNaN(aTime) ? 0 : aTime)
+            : (isNaN(aTime) ? 0 : aTime) - (isNaN(bTime) ? 0 : bTime);
+    });
+
+    const toggleSortOrder = () => {
+        setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest');
+    };
 
     const toggleVersion = (versionId: string) => {
         setExpandedVersions(prev => {
@@ -334,7 +367,12 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId }: M
 
     return (
         <Container>
-            <Title>Versions ({versions.length})</Title>
+            <TitleRow>
+                <Title>Versions ({versions.length})</Title>
+                <SortButton onClick={toggleSortOrder} title={`Currently showing ${sortOrder} first. Click to reverse.`}>
+                    {sortOrder === 'newest' ? '↓ Newest First' : '↑ Oldest First'}
+                </SortButton>
+            </TitleRow>
             {downloadError && (
                 <div style={{ 
                     padding: spacing.md, 
@@ -346,7 +384,7 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId }: M
                     {downloadError}
                 </div>
             )}
-            {versions.map((version) => {
+            {sortedVersions.map((version) => {
                 const isExpanded = expandedVersions.has(version.versionId);
                 // Filter variants to only show those attached to this specific version
                 const versionVariants = variants.filter(v => v.parentVersionId === version.versionId);
@@ -357,7 +395,9 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId }: M
                                 <VersionHeader>
                                     <VersionMeta>
                                         <VersionNumber>v{version.version}</VersionNumber>
-                                        <VersionDate>{formatDate(version.createdAt)}</VersionDate>
+                                        <VersionDate title={formatDateTime(version.createdAt)}>
+                                            {formatRelativeTime(version.createdAt)}
+                                        </VersionDate>
                                     </VersionMeta>
                                     <VersionActions>
                                         {isUploader && (
@@ -452,7 +492,9 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId }: M
                                                     <span>•</span>
                                                     <span>{variant.totalDownloads} total downloads</span>
                                                     <span>•</span>
-                                                    <span>Created: {formatDate(variant.createdAt)}</span>
+                                                    <span title={formatDateTime(variant.createdAt)}>
+                                                        Created: {formatRelativeTime(variant.createdAt)}
+                                                    </span>
                                                 </VariantMeta>
                                                 {variant.currentVersionId && (
                                                     <IntegrityBadge 

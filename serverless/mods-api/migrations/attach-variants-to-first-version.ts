@@ -17,7 +17,7 @@ import type { KVNamespaceListResult } from '@cloudflare/workers-types';
 import type { ModMetadata, ModVersion, ModVariant } from '../types/mod.js';
 
 export const migration: Migration = {
-    id: '002_attach_variants_to_first_version',
+    id: '001_attach_variants_to_first_version',
     description: 'Attach existing variants to first mod version via parentVersionId',
     
     async up(kv): Promise<void> {

@@ -38,7 +38,7 @@
     }
   },
   "scripts": {
-    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build",
+    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/kv-entities build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build",
     "predev": "pnpm run build:deps && pnpm run build:worker",
     "dev": "concurrently -n worker,app -c yellow,cyan --kill-others-on-fail --success first \"pnpm dev:worker\" \"pnpm dev:app\"",
     "dev:worker": "wrangler dev --port 8787 --local",
@@ -48,7 +48,7 @@
     "dev:with-secrets": "pnpm setup:test-secrets && pnpm dev",
     "build": "pnpm run build:shared && vite build && node scripts/build-landing-assets.js",
     "build:shared": "tsc -p shared/tsconfig.json",
-    "build:worker": "esbuild worker.ts --bundle --format=esm --outfile=dist/worker.js --platform=node --external:cloudflare:* --external:node:*",
+    "build:worker": "esbuild worker.ts --bundle --format=esm --outfile=dist/worker.js --platform=node --external:cloudflare:* --external:node:* --loader:.html=text",
     "predeploy": "pnpm run build && pnpm run build:worker",
     "preview": "pnpm build && wrangler dev --env production",
     "preview:app": "vite preview",
@@ -77,6 +77,7 @@
     "@strixun/api-framework": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/error-utils": "workspace:*",
+    "@strixun/kv-entities": "workspace:*",
     "@strixun/otp-login": "workspace:*",
     "@strixun/service-client": "workspace:*",
     "@strixun/shared-components": "workspace:*",

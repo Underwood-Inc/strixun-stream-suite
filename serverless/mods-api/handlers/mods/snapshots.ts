@@ -1,18 +1,21 @@
 /**
  * Mod snapshots handler
- * GET /mods/:modId/snapshots - List snapshots for a mod
- * GET /mods/:modId/snapshots/:snapshotId - Load a specific snapshot
+ * GET /mods/:modId/snapshots
+ * GET /mods/:modId/snapshots/:snapshotId
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
+import {
+    getEntity,
+    getExistingEntities,
+    indexGet,
+    canModify,
+} from '@strixun/kv-entities';
 import { verifySnapshot } from '../../utils/snapshot.js';
 import type { ModSnapshot } from '../../types/snapshot.js';
+import type { ModMetadata } from '../../types/mod.js';
 
-/**
- * List snapshots for a mod
- */
 export async function handleListModSnapshots(
     request: Request,
     env: Env,
@@ -21,117 +24,54 @@ export async function handleListModSnapshots(
 ): Promise<Response> {
     try {
         if (!auth) {
-            const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to view snapshots');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 401,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 401, 'Unauthorized', 'Authentication required to view snapshots');
         }
 
-        // Get mod to verify ownership
-        const normalizedModId = normalizeModId(modId);
-        const modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as any;
-        
+        const mod = await getEntity<ModMetadata>(env.MODS_KV, 'mods', 'mod', modId);
+
         if (!mod) {
-            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
         }
 
-        // Check authorization - only mod author can view snapshots
-        if (mod.authorId !== auth.customerId) {
-            const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to view snapshots for this mod');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        if (!canModify({ ...mod, id: mod.modId }, { customerId: auth.customerId, isAdmin: false })) {
+            return errorResponse(request, env, 403, 'Forbidden', 'You do not have permission to view snapshots');
         }
 
-        // Get snapshot list
-        const snapshotsListKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}_snapshots`);
-        const snapshotIds = await env.MODS_KV.get(snapshotsListKey, { type: 'json' }) as string[] | null;
-        
-        if (!snapshotIds || snapshotIds.length === 0) {
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
+        const snapshotIds = await indexGet(env.MODS_KV, 'mods', 'snapshots-for', modId);
+
+        if (snapshotIds.length === 0) {
             return new Response(JSON.stringify({ snapshots: [], total: 0 }), {
                 status: 200,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
+                headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
             });
         }
 
-        // Load all snapshots
+        const allSnapshots = await getExistingEntities<ModSnapshot>(env.MODS_KV, 'mods', 'snapshot', snapshotIds);
+
+        // Verify and filter
         const snapshots: ModSnapshot[] = [];
-        for (const snapshotId of snapshotIds) {
-            const snapshotKey = getCustomerKey(auth.customerId, `snapshot_${snapshotId}`);
-            const snapshot = await env.MODS_KV.get(snapshotKey, { type: 'json' }) as ModSnapshot | null;
-            if (snapshot) {
-                // Verify snapshot integrity
-                const isValid = await verifySnapshot(snapshot, env);
-                if (isValid) {
-                    snapshots.push(snapshot);
-                } else {
-                    console.warn(`[Snapshots] Invalid snapshot detected: ${snapshotId}`);
-                }
+        for (const snapshot of allSnapshots) {
+            const isValid = await verifySnapshot(snapshot, env);
+            if (isValid) {
+                snapshots.push(snapshot);
             }
         }
 
-        // Sort by creation date (newest first)
         snapshots.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
         return new Response(JSON.stringify({ snapshots, total: snapshots.length }), {
             status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
+            headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
         });
     } catch (error: any) {
         console.error('List mod snapshots error:', error);
-        const rfcError = createError(
-            request,
-            500,
-            'Failed to List Snapshots',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while listing snapshots'
+        return errorResponse(
+            request, env, 500, 'Failed to List Snapshots',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred'
         );
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
-        return new Response(JSON.stringify(rfcError), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
     }
 }
 
-/**
- * Load a specific snapshot
- */
 export async function handleLoadSnapshot(
     request: Request,
     env: Env,
@@ -141,123 +81,61 @@ export async function handleLoadSnapshot(
 ): Promise<Response> {
     try {
         if (!auth) {
-            const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to load snapshots');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 401,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 401, 'Unauthorized', 'Authentication required to load snapshots');
         }
 
-        // Get snapshot
-        const snapshotKey = getCustomerKey(auth.customerId, `snapshot_${snapshotId}`);
-        const snapshot = await env.MODS_KV.get(snapshotKey, { type: 'json' }) as ModSnapshot | null;
-        
+        const snapshot = await getEntity<ModSnapshot>(env.MODS_KV, 'mods', 'snapshot', snapshotId);
+
         if (!snapshot) {
-            const rfcError = createError(request, 404, 'Snapshot Not Found', 'The requested snapshot was not found');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 404, 'Snapshot Not Found', 'The requested snapshot was not found');
         }
 
-        // Verify snapshot belongs to the mod
-        if (snapshot.modId !== normalizeModId(modId)) {
-            const rfcError = createError(request, 400, 'Bad Request', 'Snapshot does not belong to the specified mod');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        if (snapshot.modId !== modId) {
+            return errorResponse(request, env, 400, 'Bad Request', 'Snapshot does not belong to the specified mod');
         }
 
-        // Get mod to verify ownership
-        const normalizedModId = normalizeModId(modId);
-        const modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as any;
-        
+        const mod = await getEntity<ModMetadata>(env.MODS_KV, 'mods', 'mod', modId);
+
         if (!mod) {
-            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
         }
 
-        // Check authorization - only mod author can load snapshots
-        if (mod.authorId !== auth.customerId) {
-            const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to load snapshots for this mod');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        if (!canModify({ ...mod, id: mod.modId }, { customerId: auth.customerId, isAdmin: false })) {
+            return errorResponse(request, env, 403, 'Forbidden', 'You do not have permission to load snapshots');
         }
 
-        // Verify snapshot integrity
         const isValid = await verifySnapshot(snapshot, env);
         if (!isValid) {
-            const rfcError = createError(request, 400, 'Invalid Snapshot', 'Snapshot integrity verification failed');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 400, 'Invalid Snapshot', 'Snapshot integrity verification failed');
         }
 
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
         return new Response(JSON.stringify({ snapshot }), {
             status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
+            headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
         });
     } catch (error: any) {
         console.error('Load snapshot error:', error);
-        const rfcError = createError(
-            request,
-            500,
-            'Failed to Load Snapshot',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while loading snapshot'
+        return errorResponse(
+            request, env, 500, 'Failed to Load Snapshot',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred'
         );
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
-        return new Response(JSON.stringify(rfcError), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
     }
+}
+
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+    const headers = createCORSHeaders(request, {
+        credentials: true,
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    });
+    return Object.fromEntries(headers.entries());
+}
+
+function errorResponse(request: Request, env: Env, status: number, title: string, detail: string): Response {
+    const rfcError = createError(request, status, title, detail);
+    return new Response(JSON.stringify(rfcError), {
+        status,
+        headers: { 'Content-Type': 'application/problem+json', ...corsHeaders(request, env) },
+    });
 }
 
 interface Env {
@@ -267,4 +145,3 @@ interface Env {
     FILE_INTEGRITY_KEYPHRASE?: string;
     [key: string]: any;
 }
-

@@ -29,7 +29,8 @@ vi.mock('../utils/crypto.js', () => ({
 }));
 
 vi.mock('../services/customer.js', () => ({
-    getCustomerKey: vi.fn().mockReturnValue('customer:key'),
+    getCustomer: vi.fn(),
+    storeCustomer: vi.fn(),
     getCustomerByEmail: vi.fn(),
 }));
 

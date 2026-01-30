@@ -3,7 +3,7 @@
  * Handles customer session endpoints: me, logout
  */
 
-import { getCustomerKey } from '../../services/customer.js';
+import { entityKey } from '@strixun/kv-entities';
 import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getAuthCacheHeaders } from '../../utils/cache-headers.js';
 import { createJWT, getJWTSecret, hashEmail, verifyJWT } from '../../utils/crypto.js';
@@ -118,7 +118,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             });
         }
         
-        const sessionKey = getCustomerKey(customerId, `session_${customerId}`);
+        const sessionKey = entityKey('otp-auth', 'session', customerId).key;
         const sessionData = await env.OTP_AUTH_KV.get(sessionKey, { type: 'json' }) as SessionData | null;
         
         if (!sessionData) {
@@ -344,10 +344,10 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             });
         }
         
-        // Add token to blacklist with customer isolation
+        // Add token to deny list with customer isolation
         const tokenHash = await hashEmail(token);
-        const blacklistKey = getCustomerKey(customerId, `blacklist_${tokenHash}`);
-        await env.OTP_AUTH_KV.put(blacklistKey, JSON.stringify({
+        const denyListKey = entityKey('otp-auth', 'jwt-denylist', `${customerId}_${tokenHash}`).key;
+        await env.OTP_AUTH_KV.put(denyListKey, JSON.stringify({
             token: tokenHash,
             revokedAt: new Date().toISOString(),
         }), { expirationTtl: 25200 }); // 7 hours (matches token expiration)
@@ -355,7 +355,7 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
         // Delete session with customer isolation
         // Use customerId as the ONLY identifier
         if (customerId) {
-            const sessionKey = getCustomerKey(customerId, `session_${customerId}`);
+            const sessionKey = entityKey('otp-auth', 'session', customerId).key;
             
             // Get session to find IP address for cleanup
             const sessionData = await env.OTP_AUTH_KV.get(sessionKey, { type: 'json' }) as SessionData | null;

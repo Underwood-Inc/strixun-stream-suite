@@ -4,7 +4,7 @@
  * Dedicated worker for customer data management
  * Handles all customer-related operations with JWT authentication
  * 
- * @version 1.0.0
+ * @version 1.0.1 - Added: Auto-run migrations on startup
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
@@ -16,6 +16,7 @@ import { authenticateRequest } from './utils/auth.js';
 
 interface Env {
     CUSTOMER_KV: KVNamespace;
+    OTP_AUTH_KV?: KVNamespace;
     JWT_SECRET?: string;
     ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;

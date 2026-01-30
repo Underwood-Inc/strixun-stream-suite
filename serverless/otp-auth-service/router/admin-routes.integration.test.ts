@@ -17,7 +17,8 @@ import { createJWT } from '../utils/crypto.js';
 
 // Only mock external dependencies (KV, handlers), NOT auth functions
 vi.mock('../services/customer.js', () => ({
-    getCustomerKey: vi.fn().mockReturnValue('customer:key'),
+    getCustomer: vi.fn(),
+    storeCustomer: vi.fn(),
     getCustomerByEmail: vi.fn(),
 }));
 
@@ -88,7 +89,7 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
     // - OTP_AUTH_KV is mocked (no real database access)
     const mockEnv = {
         OTP_AUTH_KV: {
-            get: vi.fn().mockResolvedValue(null), // Token not blacklisted
+            get: vi.fn().mockResolvedValue(null), // Token not in deny list
             put: vi.fn().mockResolvedValue(undefined),
             delete: vi.fn().mockResolvedValue(undefined),
             list: vi.fn().mockResolvedValue({ keys: [], listComplete: true }),
@@ -101,7 +102,7 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         // Reset KV mock for each test
-        mockEnv.OTP_AUTH_KV.get = vi.fn().mockResolvedValue(null); // Token not blacklisted
+        mockEnv.OTP_AUTH_KV.get = vi.fn().mockResolvedValue(null); // Token not in deny list
         mockEnv.OTP_AUTH_KV.put = vi.fn().mockResolvedValue(undefined);
         mockEnv.OTP_AUTH_KV.delete = vi.fn().mockResolvedValue(undefined);
         mockEnv.OTP_AUTH_KV.list = vi.fn().mockResolvedValue({ keys: [], listComplete: true });

@@ -7,7 +7,7 @@
 import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getOtpCacheHeaders } from '../../utils/cache-headers.js';
 import { hashEmail, constantTimeEquals } from '../../utils/crypto.js';
-import { getCustomerKey } from '../../services/customer.js';
+import { entityKey } from '@strixun/kv-entities';
 import {
     recordOTPFailure as recordOTPFailureService,
     recordOTPRequest as recordOTPRequestService
@@ -67,8 +67,8 @@ async function getOrCreateCustomerSession(
     
     const emailHash = await hashEmail(email);
     const emailLower = email.toLowerCase().trim();
-    // Keep key as `customer_` for proper naming (changed from legacy `user_`)
-    const customerKey = getCustomerKey(customerId, `customer_${emailHash}`);
+    // Use customer session entity key
+    const customerKey = entityKey('otp-auth', 'customer-session', `${customerId}_${emailHash}`).key;
     
     let session = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as CustomerSession | null;
     

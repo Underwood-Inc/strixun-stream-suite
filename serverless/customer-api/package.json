@@ -5,7 +5,7 @@
   "type": "module",
   "main": "worker.ts",
   "scripts": {
-    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/schemas build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build",
+    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/kv-entities build && pnpm --filter @strixun/schemas build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build",
     "predev": "pnpm run build:deps && pnpm run build:worker",
     "dev": "wrangler dev --port 8790 --local",
     "predeploy": "pnpm run build:deps && pnpm run build:worker",
@@ -34,6 +34,7 @@
   "dependencies": {
     "@strixun/api-framework": "workspace:*",
     "@strixun/error-utils": "workspace:*",
+    "@strixun/kv-entities": "workspace:*",
     "@strixun/types": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/otp-auth-service": "workspace:*",

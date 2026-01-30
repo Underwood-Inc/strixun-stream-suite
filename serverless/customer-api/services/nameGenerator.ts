@@ -363,7 +363,8 @@ export async function isNameUnique(
   env: CloudflareEnv
 ): Promise<boolean> {
   // Always use global scope - display names must be globally unique
-  const nameKey = `displayname_${name.toLowerCase()}`;
+  // Uses unified key pattern: customer:displayname:{name}
+  const nameKey = `customer:displayname:${name.toLowerCase()}`;
   
   const existing = await env.OTP_AUTH_KV.get(nameKey);
   return !existing;
@@ -382,7 +383,8 @@ export async function reserveDisplayName(
   env: CloudflareEnv
 ): Promise<void> {
   // Always use global scope - display names must be globally unique
-  const nameKey = `displayname_${name.toLowerCase()}`;
+  // Uses unified key pattern: customer:displayname:{name}
+  const nameKey = `customer:displayname:${name.toLowerCase()}`;
   
   const reservation: NameReservation = {
     userId,
@@ -395,16 +397,18 @@ export async function reserveDisplayName(
 
 /**
  * Release a display name reservation
+ * 
+ * CRITICAL: Display names are globally unique, so we always use global scope.
+ * customerId parameter is kept for backward compatibility but is ignored.
  */
 export async function releaseDisplayName(
   name: string,
-  customerId: string | null,
+  customerId: string | null, // Kept for backward compat, but ignored (always global)
   env: CloudflareEnv
 ): Promise<void> {
-  const nameKey = customerId 
-    ? `cust_${customerId}_displayname_${name.toLowerCase()}`
-    : `displayname_${name.toLowerCase()}`;
-  
+  // Always use global scope - display names are globally unique
+  // Uses unified key pattern: customer:displayname:{name}
+  const nameKey = `customer:displayname:${name.toLowerCase()}`;
   await env.OTP_AUTH_KV.delete(nameKey);
 }
 

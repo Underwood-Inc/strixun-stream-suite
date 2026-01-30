@@ -7,7 +7,7 @@
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { getCustomerKey } from '../../services/customer.js';
+import { entityKey } from '@strixun/kv-entities';
 import { verifyJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
 
 interface CloudflareEnv {
@@ -279,7 +279,7 @@ export async function handleAttachTwitchAccount(
     const encryptedToken = await encryptToken(accessToken, authToken, env);
 
     const emailHash = await hashEmail(auth.email!);
-    const customerKey = getCustomerKey(auth.customerId || null, `customer_${emailHash}`);
+    const customerKey = entityKey('otp-auth', 'customer-session', `${auth.customerId}_${emailHash}`).key;
     const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as CustomerSession | null;
 
     if (!customer) {
@@ -305,7 +305,7 @@ export async function handleAttachTwitchAccount(
     customer.twitchAccount = twitchAccount;
     await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customer), { expirationTtl: 31536000 });
 
-    const twitchKey = getCustomerKey(auth.customerId || null, `twitch_${finalTwitchUserId}`);
+    const twitchKey = entityKey('otp-auth', 'twitch-link', `${auth.customerId}_${finalTwitchUserId}`).key;
     await env.OTP_AUTH_KV.put(twitchKey, JSON.stringify({
       customerId: auth.customerId,
       email: auth.email,
@@ -353,7 +353,7 @@ export async function handleGetTwitchAccount(
     }
 
     const emailHash = await hashEmail(auth.email!);
-    const customerKey = getCustomerKey(auth.customerId || null, `customer_${emailHash}`);
+    const customerKey = entityKey('otp-auth', 'customer-session', `${auth.customerId}_${emailHash}`).key;
     const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as CustomerSession | null;
 
     if (!customer || !customer.twitchAccount) {
@@ -404,7 +404,7 @@ export async function handleDetachTwitchAccount(
     }
 
     const emailHash = await hashEmail(auth.email!);
-    const customerKey = getCustomerKey(auth.customerId || null, `customer_${emailHash}`);
+    const customerKey = entityKey('otp-auth', 'customer-session', `${auth.customerId}_${emailHash}`).key;
     const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as CustomerSession | null;
 
     if (!customer || !customer.twitchAccount) {
@@ -418,7 +418,7 @@ export async function handleDetachTwitchAccount(
     delete customer.twitchAccount;
     await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customer), { expirationTtl: 31536000 });
 
-    const twitchKey = getCustomerKey(auth.customerId || null, `twitch_${twitchUserId}`);
+    const twitchKey = entityKey('otp-auth', 'twitch-link', `${auth.customerId}_${twitchUserId}`).key;
     await env.OTP_AUTH_KV.delete(twitchKey);
 
     return new Response(JSON.stringify({

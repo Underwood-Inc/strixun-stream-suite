@@ -5,7 +5,7 @@
  * - Text Cyclers, Swaps, Layouts, Notes (generic config API)
  * - Scene Activity Tracking (FIFO, 30-day TTL)
  * 
- * @version 1.0.0
+ * @version 1.1.0 - Added migration architecture
  */
 
 import type { ExecutionContext } from '@cloudflare/workers-types';

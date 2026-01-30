@@ -1,13 +1,17 @@
 /**
  * Upload mod handler
  * POST /mods
- * Creates a new mod with initial version
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import {
+    putEntity,
+    indexAdd,
+    indexSetSingle,
+    indexGetSingle,
+} from '@strixun/kv-entities';
 import { calculateStrixunHash } from '../../utils/hash.js';
 import { MAX_MOD_FILE_SIZE, MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { checkUploadQuota, trackUpload } from '../../utils/upload-quota.js';
@@ -15,857 +19,379 @@ import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion, ModUploadRequest } from '../../types/mod.js';
 import type { Env } from '../../worker.js';
 
-/**
- * Generate URL-friendly slug from title
- */
 export function generateSlug(title: string): string {
     return title
         .toLowerCase()
         .trim()
-        .replace(/[^\w\s-]/g, '') // Remove special characters
-        .replace(/[\s_-]+/g, '-') // Replace spaces and underscores with hyphens
-        .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
 }
 
-/**
- * Check if slug already exists using slug index
- * CRITICAL: Slugs must be globally unique across all scopes
- * Uses direct index lookup for O(1) performance
- */
 export async function slugExists(slug: string, env: Env, excludeModId?: string): Promise<boolean> {
-    // Check global slug index first
-    const globalSlugKey = `slug_${slug}`;
-    const existingModId = await env.MODS_KV.get(globalSlugKey, { type: 'text' });
-    
+    const existingModId = await indexGetSingle(env.MODS_KV, 'mods', 'by-slug', slug);
     if (existingModId) {
-        // If excludeModId is provided, check if it's the same mod (for updates)
         if (excludeModId && existingModId === excludeModId) {
-            return false; // Same mod, slug is available for this mod
+            return false;
         }
-        return true; // Slug exists for a different mod
+        return true;
     }
-    
-    // CRITICAL: Search ALL customer scopes to ensure global uniqueness
-    const customerSlugPrefix = 'customer_';
-    let cursor: string | undefined;
-    
-    do {
-        const listResult = await env.MODS_KV.list({ prefix: customerSlugPrefix, cursor });
-        
-        for (const key of listResult.keys) {
-            // Look for slug index keys: customer_{id}_slug_{slug}
-            if (key.name.includes(`_slug_${slug}`) || key.name.includes(`/slug_${slug}`)) {
-                const existingModId = await env.MODS_KV.get(key.name, { type: 'text' });
-                
-                if (existingModId) {
-                    // If excludeModId is provided, check if it's the same mod (for updates)
-                    if (excludeModId && existingModId === excludeModId) {
-                        continue; // Same mod, check other scopes
-                    }
-                    return true; // Slug exists for a different mod
-                }
-            }
-        }
-        
-        cursor = listResult.list_complete ? undefined : listResult.cursor;
-    } while (cursor);
-    
     return false;
 }
 
-
-/**
- * Generate unique mod ID
- */
 function generateModId(): string {
     return `mod_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
 }
 
-/**
- * Generate unique version ID
- */
 function generateVersionId(): string {
     return `ver_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
 }
 
-/**
- * Handle upload mod request
- */
 export async function handleUploadMod(
     request: Request,
     env: Env,
-    auth: { customerId: string }
+    auth: { customerId: string; jwtToken?: string }
 ): Promise<Response> {
     try {
-        // Check if uploads are globally enabled
         const { areUploadsEnabled } = await import('../admin/settings.js');
-        const uploadsEnabled = await areUploadsEnabled(env);
-        if (!uploadsEnabled) {
-            const rfcError = createError(request, 503, 'Uploads Disabled', 'Mod uploads are currently disabled globally. Please try again later.');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 503,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        if (!(await areUploadsEnabled(env))) {
+            return errorResponse(request, env, 503, 'Uploads Disabled', 'Uploads are currently disabled');
         }
-        
-        // Check upload quota (uses Authorization Service)
+
+        if (!auth.customerId) {
+            return errorResponse(request, env, 400, 'Missing Customer ID', 'Customer ID is required');
+        }
+
         const quotaCheck = await checkUploadQuota(auth.customerId, env, auth.jwtToken);
         if (!quotaCheck.allowed) {
-            const quotaMessage = `Upload quota exceeded. Limit: ${quotaCheck.limit}, Remaining: ${quotaCheck.remaining}. Resets at ${new Date(quotaCheck.resetAt).toLocaleString()}.`;
-            
-            const rfcError = createError(request, 429, 'Upload Quota Exceeded', quotaMessage);
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 429,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    'X-Quota-Limit': quotaCheck.limit.toString(),
-                    'X-Quota-Remaining': quotaCheck.remaining.toString(),
-                    'X-Quota-Reset': quotaCheck.resetAt,
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 429, 'Upload Quota Exceeded',
+                `Quota exceeded. Resets at ${new Date(quotaCheck.resetAt).toLocaleString()}`);
         }
 
-        // Parse multipart form data
         const formData = await request.formData();
-        let file = formData.get('file') as File | null;
-        
+        const file = formData.get('file') as File | null;
+
         if (!file) {
-            const rfcError = createError(request, 400, 'File Required', 'File is required for mod upload');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 400, 'File Required', 'File is required');
         }
 
-        // Validate file size
         const sizeValidation = validateFileSize(file.size, MAX_MOD_FILE_SIZE);
         if (!sizeValidation.valid) {
-            const rfcError = createError(
-                request,
-                413,
-                'File Too Large',
-                sizeValidation.error || `File size exceeds maximum allowed size of ${MAX_MOD_FILE_SIZE / (1024 * 1024)}MB`
-            );
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 413,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 413, 'File Too Large', sizeValidation.error || 'File too large');
         }
 
-        // Validate file extension
         const { getAllowedFileExtensions } = await import('../admin/settings.js');
         const allowedExtensions = await getAllowedFileExtensions(env);
-        
+
         let originalFileName = file.name;
-        
-        // Remove .encrypted suffix if present to get original filename
         if (originalFileName.endsWith('.encrypted')) {
-            originalFileName = originalFileName.slice(0, -10); // Remove '.encrypted'
-        }
-        
-        // Get file extension
-        const fileExtension = originalFileName.includes('.') 
-            ? originalFileName.substring(originalFileName.lastIndexOf('.'))
-            : '';
-        
-        // Validate extension
-        if (!fileExtension || !allowedExtensions.includes(fileExtension.toLowerCase())) {
-            const rfcError = createError(
-                request, 
-                400, 
-                'Invalid File Type', 
-                `File type "${fileExtension}" is not allowed. Allowed extensions: ${allowedExtensions.join(', ')}`
-            );
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            originalFileName = originalFileName.slice(0, -10);
         }
 
-        // SECURITY: Files are already encrypted by the client
-        // Store encrypted files in R2 as-is (encryption at rest)
-        // Files are decrypted on-the-fly during download
-        // Support both binary encryption (v4) and legacy JSON encryption (v3)
-        
-        // Parse metadata FIRST to determine encryption method
+        const fileExtension = originalFileName.includes('.')
+            ? originalFileName.substring(originalFileName.lastIndexOf('.'))
+            : '';
+
+        if (!fileExtension || !allowedExtensions.includes(fileExtension.toLowerCase())) {
+            return errorResponse(request, env, 400, 'Invalid File Type',
+                `Type "${fileExtension}" not allowed. Allowed: ${allowedExtensions.join(', ')}`);
+        }
+
         const metadataJson = formData.get('metadata') as string | null;
         if (!metadataJson) {
-            const rfcError = createError(request, 400, 'Metadata Required', 'Metadata is required for mod upload');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 400, 'Metadata Required', 'Metadata is required');
         }
 
         const metadata = JSON.parse(metadataJson) as ModUploadRequest;
-        
-        // Validate required fields
+
         if (!metadata.title || !metadata.version || !metadata.category) {
-            const rfcError = createError(request, 400, 'Validation Error', 'Title, version, and category are required');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 400, 'Validation Error', 'Title, version, and category are required');
         }
 
-        // Get shared encryption key for decryption (MANDATORY - all files must be encrypted with shared key)
         const sharedKey = env.MODS_ENCRYPTION_KEY;
-        
         if (!sharedKey || sharedKey.length < 32) {
-            const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 500,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 500, 'Server Configuration Error', 'Encryption key not configured');
         }
-        
-        // Check file format: binary encrypted (v4/v5) or legacy JSON encrypted (v3)
+
         const fileBuffer = await file.arrayBuffer();
         const fileBytes = new Uint8Array(fileBuffer);
-        
-        // Check for binary format (version 4 or 5): first byte should be 4 or 5
+
         const isBinaryEncrypted = fileBytes.length >= 4 && (fileBytes[0] === 4 || fileBytes[0] === 5);
-        const isLegacyEncrypted = file.type === 'application/json' || 
-                                  (fileBytes.length > 0 && fileBytes[0] === 0x7B); // '{' for JSON
-        
-        if (!isBinaryEncrypted && !isLegacyEncrypted) {
-            const rfcError = createError(request, 400, 'File Must Be Encrypted', 'Files must be encrypted before upload for security. Please ensure the file is encrypted.');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        if (!isBinaryEncrypted) {
+            return errorResponse(request, env, 400, 'File Must Be Encrypted', 'Files must be encrypted before upload');
         }
-        
-        // Temporarily decrypt to calculate file hash (for integrity verification)
-        // CRITICAL: Use metadata visibility to determine which decryption method to try first
+
         let fileHash: string;
         let fileSize: number;
         let encryptionFormat: string;
-        
+
         try {
-            if (isBinaryEncrypted) {
-                // Binary encrypted format - Shared key encryption is MANDATORY
-                let decryptedBytes: Uint8Array;
-                try {
-                    decryptedBytes = await decryptBinaryWithSharedKey(fileBytes, sharedKey);
-                    console.log('[Upload] Binary decryption successful with shared key');
-                } catch (decryptError) {
-                    const errorMsg = decryptError instanceof Error ? decryptError.message : String(decryptError);
-                    throw new Error(`Failed to decrypt file with shared key. All files must be encrypted with the shared encryption key. Error: ${errorMsg}`);
-                }
-                
-                fileSize = decryptedBytes.length;
-                fileHash = await calculateStrixunHash(decryptedBytes, env);
-                // Determine version from first byte (4 or 5)
-                encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
-            } else {
-                // Legacy JSON encrypted format - not supported with shared key encryption
-                // All new uploads must use binary format
-                throw new Error('Legacy JSON encryption format is not supported. Please re-upload the file using the latest client version.');
-            }
+            const decryptedBytes = await decryptBinaryWithSharedKey(fileBytes, sharedKey);
+            fileSize = decryptedBytes.length;
+            fileHash = await calculateStrixunHash(decryptedBytes, env);
+            encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
         } catch (error) {
-            console.error('File decryption error during upload:', error);
             const errorMsg = error instanceof Error ? error.message : String(error);
-            const rfcError = createError(request, 400, 'Decryption Failed', `Failed to decrypt uploaded file. All files must be encrypted with the shared encryption key. ${errorMsg}`);
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 400, 'Decryption Failed', `Failed to decrypt: ${errorMsg}`);
         }
 
-        // Metadata already parsed above for encryption detection
-
-        // Generate IDs
         const modId = generateModId();
         const versionId = generateVersionId();
         const now = new Date().toISOString();
 
-        // Generate unique slug
-        // CRITICAL: Check if slug/title already exists - REJECT duplicates, don't auto-increment
         const baseSlug = generateSlug(metadata.title);
         if (!baseSlug) {
-            const rfcError = createError(request, 400, 'Invalid Title', 'Title must contain valid characters for slug generation');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+            return errorResponse(request, env, 400, 'Invalid Title', 'Title must contain valid characters');
         }
-        
-        // Check if slug already exists - reject if it does
-        if (await slugExists(baseSlug, env)) {
-            const rfcError = createError(request, 409, 'Slug Already Exists', `A mod with the title "${metadata.title}" (slug: "${baseSlug}") already exists. Please choose a different title.`);
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 409,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-        
-        const slug = baseSlug; // Use the base slug - no auto-incrementing
 
-        // SECURITY: Store encrypted file in R2 as-is (already encrypted by client)
-        // Files are decrypted on-the-fly during download
-        // Get extension without dot for R2 key (fileExtension already includes the dot)
-        const extensionForR2 = fileExtension ? fileExtension.substring(1) : 'zip';
-        // Use modId directly for R2 key - it already includes 'mod_' prefix
-        const r2Key = getCustomerR2Key(auth.customerId, `mods/${modId}/${versionId}.${extensionForR2}`);
-        
-        // Store encrypted file data as-is (binary or JSON format)
-        let encryptedFileBytes: Uint8Array;
-        let contentType: string;
-        
-        if (isBinaryEncrypted) {
-            // Binary encrypted format - store directly
-            encryptedFileBytes = fileBytes;
-            contentType = 'application/octet-stream';
-        } else {
-            // Legacy JSON encrypted format
-            const encryptedData = await file.text();
-            encryptedFileBytes = new TextEncoder().encode(encryptedData);
-            contentType = 'application/json';
+        if (await slugExists(baseSlug, env)) {
+            return errorResponse(request, env, 409, 'Slug Already Exists',
+                `A mod with slug "${baseSlug}" already exists. Choose a different title.`);
         }
-        
-        // Add R2 source metadata to track storage location
-        const r2SourceInfo = getR2SourceInfo(env, request);
-        console.log('[Upload] R2 storage source:', r2SourceInfo);
-        
-        await env.MODS_R2.put(r2Key, encryptedFileBytes, {
+
+        const slug = baseSlug;
+
+        // Upload file to R2
+        const extensionForR2 = fileExtension ? fileExtension.substring(1) : 'zip';
+        const r2Key = `mods/${modId}/${versionId}.${extensionForR2}`;
+
+        await env.MODS_R2.put(r2Key, fileBytes, {
             httpMetadata: {
-                contentType: contentType,
-                cacheControl: 'private, no-cache', // Don't cache encrypted files
+                contentType: 'application/octet-stream',
+                cacheControl: 'private, no-cache',
             },
             customMetadata: addR2SourceMetadata({
                 modId,
                 versionId,
                 uploadedBy: auth.customerId,
                 uploadedAt: now,
-                encrypted: 'true', // Mark as encrypted
-                encryptionFormat: encryptionFormat, // 'binary-v4' or 'json-v3'
+                encrypted: 'true',
+                encryptionFormat,
                 originalFileName,
-                originalContentType: file.type || 'application/octet-stream', // Use actual file type from upload
-                sha256: fileHash, // Hash of decrypted file for verification
+                originalContentType: file.type || 'application/octet-stream',
+                sha256: fileHash,
             }, env, request),
         });
 
-        // Generate download URL
-        const downloadUrl = env.MODS_PUBLIC_URL 
+        const downloadUrl = env.MODS_PUBLIC_URL
             ? `${env.MODS_PUBLIC_URL}/${r2Key}`
-            : `https://pub-${(env.MODS_R2 as any).id}.r2.dev/${r2Key}`;
+            : r2Key;
 
-        // Create version metadata
         const version: ModVersion = {
             versionId,
             modId,
             version: metadata.version,
             changelog: metadata.changelog || '',
-            fileSize: fileSize, // Use calculated size from decrypted data
-            fileName: originalFileName, // Use original filename (without .encrypted)
+            fileSize,
+            fileName: originalFileName,
             r2Key,
             downloadUrl,
-            sha256: fileHash, // Store hash for verification
+            sha256: fileHash,
             createdAt: now,
             downloads: 0,
             gameVersions: metadata.gameVersions || [],
             dependencies: metadata.dependencies || [],
         };
 
-        // Upload thumbnail first (before creating mod metadata) so we can use the slug
-        // Support both binary file upload (preferred) and legacy base64
-        // CRITICAL: Thumbnails must NEVER be encrypted - they are public images
-        const thumbnailFile = formData.get('thumbnail') as File | null;
+        // Handle thumbnail
         let thumbnailUrl: string | undefined;
         let thumbnailExtension: string | undefined;
-        
+
+        const thumbnailFile = formData.get('thumbnail') as File | null;
         if (thumbnailFile) {
-            // CRITICAL: Verify thumbnail is NOT encrypted before processing
-            // Thumbnails are public images and must be unencrypted
-            const thumbnailBuffer = new Uint8Array(await thumbnailFile.arrayBuffer());
-            if (thumbnailBuffer.length >= 4 && (thumbnailBuffer[0] === 4 || thumbnailBuffer[0] === 5)) {
-                const rfcError = createError(request, 400, 'Invalid Thumbnail', 'Thumbnail file appears to be encrypted. Thumbnails must be unencrypted image files (PNG, JPEG, GIF, or WebP). Please upload the original image file without encryption.');
-                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
-                return new Response(JSON.stringify(rfcError), {
-                    status: 400,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
-            }
-            
-            // Binary file upload (optimized - no base64 overhead)
-            thumbnailUrl = await handleThumbnailBinaryUpload(thumbnailFile, modId, slug, request, env, auth.customerId);
-            console.log('[Upload] Thumbnail uploaded successfully:', { thumbnailUrl, modId, slug });
-            // CRITICAL FIX: Extract extension from file type for faster lookup
-            const imageType = thumbnailFile.type.split('/')[1]?.toLowerCase();
-            thumbnailExtension = imageType === 'jpeg' ? 'jpg' : imageType; // Normalize jpeg to jpg
-            console.log('[Upload] Thumbnail extension stored:', { extension: thumbnailExtension });
+            const result = await handleThumbnailUpload(thumbnailFile, modId, slug, request, env);
+            thumbnailUrl = result.url;
+            thumbnailExtension = result.extension;
         } else if (metadata.thumbnail) {
-            // Legacy base64 upload (backward compatibility)
-            thumbnailUrl = await handleThumbnailUpload(metadata.thumbnail, modId, slug, request, env, auth.customerId);
-            console.log('[Upload] Thumbnail (base64) uploaded successfully:', { thumbnailUrl, modId, slug });
-            // CRITICAL FIX: Extract extension from base64 data URL for faster lookup
-            const matches = metadata.thumbnail.match(/^data:image\/(\w+);base64,/);
-            if (matches) {
-                const imageType = matches[1]?.toLowerCase();
-                thumbnailExtension = imageType === 'jpeg' ? 'jpg' : imageType; // Normalize jpeg to jpg
-                console.log('[Upload] Thumbnail extension stored:', { extension: thumbnailExtension });
-            }
+            const result = await handleBase64ThumbnailUpload(metadata.thumbnail, modId, slug, request, env);
+            thumbnailUrl = result.url;
+            thumbnailExtension = result.extension;
         }
 
-        // Get author display name - prefer from metadata (passed from auth store) to avoid extra API call
+        // Fetch display name
         let authorDisplayName: string | null = metadata.displayName || null;
-        
-        if (authorDisplayName) {
-            console.log('[Upload] Using displayName from request metadata:', { 
-                authorDisplayName, 
-                customerId: auth.customerId
-            });
-        } else if (auth.customerId) {
-            // Fallback: fetch from Customer API if not provided in metadata
+        if (!authorDisplayName && auth.customerId) {
             const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
-            console.log('[Upload] Fetching authorDisplayName from customer data (not in metadata):', { 
-                customerId: auth.customerId
-            });
             authorDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
-            
-            if (authorDisplayName) {
-                console.log('[Upload] Successfully fetched authorDisplayName from customer data:', { 
-                    authorDisplayName, 
-                    customerId: auth.customerId
-                });
-            } else {
-                console.warn('[Upload] Could not fetch displayName from customer data:', {
-                    customerId: auth.customerId
-                });
-            }
-        }
-        
-        if (!authorDisplayName) {
-            console.warn('[Upload] authorDisplayName is null - UI will show "Unknown User":', {
-                customerId: auth.customerId,
-                metadataDisplayName: metadata.displayName
-            });
         }
 
-        // CRITICAL: Validate customerId is present before storing mod
-        // This ensures proper data scoping and display name lookups
-        // customerId is REQUIRED - reject uploads without it
-        if (!auth.customerId) {
-            console.error('[Upload] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
-                note: 'Rejecting upload - customerId is required for data scoping and display name lookups'
-            });
-            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod uploads. Please ensure your account has a valid customer association.');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-        
-        // Create mod metadata with initial status
-        // CRITICAL: Never store email - email is ONLY for OTP authentication
-        // CRITICAL: authorDisplayName is fetched dynamically - stored value is fallback only
-        // Display names are always fetched fresh from auth API to support customer name changes
         const mod: ModMetadata = {
             modId,
             slug,
-            authorId: auth.customerId, // userId from OTP auth service (used for display name lookups)
-            authorDisplayName, // Display name fetched dynamically (fallback only - always fetch fresh)
+            authorId: auth.customerId,
+            authorDisplayName,
             title: metadata.title,
+            summary: metadata.summary || undefined,
             description: metadata.description || '',
             category: metadata.category,
             tags: metadata.tags || [],
             thumbnailUrl,
-            thumbnailExtension, // Store extension for faster lookup
+            thumbnailExtension,
             createdAt: now,
             updatedAt: now,
             latestVersion: metadata.version,
             downloadCount: 0,
             visibility: metadata.visibility || 'public',
             featured: false,
-            customerId: auth.customerId, // Customer ID for data scoping (REQUIRED)
-            status: 'pending', // New mods start as pending review
+            customerId: auth.customerId,
+            status: 'pending',
             statusHistory: [{
                 status: 'pending',
                 changedBy: auth.customerId,
-                changedByDisplayName: authorDisplayName, // Use displayName, never email
+                changedByDisplayName: authorDisplayName,
                 changedAt: now,
             }],
             reviewComments: [],
         };
 
-        // Store in KV
-        // Use modId directly - it already includes 'mod_' prefix
-        // CRITICAL FIX: Log customerId association for debugging
-        const modKey = getCustomerKey(auth.customerId, modId);
-        const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
-        const versionsListKey = getCustomerKey(auth.customerId, `${modId}_versions`);
-        const modsListKey = getCustomerKey(auth.customerId, 'mods_list');
-        
-        console.log('[Upload] Storing mod with customerId association:', {
-            modId,
-            customerId: auth.customerId,
-            modKey,
-            versionKey,
-            versionsListKey,
-            modsListKey,
-            authorId: auth.customerId,
-            authorDisplayName,
-            thumbnailUrl: mod.thumbnailUrl,
-            thumbnailExtension: mod.thumbnailExtension
-        });
+        // Store entities
+        await putEntity(env.MODS_KV, 'mods', 'mod', modId, mod);
+        await putEntity(env.MODS_KV, 'mods', 'version', versionId, version);
 
-        // Store mod and version in customer scope
-        await env.MODS_KV.put(modKey, JSON.stringify(mod));
-        await env.MODS_KV.put(versionKey, JSON.stringify(version));
+        // Update indexes
+        await indexAdd(env.MODS_KV, 'mods', 'versions-for', modId, versionId);
+        await indexAdd(env.MODS_KV, 'mods', 'by-customer', auth.customerId, modId);
+        await indexSetSingle(env.MODS_KV, 'mods', 'by-slug', slug, modId);
 
-        // NOTE: Do NOT store in global scope yet - mods start as 'pending' status
-        // They will only be stored in global scope when an admin changes status to 'published'
-        // This ensures pending mods are not visible to the public, even if visibility is 'public'
-
-        // Add version to mod's version list
-        const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
-        const updatedVersionsList = [...(versionsList || []), versionId];
-        await env.MODS_KV.put(versionsListKey, JSON.stringify(updatedVersionsList));
-
-        // Add mod to customer-specific list (for management)
-        const modsList = await env.MODS_KV.get(modsListKey, { type: 'json' }) as string[] | null;
-        const updatedModsList = [...(modsList || []), modId];
-        await env.MODS_KV.put(modsListKey, JSON.stringify(updatedModsList));
-
-        // CRITICAL: Create slug index - slug is a unique index key
-        // Store slug -> modId mapping in customer scope
-        const customerSlugIndexKey = getCustomerKey(auth.customerId, `slug_${slug}`);
-        await env.MODS_KV.put(customerSlugIndexKey, modId);
-        console.log('[Upload] Created slug index:', { slug, modId, customerSlugIndexKey });
-
-        // CRITICAL: Also create global slug index if mod is public and approved/published
-        // This allows slug resolution to work immediately for public mods
-        // Note: If customerId is null, getCustomerKey already returns the global format, so this is a no-op
-        const modVisibility = mod.visibility || 'public';
-        const modStatus = mod.status || 'pending';
-        if (modVisibility === 'public' && (modStatus === 'published' || modStatus === 'approved')) {
-            const globalSlugKey = `slug_${slug}`;
-            // Only create if different from customer key (i.e., customerId is not null)
-            if (globalSlugKey !== customerSlugIndexKey) {
-                await env.MODS_KV.put(globalSlugKey, modId);
-                console.log('[Upload] Created global slug index:', { slug, modId, globalSlugKey });
-            }
+        if (mod.visibility === 'public' && (mod.status === 'published' || mod.status === 'approved')) {
+            await indexAdd(env.MODS_KV, 'mods', 'by-visibility', 'public', modId);
         }
-        
-        // NOTE: Do NOT add to global public list yet - mods start as 'pending' status
-        // They will only be added to the public list when an admin changes status to 'published'
-        // This ensures pending mods are not visible to the public, even if visibility is 'public'
 
-        // Track successful upload
         await trackUpload(auth.customerId, env, auth.jwtToken);
 
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
-        return new Response(JSON.stringify({
-            mod,
-            version
-        }), {
+        return new Response(JSON.stringify({ mod, version }), {
             status: 201,
-            headers: {
-                'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
+            headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
         });
     } catch (error: any) {
         console.error('Upload mod error:', error);
-        const rfcError = createError(
-            request,
-            500,
-            'Failed to Upload Mod',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while uploading the mod'
+        return errorResponse(
+            request, env, 500, 'Failed to Upload Mod',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred'
         );
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
-        return new Response(JSON.stringify(rfcError), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
     }
 }
 
-/**
- * Get image extension from MIME type
- */
-function getImageExtension(mimeType: string): string {
-    const mimeToExt: Record<string, string> = {
-        'image/jpeg': 'jpg',
-        'image/jpg': 'jpg',
-        'image/png': 'png',
-        'image/gif': 'gif',
-        'image/webp': 'webp',
-    };
-    return mimeToExt[mimeType.toLowerCase()] || 'png';
-}
-
-/**
- * Handle thumbnail upload (binary file to R2)
- * Validates image format and ensures it's renderable
- * Optimized version - no base64 overhead
- */
-async function handleThumbnailBinaryUpload(
+async function handleThumbnailUpload(
     thumbnailFile: File,
     modId: string,
     slug: string,
     request: Request,
-    env: Env,
-    customerId: string | null
-): Promise<string> {
-    try {
-        // Validate file type
-        if (!thumbnailFile.type.startsWith('image/')) {
-            throw new Error('File must be an image');
-        }
-        
-        // Check file size
-        const thumbnailSizeValidation = validateFileSize(thumbnailFile.size, MAX_THUMBNAIL_SIZE);
-        if (!thumbnailSizeValidation.valid) {
-            throw new Error(thumbnailSizeValidation.error || `Thumbnail file size must be less than ${MAX_THUMBNAIL_SIZE / (1024 * 1024)}MB`);
-        }
-        
-        // Validate image type (only allow common web-safe formats)
-        const allowedTypes = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
-        const imageType = thumbnailFile.type.split('/')[1]?.toLowerCase();
-        if (!imageType || !allowedTypes.includes(imageType)) {
-            throw new Error(`Unsupported image type: ${imageType}. Allowed types: ${allowedTypes.join(', ')}`);
-        }
-        
-        // Read file as binary
-        const imageBuffer = new Uint8Array(await thumbnailFile.arrayBuffer());
-        
-        // Basic validation: Check minimum file size (at least 100 bytes)
-        if (imageBuffer.length < 100) {
-            throw new Error('Image file is too small or corrupted');
-        }
-        
-        // Validate image headers for common formats
-        // JPEG: FF D8 FF
-        // PNG: 89 50 4E 47
-        // GIF: 47 49 46 38
-        // WebP: 52 49 46 46 (RIFF) followed by WEBP
-        const isValidImage = 
-            (imageType === 'jpeg' || imageType === 'jpg') && imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8 && imageBuffer[2] === 0xFF ||
-            imageType === 'png' && imageBuffer[0] === 0x89 && imageBuffer[1] === 0x50 && imageBuffer[2] === 0x4E && imageBuffer[3] === 0x47 ||
-            imageType === 'gif' && imageBuffer[0] === 0x47 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46 && imageBuffer[3] === 0x38 ||
-            imageType === 'webp' && imageBuffer[0] === 0x52 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46 && imageBuffer[3] === 0x46;
-        
-        if (!isValidImage) {
-            // Log diagnostic information to help debug
-            console.error('[Thumbnail] Invalid image format detected:', {
-                imageType,
-                fileName: thumbnailFile.name,
-                fileType: thumbnailFile.type,
-                fileSize: thumbnailFile.size,
-                bufferLength: imageBuffer.length,
-                firstBytes: Array.from(imageBuffer.slice(0, 8)).map(b => `0x${b.toString(16).padStart(2, '0')}`).join(' '),
-                expectedPNG: '0x89 0x50 0x4e 0x47',
-                expectedJPEG: '0xff 0xd8 0xff',
-                expectedGIF: '0x47 0x49 0x46 0x38',
-                expectedWebP: '0x52 0x49 0x46 0x46',
-            });
-            throw new Error(`Invalid ${imageType} image format - file may be corrupted or not a valid image. First bytes: ${Array.from(imageBuffer.slice(0, 4)).map(b => `0x${b.toString(16).padStart(2, '0')}`).join(' ')}`);
-        }
-        
-        // Upload to R2
-        // Use modId directly - it already includes 'mod_' prefix
-        const extension = getImageExtension(thumbnailFile.type);
-        const r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.${extension}`);
-        
-        // Add R2 source metadata
-        const r2SourceInfo = getR2SourceInfo(env, request);
-        console.log('[Upload] Thumbnail R2 storage source:', r2SourceInfo);
-        
-        await env.MODS_R2.put(r2Key, imageBuffer, {
-            httpMetadata: {
-                contentType: thumbnailFile.type,
-                cacheControl: 'public, max-age=31536000',
-            },
-            customMetadata: addR2SourceMetadata({
-                modId,
-                extension: extension,
-                validated: 'true', // Mark as validated for rendering
-            }, env, request),
-        });
-        
-        // CRITICAL FIX: Store extension in mod metadata for faster lookup
-        // This avoids trying multiple extensions during retrieval
-        console.log('[Upload] Thumbnail uploaded with extension:', { modId, extension, r2Key });
-        
-        // Return API proxy URL using slug for consistency
-        // In dev, use localhost:8788 (mods-api worker port)
-        // In production, use MODS_PUBLIC_URL if set, otherwise derive from request
-        const requestUrl = new URL(request.url);
-        let API_BASE_URL: string;
-        if (env.ENVIRONMENT === 'development') {
-            // Force localhost in dev - request.url has proxy target hostname
-            API_BASE_URL = 'http://localhost:8788';
-        } else {
-            API_BASE_URL = env.MODS_PUBLIC_URL || `${requestUrl.protocol}//${requestUrl.host}`;
-        }
-        return `${API_BASE_URL}/mods/${slug}/thumbnail`;
-    } catch (error) {
-        console.error('Thumbnail binary upload error:', error);
-        throw error;
+    env: Env
+): Promise<{ url: string; extension: string }> {
+    if (!thumbnailFile.type.startsWith('image/')) {
+        throw new Error('File must be an image');
     }
+
+    const sizeValidation = validateFileSize(thumbnailFile.size, MAX_THUMBNAIL_SIZE);
+    if (!sizeValidation.valid) {
+        throw new Error(sizeValidation.error || 'Thumbnail too large');
+    }
+
+    const allowedTypes = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
+    const imageType = thumbnailFile.type.split('/')[1]?.toLowerCase();
+    if (!imageType || !allowedTypes.includes(imageType)) {
+        throw new Error(`Unsupported image type: ${imageType}`);
+    }
+
+    const imageBuffer = new Uint8Array(await thumbnailFile.arrayBuffer());
+    if (imageBuffer.length < 100) {
+        throw new Error('Image file too small or corrupted');
+    }
+
+    // Validate headers
+    const isValid =
+        ((imageType === 'jpeg' || imageType === 'jpg') && imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8) ||
+        (imageType === 'png' && imageBuffer[0] === 0x89 && imageBuffer[1] === 0x50) ||
+        (imageType === 'gif' && imageBuffer[0] === 0x47 && imageBuffer[1] === 0x49) ||
+        (imageType === 'webp' && imageBuffer[0] === 0x52 && imageBuffer[1] === 0x49);
+
+    if (!isValid) {
+        throw new Error(`Invalid ${imageType} image format`);
+    }
+
+    const extension = imageType === 'jpeg' ? 'jpg' : imageType;
+    const r2Key = `thumbnails/${modId}.${extension}`;
+
+    await env.MODS_R2.put(r2Key, imageBuffer, {
+        httpMetadata: {
+            contentType: thumbnailFile.type,
+            cacheControl: 'public, max-age=31536000',
+        },
+        customMetadata: addR2SourceMetadata({
+            modId,
+            extension,
+            validated: 'true',
+        }, env, request),
+    });
+
+    const requestUrl = new URL(request.url);
+    const API_BASE_URL = env.ENVIRONMENT === 'development'
+        ? 'http://localhost:8788'
+        : (env.MODS_PUBLIC_URL || `${requestUrl.protocol}//${requestUrl.host}`);
+
+    return { url: `${API_BASE_URL}/mods/${slug}/thumbnail`, extension };
 }
 
-/**
- * Handle thumbnail upload (base64 to R2) - Legacy support
- * Validates image format and ensures it's renderable
- */
-async function handleThumbnailUpload(
+async function handleBase64ThumbnailUpload(
     base64Data: string,
     modId: string,
     slug: string,
     request: Request,
-    env: Env,
-    customerId: string | null
-): Promise<string> {
-    try {
-        // Parse base64 data URL
-        const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (!matches) {
-            throw new Error('Invalid base64 image data');
-        }
-
-        const [, imageType, base64Content] = matches;
-        
-        // Validate image type (only allow common web-safe formats)
-        const allowedTypes = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
-        const normalizedType = imageType.toLowerCase();
-        if (!allowedTypes.includes(normalizedType)) {
-            throw new Error(`Unsupported image type: ${imageType}. Allowed types: ${allowedTypes.join(', ')}`);
-        }
-
-        // Decode base64 to binary
-        const imageBuffer = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
-        
-        // Basic validation: Check minimum file size (at least 100 bytes)
-        if (imageBuffer.length < 100) {
-            throw new Error('Image file is too small or corrupted');
-        }
-
-        // Validate image headers for common formats
-        // JPEG: FF D8 FF
-        // PNG: 89 50 4E 47
-        // GIF: 47 49 46 38
-        // WebP: 52 49 46 46 (RIFF) followed by WEBP
-        const isValidImage = 
-            (normalizedType === 'jpeg' || normalizedType === 'jpg') && imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8 && imageBuffer[2] === 0xFF ||
-            normalizedType === 'png' && imageBuffer[0] === 0x89 && imageBuffer[1] === 0x50 && imageBuffer[2] === 0x4E && imageBuffer[3] === 0x47 ||
-            normalizedType === 'gif' && imageBuffer[0] === 0x47 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46 && imageBuffer[3] === 0x38 ||
-            normalizedType === 'webp' && imageBuffer[0] === 0x52 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46 && imageBuffer[3] === 0x46;
-
-        if (!isValidImage) {
-            throw new Error(`Invalid ${imageType} image format - file may be corrupted or not a valid image`);
-        }
-
-        // Upload to R2
-        // Use modId directly - it already includes 'mod_' prefix
-        const r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.${normalizedType}`);
-        
-        // Add R2 source metadata
-        const r2SourceInfo = getR2SourceInfo(env, request);
-        console.log('[Upload] Thumbnail (base64) R2 storage source:', r2SourceInfo);
-        
-        await env.MODS_R2.put(r2Key, imageBuffer, {
-            httpMetadata: {
-                contentType: `image/${normalizedType}`,
-                cacheControl: 'public, max-age=31536000',
-            },
-            customMetadata: addR2SourceMetadata({
-                modId,
-                extension: normalizedType, // Store extension for easy retrieval
-                validated: 'true', // Mark as validated for rendering
-            }, env, request),
-        });
-
-        // Return API proxy URL using slug for consistency (thumbnails should be served through API, not direct R2)
-        // Slug is passed as parameter to avoid race condition (mod not stored yet)
-        // In dev, use localhost:8788 (mods-api worker port)
-        // In production, use MODS_PUBLIC_URL if set, otherwise derive from request
-        const requestUrl = new URL(request.url);
-        let API_BASE_URL: string;
-        if (env.ENVIRONMENT === 'development') {
-            // Force localhost in dev - request.url has proxy target hostname
-            API_BASE_URL = 'http://localhost:8788';
-        } else {
-            API_BASE_URL = env.MODS_PUBLIC_URL || `${requestUrl.protocol}//${requestUrl.host}`;
-        }
-        return `${API_BASE_URL}/mods/${slug}/thumbnail`;
-    } catch (error) {
-        console.error('Thumbnail upload error:', error);
-        throw error;
+    env: Env
+): Promise<{ url: string; extension: string }> {
+    const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!matches) {
+        throw new Error('Invalid base64 image data');
     }
+
+    const [, imageType, base64Content] = matches;
+    const normalizedType = imageType.toLowerCase();
+    const allowedTypes = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
+    if (!allowedTypes.includes(normalizedType)) {
+        throw new Error(`Unsupported image type: ${imageType}`);
+    }
+
+    const imageBuffer = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
+    if (imageBuffer.length < 100) {
+        throw new Error('Image too small or corrupted');
+    }
+
+    const extension = normalizedType === 'jpeg' ? 'jpg' : normalizedType;
+    const r2Key = `thumbnails/${modId}.${extension}`;
+
+    await env.MODS_R2.put(r2Key, imageBuffer, {
+        httpMetadata: {
+            contentType: `image/${normalizedType}`,
+            cacheControl: 'public, max-age=31536000',
+        },
+        customMetadata: addR2SourceMetadata({
+            modId,
+            extension,
+            validated: 'true',
+        }, env, request),
+    });
+
+    const requestUrl = new URL(request.url);
+    const API_BASE_URL = env.ENVIRONMENT === 'development'
+        ? 'http://localhost:8788'
+        : (env.MODS_PUBLIC_URL || `${requestUrl.protocol}//${requestUrl.host}`);
+
+    return { url: `${API_BASE_URL}/mods/${slug}/thumbnail`, extension };
 }
 
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+    const headers = createCORSHeaders(request, {
+        credentials: true,
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    });
+    return Object.fromEntries(headers.entries());
+}
+
+function errorResponse(request: Request, env: Env, status: number, title: string, detail: string): Response {
+    const rfcError = createError(request, status, title, detail);
+    return new Response(JSON.stringify(rfcError), {
+        status,
+        headers: { 'Content-Type': 'application/problem+json', ...corsHeaders(request, env) },
+    });
+}

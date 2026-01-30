@@ -1,10 +1,13 @@
 /**
  * API Key service
  * API key generation, hashing, verification, and management
+ * 
+ * Uses kv-entities pattern for consistent key management.
  */
 
 import { generateApiKey as generateKey, hashApiKey as hashApiKeyUtil, encryptData, decryptData, getJWTSecret } from '../utils/crypto.js';
 import { getCustomer } from './customer.js';
+import { getEntity, putEntity, indexGet, indexAdd } from '@strixun/kv-entities';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -125,6 +128,9 @@ export async function hashApiKey(apiKey: string): Promise<string> {
 
 /**
  * Create API key for customer
+ * 
+ * Generates a new API key, stores it encrypted, and adds it to the customer's key list.
+ * 
  * @param customerId - Customer ID
  * @param name - API key name
  * @param env - Worker environment
@@ -171,41 +177,22 @@ export async function createApiKeyForCustomer(
         ssoConfig: defaultSsoConfig // Initialize with global SSO enabled
     };
     
-    const apiKeyKey = `apikey_${apiKeyHash}`;
-    await env.OTP_AUTH_KV.put(apiKeyKey, JSON.stringify(apiKeyData));
+    // Store API key entity using hash as ID
+    await putEntity(env.OTP_AUTH_KV, 'auth', 'apikey', apiKeyHash, apiKeyData);
     
     // CRITICAL: Verify the key was stored correctly (for debugging)
-    const verifyStored = await env.OTP_AUTH_KV.get(apiKeyKey, { type: 'json' }) as ApiKeyData | null;
+    const verifyStored = await getEntity<ApiKeyData>(env.OTP_AUTH_KV, 'auth', 'apikey', apiKeyHash);
     if (!verifyStored) {
         console.error(`[ApiKeyService] CRITICAL: API key was not stored correctly!`, {
-            apiKeyKey: apiKeyKey.substring(0, 50) + '...',
             hashPrefix: apiKeyHash.substring(0, 16) + '...',
             customerId,
             keyId
         });
         throw new Error('Failed to store API key in KV');
     }
-    // console.log(`[ApiKeyService] API key stored successfully:`, {
-    //     keyId,
-    //     customerId,
-    //     hashPrefix: apiKeyHash.substring(0, 16) + '...',
-    //     lookupKey: apiKeyKey.substring(0, 50) + '...'
-    // });
     
-    // Also store key ID to hash mapping for customer (with encrypted key and SSO config)
-    const customerApiKeysKey = `customer_${customerId}_apikeys`;
-    const existingKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) as ApiKeyData[] | null || [];
-    existingKeys.push({
-        customerId,
-        keyId,
-        name: apiKeyData.name,
-        createdAt: apiKeyData.createdAt,
-        lastUsed: null,
-        status: 'active',
-        encryptedKey, // Store encrypted key for retrieval
-        ssoConfig: defaultSsoConfig // Store SSO config for management UI
-    });
-    await env.OTP_AUTH_KV.put(customerApiKeysKey, JSON.stringify(existingKeys));
+    // Add key to customer's API keys index
+    await indexAdd(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId, JSON.stringify(apiKeyData));
     
     // Return the original (untrimmed) API key to the caller
     // The hash is based on the trimmed version for consistency
@@ -214,6 +201,9 @@ export async function createApiKeyForCustomer(
 
 /**
  * Verify API key and get customer ID
+ * 
+ * Validates the API key, checks customer status, and returns verification info.
+ * 
  * @param apiKey - API key
  * @param env - Worker environment
  * @returns Customer ID and key ID or null
@@ -225,54 +215,23 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     
     // Validate API key format before attempting lookup
     if (!trimmedApiKey.startsWith('otp_live_sk_') && !trimmedApiKey.startsWith('otp_test_sk_')) {
-        // console.log(`[ApiKeyService] Invalid API key format: ${trimmedApiKey.substring(0, 20)}...`);
         return null;
     }
     
     const apiKeyHash = await hashApiKeyUtil(trimmedApiKey);
-    const apiKeyKey = `apikey_${apiKeyHash}`;
-    
-    // DEBUG: Log the lookup attempt
-    // console.log(`[ApiKeyService] Verifying API key:`, {
-    //     apiKeyPrefix: trimmedApiKey.substring(0, 30) + '...',
-    //     hashPrefix: apiKeyHash.substring(0, 16) + '...',
-    //     lookupKey: apiKeyKey.substring(0, 50) + '...',
-    //     apiKeyLength: trimmedApiKey.length
-    // });
-    
-    const keyData = await env.OTP_AUTH_KV.get(apiKeyKey, { type: 'json' }) as ApiKeyData | null;
+    const keyData = await getEntity<ApiKeyData>(env.OTP_AUTH_KV, 'auth', 'apikey', apiKeyHash);
     
     if (!keyData) {
-        // Try to list all keys with similar prefix to debug
-        // console.log(`[ApiKeyService] API key not found in KV:`, {
-        //     apiKeyPrefix: trimmedApiKey.substring(0, 30) + '...',
-        //     hashPrefix: apiKeyHash.substring(0, 16) + '...',
-        //     lookupKey: apiKeyKey.substring(0, 50) + '...',
-        //     reason: 'Key may not exist in KV or hash mismatch',
-        //     apiKeyLength: trimmedApiKey.length,
-        //     apiKeyFirstChars: trimmedApiKey.substring(0, 20),
-        //     apiKeyLastChars: trimmedApiKey.substring(Math.max(0, trimmedApiKey.length - 10))
-        // });
         return null;
     }
     
     if (keyData.status !== 'active') {
-        // console.log(`[ApiKeyService] API key is not active: status=${keyData.status}, keyId=${keyData.keyId}`);
         return null;
     }
     
     // Update last used timestamp
     keyData.lastUsed = new Date().toISOString();
-    await env.OTP_AUTH_KV.put(apiKeyKey, JSON.stringify(keyData));
-    
-    // Also update in customer's key list
-    const customerApiKeysKey = `customer_${keyData.customerId}_apikeys`;
-    const customerKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) as ApiKeyData[] | null || [];
-    const keyIndex = customerKeys.findIndex(k => k.keyId === keyData.keyId);
-    if (keyIndex >= 0) {
-        customerKeys[keyIndex].lastUsed = keyData.lastUsed;
-        await env.OTP_AUTH_KV.put(customerApiKeysKey, JSON.stringify(customerKeys));
-    }
+    await putEntity(env.OTP_AUTH_KV, 'auth', 'apikey', apiKeyHash, keyData);
     
     // Check if customer exists and is active
     const customer = await getCustomer(keyData.customerId, env);
@@ -282,26 +241,28 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     
     // Only allow active customers
     if (customer.status !== 'active') {
-        // console.log(`[ApiKeyService] Customer is not active:`, {
-        //     customerId: keyData.customerId,
-        //     keyId: keyData.keyId,
-        //     status: customer.status,
-        //     reason: 'Customer account is not active'
-        // });
         return null;
     }
-    
-    // console.log(`[ApiKeyService] API key verification successful:`, {
-    //     customerId: keyData.customerId,
-    //     keyId: keyData.keyId,
-    //     apiKeyPrefix: trimmedApiKey.substring(0, 20) + '...'
-    // });
     
     return {
         customerId: keyData.customerId,
         keyId: keyData.keyId,
         ssoConfig: keyData.ssoConfig // Return SSO config for session validation
     };
+}
+
+/**
+ * Get all API keys for a customer
+ * 
+ * Retrieves all API keys from the customer's index.
+ * 
+ * @param customerId - Customer ID
+ * @param env - Worker environment
+ * @returns Array of API key data
+ */
+export async function getApiKeysForCustomer(customerId: string, env: Env): Promise<ApiKeyData[]> {
+    const keyDataStrings = await indexGet(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId);
+    return keyDataStrings.map(s => JSON.parse(s) as ApiKeyData);
 }
 
 // Export types for use in other modules

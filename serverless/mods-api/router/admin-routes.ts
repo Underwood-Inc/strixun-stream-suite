@@ -222,46 +222,55 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             });
         }
 
-        // Route: POST /admin/migrate/dry-run - Run migration analysis (no changes)
-        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'migrate' && pathSegments[2] === 'dry-run' && request.method === 'POST') {
-            const { dryRunVariantMigration } = await import('../scripts/migrate-variants-to-versions.js');
-            const stats = await dryRunVariantMigration(env);
-            const corsHeaders = getCorsHeaders(env, request);
-            const headers: Record<string, string> = {};
-            corsHeaders.forEach((value, key) => {
-                headers[key] = value;
+        // ===== KV Browser Routes =====
+
+        // Route: GET /admin/kv/keys - List KV keys
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'kv' && pathSegments[2] === 'keys' && request.method === 'GET') {
+            const { handleListKVKeys } = await import('../handlers/admin/kv-browser.js');
+            const response = await handleListKVKeys(request, env, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
             });
-            return {
-                response: new Response(JSON.stringify(stats, null, 2), {
-                    status: 200,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...headers
-                    }
-                }),
-                customerId: null
-            };
         }
 
-        // Route: POST /admin/migrate/run - Execute actual migration
-        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'migrate' && pathSegments[2] === 'run' && request.method === 'POST') {
-            const { migrateAllVariantsToVersions } = await import('../scripts/migrate-variants-to-versions.js');
-            const stats = await migrateAllVariantsToVersions(env);
-            const corsHeaders = getCorsHeaders(env, request);
-            const headers: Record<string, string> = {};
-            corsHeaders.forEach((value, key) => {
-                headers[key] = value;
+        // Route: GET /admin/kv/prefixes - Get KV key prefixes for navigation
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'kv' && pathSegments[2] === 'prefixes' && request.method === 'GET') {
+            const { handleGetKVPrefixes } = await import('../handlers/admin/kv-browser.js');
+            const response = await handleGetKVPrefixes(request, env, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
             });
-            return {
-                response: new Response(JSON.stringify(stats, null, 2), {
-                    status: 200,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...headers
-                    }
-                }),
-                customerId: null
-            };
+        }
+
+        // Route: GET /admin/kv/keys/:encodedKey - Get single KV key value
+        if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'kv' && pathSegments[2] === 'keys' && request.method === 'GET') {
+            const encodedKey = pathSegments[3];
+            const { handleGetKVValue } = await import('../handlers/admin/kv-browser.js');
+            const response = await handleGetKVValue(request, env, encodedKey, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // ===== Entity Browser Routes =====
+
+        // Route: GET /admin/entities/mods - List all mods with counts
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'entities' && pathSegments[2] === 'mods' && request.method === 'GET') {
+            const { handleListModEntities } = await import('../handlers/admin/entities.js');
+            const response = await handleListModEntities(request, env, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: GET /admin/entities/mods/:modId - Get mod entity detail
+        if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'entities' && pathSegments[2] === 'mods' && request.method === 'GET') {
+            const modId = pathSegments[3];
+            const { handleGetModEntityDetail } = await import('../handlers/admin/entities.js');
+            const response = await handleGetModEntityDetail(request, env, modId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
         }
 
         // 404 for unknown admin routes

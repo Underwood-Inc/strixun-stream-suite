@@ -1,27 +1,27 @@
 /**
  * Handle mod ratings requests
- * GET /mods/:modId/ratings - Get ratings for a mod
- * POST /mods/:modId/ratings - Submit a rating for a mod
+ * GET /mods/:modId/ratings
+ * POST /mods/:modId/ratings
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
+import {
+    getEntity,
+    getExistingEntities,
+    putEntity,
+    indexGet,
+    indexAdd,
+    canAccessVisible,
+} from '@strixun/kv-entities';
 import type { ModRating, ModRatingRequest, ModRatingsResponse } from '../../types/rating.js';
 import type { Env } from '../../worker.js';
 import type { ModMetadata } from '../../types/mod.js';
 
-/**
- * Generate a unique rating ID
- */
 function generateRatingId(): string {
     return `rating_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
 }
 
-/**
- * Handle get mod ratings
- * GET /mods/:modId/ratings
- */
 export async function handleGetModRatings(
     request: Request,
     env: Env,
@@ -29,181 +29,53 @@ export async function handleGetModRatings(
     auth: { customerId: string } | null
 ): Promise<Response> {
     try {
-        // Get mod metadata by modId only (slug should be resolved to modId before calling this)
-        let mod: ModMetadata | null = null;
-        const normalizedModId = normalizeModId(modId);
-        
-        // Check customer scope first if authenticated
-        if (auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-        }
-        
-        // Fall back to global scope if not found
+        const mod = await getEntity<ModMetadata>(env.MODS_KV, 'mods', 'mod', modId);
+
         if (!mod) {
-            const globalModKey = `mod_${normalizedModId}`;
-            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            return errorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
         }
-        
-        // If still not found, search all customer scopes (for cross-customer access)
-        if (!mod) {
-            const customerListPrefix = 'customer_';
-            let cursor: string | undefined;
-            
-            do {
-                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
-                for (const key of listResult.keys) {
-                    if (key.name.endsWith('_mods_list')) {
-                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                        const customerId = match ? match[1] : null;
-                        if (customerId) {
-                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
-                            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-                            if (mod) break;
-                        }
-                    }
-                }
-                if (mod) break;
-                cursor = listResult.list_complete ? undefined : listResult.cursor;
-            } while (cursor);
+
+        const modForAccess = { ...mod, id: mod.modId, visibility: mod.visibility || 'public' as const };
+        if (!canAccessVisible(modForAccess, { customerId: auth?.customerId || null, isAdmin: false })) {
+            return errorResponse(request, env, 403, 'Forbidden', 'Ratings are only available for published or approved public mods');
         }
-        
-        if (!mod) {
-            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-        
-        // Check visibility and status - only show ratings for public/approved mods or if customer owns the mod
-        // Legacy mods without status field are treated as published
-        const modVisibility = mod.visibility || 'public';
-        const modStatus = mod.status || 'published';
-        const isAllowedStatus = modStatus === 'published' || modStatus === 'approved';
-        const isPublic = modVisibility === 'public';
-        const isAuthor = auth && mod.authorId === auth.customerId;
-        
-        // Allow if: (public AND approved/published) OR customer is the author
-        if (!isPublic || !isAllowedStatus) {
-            if (!isAuthor) {
-                const rfcError = createError(request, 403, 'Forbidden', 'Ratings are only available for published or approved public mods');
-                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-                });
-                return new Response(JSON.stringify(rfcError), {
-                    status: 403,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
-            }
-        }
-        
-        // Get ratings list key (use normalized modId from the found mod)
-        const normalizedStoredModId = normalizeModId(mod.modId);
-        const ratingsListKey = getCustomerKey(null, `mod_${normalizedStoredModId}_ratings`);
-        const ratingsListJson = await env.MODS_KV.get(ratingsListKey, { type: 'json' }) as string[] | null;
-        const ratingIds = ratingsListJson || [];
-        
-        // Fetch all ratings
-        const ratings: ModRating[] = [];
-        for (const ratingId of ratingIds) {
-            const ratingKey = getCustomerKey(null, `rating_${ratingId}`);
-            const rating = await env.MODS_KV.get(ratingKey, { type: 'json' }) as ModRating | null;
-            if (rating) {
-                ratings.push(rating);
-            }
-        }
-        
-        // Fetch missing display names for ratings that don't have customerDisplayName
-        // Similar to how mod detail handler fetches missing authorDisplayName
+
+        const ratingIds = await indexGet(env.MODS_KV, 'mods', 'ratings-for', modId);
+        const ratings = await getExistingEntities<ModRating>(env.MODS_KV, 'mods', 'rating', ratingIds);
+
+        // Fetch missing display names
         const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
-        // Use customerId from rating
         const ratingsNeedingDisplayName = ratings.filter(r => !r.customerDisplayName && r.customerId);
-        
-        if (ratingsNeedingDisplayName.length > 0) {
-            // Fetch all missing display names in parallel for better performance
-            const displayNamePromises = ratingsNeedingDisplayName.map(async (rating) => {
-                const customerIdToFetch = rating.customerId;
-                const fetchedDisplayName = await fetchDisplayNameByCustomerId(customerIdToFetch, env);
-                return { rating, fetchedDisplayName };
-            });
-            
-            const displayNameResults = await Promise.all(displayNamePromises);
-            
-            // Update ratings with fetched display names and prepare for storage update
-            const ratingsToUpdate: ModRating[] = [];
-            for (const { rating, fetchedDisplayName } of displayNameResults) {
-                if (fetchedDisplayName) {
-                    rating.customerDisplayName = fetchedDisplayName;
-                    ratingsToUpdate.push(rating);
-                }
-            }
-            
-            // Update ratings in storage if we fetched any missing display names
-            // This ensures future requests don't need to fetch again
-            if (ratingsToUpdate.length > 0) {
-                const updatePromises = ratingsToUpdate.map(rating => {
-                    const ratingKey = getCustomerKey(null, `rating_${rating.ratingId}`);
-                    return env.MODS_KV.put(ratingKey, JSON.stringify(rating));
-                });
-                await Promise.all(updatePromises);
+
+        for (const rating of ratingsNeedingDisplayName) {
+            const displayName = await fetchDisplayNameByCustomerId(rating.customerId, env);
+            if (displayName) {
+                rating.customerDisplayName = displayName;
+                await putEntity(env.MODS_KV, 'mods', 'rating', rating.ratingId, rating);
             }
         }
-        
-        // Sort by creation date (newest first)
+
         ratings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        
-        // Calculate average rating
+
         const averageRating = ratings.length > 0
             ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
             : 0;
-        
+
         const response: ModRatingsResponse = {
             ratings,
-            averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+            averageRating: Math.round(averageRating * 10) / 10,
             totalRatings: ratings.length,
         };
-        
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        });
-        
+
         return new Response(JSON.stringify(response), {
             status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
+            headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
         });
     } catch (error) {
-        const rfcError = createError(
-            request,
-            500,
-            'Internal Server Error',
-            'Failed to fetch mod ratings'
-        );
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        });
-        return new Response(JSON.stringify(rfcError), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        return errorResponse(request, env, 500, 'Internal Server Error', 'Failed to fetch mod ratings');
     }
 }
 
-/**
- * Handle submit mod rating
- * POST /mods/:modId/ratings
- */
 export async function handleSubmitModRating(
     request: Request,
     env: Env,
@@ -211,218 +83,92 @@ export async function handleSubmitModRating(
     auth: { customerId: string }
 ): Promise<Response> {
     try {
-        // Parse request body
         const body = await request.json() as ModRatingRequest;
-        
-        // Validate rating
+
         if (!body.rating || body.rating < 1 || body.rating > 5) {
-            const rfcError = createError(request, 400, 'Invalid Rating', 'Rating must be between 1 and 5');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
+            return errorResponse(request, env, 400, 'Invalid Rating', 'Rating must be between 1 and 5');
+        }
+
+        if (!auth.customerId) {
+            return errorResponse(request, env, 400, 'Missing Customer ID', 'Customer ID is required');
+        }
+
+        const mod = await getEntity<ModMetadata>(env.MODS_KV, 'mods', 'mod', modId);
+
+        if (!mod) {
+            return errorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found');
+        }
+
+        const modStatus = mod.status || 'published';
+        const isAllowedStatus = modStatus === 'published' || modStatus === 'approved';
+        const isAuthor = mod.authorId === auth.customerId;
+
+        if (!isAllowedStatus && !isAuthor) {
+            return errorResponse(request, env, 403, 'Forbidden', 'Only published or approved mods can be rated');
+        }
+
+        const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
+        const customerDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
+
+        const ratingIds = await indexGet(env.MODS_KV, 'mods', 'ratings-for', modId);
+        const existingRatings = await getExistingEntities<ModRating>(env.MODS_KV, 'mods', 'rating', ratingIds);
+
+        const existingRating = existingRatings.find(r => r.customerId === auth.customerId);
+
+        if (existingRating) {
+            const updatedRating: ModRating = {
+                ...existingRating,
+                customerDisplayName: customerDisplayName || existingRating.customerDisplayName || null,
+                rating: body.rating,
+                comment: body.comment !== undefined ? (body.comment || undefined) : existingRating.comment,
+                updatedAt: new Date().toISOString(),
+            };
+
+            await putEntity(env.MODS_KV, 'mods', 'rating', existingRating.ratingId, updatedRating);
+
+            return new Response(JSON.stringify({ rating: updatedRating }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
             });
         }
 
-        // CRITICAL: Validate customerId is present - required for display name lookups
-        if (!auth.customerId) {
-            console.error('[Ratings] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
-                note: 'Rejecting rating submission - customerId is required for display name lookups'
-            });
-            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for rating submissions. Please ensure your account has a valid customer association.');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-        
-        // Get mod metadata by modId only (slug should be resolved to modId before calling this)
-        let mod: ModMetadata | null = null;
-        const normalizedModId = normalizeModId(modId);
-        
-        // Check customer scope first if authenticated
-        if (auth.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-        }
-        
-        // Fall back to global scope if not found
-        if (!mod) {
-            const globalModKey = `mod_${normalizedModId}`;
-            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-        }
-        
-        // If still not found, search all customer scopes (for cross-customer access)
-        if (!mod) {
-            const customerListPrefix = 'customer_';
-            let cursor: string | undefined;
-            
-            do {
-                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
-                for (const key of listResult.keys) {
-                    if (key.name.endsWith('_mods_list')) {
-                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                        const customerId = match ? match[1] : null;
-                        if (customerId) {
-                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
-                            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-                            if (mod) break;
-                        }
-                    }
-                }
-                if (mod) break;
-                cursor = listResult.list_complete ? undefined : listResult.cursor;
-            } while (cursor);
-        }
-        
-        if (!mod) {
-            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-        
-        // Check if mod can be rated (published or approved mods can be rated)
-        // Legacy mods without status field are treated as published
-        const modStatus = mod.status || 'published';
-        const isAllowedStatus = modStatus === 'published' || modStatus === 'approved';
-        if (!isAllowedStatus) {
-            // Only allow rating if customer is the author (authors can rate their own mods even if not published/approved)
-            const isAuthor = mod.authorId === auth.customerId;
-            if (!isAuthor) {
-                const rfcError = createError(request, 403, 'Forbidden', 'Only published or approved mods can be rated');
-                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-                });
-                return new Response(JSON.stringify(rfcError), {
-                    status: 403,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
-            }
-        }
-        
-        // CRITICAL: Get customer displayName from customer data - customer is the source of truth
-        let customerDisplayName: string | null = null;
-        
-        if (auth.customerId) {
-            const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
-            customerDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
-            if (!customerDisplayName) {
-                console.warn('[Ratings] Could not fetch displayName from customer data:', {
-                    customerId: auth.customerId
-                });
-            }
-        } else {
-            console.warn('[Ratings] Missing customerId, cannot fetch displayName from customer data:', { customerId: auth.customerId
-            });
-        }
-        
-        // Check if customer has already rated this mod (use normalized modId from the found mod)
-        const normalizedStoredModId = normalizeModId(mod.modId);
-        const ratingsListKey = getCustomerKey(null, `mod_${normalizedStoredModId}_ratings`);
-        const ratingsListJson = await env.MODS_KV.get(ratingsListKey, { type: 'json' }) as string[] | null;
-        const ratingIds = ratingsListJson || [];
-        
-        // Check existing ratings for this customer
-        for (const ratingId of ratingIds) {
-            const ratingKey = getCustomerKey(null, `rating_${ratingId}`);
-            const existingRating = await env.MODS_KV.get(ratingKey, { type: 'json' }) as ModRating | null;
-            if (existingRating && existingRating.customerId === auth.customerId) {
-                // Customer has already rated - update existing rating
-                // Allow comment to be cleared (empty string) or updated
-                const updatedComment = body.comment !== undefined 
-                    ? (body.comment || undefined) // Allow empty string to clear comment
-                    : existingRating.comment; // Keep existing if not provided
-                
-                const updatedRating: ModRating = {
-                    ...existingRating,
-                    customerDisplayName: customerDisplayName || existingRating.customerDisplayName || null,
-                    rating: body.rating,
-                    comment: updatedComment,
-                    updatedAt: new Date().toISOString(),
-                };
-                
-                await env.MODS_KV.put(ratingKey, JSON.stringify(updatedRating));
-                
-                const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-                });
-                
-                return new Response(JSON.stringify({ rating: updatedRating }), {
-                    status: 200,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
-            }
-        }
-        
-        // Create new rating
         const ratingId = generateRatingId();
         const now = new Date().toISOString();
-        
-        // CRITICAL: Never store email - email is ONLY for OTP authentication
+
         const rating: ModRating = {
             ratingId,
-            modId: normalizedStoredModId, // Use normalized modId from the found mod
-            customerId: auth.customerId, // customerId from OTP auth service
-            customerDisplayName, // Display name fetched from /auth/me (never use email)
+            modId,
+            customerId: auth.customerId,
+            customerDisplayName,
             rating: body.rating,
             comment: body.comment,
             createdAt: now,
         };
-        
-        // Store rating
-        const ratingKey = getCustomerKey(null, `rating_${ratingId}`);
-        await env.MODS_KV.put(ratingKey, JSON.stringify(rating));
-        
-        // Add to ratings list
-        const updatedRatingsList = [...ratingIds, ratingId];
-        await env.MODS_KV.put(ratingsListKey, JSON.stringify(updatedRatingsList));
-        
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        });
-        
+
+        await putEntity(env.MODS_KV, 'mods', 'rating', ratingId, rating);
+        await indexAdd(env.MODS_KV, 'mods', 'ratings-for', modId, ratingId);
+
         return new Response(JSON.stringify({ rating }), {
             status: 201,
-            headers: {
-                'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
+            headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
         });
     } catch (error) {
-        const rfcError = createError(
-            request,
-            500,
-            'Internal Server Error',
-            'Failed to submit rating'
-        );
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        });
-        return new Response(JSON.stringify(rfcError), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        return errorResponse(request, env, 500, 'Internal Server Error', 'Failed to submit rating');
     }
 }
 
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+    const headers = createCORSHeaders(request, {
+        credentials: true,
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    });
+    return Object.fromEntries(headers.entries());
+}
+
+function errorResponse(request: Request, env: Env, status: number, title: string, detail: string): Response {
+    const rfcError = createError(request, status, title, detail);
+    return new Response(JSON.stringify(rfcError), {
+        status,
+        headers: { 'Content-Type': 'application/problem+json', ...corsHeaders(request, env) },
+    });
+}

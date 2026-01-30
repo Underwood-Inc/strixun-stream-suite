@@ -104,7 +104,7 @@ jobs:
       - name: Build Worker
         working-directory: serverless/game-api
         # CI-only: ensure workspace deps are built before bundling.
-        run: pnpm --filter "@strixun/types" run build && pnpm --filter "@strixun/service-client" run build && pnpm --filter "@strixun/schemas" run build && pnpm --filter "@strixun/api-framework" run build && pnpm run build:worker
+        run: pnpm run build:deps && pnpm run build:worker
       
       - name: Deploy to Cloudflare Workers
         id: deploy

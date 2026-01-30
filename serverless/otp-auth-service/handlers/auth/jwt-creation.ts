@@ -5,7 +5,7 @@
  */
 
 import { createJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
-import { getCustomerKey } from '../../services/customer.js';
+import { entityKey } from '@strixun/kv-entities';
 import { getClientIP } from '../../utils/ip.js';
 import { createFingerprintHash } from '@strixun/api-framework';
 
@@ -216,7 +216,7 @@ export async function createAuthToken(
     const accessToken = await createJWT(tokenPayload, jwtSecret);
     
     // Store session with customer isolation (including IP address and fingerprint)
-    const sessionKey = getCustomerKey(customerId, `session_${customerId}`);
+    const sessionKey = entityKey('otp-auth', 'session', customerId).key;
     const sessionData: SessionData = {
         customerId: customerId, // MANDATORY - the ONLY identifier
         email: emailLower, // Stored for internal use only, NOT returned in responses

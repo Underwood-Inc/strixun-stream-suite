@@ -1,24 +1,21 @@
 /**
  * List Variant Versions Handler
  * GET /mods/:modId/variants/:variantId/versions
- * Returns all versions for a specific variant
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey } from '../../utils/customer.js';
+import {
+    getExistingEntities,
+    indexGet,
+} from '@strixun/kv-entities';
 import type { ModVersion } from '../../types/mod.js';
 import type { Env } from '../../worker.js';
 
-/**
- * Sort by date descending (newest first)
- */
 function sortByCreatedAtDesc(a: ModVersion, b: ModVersion): number {
     const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
     const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-    const aValid = !isNaN(aTime) ? aTime : 0;
-    const bValid = !isNaN(bTime) ? bTime : 0;
-    return bValid - aValid;
+    return (isNaN(bTime) ? 0 : bTime) - (isNaN(aTime) ? 0 : aTime);
 }
 
 export async function handleListVariantVersions(
@@ -26,70 +23,39 @@ export async function handleListVariantVersions(
     env: Env,
     _modId: string,
     variantId: string,
-    auth: { customerId: string } | null
+    _auth: { customerId: string } | null
 ): Promise<Response> {
     try {
-        // Get the variant's version list
-        const variantVersionsListKey = auth 
-            ? getCustomerKey(auth.customerId, `variant_${variantId}_versions`)
-            : `variant_${variantId}_versions`;
-            
-        const versionIds = await env.MODS_KV.get(variantVersionsListKey, { type: 'json' }) as string[] | null;
+        const versionIds = await indexGet(env.MODS_KV, 'mods', 'versions-for-variant', variantId);
 
-        if (!versionIds || versionIds.length === 0) {
-            const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-            });
+        if (versionIds.length === 0) {
             return new Response(JSON.stringify({ versions: [] }), {
                 status: 200,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
+                headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
             });
         }
 
-        // Fetch all version metadata
-        const versions: ModVersion[] = [];
-        for (const versionId of versionIds) {
-            const versionKey = auth 
-                ? getCustomerKey(auth.customerId, `version_${versionId}`)
-                : `version_${versionId}`;
-                
-            const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
-            if (version) {
-                versions.push(version);
-            }
-        }
-
-        // Sort versions by createdAt (newest first)
+        const versions = await getExistingEntities<ModVersion>(env.MODS_KV, 'mods', 'version', versionIds);
         versions.sort(sortByCreatedAtDesc);
-
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        });
 
         return new Response(JSON.stringify({ versions }), {
             status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
+            headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
         });
     } catch (error) {
         console.error('[ListVariantVersions] Error:', error);
-        const rfcError = createError(
-            request,
-            500,
-            'Internal Server Error',
-            'Failed to list variant versions'
-        );
-        const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        });
+        const rfcError = createError(request, 500, 'Internal Server Error', 'Failed to list variant versions');
         return new Response(JSON.stringify(rfcError), {
             status: 500,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
+            headers: { 'Content-Type': 'application/problem+json', ...corsHeaders(request, env) },
         });
     }
+}
+
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+    const headers = createCORSHeaders(request, { 
+        credentials: true, 
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    });
+    return Object.fromEntries(headers.entries());
 }

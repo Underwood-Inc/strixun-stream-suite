@@ -146,7 +146,8 @@ jobs:
       
       - name: Build Worker
         working-directory: serverless/otp-auth-service
-        run: pnpm run build:worker
+        # CI-only: ensure workspace deps are built before bundling.
+        run: pnpm run build:deps && pnpm run build:worker
       
       - name: Build and Deploy to Cloudflare Workers
         id: deploy

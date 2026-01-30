@@ -1,11 +1,15 @@
 /**
  * Admin Handlers
  * Handles admin-only operations like listing all customers
+ * 
+ * Uses kv-entities pattern for consistent key management.
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../utils/errors.js';
-import { getCustomer, type CustomerData } from '../services/customer.js';
+import { getCustomer, storeCustomer, type CustomerData } from '../services/customer.js';
+import { hashEmail } from '../utils/crypto.js';
+import { putEntity } from '@strixun/kv-entities';
 
 interface Env {
     CUSTOMER_KV: KVNamespace;
@@ -32,6 +36,11 @@ export interface CustomerWithValidation extends Partial<CustomerData> {
 
 /**
  * Validate customer data and return any issues
+ * 
+ * Checks for required fields and data integrity.
+ * 
+ * @param customer - Partial customer data to validate
+ * @returns Array of validation issues
  */
 function validateCustomerData(customer: Partial<CustomerData>): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
@@ -124,6 +133,8 @@ function validateCustomerData(customer: Partial<CustomerData>): ValidationIssue[
 /**
  * Get customer details by ID (admin only)
  * GET /admin/customers/:customerId
+ * 
+ * Returns customer data with validation issues for the admin panel.
  */
 export async function handleGetCustomerDetails(
     request: Request,
@@ -195,6 +206,8 @@ export async function handleGetCustomerDetails(
 /**
  * Update customer (admin only)
  * PUT /admin/customers/:customerId
+ * 
+ * Merges updates with existing customer data and stores.
  */
 export async function handleUpdateCustomer(
     request: Request,
@@ -236,17 +249,8 @@ export async function handleUpdateCustomer(
             updatedAt: new Date().toISOString()
         };
         
-        // Save updated customer
-        const key = `customer_${customerId}`;
-        await env.CUSTOMER_KV.put(key, JSON.stringify(updatedCustomer));
-        
-        // Also update by email hash if email exists
-        if (updatedCustomer.email) {
-            const { hashEmail } = await import('../utils/crypto.js');
-            const emailHash = await hashEmail(updatedCustomer.email);
-            const emailKey = `customer_${emailHash}`;
-            await env.CUSTOMER_KV.put(emailKey, JSON.stringify(updatedCustomer));
-        }
+        // Save updated customer using storeCustomer (handles email index)
+        await storeCustomer(customerId, updatedCustomer, env);
         
         console.log(`[Admin] Updated customer:`, {
             customerId,
@@ -291,8 +295,10 @@ export async function handleUpdateCustomer(
  * List ALL customers from CUSTOMER_KV (admin only)
  * GET /admin/customers
  * 
- * Returns all customers including those with incomplete or faulty data
- * Each customer includes validation issues for the frontend to display
+ * Returns all customers including those with incomplete or faulty data.
+ * Each customer includes validation issues for the frontend to display.
+ * 
+ * Uses prefix scan to find all customer entities with the new key pattern.
  */
 export async function handleListAllCustomers(
     request: Request,
@@ -306,77 +312,74 @@ export async function handleListAllCustomers(
         const customers: CustomerWithValidation[] = [];
         const seenCustomerIds = new Set<string>();
         
-        // List all customers from CUSTOMER_KV
-        // Pattern: customer_{customerId} or customer_{emailHash}
+        // List all customers from CUSTOMER_KV using the new entity pattern
+        // Pattern: customer:customer:{customerId}
         let cursor: string | undefined;
         let totalKeysScanned = 0;
+        const prefix = 'customer:customer:';
         
         do {
-            const listResult = await env.CUSTOMER_KV.list({ cursor, limit: 1000 });
+            const listResult = await env.CUSTOMER_KV.list({ prefix, cursor, limit: 1000 });
             totalKeysScanned += listResult.keys.length;
             
             for (const key of listResult.keys) {
-                // Look for customer keys
-                if (key.name.startsWith('customer_')) {
-                    try {
-                        const customerData = await env.CUSTOMER_KV.get(key.name, { type: 'json' }) as Partial<CustomerData> | null;
-                        
-                        if (!customerData) {
-                            // Key exists but no data - add as invalid customer
-                            const extractedId = key.name.replace('customer_', '').split('_')[0];
-                            if (extractedId && !seenCustomerIds.has(extractedId)) {
-                                customers.push({
-                                    customerId: extractedId,
-                                    validationIssues: [{
-                                        field: 'data',
-                                        severity: 'error',
-                                        message: `Customer key exists but data is null or corrupt: ${key.name}`
-                                    }]
-                                });
-                                seenCustomerIds.add(extractedId);
-                            }
-                            continue;
-                        }
-                        
-                        // Extract customerId
-                        const customerId = customerData.customerId || key.name.replace('customer_', '').split('_')[0];
-                        
-                        // Skip duplicates (same customer can have multiple KV keys)
-                        if (seenCustomerIds.has(customerId)) {
-                            continue;
-                        }
-                        seenCustomerIds.add(customerId);
-                        
-                        // Validate customer data
-                        const validationIssues = validateCustomerData({
-                            ...customerData,
-                            customerId // Ensure customerId is present
-                        });
-                        
-                        // Add customer with validation issues
-                        const customerWithValidation: CustomerWithValidation = {
-                            ...customerData,
-                            customerId,
-                            validationIssues: validationIssues.length > 0 ? validationIssues : undefined
-                        };
-                        
-                        customers.push(customerWithValidation);
-                    } catch (error) {
-                        console.error(`[Admin] Failed to parse customer key ${key.name}:`, error);
-                        
-                        // Add customer with parse error
-                        const extractedId = key.name.replace('customer_', '').split('_')[0];
-                        if (extractedId && !seenCustomerIds.has(extractedId)) {
+                try {
+                    const customerData = await env.CUSTOMER_KV.get(key.name, { type: 'json' }) as Partial<CustomerData> | null;
+                    
+                    // Extract customerId from key (format: customer:customer:{customerId})
+                    const customerId = key.name.replace(prefix, '');
+                    
+                    if (!customerData) {
+                        // Key exists but no data - add as invalid customer
+                        if (!seenCustomerIds.has(customerId)) {
                             customers.push({
-                                customerId: extractedId,
+                                customerId,
                                 validationIssues: [{
                                     field: 'data',
                                     severity: 'error',
-                                    message: `Failed to parse customer data: ${error instanceof Error ? error.message : String(error)}`
+                                    message: `Customer key exists but data is null or corrupt: ${key.name}`
                                 }]
                             });
-                            seenCustomerIds.add(extractedId);
+                            seenCustomerIds.add(customerId);
                         }
+                        continue;
+                    }
+                    
+                    // Skip duplicates
+                    if (seenCustomerIds.has(customerId)) {
+                        continue;
+                    }
+                    seenCustomerIds.add(customerId);
+                    
+                    // Validate customer data
+                    const validationIssues = validateCustomerData({
+                        ...customerData,
+                        customerId // Ensure customerId is present
+                    });
+                    
+                    // Add customer with validation issues
+                    const customerWithValidation: CustomerWithValidation = {
+                        ...customerData,
+                        customerId,
+                        validationIssues: validationIssues.length > 0 ? validationIssues : undefined
+                    };
+                    
+                    customers.push(customerWithValidation);
+                } catch (error) {
+                    console.error(`[Admin] Failed to parse customer key ${key.name}:`, error);
+                    
+                    // Add customer with parse error
+                    const customerId = key.name.replace(prefix, '');
+                    if (!seenCustomerIds.has(customerId)) {
+                        customers.push({
+                            customerId,
+                            validationIssues: [{
+                                field: 'data',
+                                severity: 'error',
+                                message: `Failed to parse customer data: ${error instanceof Error ? error.message : String(error)}`
+                            }]
+                        });
+                        seenCustomerIds.add(customerId);
                     }
                 }
             }
