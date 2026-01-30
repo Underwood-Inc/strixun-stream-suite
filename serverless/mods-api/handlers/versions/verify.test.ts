@@ -58,21 +58,21 @@ describe('File Verification Handler', () => {
         mockEnv.MODS_KV.list = vi.fn().mockResolvedValue({ keys: [], listComplete: true, cursor: undefined });
         mockEnv.MODS_R2.get = vi.fn().mockResolvedValue(mockFile);
         
-        // Default: mod found
+        // Default: mod found - uses new unified key pattern: mods:entity:id
         vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string, options?: any) => {
             if (options?.type === 'json') {
-                if (key === 'mod_test-mod-123') {
+                if (key === 'mods:mod:test-mod-123') {
                     return Promise.resolve(mockMod);
                 }
-                if (key === 'version_version-123') {
+                if (key === 'mods:version:version-123') {
                     return Promise.resolve(mockVersion);
                 }
                 return Promise.resolve(null);
             }
-            if (key === 'mod_test-mod-123') {
+            if (key === 'mods:mod:test-mod-123') {
                 return Promise.resolve(JSON.stringify(mockMod));
             }
-            if (key === 'version_version-123') {
+            if (key === 'mods:version:version-123') {
                 return Promise.resolve(JSON.stringify(mockVersion));
             }
             return Promise.resolve(null);
@@ -168,15 +168,15 @@ describe('File Verification Handler', () => {
             const versionWithUppercase = { ...mockVersion, sha256: storedHash };
             vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string, options?: any) => {
                 if (options?.type === 'json') {
-                    if (key === 'mod_test-mod-123') {
+                    if (key === 'mods:mod:test-mod-123') {
                         return Promise.resolve(mockMod);
                     }
-                    if (key === 'version_version-123') {
+                    if (key === 'mods:version:version-123') {
                         return Promise.resolve(versionWithUppercase);
                     }
                     return Promise.resolve(null);
                 }
-                if (key === 'version_version-123') {
+                if (key === 'mods:version:version-123') {
                     return Promise.resolve(JSON.stringify(versionWithUppercase));
                 }
                 return Promise.resolve(null);
@@ -222,12 +222,12 @@ describe('File Verification Handler', () => {
         it('should return 404 if version not found', async () => {
             vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string, options?: any) => {
                 if (options?.type === 'json') {
-                    if (key === 'mod_test-mod-123') {
+                    if (key === 'mods:mod:test-mod-123') {
                         return Promise.resolve(mockMod);
                     }
                     return Promise.resolve(null); // Version not found
                 }
-                if (key === 'mod_test-mod-123') {
+                if (key === 'mods:mod:test-mod-123') {
                     return Promise.resolve(JSON.stringify(mockMod));
                 }
                 return Promise.resolve(null);

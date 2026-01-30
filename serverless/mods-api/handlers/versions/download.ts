@@ -82,20 +82,35 @@ export async function handleDownloadVersion(
         // Increment download counters (fire and forget)
         incrementDownloads(env, mod, modId, version).catch(console.error);
 
+        // Build exposed headers list - include hash headers if available
+        const exposedHeaders = ['Content-Disposition', 'Content-Type', 'Content-Length'];
+        if (version.sha256) {
+            exposedHeaders.push('X-Strixun-File-Hash', 'X-Strixun-SHA256');
+        }
+        
         const corsHeaders = createCORSHeaders(request, { 
             credentials: true, 
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            exposedHeaders: ['Content-Disposition', 'Content-Type', 'Content-Length'],
+            exposedHeaders,
         });
+
+        // Build response headers
+        const responseHeaders: Record<string, string> = {
+            'Content-Type': originalContentType,
+            'Content-Disposition': `attachment; filename="${originalFileName}"`,
+            'Content-Length': fileData.length.toString(),
+            ...Object.fromEntries(corsHeaders.entries()),
+        };
+        
+        // Add hash headers for file integrity verification if available
+        if (version.sha256) {
+            responseHeaders['X-Strixun-File-Hash'] = `strixun:sha256:${version.sha256}`;
+            responseHeaders['X-Strixun-SHA256'] = version.sha256;
+        }
 
         return new Response(fileData, {
             status: 200,
-            headers: {
-                'Content-Type': originalContentType,
-                'Content-Disposition': `attachment; filename="${originalFileName}"`,
-                'Content-Length': fileData.length.toString(),
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
+            headers: responseHeaders,
         });
     } catch (error: any) {
         console.error('[VersionDownload] Error:', error);

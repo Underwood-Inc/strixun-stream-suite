@@ -14,8 +14,8 @@ export const migration: Migration = {
     async up(kv): Promise<void> {
         console.log('[Migration 001] Fixing customer role permissions...');
         
-        // Update the customer role definition in KV
-        const roleKey = 'role_customer';
+        // Update the customer role definition in KV (using unified key pattern)
+        const roleKey = 'access:role:customer';
         const customerRole = {
             name: 'customer',
             displayName: 'Customer',
@@ -42,7 +42,7 @@ export const migration: Migration = {
         console.log('[Migration 001] Rolling back customer role permissions...');
         
         // Revert to broken state (for testing only - should never be needed in production)
-        const roleKey = 'role_customer';
+        const roleKey = 'access:role:customer';
         const customerRole = {
             name: 'customer',
             displayName: 'Customer',
