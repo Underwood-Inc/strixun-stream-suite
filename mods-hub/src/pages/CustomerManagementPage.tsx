@@ -25,6 +25,7 @@ import { AdvancedSearchInput } from '@strixun/search-query-parser/react';
 import { DataTable, type DataTableColumn } from '@strixun/shared-components/react/DataTable';
 import { ActionMenu, type ActionMenuItem } from '@strixun/shared-components/react/ActionMenu';
 import { InfoModal } from '@strixun/shared-components/react/InfoModal';
+import { ErrorDisplay } from '@strixun/shared-components/react/ErrorDisplay';
 import { AdminNavigation } from '../components/admin/AdminNavigation';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import { useUpdateCustomer, useCustomersList } from '../hooks/useCustomers';
@@ -42,8 +43,7 @@ const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${spacing.md};
-  height: calc(100vh - 80px);
-  overflow: hidden;
+  min-height: calc(100vh - 80px);
 `;
 
 const PageHeader = styled.div`
@@ -128,11 +128,13 @@ const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
   white-space: nowrap;
 `;
 
-const PermissionBadge = styled.span<{ $hasPermission: boolean; $source?: 'super-admin' | 'env-var' | 'kv' }>`
+const PermissionBadge = styled.span<{ $hasPermission: boolean; $source?: 'super-admin' | 'env-var' | 'kv' | 'access-service' | 'error' }>`
   ${({ $hasPermission, $source }) => {
     if (!$hasPermission) return getBadgeStyles('default');
     if ($source === 'super-admin') return getBadgeStyles('accent');
     if ($source === 'env-var') return getBadgeStyles('info');
+    if ($source === 'access-service') return getBadgeStyles('success');
+    if ($source === 'error') return getBadgeStyles('default');
     return getBadgeStyles('success'); // KV-based
   }}
 `;
@@ -149,12 +151,13 @@ const SelectionInfo = styled.div`
 
 const TableContainer = styled.div`
   flex: 1;
-  min-height: 0;
+  min-height: 400px;
   display: flex;
   flex-direction: column;
   background: ${colors.bgSecondary};
   border-radius: 8px;
   border: 1px solid ${colors.border};
+  overflow: auto;
   overflow: hidden;
 `;
 
@@ -377,10 +380,17 @@ export function CustomerManagementPage() {
                     ? 'Env Var'
                     : row.permissionSource === 'kv'
                     ? 'KV Approved'
+                    : row.permissionSource === 'access-service'
+                    ? 'Access Service'
+                    : row.permissionSource === 'error'
+                    ? 'Error'
                     : 'Approved';
                 
+                // Map to valid $source value
+                const sourceForBadge = row.permissionSource === 'none' ? undefined : row.permissionSource;
+                
                 return (
-                    <PermissionBadge $hasPermission={true} $source={row.permissionSource === 'none' ? undefined : row.permissionSource}>
+                    <PermissionBadge $hasPermission={true} $source={sourceForBadge}>
                         {sourceLabel}
                     </PermissionBadge>
                 );
@@ -558,15 +568,21 @@ export function CustomerManagementPage() {
                         <div style={{ fontSize: '0.875rem', color: colors.textSecondary }}>Fetching data from API</div>
                     </EmptyState>
                 ) : error ? (
-                    <EmptyState>
-                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>⚠</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: spacing.xs, color: colors.danger }}>
-                            Failed to load customers
-                        </div>
-                        <div style={{ fontSize: '0.875rem', color: colors.textSecondary }}>
-                            {(error as Error).message || 'An error occurred while fetching customers'}
-                        </div>
-                    </EmptyState>
+                    <ErrorDisplay
+                        error={error}
+                        onRetry={() => window.location.reload()}
+                        retryText="Retry"
+                        theme={{
+                            background: colors.bgTertiary,
+                            border: colors.danger,
+                            danger: colors.danger,
+                            textSecondary: colors.textSecondary,
+                            text: colors.text,
+                            buttonBg: colors.accent,
+                            buttonText: colors.bgPrimary,
+                        }}
+                        minHeight="400px"
+                    />
                 ) : sortedCustomers.length > 0 ? (
                     <DataTable
                         data={sortedCustomers}

@@ -167,8 +167,11 @@ export async function handleGetCustomerDetails(
         // Validate customer data
         const validationIssues = validateCustomerData(customer);
         
+        // PRIVACY: Strip email from response - never expose in admin UI
+        const { email, ...customerWithoutEmail } = customer;
+        
         const customerWithValidation: CustomerWithValidation = {
-            ...customer,
+            ...customerWithoutEmail,
             validationIssues: validationIssues.length > 0 ? validationIssues : undefined
         };
         
@@ -357,9 +360,13 @@ export async function handleListAllCustomers(
                         customerId // Ensure customerId is present
                     });
                     
-                    // Add customer with validation issues
+                    // PRIVACY: Strip email from response - never expose in admin UI
+                    // Email is only used internally for validation and lookups
+                    const { email, ...customerDataWithoutEmail } = customerData;
+                    
+                    // Add customer with validation issues (email stripped)
                     const customerWithValidation: CustomerWithValidation = {
-                        ...customerData,
+                        ...customerDataWithoutEmail,
                         customerId,
                         validationIssues: validationIssues.length > 0 ? validationIssues : undefined
                     };

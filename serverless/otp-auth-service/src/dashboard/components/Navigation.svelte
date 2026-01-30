@@ -1,11 +1,24 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
+  import Tooltip from '@shared-components/svelte/Tooltip.svelte';
 
   export let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' | 'roles-permissions' = 'dashboard';
   export let userRoles: string[] = [];
 
   const dispatch = createEventDispatcher();
+
+  // Status tooltip content - rich HTML descriptions
+  const statusTooltips: Record<string, { content: string; level: 'info' | 'warning' }> = {
+    'in-testing': {
+      content: `<strong>In Testing</strong><br/><br/>This feature is currently undergoing testing and may have bugs or incomplete functionality. Your feedback is appreciated!`,
+      level: 'info'
+    },
+    'wip': {
+      content: `<strong>Work In Progress</strong><br/><br/>This feature is still being developed. Some functionality may not work as expected or may change without notice.`,
+      level: 'warning'
+    }
+  };
 
   const allPages = [
     { id: 'dashboard', label: 'Dashboard', status: null as 'wip' | 'in-testing' | null, requiresRole: null },
@@ -30,15 +43,33 @@
   <ul class="app-nav__list">
     {#each pages as page}
       <li class="app-nav__item">
-        <StatusFlair status={page.status}>
-          <button
-            class="app-nav__link"
-            class:active={currentPage === page.id}
-            onclick={() => handleClick(page.id)}
+        {#if page.status && statusTooltips[page.status]}
+          <Tooltip 
+            content={statusTooltips[page.status].content}
+            level={statusTooltips[page.status].level}
+            position="bottom"
           >
-            {page.label}
-          </button>
-        </StatusFlair>
+            <StatusFlair status={page.status}>
+              <button
+                class="app-nav__link"
+                class:active={currentPage === page.id}
+                onclick={() => handleClick(page.id)}
+              >
+                {page.label}
+              </button>
+            </StatusFlair>
+          </Tooltip>
+        {:else}
+          <StatusFlair status={page.status}>
+            <button
+              class="app-nav__link"
+              class:active={currentPage === page.id}
+              onclick={() => handleClick(page.id)}
+            >
+              {page.label}
+            </button>
+          </StatusFlair>
+        {/if}
       </li>
     {/each}
   </ul>

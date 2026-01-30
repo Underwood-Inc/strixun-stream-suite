@@ -17,7 +17,7 @@ export {
 
 // Customer Management
 export {
-    handleActivateCustomer, handleSuspendCustomer, handleUpdateCustomerStatus
+    handleActivateCustomer, handleSuspendCustomer, handleUpdateCustomerStatus, handleListCustomersEnriched
 } from './admin/customers.js';
 
 // Analytics

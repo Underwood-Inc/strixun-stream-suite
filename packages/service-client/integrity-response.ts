@@ -25,6 +25,19 @@ export function isServiceToServiceCall(
         return true;
     }
     
+    // Check for X-Service-Request header (simple marker for service-to-service calls)
+    // This allows services to use JWT tokens for auth while still being recognized as service calls
+    const serviceRequestHeader = request.headers.get('X-Service-Request');
+    if (serviceRequestHeader === 'true') {
+        return true;
+    }
+    
+    // Check for X-Service-Key header (used by some services for internal auth)
+    const serviceKeyHeader = request.headers.get('X-Service-Key');
+    if (serviceKeyHeader) {
+        return true;
+    }
+    
     // Check for SUPER_ADMIN_API_KEY in Authorization header (Bearer token that's not a JWT)
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {

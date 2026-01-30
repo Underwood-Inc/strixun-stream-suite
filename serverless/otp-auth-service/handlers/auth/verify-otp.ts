@@ -334,6 +334,32 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             }, env);
         }
         
+        // Sync lastLogin to customer-api for admin dashboard visibility
+        // This is fire-and-forget - don't block login on sync failure
+        if (env.CUSTOMER_API_URL && env.SERVICE_API_KEY) {
+            try {
+                const syncResponse = await fetch(`${env.CUSTOMER_API_URL}/internal/sync-last-login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Service-Key': env.SERVICE_API_KEY,
+                    },
+                    body: JSON.stringify({
+                        customerId: session.customerId,
+                        lastLogin: session.lastLogin,
+                    }),
+                });
+                if (!syncResponse.ok) {
+                    console.warn('[OTP Verify] Failed to sync lastLogin to customer-api:', syncResponse.status);
+                } else {
+                    console.log('[OTP Verify] Synced lastLogin to customer-api:', session.customerId);
+                }
+            } catch (error) {
+                console.warn('[OTP Verify] Failed to sync lastLogin to customer-api:', error);
+                // Continue - don't fail login due to sync failure
+            }
+        }
+        
         // Create JWT token and session (with IP tracking)
         // Fetch customer display name from CUSTOMER_KV via customer-api
         // CRITICAL: Display name is NOT stored in OTP_AUTH_KV - it's in CUSTOMER_KV

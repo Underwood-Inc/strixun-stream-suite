@@ -34,13 +34,94 @@ function calculateResetAt(period: 'day' | 'month' | 'year'): string {
 }
 
 /**
+ * Auth result interface for caller identification
+ */
+interface AuthResult {
+    customerId: string | null;
+    jwtToken?: string;
+    isServiceCall: boolean;
+    type: 'jwt' | 'service';
+}
+
+/**
+ * Check if a customer is an env-var super admin
+ * These are super admins configured via SUPER_ADMIN_EMAILS and cannot have their super-admin role removed
+ */
+async function isEnvVarSuperAdmin(customerId: string, env: Env): Promise<boolean> {
+    // For now, we'll check if the customer has a metadata flag indicating they're an env-var super admin
+    // This flag is set during bootstrap from SUPER_ADMIN_EMAILS
+    const access = await getCustomerAccess(customerId, env);
+    if (!access) return false;
+    
+    // Check for the envVarSuperAdmin flag in metadata
+    return access.metadata?.envVarSuperAdmin === true;
+}
+
+/**
+ * Validate role changes to prevent self-lockout and protect critical roles
+ * 
+ * Rules:
+ * 1. Cannot remove 'super-admin' role from yourself
+ * 2. Cannot remove 'super-admin' from env-var super admins (configured via SUPER_ADMIN_EMAILS)
+ * 3. Cannot add 'banned' role to yourself
+ */
+async function validateRoleChanges(
+    callerCustomerId: string | null,
+    targetCustomerId: string,
+    currentRoles: string[],
+    newRoles: string[],
+    env: Env
+): Promise<{ valid: boolean; error?: string }> {
+    const removedRoles = currentRoles.filter(r => !newRoles.includes(r));
+    const addedRoles = newRoles.filter(r => !currentRoles.includes(r));
+    
+    // Check if editing self
+    const isEditingSelf = callerCustomerId && callerCustomerId === targetCustomerId;
+    
+    // Rule 3: Cannot add 'banned' role to yourself
+    if (isEditingSelf && addedRoles.includes('banned')) {
+        return {
+            valid: false,
+            error: 'Cannot ban yourself.',
+        };
+    }
+    
+    // Check if super-admin is being removed
+    if (removedRoles.includes('super-admin')) {
+        // Rule 1: Cannot remove super-admin from yourself
+        if (isEditingSelf) {
+            return {
+                valid: false,
+                error: 'Cannot remove super-admin role from yourself. This would cause self-lockout.',
+            };
+        }
+        
+        // Rule 2: Cannot remove super-admin from env-var super admins
+        const isEnvSuper = await isEnvVarSuperAdmin(targetCustomerId, env);
+        if (isEnvSuper) {
+            return {
+                valid: false,
+                error: 'Cannot remove super-admin role from environment-configured super admins.',
+            };
+        }
+    }
+    
+    return { valid: true };
+}
+
+/**
  * PUT /access/:customerId/roles
  * Assign roles to a customer
+ * 
+ * Security:
+ * - Cannot remove super-admin from yourself
+ * - Cannot remove super-admin from env-var super admins
  */
 export async function handleAssignRoles(
     request: Request,
     env: Env,
-    customerId: string
+    customerId: string,
+    auth?: AuthResult
 ): Promise<Response> {
     try {
         const body = await request.json() as { roles: string[]; reason?: string };
@@ -74,6 +155,36 @@ export async function handleAssignRoles(
                     source: 'manual',
                 },
             };
+        }
+        
+        // SECURITY: Validate role changes to prevent self-lockout
+        const callerCustomerId = auth?.customerId || null;
+        const validation = await validateRoleChanges(
+            callerCustomerId,
+            customerId,
+            access.roles,
+            body.roles,
+            env
+        );
+        
+        if (!validation.valid) {
+            console.warn(`[AssignRoles] Role change blocked: ${validation.error}`, {
+                caller: callerCustomerId,
+                target: customerId,
+                oldRoles: access.roles,
+                newRoles: body.roles,
+            });
+            return new Response(JSON.stringify({
+                error: 'Forbidden',
+                message: validation.error,
+                code: 'ROLE_CHANGE_BLOCKED',
+            }), {
+                status: 403,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                },
+            });
         }
         
         // Update roles

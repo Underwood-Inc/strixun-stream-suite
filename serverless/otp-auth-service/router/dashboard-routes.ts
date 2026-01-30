@@ -115,8 +115,17 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
     }
 
     // Customer Management endpoints
-    // NOTE: GET /admin/customers has been moved to customer-api for proper separation of concerns
-    // OTP-auth-service handles auth-related customer operations (status, GDPR) only
+    // GET /admin/customers - List all customers with enriched data (aggregated from customer-api + access-service)
+    // Used by the OTP Auth admin dashboard for customer access management
+    if (path === '/admin/customers' && request.method === 'GET') {
+        const auth = await authenticateRequest(request, env);
+        return handleSuperAdminRoute(
+            (req, e, _cid) => adminHandlers.handleListCustomersEnriched(req, e, auth?.jwtToken || ''),
+            request, 
+            env, 
+            auth
+        );
+    }
 
     // GDPR endpoints
     const exportCustomerMatch = path.match(/^\/admin\/customers\/([^\/]+)\/export$/);

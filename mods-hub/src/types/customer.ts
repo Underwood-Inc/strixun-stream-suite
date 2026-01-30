@@ -9,9 +9,14 @@ export interface CustomerListItem {
     createdAt: string | null;
     lastLogin: string | null;
     hasUploadPermission: boolean;
-    permissionSource?: 'super-admin' | 'env-var' | 'kv' | 'none'; // Source of upload permission
+    permissionSource?: 'super-admin' | 'env-var' | 'kv' | 'access-service' | 'none' | 'error'; // Source of upload permission
     isSuperAdmin?: boolean; // True if customer is super admin
     modCount?: number; // Optional - may not be returned by all endpoints
+    // Extended fields from enriched endpoint
+    tier?: 'free' | 'basic' | 'premium' | 'enterprise'; // Subscription tier
+    status?: string; // Account status (active, suspended, etc.)
+    roles?: string[]; // Roles from access-service
+    permissions?: string[]; // Permissions from access-service
 }
 
 export interface CustomerDetail extends CustomerListItem {

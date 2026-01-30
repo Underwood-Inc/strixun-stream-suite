@@ -186,7 +186,8 @@ export async function handleAccessRoutes(
             const authError = requireAuth(auth, request, env);
             if (authError) return { response: authError };
             const customerId = parts[1];
-            return { response: await handleAssignRoles(request, env, customerId) };
+            // Pass auth to handler for caller identification (prevents self-lockout)
+            return { response: await handleAssignRoles(request, env, customerId, auth ?? undefined) };
         }
         
         // PUT /access/:customerId/permissions

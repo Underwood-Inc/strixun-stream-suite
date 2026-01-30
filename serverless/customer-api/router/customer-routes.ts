@@ -11,6 +11,7 @@ import { wrapWithEncryption } from '@strixun/api-framework';
 import { handleGetCustomer, handleGetCustomerByEmail, handleCreateCustomer, handleUpdateCustomer } from '../handlers/customer.js';
 import { handleGetPreferences, handleUpdatePreferences, handleUpdateDisplayName } from '../handlers/preferences.js';
 import { handleListAllCustomers, handleGetCustomerDetails, handleUpdateCustomer as handleAdminUpdateCustomer } from '../handlers/admin.js';
+import { handleSyncLastLogin } from '../handlers/internal.js';
 
 interface Env {
     CUSTOMER_KV: KVNamespace;
@@ -66,6 +67,18 @@ async function handleCustomerRoute(
  * Uses reusable API architecture with automatic encryption
  */
 export async function handleCustomerRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
+    // Handle /internal/* routes - service-to-service only (no JWT required)
+    if (path.startsWith('/internal/')) {
+        // POST /internal/sync-last-login - Sync lastLogin from otp-auth
+        if (path === '/internal/sync-last-login' && request.method === 'POST') {
+            const response = await handleSyncLastLogin(request, env);
+            return { response, customerId: null };
+        }
+        
+        // Internal route not found
+        return null;
+    }
+    
     // Handle /admin/* routes first (more specific)
     if (path.startsWith('/admin/')) {
         // Admin routes require JWT authentication + super-admin role check via access-service

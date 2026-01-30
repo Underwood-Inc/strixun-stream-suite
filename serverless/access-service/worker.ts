@@ -11,11 +11,11 @@
  * - Service-agnostic (resource types are generic strings)
  */
 
-import type { Env } from './types/authorization.js';
+import type { Env, CustomerAuthorization } from './types/authorization.js';
 import { DEFAULT_ROLES, DEFAULT_PERMISSIONS } from './types/authorization.js';
 import { handleAccessRoutes } from './router/access-routes.js';
 import { createCORSHeaders } from './utils/cors.js';
-import { isSeeded, markSeeded, saveRoleDefinition, savePermissionDefinition } from './utils/access-kv.js';
+import { isSeeded, markSeeded, saveRoleDefinition, savePermissionDefinition, getCustomerAccess, saveCustomerAccess, listRoleDefinitions } from './utils/access-kv.js';
 
 /**
  * Auto-seed KV with default roles/permissions
@@ -120,23 +120,50 @@ async function bootstrapSuperAdmin(env: Env): Promise<void> {
                     continue;
                 }
                 
-                // Check if customer already has super-admin role
-                const rolesKey = `customer:${customerId}:roles`;
-                const existingRoles = await env.ACCESS_KV.get(rolesKey, { type: 'json' }) as string[] | null;
+                // Check if customer already has super-admin role via the proper access system
+                const existingAccess = await getCustomerAccess(customerId, env);
                 
-                if (existingRoles && existingRoles.includes('super-admin')) {
-                    // Already has super-admin, skip
+                if (existingAccess && existingAccess.roles.includes('super-admin') && existingAccess.metadata?.envVarSuperAdmin) {
+                    // Already has super-admin with envVarSuperAdmin flag, skip
                     continue;
                 }
                 
-                // Grant super-admin role
-                const roles = existingRoles || [];
-                if (!roles.includes('super-admin')) {
-                    roles.push('super-admin');
+                // Create or update access with super-admin role and envVarSuperAdmin flag
+                const access: CustomerAuthorization = existingAccess || {
+                    customerId,
+                    roles: [],
+                    permissions: [],
+                    quotas: {},
+                    metadata: {
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        source: 'env-var-bootstrap',
+                    },
+                };
+                
+                // Ensure super-admin role is present
+                if (!access.roles.includes('super-admin')) {
+                    access.roles.push('super-admin');
                 }
                 
-                await env.ACCESS_KV.put(rolesKey, JSON.stringify(roles));
-                console.log(`\n★★★ GRANTED SUPER-ADMIN TO: ${email} (${customerId}) ★★★\n`);
+                // Mark as env-var super admin (cannot have super-admin role removed)
+                access.metadata = {
+                    ...access.metadata,
+                    updatedAt: new Date().toISOString(),
+                    envVarSuperAdmin: true,
+                };
+                
+                // Resolve permissions from super-admin role
+                const roleDefinitions = await listRoleDefinitions(env);
+                const superAdminRole = roleDefinitions.find(r => r.name === 'super-admin');
+                if (superAdminRole) {
+                    const allPermissions = new Set<string>(access.permissions);
+                    superAdminRole.permissions.forEach(p => allPermissions.add(p));
+                    access.permissions = Array.from(allPermissions);
+                }
+                
+                await saveCustomerAccess(access, env);
+                console.log(`\n★★★ GRANTED SUPER-ADMIN TO: ${email} (${customerId}) [envVarSuperAdmin=true] ★★★\n`);
             } catch (emailError) {
                 console.error(`[AccessWorker] ❌ Failed to bootstrap super-admin for ${email}:`, emailError);
             }
