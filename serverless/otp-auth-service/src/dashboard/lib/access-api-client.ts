@@ -56,8 +56,67 @@ const createAccessClient = () => {
   });
 };
 
+/**
+ * Customer with access data (enriched from multiple services)
+ */
+export interface CustomerWithAccess {
+  customerId: string;
+  displayName: string | null;
+  createdAt: string | null;
+  lastLogin: string | null;
+  hasUploadPermission: boolean;
+  permissionSource: 'super-admin' | 'access-service' | 'kv' | 'none' | 'error';
+  isSuperAdmin: boolean;
+  modCount: number;
+  tier?: 'free' | 'basic' | 'premium' | 'enterprise';
+  status?: string;
+  roles?: string[];
+  permissions?: string[];
+}
+
+export interface CustomerListResponse {
+  customers: CustomerWithAccess[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+// OTP Auth API URL for enriched customer data (calls own backend)
+const getOtpAuthApiUrl = (): string => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  
+  // Development: use same origin (Vite proxy handles /admin)
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return window.location.origin; // Vite proxy handles /admin -> otp-auth-service
+  }
+  
+  // Production: use env var or fallback to same origin
+  return (typeof import.meta !== 'undefined' && import.meta.env?.VITE_OTP_AUTH_URL) 
+    || window.location.origin; // Same origin for production
+};
+
+// Create OTP Auth API client for enriched customer data
+const createOtpAuthClient = () => {
+  return createAPIClient({
+    baseURL: getOtpAuthApiUrl(),
+    defaultHeaders: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include' as RequestCredentials,
+    timeout: 30000,
+    retry: {
+      maxAttempts: 3,
+      backoff: 'exponential',
+      retryableErrors: [408, 429, 500, 502, 503, 504],
+    },
+  });
+};
+
 export class AccessApiClient {
   private api = createAccessClient();
+  private otpAuthApi = createOtpAuthClient();
 
   /**
    * Get all system roles (super-admin only)
@@ -109,6 +168,59 @@ export class AccessApiClient {
       throw new Error(error?.detail || error?.message || 'Failed to get customer permissions');
     }
     return response.data;
+  }
+
+  /**
+   * List all customers with their access data (super-admin only)
+   * Calls otp-auth-service which aggregates data from customer-api + access-service
+   */
+  async listCustomersWithAccess(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+  }): Promise<CustomerListResponse> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.set('page', params.page.toString());
+    if (params?.pageSize) queryParams.set('pageSize', params.pageSize.toString());
+    if (params?.search) queryParams.set('search', params.search);
+    
+    const query = queryParams.toString();
+    const response = await this.otpAuthApi.get<CustomerListResponse>(`/admin/customers${query ? `?${query}` : ''}`);
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string; message?: string } | undefined;
+      throw new Error(error?.detail || error?.message || 'Failed to list customers');
+    }
+    return response.data;
+  }
+
+  /**
+   * Update customer roles
+   * Calls Access Service DIRECTLY: PUT /access/:customerId/roles
+   */
+  async updateCustomerRoles(customerId: string, roles: string[], reason?: string): Promise<void> {
+    const response = await this.api.put<{ success: boolean }>(`/access/${customerId}/roles`, {
+      roles,
+      reason,
+    });
+    if (response.status !== 200) {
+      const error = response.data as { detail?: string; message?: string } | undefined;
+      throw new Error(error?.detail || error?.message || 'Failed to update customer roles');
+    }
+  }
+
+  /**
+   * Update customer permissions
+   * Calls Access Service DIRECTLY: PUT /access/:customerId/permissions
+   */
+  async updateCustomerPermissions(customerId: string, permissions: string[], reason?: string): Promise<void> {
+    const response = await this.api.put<{ success: boolean }>(`/access/${customerId}/permissions`, {
+      permissions,
+      reason,
+    });
+    if (response.status !== 200) {
+      const error = response.data as { detail?: string; message?: string } | undefined;
+      throw new Error(error?.detail || error?.message || 'Failed to update customer permissions');
+    }
   }
 }
 

@@ -1,12 +1,15 @@
 /**
  * Customer API Service
  * Handles all customer management operations
- * Calls customer-api directly (NO proxying through mods-api)
+ * 
+ * Uses mods-api for enriched customer data aggregated from:
+ * - customer-api: Base customer data (displayName, createdAt, lastLogin, tier)
+ * - access-service: Permissions (hasUploadPermission, isSuperAdmin, roles)
+ * - mods-api: Mod counts
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
 import type { 
-    CustomerListItem,
     CustomerDetail,
     CustomerListResponse,
     UpdateCustomerRequest 
@@ -14,25 +17,29 @@ import type {
 import { sharedClientConfig } from './authConfig';
 
 /**
- * Customer API base URL
+ * Mods API base URL - provides enriched customer data
  * In dev mode, uses Vite proxy to avoid CORS issues
  * In production, uses environment variables or defaults to production URL
  */
-export const CUSTOMER_API_BASE_URL = import.meta.env.DEV
-  ? '/customer-api'  // Vite proxy in development
-  : (import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app');
+export const MODS_API_BASE_URL = import.meta.env.DEV
+  ? '/mods-api'  // Vite proxy in development
+  : (import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idling.app');
 
 /**
- * Singleton customer API client instance
+ * API client for customer management
+ * Routes through mods-api which aggregates data from multiple services
  */
-const customerApi = createAPIClient({
+const modsApi = createAPIClient({
     ...sharedClientConfig,
-    baseURL: CUSTOMER_API_BASE_URL,
+    baseURL: MODS_API_BASE_URL,
 });
 
 /**
  * List customers (admin only)
- * Calls customer-api directly
+ * Returns enriched data from mods-api including:
+ * - hasUploadPermission, permissionSource, isSuperAdmin (from access-service)
+ * - modCount (from MODS_KV)
+ * - lastLogin (synced from otp-auth to customer-api)
  */
 export async function listCustomers(filters: {
     page?: number;
@@ -46,18 +53,9 @@ export async function listCustomers(filters: {
         if (filters.search) params.append('search', filters.search);
         
         const queryString = params.toString() ? `?${params.toString()}` : '';
-        const response = await customerApi.get<{
-            customers: CustomerListItem[];
-            total: number;
-        }>(`/admin/customers${queryString}`);
+        const response = await modsApi.get<CustomerListResponse>(`/admin/customers${queryString}`);
         
-        // Customer API returns just { customers, total }, add pagination data
-        return {
-            customers: response.data.customers,
-            total: response.data.total,
-            page: filters.page || 1,
-            pageSize: filters.pageSize || 20,
-        };
+        return response.data;
     } catch (error) {
         console.error('[CustomerAPI] Failed to list customers:', error);
         throw new Error(`Failed to list customers: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -66,11 +64,11 @@ export async function listCustomers(filters: {
 
 /**
  * Get customer details (admin only)
- * Calls customer-api directly
+ * Returns enriched data from mods-api
  */
 export async function getCustomerDetails(customerId: string): Promise<CustomerDetail> {
     try {
-        const response = await customerApi.get<{ customer: CustomerDetail }>(`/admin/customers/${customerId}`);
+        const response = await modsApi.get<{ customer: CustomerDetail }>(`/admin/customers/${customerId}`);
         return response.data.customer;
     } catch (error) {
         console.error(`[CustomerAPI] Failed to get customer details for ${customerId}:`, error);
@@ -80,11 +78,11 @@ export async function getCustomerDetails(customerId: string): Promise<CustomerDe
 
 /**
  * Update customer (admin only)
- * Calls customer-api directly
+ * Proxies through mods-api which forwards to customer-api and returns enriched response
  */
 export async function updateCustomer(customerId: string, updates: UpdateCustomerRequest): Promise<CustomerDetail> {
     try {
-        const response = await customerApi.put<{ customer: CustomerDetail }>(`/admin/customers/${customerId}`, updates);
+        const response = await modsApi.put<{ customer: CustomerDetail }>(`/admin/customers/${customerId}`, updates);
         return response.data.customer;
     } catch (error) {
         console.error(`[CustomerAPI] Failed to update customer ${customerId}:`, error);

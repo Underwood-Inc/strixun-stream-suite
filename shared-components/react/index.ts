@@ -27,3 +27,6 @@ export type { DataTableColumn, DataTableProps } from './DataTable';
 export { FooterBrand } from './FooterBrand';
 export { FooterContainer } from './FooterContainer';
 export { default as StrixunSuiteLink } from './StrixunSuiteLink';
+
+export { ErrorDisplay, parseError } from './ErrorDisplay';
+export type { ErrorDisplayProps, ErrorDisplayTheme } from './ErrorDisplay';

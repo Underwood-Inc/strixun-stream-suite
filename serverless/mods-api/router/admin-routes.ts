@@ -127,6 +127,37 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             });
         }
 
+        // ===== Enriched Customer Routes =====
+        
+        // Route: GET /admin/customers - List all customers with enriched data (aggregated from customer-api + access-service + mods-api)
+        if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && request.method === 'GET') {
+            const { handleListCustomersEnriched } = await import('../handlers/admin/customers.js');
+            const response = await handleListCustomersEnriched(request, env, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: GET /admin/customers/:customerId - Get single customer with enriched data
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && request.method === 'GET') {
+            const customerId = pathSegments[2];
+            const { handleGetCustomerEnriched } = await import('../handlers/admin/customers.js');
+            const response = await handleGetCustomerEnriched(request, env, customerId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
+        // Route: PUT /admin/customers/:customerId - Update customer (proxies to customer-api, returns enriched data)
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && request.method === 'PUT') {
+            const customerId = pathSegments[2];
+            const { handleUpdateCustomerEnriched } = await import('../handlers/admin/customers.js');
+            const response = await handleUpdateCustomerEnriched(request, env, customerId, auth);
+            return await wrapWithEncryption(response, authForEncryption, request, env, {
+                requireJWT: authForEncryption ? true : false
+            });
+        }
+
         // Route: GET /admin/customers/:customerId/mods - Get customer's mods (mod data, not customer data)
         if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && pathSegments[3] === 'mods' && request.method === 'GET') {
             const customerId = pathSegments[2];

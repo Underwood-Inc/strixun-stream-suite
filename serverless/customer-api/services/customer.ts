@@ -59,6 +59,7 @@ export interface CustomerData {
     status?: string;
     createdAt?: string;
     updatedAt?: string;
+    lastLogin?: string; // Synced from otp-auth-service on each successful login
     
     // Enhanced fields
     subscriptions?: Subscription[]; // Array of subscription history
