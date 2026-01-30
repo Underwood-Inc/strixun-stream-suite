@@ -191,22 +191,28 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     {
         name: 'admin',
         displayName: 'Administrator',
-        description: 'Admin dashboard access and customer management',
+        description: 'Admin dashboard access, customer management, and full mod control',
         permissions: [
             'access:admin-panel',
+            'access:mods-admin',
             'manage:customers',
             'view:analytics',
+            'review:mod',
             'approve:mod',
             'delete:mod-any',
             'edit:mod-any',
+            'manage:settings',
         ],
         priority: 900,
     },
     {
         name: 'moderator',
         displayName: 'Moderator',
-        description: 'Mod approval and editing permissions',
+        description: 'Mod review and content management - no customer access',
         permissions: [
+            'access:admin-panel',
+            'access:mods-admin',
+            'review:mod',
             'approve:mod',
             'edit:mod-any',
         ],
@@ -267,22 +273,49 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
 
 /**
  * Default permissions (seeded on first deployment)
+ * 
+ * Categories:
+ * - Mod Management: Upload, edit, delete, review mods
+ * - Admin: Dashboard access, customer management, settings
+ * - Auth Management: API keys, audit logs, SSO config
+ * - Analytics: View usage and system analytics
+ * - API: Rate limits and API access
+ * - Future: Streamkit, Game, Chat (defined but not enforced yet)
  */
 export const DEFAULT_PERMISSIONS: PermissionDefinition[] = [
-    // Mod Management
+    // ===== Mod Management =====
     { name: 'upload:mod', action: 'upload', resource: 'mod', displayName: 'Upload Mods', description: 'Upload new mods', category: 'Mod Management' },
     { name: 'edit:mod-own', action: 'edit', resource: 'mod-own', displayName: 'Edit Own Mods', description: 'Edit own mods', category: 'Mod Management' },
-    { name: 'edit:mod-any', action: 'edit', resource: 'mod-any', displayName: 'Edit Any Mod', description: 'Edit any mod', category: 'Mod Management' },
+    { name: 'edit:mod-any', action: 'edit', resource: 'mod-any', displayName: 'Edit Any Mod', description: 'Edit any mod (admin/moderator)', category: 'Mod Management' },
     { name: 'delete:mod-own', action: 'delete', resource: 'mod-own', displayName: 'Delete Own Mods', description: 'Delete own mods', category: 'Mod Management' },
-    { name: 'delete:mod-any', action: 'delete', resource: 'mod-any', displayName: 'Delete Any Mod', description: 'Delete any mod', category: 'Mod Management' },
-    { name: 'approve:mod', action: 'approve', resource: 'mod', displayName: 'Approve Mods', description: 'Approve/deny mod submissions', category: 'Mod Management' },
+    { name: 'delete:mod-any', action: 'delete', resource: 'mod-any', displayName: 'Delete Any Mod', description: 'Delete any mod (admin only)', category: 'Mod Management' },
+    { name: 'review:mod', action: 'review', resource: 'mod', displayName: 'Review Mods', description: 'Access mod review queue and add comments', category: 'Mod Management' },
+    { name: 'approve:mod', action: 'approve', resource: 'mod', displayName: 'Approve Mods', description: 'Approve or reject mod submissions', category: 'Mod Management' },
     
-    // Admin
-    { name: 'access:admin-panel', action: 'access', resource: 'admin-panel', displayName: 'Access Admin Panel', description: 'Access admin dashboard', category: 'Admin' },
-    { name: 'manage:customers', action: 'manage', resource: 'customers', displayName: 'Manage Customers', description: 'Manage customer accounts', category: 'Admin' },
-    { name: 'manage:roles', action: 'manage', resource: 'roles', displayName: 'Manage Roles', description: 'Assign/remove roles', category: 'Admin' },
-    { name: 'view:analytics', action: 'view', resource: 'analytics', displayName: 'View Analytics', description: 'View system analytics', category: 'Analytics' },
+    // ===== Admin =====
+    { name: 'access:admin-panel', action: 'access', resource: 'admin-panel', displayName: 'Access Admin Panel', description: 'Access any admin dashboard', category: 'Admin' },
+    { name: 'access:mods-admin', action: 'access', resource: 'mods-admin', displayName: 'Access Mods Admin', description: 'Access Mods Hub admin section', category: 'Admin' },
+    { name: 'access:auth-admin', action: 'access', resource: 'auth-admin', displayName: 'Access Auth Admin', description: 'Access OTP Auth admin dashboard', category: 'Admin' },
+    { name: 'manage:customers', action: 'manage', resource: 'customers', displayName: 'Manage Customers', description: 'View and manage customer accounts', category: 'Admin' },
+    { name: 'manage:roles', action: 'manage', resource: 'roles', displayName: 'Manage Roles', description: 'Assign and remove roles from customers', category: 'Admin' },
+    { name: 'manage:permissions', action: 'manage', resource: 'permissions', displayName: 'Manage Permissions', description: 'Grant and revoke individual permissions', category: 'Admin' },
+    { name: 'manage:settings', action: 'manage', resource: 'settings', displayName: 'Manage Settings', description: 'Configure system settings', category: 'Admin' },
     
-    // API
+    // ===== Auth Management =====
+    { name: 'manage:api-keys', action: 'manage', resource: 'api-keys', displayName: 'Manage API Keys', description: 'Create and revoke API keys', category: 'Auth Management' },
+    { name: 'view:audit-logs', action: 'view', resource: 'audit-logs', displayName: 'View Audit Logs', description: 'View system audit logs', category: 'Auth Management' },
+    { name: 'manage:gdpr-requests', action: 'manage', resource: 'gdpr-requests', displayName: 'Manage GDPR Requests', description: 'Handle data deletion requests', category: 'Auth Management' },
+    { name: 'manage:sso-config', action: 'manage', resource: 'sso-config', displayName: 'Manage SSO Config', description: 'Configure SSO settings', category: 'Auth Management' },
+    
+    // ===== Analytics =====
+    { name: 'view:analytics', action: 'view', resource: 'analytics', displayName: 'View Analytics', description: 'View system usage analytics', category: 'Analytics' },
+    { name: 'export:data', action: 'export', resource: 'data', displayName: 'Export Data', description: 'Export customer and mod data', category: 'Analytics' },
+    
+    // ===== API =====
     { name: 'api:unlimited', action: 'api', resource: 'unlimited', displayName: 'Unlimited API', description: 'No API rate limits', category: 'API' },
+    
+    // ===== Future: Service-Specific (defined but not enforced yet) =====
+    { name: 'access:streamkit', action: 'access', resource: 'streamkit', displayName: 'Access Streamkit', description: 'Access Streamkit features', category: 'Streamkit' },
+    { name: 'access:game', action: 'access', resource: 'game', displayName: 'Access Game', description: 'Access game features', category: 'Game' },
+    { name: 'access:chat', action: 'access', resource: 'chat', displayName: 'Access Chat', description: 'Access chat features', category: 'Chat' },
 ];

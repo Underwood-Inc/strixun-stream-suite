@@ -7,6 +7,7 @@ import styled from 'styled-components';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore, type AuthStore } from '../../stores/auth';
 import { useUploadPermission } from '../../hooks/useUploadPermission';
+import { useAdminAccess } from '../../hooks/useAdminAccess';
 import { useDrafts } from '../../hooks/useMods';
 import { colors, spacing, media } from '../../theme';
 import { getButtonStyles } from '../../utils/buttonStyles';
@@ -208,6 +209,7 @@ export function Header() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
     const { hasPermission } = useUploadPermission();
+    const { hasAdminPanelAccess } = useAdminAccess();
     const { data: draftsData } = useDrafts();
     const navigate = useNavigate();
 
@@ -314,7 +316,7 @@ export function Header() {
                                 </>
                             )}
                             <NavLink to="/profile" onClick={handleNavClick}>Profile</NavLink>
-                            {isSuperAdmin && (
+                            {hasAdminPanelAccess && (
                                 <NavLink to="/admin" onClick={handleNavClick}>Admin</NavLink>
                             )}
                             <Tooltip 

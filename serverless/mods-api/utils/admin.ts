@@ -159,7 +159,7 @@ export async function canReviewMods(customerId: string, jwtToken: string, env: E
 
 /**
  * Check if customer has admin dashboard access
- * Requires 'admin:dashboard' permission (admin, super-admin)
+ * Requires 'access:admin-panel' permission (admin, moderator, super-admin)
  * 
  * @param customerId - Customer ID
  * @param jwtToken - JWT token (REQUIRED for authentication)
@@ -169,7 +169,7 @@ export async function canReviewMods(customerId: string, jwtToken: string, env: E
 export async function hasAdminDashboardAccess(customerId: string, jwtToken: string, env: Env): Promise<boolean> {
     try {
         const access = createAccessClient(env, { jwtToken });
-        return await access.checkPermission(customerId, 'admin:dashboard');
+        return await access.checkPermission(customerId, 'access:admin-panel');
     } catch (error) {
         console.error('[Admin] Failed to check dashboard access:', error);
         return false; // Fail closed

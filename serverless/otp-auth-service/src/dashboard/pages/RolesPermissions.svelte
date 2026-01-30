@@ -23,15 +23,27 @@
   let selectedCustomer: CustomerWithAccess | null = null;
   let editingRoles: string[] = [];
   let originalRoles: string[] = [];
+  let editingPermissions: string[] = [];
+  let originalPermissions: string[] = [];
   let savingRoles = false;
+  let modalTab: 'roles' | 'permissions' = 'roles';
 
-  // Dirty state: check if roles have changed from original
-  $: isDirty = (() => {
+  // Dirty state: check if roles OR permissions have changed from original
+  $: rolesChanged = (() => {
     if (editingRoles.length !== originalRoles.length) return true;
     const sortedEditing = [...editingRoles].sort();
     const sortedOriginal = [...originalRoles].sort();
     return sortedEditing.some((r, i) => r !== sortedOriginal[i]);
   })();
+  
+  $: permissionsChanged = (() => {
+    if (editingPermissions.length !== originalPermissions.length) return true;
+    const sortedEditing = [...editingPermissions].sort();
+    const sortedOriginal = [...originalPermissions].sort();
+    return sortedEditing.some((p, i) => p !== sortedOriginal[i]);
+  })();
+  
+  $: isDirty = rolesChanged || permissionsChanged;
 
   onMount(async () => {
     await loadData();
@@ -80,26 +92,58 @@
     }
   }
 
-  async function updateCustomerRoles(customerId: string, newRoles: string[]) {
+  async function saveCustomerAccess(customerId: string) {
     savingRoles = true;
     try {
-      await accessApiClient.updateCustomerRoles(customerId, newRoles, 'Updated via admin dashboard');
+      // Save roles if changed
+      if (rolesChanged) {
+        await accessApiClient.updateCustomerRoles(customerId, editingRoles, 'Updated via admin dashboard');
+      }
+      
+      // Save permissions if changed
+      if (permissionsChanged) {
+        await accessApiClient.updateCustomerPermissions(customerId, editingPermissions, 'Updated via admin dashboard');
+      }
+      
       // Reload customers to reflect changes
       await loadCustomers();
-      selectedCustomer = null;
-      editingRoles = [];
+      closeEditModal();
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to update roles';
+      error = err instanceof Error ? err.message : 'Failed to update access';
     } finally {
       savingRoles = false;
     }
   }
+  
+  // Toggle permission in editingPermissions
+  function togglePermission(permissionName: string) {
+    if (editingPermissions.includes(permissionName)) {
+      editingPermissions = editingPermissions.filter(p => p !== permissionName);
+    } else {
+      editingPermissions = [...editingPermissions, permissionName];
+    }
+  }
 
-  function openEditRoles(customerAccess: CustomerWithAccess) {
+  async function openEditRoles(customerAccess: CustomerWithAccess) {
     selectedCustomer = customerAccess;
+    modalTab = 'roles';
+    
+    // Load roles
     const roles = customerAccess.roles || [];
     editingRoles = [...roles];
     originalRoles = [...roles];
+    
+    // Load permissions from access service
+    try {
+      const { permissions: customerPerms } = await accessApiClient.getCustomerPermissions(customerAccess.customerId);
+      editingPermissions = [...customerPerms];
+      originalPermissions = [...customerPerms];
+    } catch (err) {
+      console.error('Failed to load customer permissions:', err);
+      // Default to empty if we can't load
+      editingPermissions = [];
+      originalPermissions = [];
+    }
   }
 
   /**
@@ -212,6 +256,9 @@
     selectedCustomer = null;
     editingRoles = [];
     originalRoles = [];
+    editingPermissions = [];
+    originalPermissions = [];
+    modalTab = 'roles';
   }
 
   function handleCustomerSearch() {
@@ -286,6 +333,22 @@
   $: effectivePermsResult = getEffectivePermissions(editingRoles, roles, permissions);
   $: effectivePermissions = effectivePermsResult.permissions;
   $: hasWildcardAccess = effectivePermsResult.hasWildcard;
+  
+  // Reactive: group permissions by category for the UI
+  $: permissionsByCategory = (() => {
+    const grouped = permissions.reduce((acc, perm) => {
+      const cat = perm.category || 'Other';
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(perm);
+      return acc;
+    }, {} as Record<string, PermissionDefinition[]>);
+    
+    // Convert to array of tuples for proper typing in each block
+    return Object.keys(grouped).map(category => ({
+      category,
+      perms: grouped[category]
+    }));
+  })();
 
   // ==================== TABLE CONFIGURATION ====================
   
@@ -782,9 +845,9 @@
     tabindex="-1"
   >
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
+    <div class="modal modal--wide" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
       <header class="modal__header">
-        <h2 id="modal-title">Edit Roles</h2>
+        <h2 id="modal-title">Edit Customer Access</h2>
         <button class="close-btn" onclick={closeEditModal} disabled={savingRoles} aria-label="Close">&times;</button>
       </header>
       <div class="modal__body">
@@ -795,71 +858,132 @@
             <p class="super-admin-warning">This customer is a super admin</p>
           {/if}
         </div>
-        <div class="roles-checklist">
-          {#each roles as role}
-            {@const isChecked = editingRoles.includes(role.name)}
-            {@const protectionReason = isChecked ? getRoleProtectionReason(role.name) : null}
-            {@const blockReason = !isChecked ? getAddBlockedReason(role.name) : null}
-            {@const isProtected = protectionReason !== null}
-            {@const isBlocked = blockReason !== null}
-            {@const isDisabled = savingRoles || isProtected || isBlocked}
-            <label 
-              class="role-checkbox" 
-              class:disabled={isDisabled}
-              class:protected={isProtected}
-              class:blocked={isBlocked}
-              class:checked={isChecked}
-              title={protectionReason || blockReason || ''}
-            >
-              <div class="role-checkbox__header">
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onchange={() => toggleRole(role.name)}
-                  disabled={isDisabled}
-                />
-                <span class="role-checkbox__name">{role.displayName}</span>
-                {#if isProtected}
-                  <span class="status-badge status-badge--protected">Protected</span>
-                {:else if isBlocked}
-                  <span class="status-badge status-badge--blocked">Blocked</span>
-                {/if}
-              </div>
-              <small class="role-checkbox__description">{role.description}</small>
-              {#if isProtected}
-                <small class="protection-reason">{protectionReason}</small>
-              {:else if isBlocked}
-                <small class="protection-reason">{blockReason}</small>
-              {/if}
-            </label>
-          {/each}
+        
+        <!-- Modal Tabs -->
+        <div class="modal-tabs">
+          <button 
+            class="modal-tab" 
+            class:active={modalTab === 'roles'}
+            onclick={() => modalTab = 'roles'}
+          >
+            Roles {#if rolesChanged}<span class="change-indicator">*</span>{/if}
+          </button>
+          <button 
+            class="modal-tab" 
+            class:active={modalTab === 'permissions'}
+            onclick={() => modalTab = 'permissions'}
+          >
+            Permissions {#if permissionsChanged}<span class="change-indicator">*</span>{/if}
+          </button>
         </div>
         
-        <!-- Show effective permissions - what the user can ACTUALLY do -->
-        <div class="effective-permissions">
-          <div class="effective-permissions__header">
-            <h4>Effective Permissions ({effectivePermissions.length})</h4>
+        {#if modalTab === 'roles'}
+          <!-- ROLES TAB -->
+          <div class="roles-checklist">
+            {#each roles as role}
+              {@const isChecked = editingRoles.includes(role.name)}
+              {@const protectionReason = isChecked ? getRoleProtectionReason(role.name) : null}
+              {@const blockReason = !isChecked ? getAddBlockedReason(role.name) : null}
+              {@const isProtected = protectionReason !== null}
+              {@const isBlocked = blockReason !== null}
+              {@const isDisabled = savingRoles || isProtected || isBlocked}
+              <label 
+                class="role-checkbox" 
+                class:disabled={isDisabled}
+                class:protected={isProtected}
+                class:blocked={isBlocked}
+                class:checked={isChecked}
+                title={protectionReason || blockReason || ''}
+              >
+                <div class="role-checkbox__header">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onchange={() => toggleRole(role.name)}
+                    disabled={isDisabled}
+                  />
+                  <span class="role-checkbox__name">{role.displayName}</span>
+                  {#if isProtected}
+                    <span class="status-badge status-badge--protected">Protected</span>
+                  {:else if isBlocked}
+                    <span class="status-badge status-badge--blocked">Blocked</span>
+                  {/if}
+                </div>
+                <small class="role-checkbox__description">{role.description}</small>
+                {#if isProtected}
+                  <small class="protection-reason">{protectionReason}</small>
+                {:else if isBlocked}
+                  <small class="protection-reason">{blockReason}</small>
+                {/if}
+              </label>
+            {/each}
+          </div>
+          
+          <!-- Show effective permissions - what the user can ACTUALLY do -->
+          <div class="effective-permissions">
+            <div class="effective-permissions__header">
+              <h4>Effective Permissions ({effectivePermissions.length})</h4>
+              {#if hasWildcardAccess}
+                <span class="wildcard-badge">* Wildcard Access</span>
+              {/if}
+            </div>
             {#if hasWildcardAccess}
-              <span class="wildcard-badge">* Wildcard Access</span>
-            {/if}
-          </div>
-          {#if hasWildcardAccess}
-            <p class="effective-permissions__description">
-              Has <strong>wildcard (*)</strong> permission - access to ALL system permissions:
-            </p>
-          {:else}
-            <p class="effective-permissions__description">Based on assigned roles, this customer has access to:</p>
-          {/if}
-          <div class="effective-permissions__list">
-            {#if effectivePermissions.length === 0}
-              <span class="no-permissions">No permissions - no roles assigned</span>
+              <p class="effective-permissions__description">
+                Has <strong>wildcard (*)</strong> permission - access to ALL system permissions:
+              </p>
             {:else}
-              {#each effectivePermissions as perm}
-                <span class="permission-chip">{perm}</span>
-              {/each}
+              <p class="effective-permissions__description">Based on assigned roles, this customer has access to:</p>
             {/if}
+            <div class="effective-permissions__list">
+              {#if effectivePermissions.length === 0}
+                <span class="no-permissions">No permissions - no roles assigned</span>
+              {:else}
+                {#each effectivePermissions as perm}
+                  <span class="permission-chip">{perm}</span>
+                {/each}
+              {/if}
+            </div>
           </div>
-        </div>
+        {:else}
+          <!-- PERMISSIONS TAB -->
+          <div class="permissions-section">
+            <p class="permissions-section__description">
+              Grant or revoke individual permissions beyond what's included in roles. 
+              These are <strong>explicit permissions</strong> stored directly on the customer.
+            </p>
+            
+            {#each permissionsByCategory as { category, perms }}
+              <div class="permission-category">
+                <h4 class="permission-category__title">{category}</h4>
+                <div class="permission-category__list">
+                  {#each perms as permDef}
+                    {@const isChecked = editingPermissions.includes(permDef.name)}
+                    {@const isFromRole = effectivePermissions.includes(permDef.name) && !editingPermissions.includes(permDef.name)}
+                    <label 
+                      class="permission-checkbox"
+                      class:checked={isChecked}
+                      class:from-role={isFromRole}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onchange={() => togglePermission(permDef.name)}
+                        disabled={savingRoles}
+                      />
+                      <div class="permission-checkbox__content">
+                        <span class="permission-checkbox__name">{permDef.displayName}</span>
+                        <code class="permission-checkbox__code">{permDef.name}</code>
+                        {#if isFromRole}
+                          <span class="from-role-badge">From Role</span>
+                        {/if}
+                      </div>
+                    </label>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
       </div>
       <footer class="modal__footer">
         <button class="modal-btn modal-btn--secondary" onclick={closeEditModal} disabled={savingRoles}>
@@ -867,7 +991,7 @@
         </button>
         <button
           class="modal-btn modal-btn--primary"
-          onclick={() => updateCustomerRoles(selectedCustomer!.customerId, editingRoles)}
+          onclick={() => saveCustomerAccess(selectedCustomer!.customerId)}
           disabled={savingRoles || !isDirty}
         >
           {savingRoles ? 'Saving...' : 'Save Changes'}
@@ -1900,6 +2024,144 @@
     gap: var(--spacing-md);
     padding: var(--spacing-lg);
     border-top: 1px solid var(--border);
+  }
+  
+  // Wide modal variant for permission management
+  .modal--wide {
+    max-width: 700px;
+  }
+  
+  // Modal tabs
+  .modal-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .modal-tab {
+    flex: 1;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    
+    &:hover {
+      color: var(--text);
+      background: var(--card-hover);
+    }
+    
+    &.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    
+    .change-indicator {
+      color: var(--warning, #f59e0b);
+      margin-left: 4px;
+    }
+  }
+  
+  // Permissions section
+  .permissions-section {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  
+  .permissions-section__description {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: var(--spacing-lg);
+    line-height: 1.5;
+  }
+  
+  .permission-category {
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .permission-category__title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--border-light);
+  }
+  
+  .permission-category__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--spacing-sm);
+  }
+  
+  .permission-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+    
+    &:hover {
+      background: var(--card-hover);
+      border-color: var(--border-light);
+    }
+    
+    &.checked {
+      background: var(--accent-bg, rgba(255, 165, 0, 0.1));
+      border-color: var(--accent);
+    }
+    
+    &.from-role {
+      background: var(--info-bg, rgba(59, 130, 246, 0.1));
+      border-color: var(--info, #3b82f6);
+      opacity: 0.7;
+    }
+    
+    input[type="checkbox"] {
+      margin-top: 2px;
+      accent-color: var(--accent);
+    }
+  }
+  
+  .permission-checkbox__content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .permission-checkbox__name {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--text);
+    font-weight: 500;
+  }
+  
+  .permission-checkbox__code {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    font-family: monospace;
+  }
+  
+  .from-role-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    background: var(--info, #3b82f6);
+    color: white;
+    border-radius: var(--radius-sm);
+    margin-top: 4px;
   }
 
   .button {
