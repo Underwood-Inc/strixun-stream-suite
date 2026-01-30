@@ -1067,6 +1067,9 @@ importers:
       '@strixun/error-utils':
         specifier: workspace:*
         version: link:../../packages/error-utils
+      '@strixun/kv-entities':
+        specifier: workspace:*
+        version: link:../../packages/kv-entities
       '@strixun/service-client':
         specifier: workspace:*
         version: link:../../packages/service-client
