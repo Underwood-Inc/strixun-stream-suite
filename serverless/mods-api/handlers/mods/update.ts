@@ -75,6 +75,7 @@ export async function handleUpdateMod(
             }
         }
 
+        if (updateData.summary !== undefined) mod.summary = updateData.summary || undefined;
         if (updateData.description !== undefined) mod.description = updateData.description;
         if (updateData.category !== undefined) mod.category = updateData.category;
         if (updateData.tags !== undefined) mod.tags = updateData.tags;

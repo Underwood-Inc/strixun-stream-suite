@@ -221,6 +221,7 @@ export async function handleUploadMod(
             authorId: auth.customerId,
             authorDisplayName,
             title: metadata.title,
+            summary: metadata.summary || undefined,
             description: metadata.description || '',
             category: metadata.category,
             tags: metadata.tags || [],
