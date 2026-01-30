@@ -14,6 +14,7 @@ import { PublicCustomerProfilePage } from './pages/PublicCustomerProfilePage';
 import { LoginPage } from './pages/LoginPage';
 import { DraftsPage } from './pages/DraftsPage';
 import { AdminSettingsPage } from './pages/AdminSettingsPage';
+import { DataExplorerPage } from './pages/DataExplorerPage';
 import { ChatPage } from './pages/ChatPage';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
@@ -114,6 +115,14 @@ export function App() {
                         element={
                             <AdminRoute>
                                 <R2ManagementPage />
+                            </AdminRoute>
+                        } 
+                    />
+                    <Route 
+                        path="/admin/data" 
+                        element={
+                            <AdminRoute>
+                                <DataExplorerPage />
                             </AdminRoute>
                         } 
                     />

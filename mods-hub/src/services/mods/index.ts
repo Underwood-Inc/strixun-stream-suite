@@ -61,6 +61,29 @@ export {
     bulkDeleteR2Files,
 } from './modR2Api';
 
+// KV Browser & Entity Explorer
+export {
+    listKVKeys,
+    getKVValue,
+    getKVPrefixes,
+    listModEntities,
+    getModEntityDetail,
+} from './modKVApi';
+
+// KV Types
+export type {
+    KVKeyInfo,
+    KVKeyListResponse,
+    KVKeyValueResponse,
+    KVPrefixInfo,
+    KVPrefixesResponse,
+    ModEntitySummary,
+    ModEntityListResponse,
+    VersionEntityDetail,
+    VariantEntityDetail,
+    ModEntityDetailResponse,
+} from './modKVApi';
+
 // R2 Types
 export type {
     R2FileInfo,
