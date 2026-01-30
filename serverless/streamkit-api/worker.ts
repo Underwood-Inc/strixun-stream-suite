@@ -9,21 +9,40 @@
  */
 
 import type { ExecutionContext } from '@cloudflare/workers-types';
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { getCorsHeaders } from '@strixun/api-framework/enhanced';
 import type { Env } from './src/env.d.js';
 import { createConfig, listConfigs, getConfig, updateConfig, deleteConfig } from './handlers/configs/index.js';
 import { recordSceneSwitch } from './handlers/scene-activity/record.js';
 import { getTopScenes } from './handlers/scene-activity/top.js';
 
 /**
- * Helper to get CORS headers as a record for spread syntax
+ * Get CORS headers for cross-origin requests
+ * Uses API framework with ALLOWED_ORIGINS from env
+ * Matches mods-api pattern exactly
  */
-function getCorsHeadersRecord(request: Request, env: Env): Record<string, string> {
-  const corsHeaders = createCORSHeaders(request, {
-    credentials: true,
-    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+function getCorsHeadersForEnv(env: Env, request: Request): Headers {
+  const headers = getCorsHeaders(env, request, null);
+  
+  // Add security headers (same as mods-api)
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('X-XSS-Protection', '1; mode=block');
+  headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  
+  return headers;
+}
+
+/**
+ * Convert Headers to Record<string, string> for spread syntax
+ * Matches mods-api pattern exactly
+ */
+function getCorsHeadersRecord(env: Env, request: Request): Record<string, string> {
+  const headers = getCorsHeadersForEnv(env, request);
+  const record: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    record[key] = value;
   });
-  return Object.fromEntries(corsHeaders.entries());
+  return record;
 }
 
 /**
@@ -45,7 +64,7 @@ async function handleHealth(request: Request, env: Env): Promise<Response> {
     status: 200,
     headers: {
       'Content-Type': 'application/json',
-      ...getCorsHeadersRecord(request, env),
+      ...getCorsHeadersRecord(env, request),
     },
   });
 }
@@ -54,7 +73,7 @@ async function handleHealth(request: Request, env: Env): Promise<Response> {
  * Helper to add CORS headers to any response
  */
 function withCORSHeaders(response: Response, request: Request, env: Env): Response {
-  const corsHeaders = getCorsHeadersRecord(request, env);
+  const corsHeaders = getCorsHeadersRecord(env, request);
   
   // Clone response and add CORS headers
   const newHeaders = new Headers(response.headers);
@@ -137,7 +156,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     status: 404,
     headers: {
       'Content-Type': 'application/problem+json',
-      ...getCorsHeadersRecord(request, env),
+      ...getCorsHeadersRecord(env, request),
     },
   });
 }
@@ -151,7 +170,7 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
-        headers: getCorsHeadersRecord(request, env),
+        headers: getCorsHeadersRecord(env, request),
       });
     }
     
@@ -170,7 +189,7 @@ export default {
         status: 500,
         headers: {
           'Content-Type': 'application/problem+json',
-          ...getCorsHeadersRecord(request, env),
+          ...getCorsHeadersRecord(env, request),
         },
       });
     }
