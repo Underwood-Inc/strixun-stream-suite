@@ -155,58 +155,108 @@ export function kvDelete(namespaceId, key) {
  */
 export async function runMigrations(config) {
     const { servicePrefix, kvBinding, wranglerPath, migrations = [] } = config;
+    const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
     
-    console.log(`🔄 Running migrations for ${servicePrefix}...`);
+    // GitHub Actions annotation helpers
+    const ghNotice = (title, msg) => isCI ? console.log(`::notice title=${title}::${msg}`) : console.log(`[NOTICE] ${title}: ${msg}`);
+    const ghWarning = (title, msg) => isCI ? console.log(`::warning title=${title}::${msg}`) : console.log(`[WARNING] ${title}: ${msg}`);
+    const ghError = (title, msg) => isCI ? console.log(`::error title=${title}::${msg}`) : console.log(`[ERROR] ${title}: ${msg}`);
+    const ghGroup = (name) => isCI ? console.log(`::group::${name}`) : console.log(`\n=== ${name} ===`);
+    const ghEndGroup = () => isCI ? console.log('::endgroup::') : console.log('');
+    
+    ghGroup(`Migrations for ${servicePrefix}`);
+    console.log(`Service: ${servicePrefix}`);
+    console.log(`KV Binding: ${kvBinding}`);
+    console.log(`Total registered: ${migrations.length}`);
     
     const namespaceId = getKvNamespaceId(wranglerPath, kvBinding);
     if (!namespaceId) {
-        console.log('ℹ️  No KV namespace configured, skipping migrations');
-        return { success: true, ran: [], skipped: [] };
+        ghWarning(`${servicePrefix} migrations`, `No KV namespace found for ${kvBinding} - skipping migrations`);
+        ghEndGroup();
+        return { success: true, ran: [], skipped: [], pending: [] };
     }
-    console.log(`   Using namespace: ${namespaceId}`);
+    console.log(`Namespace ID: ${namespaceId}`);
     
     if (migrations.length === 0) {
-        console.log('ℹ️  No migrations registered');
-        return { success: true, ran: [], skipped: [] };
+        ghNotice(`${servicePrefix} migrations`, 'No migrations registered for this service');
+        ghEndGroup();
+        return { success: true, ran: [], skipped: [], pending: [] };
     }
     
     const ran = [];
     const skipped = [];
+    const failed = [];
+    const pending = [];
+    
+    console.log('');
+    console.log('Checking migration status...');
     
     for (const migration of migrations) {
-        if (isMigrationRun(namespaceId, servicePrefix, migration.id)) {
-            console.log(`   ⏭️  ${migration.id} - already run`);
+        const alreadyRun = isMigrationRun(namespaceId, servicePrefix, migration.id);
+        
+        if (alreadyRun) {
+            console.log(`  ⏭️  ${migration.id} - already run`);
             skipped.push(migration.id);
             continue;
         }
         
-        console.log(`   🔄 Running ${migration.id}...`);
+        if (!migration.run) {
+            console.log(`  ⚠️  ${migration.id} - pending (no CI implementation)`);
+            pending.push(migration.id);
+            continue;
+        }
+        
+        console.log(`  🔄 ${migration.id} - running...`);
         if (migration.description) {
-            console.log(`      ${migration.description}`);
+            console.log(`     ${migration.description}`);
         }
         
         try {
-            if (migration.run) {
-                // Pass utilities to the migration function
-                await migration.run(namespaceId, {
-                    listKeys: (prefix) => listKeys(namespaceId, prefix),
-                    kvGet: (key) => kvGet(namespaceId, key),
-                    kvPut: (key, value) => kvPut(namespaceId, key, value),
-                    kvDelete: (key) => kvDelete(namespaceId, key),
-                });
-            }
+            await migration.run(namespaceId, {
+                listKeys: (prefix) => listKeys(namespaceId, prefix),
+                kvGet: (key) => kvGet(namespaceId, key),
+                kvPut: (key, value) => kvPut(namespaceId, key, value),
+                kvDelete: (key) => kvDelete(namespaceId, key),
+            });
             markMigrationRun(namespaceId, servicePrefix, migration.id);
-            console.log(`   ✅ ${migration.id} - complete`);
+            console.log(`  ✅ ${migration.id} - complete`);
             ran.push(migration.id);
         } catch (err) {
-            console.error(`   ❌ ${migration.id} - failed:`, err.message);
+            console.error(`  ❌ ${migration.id} - failed: ${err.message}`);
+            failed.push(migration.id);
         }
     }
     
-    console.log('');
-    console.log(`✅ Migration run complete: ${ran.length} ran, ${skipped.length} skipped`);
+    ghEndGroup();
     
-    return { success: true, ran, skipped };
+    // Summary
+    console.log('');
+    console.log('─'.repeat(50));
+    console.log(`MIGRATION SUMMARY FOR ${servicePrefix.toUpperCase()}`);
+    console.log('─'.repeat(50));
+    console.log(`Total registered: ${migrations.length}`);
+    console.log(`Ran successfully: ${ran.length}${ran.length > 0 ? ` (${ran.join(', ')})` : ''}`);
+    console.log(`Already run:      ${skipped.length}${skipped.length > 0 ? ` (${skipped.join(', ')})` : ''}`);
+    console.log(`Pending (manual): ${pending.length}${pending.length > 0 ? ` (${pending.join(', ')})` : ''}`);
+    console.log(`Failed:           ${failed.length}${failed.length > 0 ? ` (${failed.join(', ')})` : ''}`);
+    console.log('─'.repeat(50));
+    
+    // GitHub Actions annotations for summary
+    if (ran.length > 0) {
+        ghNotice(`${servicePrefix} migrations ran`, `${ran.length} migration(s) executed: ${ran.join(', ')}`);
+    }
+    if (skipped.length > 0 && ran.length === 0 && pending.length === 0) {
+        ghNotice(`${servicePrefix} migrations`, `All ${skipped.length} migration(s) already run: ${skipped.join(', ')}`);
+    }
+    if (pending.length > 0) {
+        ghWarning(`${servicePrefix} pending migrations`, `${pending.length} migration(s) need manual execution: ${pending.join(', ')}`);
+    }
+    if (failed.length > 0) {
+        ghError(`${servicePrefix} migrations failed`, `${failed.length} migration(s) failed: ${failed.join(', ')}`);
+        throw new Error(`${failed.length} migration(s) failed: ${failed.join(', ')}`);
+    }
+    
+    return { success: true, ran, skipped, pending, failed };
 }
 
 // Allow direct execution for testing

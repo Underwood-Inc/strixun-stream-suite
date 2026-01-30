@@ -1387,19 +1387,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "::group::Running migrations for twitch-api"
-          if [ -f "scripts/run-migrations-ci.js" ]; then
-            if node scripts/run-migrations-ci.js; then
-              echo "::notice title=twitch-api migrations::Migrations completed successfully"
-            else
-              echo "::error title=twitch-api migrations::Migration script failed"
-              exit 1
-            fi
-          else
-            echo "::notice title=twitch-api migrations::No migrations to run"
-          fi
-          echo "::endgroup::"
+          CI: true
+        run: node scripts/run-migrations-ci.js
 
   migrate_mods_api:
     needs: deploy_mods_api
@@ -1429,15 +1418,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "::group::Running migrations for mods-api"
-          if node scripts/run-migrations-ci.js; then
-            echo "::notice title=mods-api migrations::Migrations completed successfully"
-          else
-            echo "::error title=mods-api migrations::Migration script failed"
-            exit 1
-          fi
-          echo "::endgroup::"
+          CI: true
+        run: node scripts/run-migrations-ci.js
 
   migrate_otp_auth:
     needs: deploy_otp_auth
@@ -1467,15 +1449,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "::group::Running migrations for otp-auth-service"
-          if node scripts/run-migrations-ci.js; then
-            echo "::notice title=otp-auth migrations::Migrations completed successfully"
-          else
-            echo "::error title=otp-auth migrations::Migration script failed"
-            exit 1
-          fi
-          echo "::endgroup::"
+          CI: true
+        run: node scripts/run-migrations-ci.js
 
   migrate_customer_api:
     needs: deploy_customer_api
@@ -1505,15 +1480,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "::group::Running migrations for customer-api"
-          if node scripts/run-migrations-ci.js; then
-            echo "::notice title=customer-api migrations::Migrations completed successfully"
-          else
-            echo "::error title=customer-api migrations::Migration script failed"
-            exit 1
-          fi
-          echo "::endgroup::"
+          CI: true
+        run: node scripts/run-migrations-ci.js
 
   migrate_game_api:
     needs: deploy_game_api
@@ -1543,15 +1511,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "::group::Running migrations for game-api"
-          if node scripts/run-migrations-ci.js; then
-            echo "::notice title=game-api migrations::Migrations completed successfully"
-          else
-            echo "::error title=game-api migrations::Migration script failed"
-            exit 1
-          fi
-          echo "::endgroup::"
+          CI: true
+        run: node scripts/run-migrations-ci.js
 
   migrate_url_shortener:
     needs: deploy_url_shortener
@@ -1581,15 +1542,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "::group::Running migrations for url-shortener"
-          if node scripts/run-migrations-ci.js; then
-            echo "::notice title=url-shortener migrations::Migrations completed successfully"
-          else
-            echo "::error title=url-shortener migrations::Migration script failed"
-            exit 1
-          fi
-          echo "::endgroup::"
+          CI: true
+        run: node scripts/run-migrations-ci.js
 
   migrate_access_service:
     needs: deploy_access_service
@@ -1619,15 +1573,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "::group::Running migrations for access-service"
-          if node scripts/run-migrations-ci.js; then
-            echo "::notice title=access-service migrations::Migrations completed successfully"
-          else
-            echo "::error title=access-service migrations::Migration script failed"
-            exit 1
-          fi
-          echo "::endgroup::"
+          CI: true
+        run: node scripts/run-migrations-ci.js
 
   migrate_chat_api:
     needs: deploy_chat_api
@@ -1657,15 +1604,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "::group::Running migrations for chat-signaling"
-          if node scripts/run-migrations-ci.js; then
-            echo "::notice title=chat-api migrations::Migrations completed successfully"
-          else
-            echo "::error title=chat-api migrations::Migration script failed"
-            exit 1
-          fi
-          echo "::endgroup::"
+          CI: true
+        run: node scripts/run-migrations-ci.js
 
   migrate_streamkit_api:
     needs: deploy_streamkit_api
@@ -1695,15 +1635,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "::group::Running migrations for streamkit-api"
-          if node scripts/run-migrations-ci.js; then
-            echo "::notice title=streamkit-api migrations::Migrations completed successfully"
-          else
-            echo "::error title=streamkit-api migrations::Migration script failed"
-            exit 1
-          fi
-          echo "::endgroup::"
+          CI: true
+        run: node scripts/run-migrations-ci.js
 
   # Mods Hub Deployment (Cloudflare Pages) - Production only
   deploy_mods_hub:
