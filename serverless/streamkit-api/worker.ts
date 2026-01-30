@@ -16,14 +16,21 @@ import { recordSceneSwitch } from './handlers/scene-activity/record.js';
 import { getTopScenes } from './handlers/scene-activity/top.js';
 
 /**
+ * Helper to get CORS headers as a record for spread syntax
+ */
+function getCorsHeadersRecord(request: Request, env: Env): Record<string, string> {
+  const corsHeaders = createCORSHeaders(request, {
+    credentials: true,
+    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+  });
+  return Object.fromEntries(corsHeaders.entries());
+}
+
+/**
  * Health check endpoint
  */
 async function handleHealth(request: Request, env: Env): Promise<Response> {
   const envName = env.ENVIRONMENT || 'production';
-  const corsHeaders = createCORSHeaders(request, {
-    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-    credentials: true,
-  });
   
   return new Response(JSON.stringify({
     status: 'healthy',
@@ -38,7 +45,7 @@ async function handleHealth(request: Request, env: Env): Promise<Response> {
     status: 200,
     headers: {
       'Content-Type': 'application/json',
-      ...Object.fromEntries(corsHeaders.entries()),
+      ...getCorsHeadersRecord(request, env),
     },
   });
 }
@@ -47,14 +54,11 @@ async function handleHealth(request: Request, env: Env): Promise<Response> {
  * Helper to add CORS headers to any response
  */
 function withCORSHeaders(response: Response, request: Request, env: Env): Response {
-  const corsHeaders = createCORSHeaders(request, {
-    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-    credentials: true,
-  });
+  const corsHeaders = getCorsHeadersRecord(request, env);
   
   // Clone response and add CORS headers
   const newHeaders = new Headers(response.headers);
-  for (const [key, value] of corsHeaders.entries()) {
+  for (const [key, value] of Object.entries(corsHeaders)) {
     newHeaders.set(key, value);
   }
   
@@ -123,11 +127,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   }
   
   // 404
-  const corsHeaders = createCORSHeaders(request, {
-    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-    credentials: true,
-  });
-  
   return new Response(JSON.stringify({
     type: 'https://tools.ietf.org/html/rfc7231#section-6.5.4',
     title: 'Not Found',
@@ -138,7 +137,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     status: 404,
     headers: {
       'Content-Type': 'application/problem+json',
-      ...Object.fromEntries(corsHeaders.entries()),
+      ...getCorsHeadersRecord(request, env),
     },
   });
 }
@@ -150,13 +149,9 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
-      const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        credentials: true,
-      });
       return new Response(null, {
         status: 204,
-        headers: Object.fromEntries(corsHeaders.entries()),
+        headers: getCorsHeadersRecord(request, env),
       });
     }
     
@@ -164,11 +159,6 @@ export default {
       return await handleRequest(request, env, ctx);
     } catch (error) {
       console.error('[StreamkitAPI] Unhandled error:', error);
-      
-      const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        credentials: true,
-      });
       
       return new Response(JSON.stringify({
         type: 'https://tools.ietf.org/html/rfc7231#section-6.6.1',
@@ -180,7 +170,7 @@ export default {
         status: 500,
         headers: {
           'Content-Type': 'application/problem+json',
-          ...Object.fromEntries(corsHeaders.entries()),
+          ...getCorsHeadersRecord(request, env),
         },
       });
     }
