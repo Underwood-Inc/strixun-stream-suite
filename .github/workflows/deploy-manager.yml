@@ -637,20 +637,6 @@ jobs:
             echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
           fi
         continue-on-error: true
-      
-      - name: Run Migrations
-        working-directory: serverless/twitch-api
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "🔄 Running migrations for twitch-api..."
-          if [ -f "scripts/run-migrations-ci.js" ]; then
-            node scripts/run-migrations-ci.js
-          else
-            echo "ℹ️  No CI migration script found, skipping"
-          fi
-        continue-on-error: true
 
   # Mods API Deployment
   deploy_mods_api:
@@ -746,16 +732,6 @@ jobs:
           if [ -n "${{ secrets.MODS_ENCRYPTION_KEY }}" ]; then
             echo "${{ secrets.MODS_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put MODS_ENCRYPTION_KEY $ENV_FLAG || true
           fi
-        continue-on-error: true
-      
-      - name: Run Migrations
-        working-directory: serverless/mods-api
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "🔄 Running migrations for mods-api..."
-          node scripts/run-migrations-ci.js
         continue-on-error: true
 
   # OTP Auth Service Deployment
@@ -952,20 +928,6 @@ jobs:
             echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
           fi
         continue-on-error: true
-      
-      - name: Run Migrations
-        working-directory: serverless/customer-api
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "🔄 Running migrations for customer-api..."
-          if [ -f "scripts/run-migrations-ci.js" ]; then
-            node scripts/run-migrations-ci.js
-          else
-            echo "ℹ️  No CI migration script found, skipping"
-          fi
-        continue-on-error: true
 
   # Game API Deployment
   deploy_game_api:
@@ -1033,20 +995,6 @@ jobs:
           fi
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
-          fi
-        continue-on-error: true
-      
-      - name: Run Migrations
-        working-directory: serverless/game-api
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "🔄 Running migrations for game-api..."
-          if [ -f "scripts/run-migrations-ci.js" ]; then
-            node scripts/run-migrations-ci.js
-          else
-            echo "ℹ️  No CI migration script found, skipping"
           fi
         continue-on-error: true
 
@@ -1121,20 +1069,6 @@ jobs:
           else
             echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
             echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
-          fi
-        continue-on-error: true
-      
-      - name: Run Migrations
-        working-directory: serverless/url-shortener
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "🔄 Running migrations for url-shortener..."
-          if [ -f "scripts/run-migrations-ci.js" ]; then
-            node scripts/run-migrations-ci.js
-          else
-            echo "ℹ️  No CI migration script found, skipping"
           fi
         continue-on-error: true
 
@@ -1239,20 +1173,6 @@ jobs:
           fi
         continue-on-error: true
       
-      - name: Run Migrations
-        working-directory: serverless/access-service
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "🔄 Running migrations for access-service..."
-          if [ -f "scripts/run-migrations-ci.js" ]; then
-            node scripts/run-migrations-ci.js
-          else
-            echo "ℹ️  No CI migration script found, skipping"
-          fi
-        continue-on-error: true
-      
       - name: Seed Default Roles & Permissions
         working-directory: serverless/access-service
         env:
@@ -1349,20 +1269,6 @@ jobs:
             echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
           fi
         continue-on-error: true
-      
-      - name: Run Migrations
-        working-directory: serverless/chat-signaling
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "🔄 Running migrations for chat-signaling..."
-          if [ -f "scripts/run-migrations-ci.js" ]; then
-            node scripts/run-migrations-ci.js
-          else
-            echo "ℹ️  No CI migration script found, skipping"
-          fi
-        continue-on-error: true
 
   # Streamkit API Deployment
   deploy_streamkit_api:
@@ -1448,6 +1354,341 @@ jobs:
             echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
           fi
         continue-on-error: true
+
+  # ============================================
+  # MIGRATION JOBS - Run after each deploy
+  # ============================================
+  
+  migrate_twitch_api:
+    needs: deploy_twitch_api
+    if: ${{ needs.deploy_twitch_api.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run Migrations
+        working-directory: serverless/twitch-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "::group::Running migrations for twitch-api"
+          if [ -f "scripts/run-migrations-ci.js" ]; then
+            if node scripts/run-migrations-ci.js; then
+              echo "::notice title=twitch-api migrations::Migrations completed successfully"
+            else
+              echo "::error title=twitch-api migrations::Migration script failed"
+              exit 1
+            fi
+          else
+            echo "::notice title=twitch-api migrations::No migrations to run"
+          fi
+          echo "::endgroup::"
+
+  migrate_mods_api:
+    needs: deploy_mods_api
+    if: ${{ needs.deploy_mods_api.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run Migrations
+        working-directory: serverless/mods-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "::group::Running migrations for mods-api"
+          if node scripts/run-migrations-ci.js; then
+            echo "::notice title=mods-api migrations::Migrations completed successfully"
+          else
+            echo "::error title=mods-api migrations::Migration script failed"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+  migrate_otp_auth:
+    needs: deploy_otp_auth
+    if: ${{ needs.deploy_otp_auth.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run Migrations
+        working-directory: serverless/otp-auth-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "::group::Running migrations for otp-auth-service"
+          if node scripts/run-migrations-ci.js; then
+            echo "::notice title=otp-auth migrations::Migrations completed successfully"
+          else
+            echo "::error title=otp-auth migrations::Migration script failed"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+  migrate_customer_api:
+    needs: deploy_customer_api
+    if: ${{ needs.deploy_customer_api.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run Migrations
+        working-directory: serverless/customer-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "::group::Running migrations for customer-api"
+          if node scripts/run-migrations-ci.js; then
+            echo "::notice title=customer-api migrations::Migrations completed successfully"
+          else
+            echo "::error title=customer-api migrations::Migration script failed"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+  migrate_game_api:
+    needs: deploy_game_api
+    if: ${{ needs.deploy_game_api.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run Migrations
+        working-directory: serverless/game-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "::group::Running migrations for game-api"
+          if node scripts/run-migrations-ci.js; then
+            echo "::notice title=game-api migrations::Migrations completed successfully"
+          else
+            echo "::error title=game-api migrations::Migration script failed"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+  migrate_url_shortener:
+    needs: deploy_url_shortener
+    if: ${{ needs.deploy_url_shortener.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run Migrations
+        working-directory: serverless/url-shortener
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "::group::Running migrations for url-shortener"
+          if node scripts/run-migrations-ci.js; then
+            echo "::notice title=url-shortener migrations::Migrations completed successfully"
+          else
+            echo "::error title=url-shortener migrations::Migration script failed"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+  migrate_access_service:
+    needs: deploy_access_service
+    if: ${{ needs.deploy_access_service.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run Migrations
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "::group::Running migrations for access-service"
+          if node scripts/run-migrations-ci.js; then
+            echo "::notice title=access-service migrations::Migrations completed successfully"
+          else
+            echo "::error title=access-service migrations::Migration script failed"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+  migrate_chat_api:
+    needs: deploy_chat_api
+    if: ${{ needs.deploy_chat_api.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run Migrations
+        working-directory: serverless/chat-signaling
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "::group::Running migrations for chat-signaling"
+          if node scripts/run-migrations-ci.js; then
+            echo "::notice title=chat-api migrations::Migrations completed successfully"
+          else
+            echo "::error title=chat-api migrations::Migration script failed"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+  migrate_streamkit_api:
+    needs: deploy_streamkit_api
+    if: ${{ needs.deploy_streamkit_api.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       
       - name: Run Migrations
         working-directory: serverless/streamkit-api
@@ -1455,13 +1696,14 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          echo "🔄 Running migrations for streamkit-api..."
-          if [ -f "scripts/run-migrations-ci.js" ]; then
-            node scripts/run-migrations-ci.js
+          echo "::group::Running migrations for streamkit-api"
+          if node scripts/run-migrations-ci.js; then
+            echo "::notice title=streamkit-api migrations::Migrations completed successfully"
           else
-            echo "ℹ️  No CI migration script found, skipping"
+            echo "::error title=streamkit-api migrations::Migration script failed"
+            exit 1
           fi
-        continue-on-error: true
+          echo "::endgroup::"
 
   # Mods Hub Deployment (Cloudflare Pages) - Production only
   deploy_mods_hub:
@@ -1899,7 +2141,7 @@ jobs:
 
   # Deployment Summary
   summary:
-    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, test_access_service, test_chat_api, test_streamkit_api, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_access_service, deploy_chat_api, deploy_streamkit_api, deploy_mods_hub, deploy_access_hub, deploy_chat_hub, deploy_storybook, deploy_pages]
+    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, test_access_service, test_chat_api, test_streamkit_api, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_access_service, deploy_chat_api, deploy_streamkit_api, migrate_twitch_api, migrate_mods_api, migrate_otp_auth, migrate_customer_api, migrate_game_api, migrate_url_shortener, migrate_access_service, migrate_chat_api, migrate_streamkit_api, deploy_mods_hub, deploy_access_hub, deploy_chat_hub, deploy_storybook, deploy_pages]
     if: always()
     runs-on: ubuntu-latest
     steps:
