@@ -196,11 +196,10 @@ const NavActions = styled.div`
 export function Header() {
     // Use shallow comparison selector to prevent unnecessary re-renders
     // This ensures the component updates when session is restored
-    const { customer, isAuthenticated, isSuperAdmin, logout } = useAuthStore(
+    const { customer, isAuthenticated, logout } = useAuthStore(
         useShallow((state: AuthStore) => ({
             customer: state.customer,
             isAuthenticated: state.isAuthenticated,
-            isSuperAdmin: state.isSuperAdmin,
             logout: state.logout,
         }))
     );

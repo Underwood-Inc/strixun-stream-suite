@@ -579,7 +579,7 @@ export function CustomerManagementPage() {
                             textSecondary: colors.textSecondary,
                             text: colors.text,
                             buttonBg: colors.accent,
-                            buttonText: colors.bgPrimary,
+                            buttonText: colors.bg,
                         }}
                         minHeight="400px"
                     />
