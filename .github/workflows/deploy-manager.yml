@@ -637,6 +637,20 @@ jobs:
             echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
           fi
         continue-on-error: true
+      
+      - name: Run Migrations
+        working-directory: serverless/twitch-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "🔄 Running migrations for twitch-api..."
+          if [ -f "scripts/run-migrations-ci.js" ]; then
+            node scripts/run-migrations-ci.js
+          else
+            echo "ℹ️  No CI migration script found, skipping"
+          fi
+        continue-on-error: true
 
   # Mods API Deployment
   deploy_mods_api:
@@ -732,6 +746,16 @@ jobs:
           if [ -n "${{ secrets.MODS_ENCRYPTION_KEY }}" ]; then
             echo "${{ secrets.MODS_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put MODS_ENCRYPTION_KEY $ENV_FLAG || true
           fi
+        continue-on-error: true
+      
+      - name: Run Migrations
+        working-directory: serverless/mods-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "🔄 Running migrations for mods-api..."
+          node scripts/run-migrations-ci.js
         continue-on-error: true
 
   # OTP Auth Service Deployment
@@ -928,6 +952,20 @@ jobs:
             echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
           fi
         continue-on-error: true
+      
+      - name: Run Migrations
+        working-directory: serverless/customer-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "🔄 Running migrations for customer-api..."
+          if [ -f "scripts/run-migrations-ci.js" ]; then
+            node scripts/run-migrations-ci.js
+          else
+            echo "ℹ️  No CI migration script found, skipping"
+          fi
+        continue-on-error: true
 
   # Game API Deployment
   deploy_game_api:
@@ -995,6 +1033,20 @@ jobs:
           fi
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
+          fi
+        continue-on-error: true
+      
+      - name: Run Migrations
+        working-directory: serverless/game-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "🔄 Running migrations for game-api..."
+          if [ -f "scripts/run-migrations-ci.js" ]; then
+            node scripts/run-migrations-ci.js
+          else
+            echo "ℹ️  No CI migration script found, skipping"
           fi
         continue-on-error: true
 
@@ -1069,6 +1121,20 @@ jobs:
           else
             echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
             echo "Please set ALLOWED_ORIGINS in GitHub Secrets with your allowed origins."
+          fi
+        continue-on-error: true
+      
+      - name: Run Migrations
+        working-directory: serverless/url-shortener
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "🔄 Running migrations for url-shortener..."
+          if [ -f "scripts/run-migrations-ci.js" ]; then
+            node scripts/run-migrations-ci.js
+          else
+            echo "ℹ️  No CI migration script found, skipping"
           fi
         continue-on-error: true
 
@@ -1173,6 +1239,20 @@ jobs:
           fi
         continue-on-error: true
       
+      - name: Run Migrations
+        working-directory: serverless/access-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "🔄 Running migrations for access-service..."
+          if [ -f "scripts/run-migrations-ci.js" ]; then
+            node scripts/run-migrations-ci.js
+          else
+            echo "ℹ️  No CI migration script found, skipping"
+          fi
+        continue-on-error: true
+      
       - name: Seed Default Roles & Permissions
         working-directory: serverless/access-service
         env:
@@ -1269,6 +1349,20 @@ jobs:
             echo "⚠  WARNING: ALLOWED_ORIGINS GitHub secret is not set! CORS will fail in production."
           fi
         continue-on-error: true
+      
+      - name: Run Migrations
+        working-directory: serverless/chat-signaling
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "🔄 Running migrations for chat-signaling..."
+          if [ -f "scripts/run-migrations-ci.js" ]; then
+            node scripts/run-migrations-ci.js
+          else
+            echo "ℹ️  No CI migration script found, skipping"
+          fi
+        continue-on-error: true
 
   # Streamkit API Deployment
   deploy_streamkit_api:
@@ -1352,6 +1446,20 @@ jobs:
           fi
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
             echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
+          fi
+        continue-on-error: true
+      
+      - name: Run Migrations
+        working-directory: serverless/streamkit-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "🔄 Running migrations for streamkit-api..."
+          if [ -f "scripts/run-migrations-ci.js" ]; then
+            node scripts/run-migrations-ci.js
+          else
+            echo "ℹ️  No CI migration script found, skipping"
           fi
         continue-on-error: true
 

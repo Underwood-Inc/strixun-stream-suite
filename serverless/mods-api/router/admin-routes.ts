@@ -222,48 +222,6 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             });
         }
 
-        // Route: POST /admin/migrate/dry-run - Run migration analysis (no changes)
-        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'migrate' && pathSegments[2] === 'dry-run' && request.method === 'POST') {
-            const { dryRunVariantMigration } = await import('../scripts/migrate-variants-to-versions.js');
-            const stats = await dryRunVariantMigration(env);
-            const corsHeaders = getCorsHeaders(env, request);
-            const headers: Record<string, string> = {};
-            corsHeaders.forEach((value, key) => {
-                headers[key] = value;
-            });
-            return {
-                response: new Response(JSON.stringify(stats, null, 2), {
-                    status: 200,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...headers
-                    }
-                }),
-                customerId: null
-            };
-        }
-
-        // Route: POST /admin/migrate/run - Execute actual migration
-        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'migrate' && pathSegments[2] === 'run' && request.method === 'POST') {
-            const { migrateAllVariantsToVersions } = await import('../scripts/migrate-variants-to-versions.js');
-            const stats = await migrateAllVariantsToVersions(env);
-            const corsHeaders = getCorsHeaders(env, request);
-            const headers: Record<string, string> = {};
-            corsHeaders.forEach((value, key) => {
-                headers[key] = value;
-            });
-            return {
-                response: new Response(JSON.stringify(stats, null, 2), {
-                    status: 200,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...headers
-                    }
-                }),
-                customerId: null
-            };
-        }
-
         // 404 for unknown admin routes
         return null;
     } catch (error: any) {

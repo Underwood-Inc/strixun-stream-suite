@@ -13,8 +13,6 @@ import { createError } from './utils/errors.js';
 import { handleCustomerRoutes } from './router/customer-routes.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 import { authenticateRequest } from './utils/auth.js';
-import { MigrationRunner } from '../shared/migration-runner.js';
-import { migrations } from './migrations/index.js';
 
 interface Env {
     CUSTOMER_KV: KVNamespace;
@@ -24,37 +22,6 @@ interface Env {
     ENVIRONMENT?: string;
     NETWORK_INTEGRITY_KEYPHRASE?: string;
     [key: string]: any;
-}
-
-// Track if migrations have been run this instance
-let migrationsRun = false;
-
-/**
- * Auto-run migrations on startup
- * SAFE FOR PRODUCTION: Idempotent - tracks which migrations have been run
- */
-async function autoRunMigrations(env: Env): Promise<void> {
-    const envName = env.ENVIRONMENT || 'production';
-    console.log(`[CustomerAPI] 🔄 Checking for pending migrations in ${envName}...`);
-    
-    try {
-        const runner = new MigrationRunner(env.CUSTOMER_KV, 'customer');
-        const result = await runner.runPending(migrations, env);
-        
-        if (result.ran.length > 0) {
-            console.log(`[CustomerAPI] ✅ Ran ${result.ran.length} migrations:`, result.ran);
-        }
-        
-        if (result.skipped.length > 0) {
-            console.log(`[CustomerAPI] ⏭️  Skipped ${result.skipped.length} migrations (already run)`);
-        }
-        
-        if (result.ran.length === 0 && result.skipped.length === 0) {
-            console.log(`[CustomerAPI] ✓ No migrations to run`);
-        }
-    } catch (error) {
-        console.error(`[CustomerAPI] ❌ Failed to run migrations in ${envName}:`, error);
-    }
 }
 
 /**
@@ -135,12 +102,6 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
  */
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-        // Auto-run migrations on first request (idempotent, safe for production)
-        if (!migrationsRun) {
-            migrationsRun = true;
-            ctx.waitUntil(autoRunMigrations(env));
-        }
-        
         // Handle CORS preflight
         if (request.method === 'OPTIONS') {
             const corsHeaders = createCORSHeaders(request, {

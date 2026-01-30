@@ -33,6 +33,7 @@ export interface MusicSearchResponse {
 }
 
 export interface Env {
+  MUSIC_KV?: KVNamespace;  // Optional: For future use with music caching/storage
   ENVIRONMENT?: string;
   ALLOWED_ORIGINS?: string;
   ROUTES?: string;

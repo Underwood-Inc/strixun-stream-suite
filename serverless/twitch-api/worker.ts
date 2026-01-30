@@ -4,7 +4,7 @@
  * Cloudflare Worker entry point for Twitch API proxy service
  * Wraps the router.js module to provide the fetch handler interface
  * 
- * @version 2.1.0 - Uses standardized CORS from api-framework
+ * @version 2.2.0 - Added migration architecture
  */
 
 import type { ExecutionContext } from '@strixun/types';

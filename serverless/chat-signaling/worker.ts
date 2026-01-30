@@ -4,7 +4,7 @@
  * Minimal Cloudflare Worker for WebRTC signaling
  * Handles only initial connection setup - all messages go P2P after that
  * 
- * @version 2.0.0 - Modular architecture
+ * @version 2.1.0 - Added migration architecture
  */
 
 import { createCORSMiddleware } from '@strixun/api-framework/enhanced';

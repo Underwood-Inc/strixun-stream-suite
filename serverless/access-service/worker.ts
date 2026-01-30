@@ -16,8 +16,6 @@ import { DEFAULT_ROLES, DEFAULT_PERMISSIONS } from './types/authorization.js';
 import { handleAccessRoutes } from './router/access-routes.js';
 import { createCORSHeaders } from './utils/cors.js';
 import { isSeeded, markSeeded, saveRoleDefinition, savePermissionDefinition } from './utils/access-kv.js';
-import { MigrationRunner } from '../shared/migration-runner.js';
-import { migrations } from './migrations/index.js';
 
 /**
  * Auto-seed KV with default roles/permissions
@@ -64,43 +62,6 @@ async function autoSeedDefaults(env: Env): Promise<void> {
     } catch (error) {
         console.error(`[AccessWorker] ❌ Failed to auto-seed ${envName} KV:`, error);
         // Don't throw - seeding failure shouldn't break the service
-    }
-}
-
-/**
- * Auto-run migrations on startup
- * 
- * SAFE FOR PRODUCTION: Idempotent
- * - Tracks which migrations have been run
- * - Skips duplicates automatically
- * - Only runs new/pending migrations
- * - Runs on ALL environments (dev + production)
- * 
- * This ensures database schema/data is always up-to-date on every deploy.
- */
-async function autoRunMigrations(env: Env): Promise<void> {
-    const envName = env.ENVIRONMENT || 'production';
-    console.log(`[AccessWorker] 🔄 Checking for pending migrations in ${envName}...`);
-    
-    try {
-        const runner = new MigrationRunner(env.ACCESS_KV, 'access');
-        const result = await runner.runPending(migrations, env);
-        
-        if (result.ran.length > 0) {
-            console.log(`[AccessWorker] ✅ Ran ${result.ran.length} migrations:`, result.ran);
-        }
-        
-        if (result.skipped.length > 0) {
-            console.log(`[AccessWorker] ⏭️  Skipped ${result.skipped.length} migrations (already run)`);
-        }
-        
-        if (result.ran.length === 0 && result.skipped.length === 0) {
-            console.log(`[AccessWorker] ✓ No migrations to run`);
-        }
-    } catch (error) {
-        console.error(`[AccessWorker] ❌ Migration failed:`, error);
-        // Don't throw - migration failure shouldn't break the service
-        // But log it prominently so it's visible in production logs
     }
 }
 
@@ -195,12 +156,11 @@ let hasAttemptedInit = false;
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         // Auto-initialize on first request (all environments)
-        // Runs migrations first, then seeds defaults, then bootstraps super-admin
+        // Seeds defaults and bootstraps super-admin (migrations run in CI)
         if (!hasAttemptedInit) {
             console.log('[AccessWorker] 🚀 First request received - initializing service...');
             ctx.waitUntil((async () => {
                 try {
-                    await autoRunMigrations(env);
                     await autoSeedDefaults(env);
                     await bootstrapSuperAdmin(env);
                     console.log('[AccessWorker] ✓ Service initialization complete!');
