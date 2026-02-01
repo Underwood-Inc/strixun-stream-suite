@@ -1,0 +1,38 @@
+# Cloudflare Pages Headers Configuration
+# Controls browser and CDN caching behavior for Storybook (design.idling.app)
+
+# HTML files - no caching (always fetch fresh)
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Root path (iframe.html, index.html) - no caching
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/iframe.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Storybook assets - cache with revalidation
+/sb-*
+  Cache-Control: public, max-age=3600, must-revalidate
+
+# Hashed assets (JS/CSS with content hashes) - cache forever
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Static images - long cache
+/*.png
+  Cache-Control: public, max-age=86400
+
+/*.svg
+  Cache-Control: public, max-age=86400
+
+/*.ico
+  Cache-Control: public, max-age=86400
+
+# Fonts - long cache
+/*.woff
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable

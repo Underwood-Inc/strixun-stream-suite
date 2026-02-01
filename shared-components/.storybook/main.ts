@@ -34,7 +34,7 @@ const config: StorybookConfig = {
   docs: {
     autodocs: 'tag',
   } as any,
-  staticDirs: [],
+  staticDirs: ['./public'],
   async viteFinal(config: any) {
     // Set base path from environment variable for Cloudflare deployment
     const basePath = process.env.STORYBOOK_BASE_PATH || '/';
