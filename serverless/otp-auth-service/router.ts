@@ -33,6 +33,7 @@ const NO_JWT_REQUIRED_PATHS = [
     '/dashboard',            // Dashboard SPA - assets served via /assets/ but dashboard itself is public
     '/openapi.json',         // OpenAPI spec for Swagger UI - must be public
     '/health',               // Health check endpoints - must be public
+    '/ads.txt',              // Google AdSense verification - must be public
     '/',                     // Landing page for first-time visitors
     ''
 ];
