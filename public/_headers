@@ -1,0 +1,44 @@
+# Cloudflare Pages Headers Configuration
+# Controls browser and CDN caching behavior for Strixun Stream Suite (root)
+
+# HTML files - no caching (always fetch fresh for SPA routing)
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Root path (index.html) - no caching
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Config file - no caching (may change between deployments)
+/config.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Hashed assets (JS/CSS with content hashes) - cache forever
+# Vite outputs files like index-BdL5vxp2.js with unique hashes
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# PWA Manifest - short cache with revalidation
+/manifest.webmanifest
+  Cache-Control: public, max-age=3600, must-revalidate
+
+# Lua scripts - short cache (users may update them)
+/*.lua
+  Cache-Control: public, max-age=3600, must-revalidate
+
+# Static images - long cache
+/*.png
+  Cache-Control: public, max-age=86400
+
+/*.svg
+  Cache-Control: public, max-age=86400
+
+/*.ico
+  Cache-Control: public, max-age=86400
+
+# Fonts - long cache
+/*.woff
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable

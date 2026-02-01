@@ -68,6 +68,19 @@ export function createRouter() {
         return handleOtpCoreScript(request, env);
       }
 
+      // Serve ads.txt for Google AdSense verification (MUST be publicly accessible)
+      if (path === '/ads.txt' && request.method === 'GET') {
+        const corsHeaders = getCorsHeaders(env, request);
+        return new Response('google.com, pub-1546133996920392, DIRECT, f08c47fec0942fa0\n', {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'public, max-age=86400',
+            ...corsHeaders,
+          },
+        });
+      }
+
       // Public stats endpoint - now requires JWT encryption
       if (path === '/api/stats' && request.method === 'GET') {
         const response = await handleGetStats(request, env);

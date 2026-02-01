@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="google-adsense-account" content="ca-pub-3757286003859686">
+    <meta name="google-adsense-account" content="ca-pub-1546133996920392">
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Upload, manage, and discover mods for Strixun Stream Suite" />
@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     <title>Mods Hub - Strixun Stream Suite</title>
     <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3757286003859686"
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1546133996920392"
          crossorigin="anonymous"></script>
     <!-- Particle effects library (lightweight confetti) - async to prevent blocking -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js" async></script>
@@ -23,16 +23,48 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // Register service worker for PWA
+      // Register service worker for PWA with update handling
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
             .then((registration) => {
               console.log('[PWA] Service Worker registered:', registration.scope);
+              
+              // Check for updates on page load
+              registration.update();
+              
+              // Listen for new service worker waiting to activate
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                console.log('[PWA] New service worker installing...');
+                
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New version available, reload to get it
+                    console.log('[PWA] New version available! Reloading...');
+                    window.location.reload();
+                  }
+                });
+              });
             })
             .catch((error) => {
               console.error('[PWA] Service Worker registration failed:', error);
             });
+        });
+        
+        // Listen for SW update messages
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'SW_UPDATED') {
+            console.log('[PWA] Service worker updated to version:', event.data.version);
+            // Reload to ensure we have the latest assets
+            window.location.reload();
+          }
+        });
+        
+        // Handle controller change (when new SW takes over)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('[PWA] Controller changed, reloading page...');
+          window.location.reload();
         });
       }
     </script>
