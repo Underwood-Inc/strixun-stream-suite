@@ -5,11 +5,12 @@
 Each frontend app has the Google AdSense verification meta tag in its `index.html`:
 
 ```html
-<meta name="google-adsense-account" content="ca-pub-3757286003859686">
+<meta name="google-adsense-account" content="ca-pub-1546133996920392">
 ```
 
 ## Files Updated
 
+- `index.html` (root - streamkit.idling.app)
 - `mods-hub/index.html`
 - `chat-hub/index.html`
 - `access-hub/index.html`
@@ -21,6 +22,7 @@ Each frontend app has the Google AdSense verification meta tag in its `index.htm
 
 Each app also has an `ads.txt` file in its `public/` folder as a backup:
 
+- `public/ads.txt` (root - streamkit.idling.app)
 - `mods-hub/public/ads.txt`
 - `chat-hub/public/ads.txt`
 - `access-hub/public/ads.txt`
@@ -31,7 +33,7 @@ Each app also has an `ads.txt` file in its `public/` folder as a backup:
 
 **Content:**
 ```
-google.com, pub-3757286003859686, DIRECT, f08c47fec0942fa0
+google.com, pub-1546133996920392, DIRECT, f08c47fec0942fa0
 ```
 
 ## How It Works
