@@ -226,6 +226,11 @@ export const StyledContentEditable = styled(ContentEditable)`
     border: 1px solid ${colors.border};
     border-radius: 4px;
     margin: ${spacing.xs} 0;
+    
+    /* Prevent extra space when collapsed */
+    &:not([open]) {
+      padding-bottom: 0;
+    }
   }
   
   .Collapsible__title {
@@ -262,15 +267,22 @@ export const StyledContentEditable = styled(ContentEditable)`
     transform: translateY(-50%) rotate(90deg);
   }
   
-  /* Content hidden when collapsed */
+  /* Content - hidden attribute controls visibility, we just style it */
   .Collapsible__content {
-    display: none;
-    padding: ${spacing.xs} ${spacing.sm} ${spacing.sm} ${spacing.md};
-  }
-  
-  /* Content visible when open */
-  .Collapsible__container[open] > .Collapsible__content,
-  div.Collapsible__container[open] > .Collapsible__content {
-    display: block;
+    padding: 0 ${spacing.sm} ${spacing.xs} ${spacing.md};
+    
+    /* Ensure hidden attribute works */
+    &[hidden] {
+      display: none;
+    }
+    
+    /* Remove extra margins from first/last children */
+    > *:first-child {
+      margin-top: 0;
+    }
+    
+    > *:last-child {
+      margin-bottom: 0;
+    }
   }
 `;

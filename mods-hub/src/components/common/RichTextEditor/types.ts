@@ -5,12 +5,6 @@
 
 import type { validateRichTextPayload, EmbeddedMediaInfo } from '@strixun/api-framework';
 
-/** Whether preview is enabled */
-export type EditorMode = 'edit' | 'preview';
-
-/** How to display preview when enabled */
-export type PreviewDisplayMode = 'split' | 'full';
-
 /** Props for the main RichTextEditor component */
 export interface RichTextEditorProps {
   /** Current value (Lexical JSON state) */
@@ -43,10 +37,6 @@ export interface ToolbarPluginProps {
   validation?: ReturnType<typeof validateRichTextPayload> | null;
   payloadPercentage: number;
   uploadedImageCount: number;
-  editorMode: EditorMode;
-  previewDisplayMode: PreviewDisplayMode;
-  onEditorModeChange: (mode: EditorMode) => void;
-  onPreviewDisplayModeChange: (mode: PreviewDisplayMode) => void;
 }
 
 /** Props for the value/state management plugin */

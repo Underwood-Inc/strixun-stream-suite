@@ -72,6 +72,8 @@ export function ValuePlugin({
 }: ValuePluginProps) {
   const [editor] = useLexicalComposerContext();
   const isInitialized = useRef(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastStateRef = useRef<EditorState | null>(null);
 
   // Initialize editor with saved JSON state
   useEffect(() => {
@@ -91,15 +93,39 @@ export function ValuePlugin({
     }
   }, [editor, value, onMediaChange]);
 
-  const handleChange = useCallback((editorState: EditorState) => {
-    // Serialize to JSON string for storage
-    const jsonString = JSON.stringify(editorState.toJSON());
-    onChange(jsonString);
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
-    // Extract media for size validation
-    const root = editorState.toJSON().root;
-    const media = extractMediaFromState(root as Record<string, unknown>);
-    onMediaChange(media);
+  const handleChange = useCallback((editorState: EditorState) => {
+    // Store latest state for debounced processing
+    lastStateRef.current = editorState;
+    
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Debounce expensive serialization operations
+    debounceTimerRef.current = setTimeout(() => {
+      const stateToProcess = lastStateRef.current;
+      if (!stateToProcess) return;
+      
+      // Serialize to JSON string for storage
+      const json = stateToProcess.toJSON();
+      const jsonString = JSON.stringify(json);
+      onChange(jsonString);
+
+      // Extract media for size validation
+      const root = json.root;
+      const media = extractMediaFromState(root as Record<string, unknown>);
+      onMediaChange(media);
+    }, DEBOUNCE_DELAY);
   }, [onChange, onMediaChange]);
 
   return <OnChangePlugin onChange={handleChange} />;

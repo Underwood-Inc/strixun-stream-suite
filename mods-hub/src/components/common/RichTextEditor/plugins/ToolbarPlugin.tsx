@@ -15,9 +15,6 @@ import {
   ToolbarSelect,
   ToolbarDivider,
   PayloadIndicator,
-  ModeControlsContainer,
-  ModeToggle,
-  DisplayModeSelect,
   HiddenInput,
 } from '../styles';
 import { LinkModal, TableModal, VideoModal } from '../modals';
@@ -31,10 +28,6 @@ export function ToolbarPlugin({
   validation,
   payloadPercentage,
   uploadedImageCount,
-  editorMode,
-  previewDisplayMode,
-  onEditorModeChange,
-  onPreviewDisplayModeChange,
 }: ToolbarPluginProps) {
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showTableModal, setShowTableModal] = useState(false);
@@ -190,33 +183,6 @@ export function ToolbarPlugin({
             {uploadedImageCount > 0 && ` (${uploadedImageCount} uploaded)`}
           </PayloadIndicator>
         )}
-
-        <ModeControlsContainer>
-          <ModeToggle
-            $active={editorMode === 'edit'}
-            onClick={() => onEditorModeChange('edit')}
-            title="Edit mode"
-          >
-            Edit
-          </ModeToggle>
-          <ModeToggle
-            $active={editorMode === 'preview'}
-            onClick={() => onEditorModeChange('preview')}
-            title="Preview mode"
-          >
-            Preview
-          </ModeToggle>
-          {editorMode === 'preview' && (
-            <DisplayModeSelect
-              value={previewDisplayMode}
-              onChange={(e) => onPreviewDisplayModeChange(e.target.value as 'split' | 'full')}
-              title="Preview display mode"
-            >
-              <option value="split">Split View</option>
-              <option value="full">Full Preview</option>
-            </DisplayModeSelect>
-          )}
-        </ModeControlsContainer>
       </Toolbar>
 
       {/* Modals */}

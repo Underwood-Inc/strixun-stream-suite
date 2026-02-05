@@ -49,7 +49,7 @@ import {
 
 import { MAX_RICH_TEXT_PAYLOAD, AUTO_LINK_MATCHERS } from './constants';
 import { editorTheme } from './theme';
-import type { RichTextEditorProps, EditorMode, PreviewDisplayMode } from './types';
+import type { RichTextEditorProps } from './types';
 import {
   EditorContainer,
   EditorWrapper,
@@ -58,14 +58,7 @@ import {
   Label,
   HelpText,
   ErrorBanner,
-  SplitContainer,
-  SplitEditorPane,
-  SplitPreviewPane,
-  PaneLabel,
-  PaneContent,
-  FullPreviewWrapper,
 } from './styles';
-import { Preview } from './Preview';
 import { ImageNode, VideoEmbedNode } from './nodes';
 import { EXTENDED_TRANSFORMERS } from './transformers';
 
@@ -89,7 +82,6 @@ function onError(error: Error) {
  * - Image carousels
  * - Hashtag highlighting
  * - Undo/redo history
- * - Preview mode
  */
 export function RichTextEditor({
   value,
@@ -105,10 +97,7 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const [embeddedMedia, setEmbeddedMedia] = useState<EmbeddedMediaInfo[]>([]);
   const [validation, setValidation] = useState<ReturnType<typeof validateRichTextPayload> | null>(null);
-  const [editorMode, setEditorMode] = useState<EditorMode>('edit');
-  const [previewDisplayMode, setPreviewDisplayMode] = useState<PreviewDisplayMode>('split');
   const [carouselUploadSize, setCarouselUploadSize] = useState(0);
-  const [liveContent, setLiveContent] = useState<string>(value);
 
   // Calculate total uploaded size (inline images + carousel images)
   // Only count base64/uploaded images, not external URLs
@@ -155,53 +144,6 @@ export function RichTextEditor({
     ],
   };
 
-  /** Handle content changes - update parent and track for live preview */
-  const handleContentChange = (newValue: string) => {
-    onChange(newValue);
-    setLiveContent(newValue);
-  };
-
-  /** Core editor content shared between modes */
-  const editorContent = (
-    <>
-      <RichTextPlugin
-        contentEditable={<StyledContentEditable />}
-        placeholder={<Placeholder>{placeholder}</Placeholder>}
-        ErrorBoundary={LexicalErrorBoundary}
-      />
-      <EditablePlugin isPreviewMode={false} />
-      
-      {/* Plugins always active */}
-      <HistoryPlugin />
-      <ListPlugin />
-      <LinkPlugin />
-      <FloatingLinkEditorPlugin />
-      <CheckListPlugin />
-      <TabIndentationPlugin />
-      <AutoLinkPlugin matchers={AUTO_LINK_MATCHERS} />
-      <ClearEditorPlugin />
-      <HorizontalRulePlugin />
-      <TablePlugin />
-      <HashtagPlugin />
-      <CollapsiblePlugin />
-      <CarouselPlugin
-        maxUploadSize={MAX_RICH_TEXT_PAYLOAD}
-        currentUploadSize={totalUploadedSize}
-        onUploadSizeChange={setCarouselUploadSize}
-      />
-      <SelectionAlwaysOnDisplay />
-      <MarkdownShortcutPlugin transformers={EXTENDED_TRANSFORMERS} />
-      <MarkdownPastePlugin />
-      {autoFocus && <AutoFocusPlugin />}
-      {maxLength && <CharacterLimitPlugin maxLength={maxLength} charset="UTF-16" />}
-      <ValuePlugin
-        value={value}
-        onChange={handleContentChange}
-        onMediaChange={setEmbeddedMedia}
-      />
-    </>
-  );
-
   return (
     <EditorContainer className={className}>
       {label && (
@@ -220,10 +162,6 @@ export function RichTextEditor({
               validation={validation}
               payloadPercentage={payloadPercentage}
               uploadedImageCount={uploadedImageCount}
-              editorMode={editorMode}
-              previewDisplayMode={previewDisplayMode}
-              onEditorModeChange={setEditorMode}
-              onPreviewDisplayModeChange={setPreviewDisplayMode}
             />
             {validation && !validation.valid && (
               <ErrorBanner>
@@ -233,52 +171,47 @@ export function RichTextEditor({
           </>
         )}
 
-        {editorMode === 'edit' && (
-          /* Normal edit mode - full width editor */
-          <EditorWrapper $height={height} $hasError={validation?.valid === false}>
-            {editorContent}
-          </EditorWrapper>
-        )}
-
-        {editorMode === 'preview' && previewDisplayMode === 'split' && (
-          /* Split view: Editor on left, live preview on right */
-          <SplitContainer $height={height}>
-            <SplitEditorPane>
-              <PaneLabel>Editor</PaneLabel>
-              <PaneContent>
-                {editorContent}
-              </PaneContent>
-            </SplitEditorPane>
-            <SplitPreviewPane>
-              <PaneLabel>Live Preview</PaneLabel>
-              <PaneContent>
-                <Preview content={liveContent} />
-              </PaneContent>
-            </SplitPreviewPane>
-          </SplitContainer>
-        )}
-
-        {editorMode === 'preview' && previewDisplayMode === 'full' && (
-          /* Full preview mode - what end-users will see */
-          <>
-            {/* Keep editor mounted but hidden so state persists */}
-            <div style={{ display: 'none' }}>
-              {editorContent}
-            </div>
-            <FullPreviewWrapper $height={height}>
-              <PaneLabel>Full Preview</PaneLabel>
-              <PaneContent>
-                <Preview content={liveContent} />
-              </PaneContent>
-            </FullPreviewWrapper>
-          </>
-        )}
+        <EditorWrapper $height={height} $hasError={validation?.valid === false}>
+          <RichTextPlugin
+            contentEditable={<StyledContentEditable />}
+            placeholder={<Placeholder>{placeholder}</Placeholder>}
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          <EditablePlugin isPreviewMode={false} />
+          
+          {/* Core plugins */}
+          <HistoryPlugin />
+          <ListPlugin />
+          <LinkPlugin />
+          <FloatingLinkEditorPlugin />
+          <CheckListPlugin />
+          <TabIndentationPlugin />
+          <AutoLinkPlugin matchers={AUTO_LINK_MATCHERS} />
+          <ClearEditorPlugin />
+          <HorizontalRulePlugin />
+          <TablePlugin />
+          <HashtagPlugin />
+          <CollapsiblePlugin />
+          <CarouselPlugin
+            maxUploadSize={MAX_RICH_TEXT_PAYLOAD}
+            currentUploadSize={totalUploadedSize}
+            onUploadSizeChange={setCarouselUploadSize}
+          />
+          <SelectionAlwaysOnDisplay />
+          <MarkdownShortcutPlugin transformers={EXTENDED_TRANSFORMERS} />
+          <MarkdownPastePlugin />
+          {autoFocus && <AutoFocusPlugin />}
+          {maxLength && <CharacterLimitPlugin maxLength={maxLength} charset="UTF-16" />}
+          <ValuePlugin
+            value={value}
+            onChange={onChange}
+            onMediaChange={setEmbeddedMedia}
+          />
+        </EditorWrapper>
       </LexicalComposer>
     </EditorContainer>
   );
 }
 
-// Re-export types and components for consumers
-export type { RichTextEditorProps, EditorMode, PreviewDisplayMode } from './types';
-export { Preview } from './Preview';
-export type { PreviewProps } from './Preview';
+// Re-export types for consumers
+export type { RichTextEditorProps } from './types';
