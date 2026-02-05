@@ -10,6 +10,7 @@ import { ModVersionList } from '../components/mod/ModVersionList';
 import { ModAnalytics } from '../components/mod/ModAnalytics';
 import { ModRatings } from '../components/mod/ModRatings';
 import { IntegrityBadge } from '../components/mod/IntegrityBadge';
+import { VersionSelector } from '../components/mod/VersionSelector';
 import { ModMetaTags } from '../components/MetaTags';
 import { useAuthStore } from '../stores/auth';
 import { downloadVersion } from '../services/mods';
@@ -277,7 +278,7 @@ const DownloadButton = styled.button`
 `;
 
 export function ModDetailPage() {
-    const { slug } = useParams<{ slug: string }>();
+    const { slug, version: versionParam } = useParams<{ slug: string; version?: string }>();
     const navigate = useNavigate();
     const { data, isLoading, error, refetch } = useModDetail(slug || '');
     const { customer, isAuthenticated } = useAuthStore();
@@ -348,6 +349,11 @@ export function ModDetailPage() {
     const { mod, versions } = data;
     const latestVersion = versions[0]; // Versions are sorted newest first
     
+    // Find selected version from URL param, or default to latest
+    const selectedVersion = versionParam 
+        ? versions.find(v => v.version === versionParam) || latestVersion
+        : latestVersion;
+    
     const handleRatingSubmit = async (rating: number, comment: string) => {
         await submitRating.mutateAsync({
             modId: mod.modId,
@@ -356,8 +362,8 @@ export function ModDetailPage() {
         });
     };
 
-    const handleDownloadLatest = async () => {
-        if (!latestVersion || !slug) return;
+    const handleDownloadSelected = async () => {
+        if (!selectedVersion || !slug) return;
         
         // SECURITY: Prevent unauthenticated download attempts
         if (!isAuthenticated) {
@@ -373,9 +379,9 @@ export function ModDetailPage() {
         setDownloadError(null);
         
         try {
-            const fileName = latestVersion.fileName || `mod-${slug}-v${latestVersion.version}.jar`;
+            const fileName = selectedVersion.fileName || `mod-${slug}-v${selectedVersion.version}.jar`;
             // PESSIMISTIC UPDATE: Wait for download to complete before updating UI
-            await downloadVersion(slug, latestVersion.versionId, fileName);
+            await downloadVersion(slug, selectedVersion.versionId, fileName);
             
             // Download successful - refetch mod data to get updated download counts
             console.log('[ModDetailPage] Download completed, refetching mod data for updated counts');
@@ -429,12 +435,12 @@ export function ModDetailPage() {
                         <span>Latest: {mod.latestVersion}</span>
                         <span>•</span>
                         <span>Updated: {new Date(mod.updatedAt).toLocaleDateString()}</span>
-                        {latestVersion?.sha256 && (
+                        {selectedVersion?.sha256 && (
                             <>
                                 <span>•</span>
                                 <IntegrityBadge 
                                     slug={mod.slug}
-                                    versionId={latestVersion.versionId}
+                                    versionId={selectedVersion.versionId}
                                 />
                             </>
                         )}
@@ -444,7 +450,7 @@ export function ModDetailPage() {
                             <Tag key={tag}>{tag}</Tag>
                         ))}
                     </Tags>
-                    {latestVersion && (
+                    {selectedVersion && (
                         <Actions>
                             {isUploader && (
                                 <ManageButton
@@ -453,15 +459,20 @@ export function ModDetailPage() {
                                     Manage Mod
                                 </ManageButton>
                             )}
+                            <VersionSelector
+                                versions={versions}
+                                selectedVersion={selectedVersion}
+                                modSlug={mod.slug}
+                            />
                             <DownloadButton
                                 onClick={(e) => {
                                     celebrateClick(e.currentTarget);
-                                    handleDownloadLatest();
+                                    handleDownloadSelected();
                                 }}
-                                disabled={downloading || !latestVersion || !isAuthenticated}
+                                disabled={downloading || !selectedVersion || !isAuthenticated}
                                 title={!isAuthenticated ? 'Please log in to download' : undefined}
                             >
-                                {downloading ? 'Downloading...' : `Download Latest ${latestVersion.version}`}
+                                {downloading ? 'Downloading...' : `Download v${selectedVersion.version}`}
                             </DownloadButton>
                             {downloadError && (
                                 <span style={{ color: colors.danger, fontSize: '0.875rem' }}>
@@ -478,6 +489,7 @@ export function ModDetailPage() {
                 versions={versions} 
                 variants={mod.variants || []}
                 authorId={mod.authorId}
+                selectedVersionId={selectedVersion?.versionId}
             />
             
             {isUploader && (

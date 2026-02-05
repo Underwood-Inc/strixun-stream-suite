@@ -17,7 +17,7 @@ import { candyShopAnimation } from '../../utils/candyShopAnimation';
 import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys, useDeleteModVersion, useUpdateModVersion, useUpdateMod } from '../../hooks/useMods';
-import { MarkdownEditor } from '../common/MarkdownEditor';
+import { RichTextEditor } from '../common/RichTextEditor';
 import { MarkdownContent } from '../common/MarkdownContent';
 import { VersionVariantManager } from './VersionVariantManager';
 
@@ -364,7 +364,7 @@ export function ModVersionManagement({ modSlug, modId, versions, variants }: Mod
                                 </FormGroup>
                                 
                                 <FormGroup>
-                                    <MarkdownEditor
+                                    <RichTextEditor
                                         label="Changelog"
                                         value={editFormData.changelog || ''}
                                         onChange={(value) => setEditFormData({ ...editFormData, changelog: value })}

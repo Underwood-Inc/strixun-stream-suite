@@ -3,8 +3,8 @@
  * Displays all versions with download links in expandable accordions
  */
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModVersion, ModVariant } from '../../types/mod';
@@ -49,12 +49,33 @@ const SortButton = styled.button`
   gap: ${spacing.xs};
 `;
 
-const VersionCard = styled.div<{ $isExpanded: boolean }>`
+const VersionCard = styled.div<{ $isExpanded: boolean; $isSelected?: boolean }>`
   ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
   gap: ${props => props.$isExpanded ? spacing.md : '0'};
   transition: all 0.2s ease;
+  
+  ${props => props.$isSelected && `
+    border: 2px solid ${colors.accent};
+    box-shadow: 0 0 12px ${colors.accent}40;
+    position: relative;
+    
+    &::before {
+      content: 'SELECTED';
+      position: absolute;
+      top: -1px;
+      right: ${spacing.md};
+      background: ${colors.accent};
+      color: #000;
+      font-size: 0.625rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 0 0 4px 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  `}
 `;
 
 const VersionCardHeader = styled.div`
@@ -139,6 +160,48 @@ const VersionActions = styled.div`
   display: flex;
   align-items: center;
   gap: ${spacing.sm};
+`;
+
+const CopyLinkButton = styled.button`
+  background: transparent;
+  border: 1px solid ${colors.border};
+  color: ${colors.textSecondary};
+  padding: ${spacing.xs} ${spacing.sm};
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: ${spacing.xs};
+  position: relative;
+  
+  &:hover {
+    background: ${colors.bgTertiary};
+    color: ${colors.text};
+    border-color: ${colors.accent};
+  }
+`;
+
+const CopiedToast = styled.span`
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: ${colors.success};
+  color: #000;
+  font-size: 0.675rem;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  animation: fadeInOut 1.5s ease forwards;
+  
+  @keyframes fadeInOut {
+    0% { opacity: 0; transform: translateX(-50%) translateY(5px); }
+    15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-5px); }
+  }
 `;
 
 const ExpandButton = styled.button`
@@ -238,12 +301,14 @@ interface ModVersionListProps {
     versions: ModVersion[];
     variants?: ModVariant[]; // Variants for the mod (filtered by version)
     authorId?: string; // Mod author ID for checking ownership
+    selectedVersionId?: string; // Currently selected version ID (from URL)
 }
 
 type SortOrder = 'newest' | 'oldest';
 
-export function ModVersionList({ modSlug, versions, variants = [], authorId }: ModVersionListProps) {
+export function ModVersionList({ modSlug, versions, variants = [], authorId, selectedVersionId }: ModVersionListProps) {
     const navigate = useNavigate();
+    const location = useLocation();
     const { isAuthenticated, customer } = useAuthStore();
     const isUploader = customer?.customerId === authorId;
     const queryClient = useQueryClient();
@@ -252,6 +317,43 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId }: M
     const [downloadError, setDownloadError] = useState<string | null>(null);
     const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set());
     const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+    const [copiedVersionId, setCopiedVersionId] = useState<string | null>(null);
+    
+    // Refs for scrolling to selected version
+    const versionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+    
+    // Scroll to selected version on mount or when selection changes
+    useEffect(() => {
+        if (selectedVersionId) {
+            const element = versionRefs.current.get(selectedVersionId);
+            if (element) {
+                // Small delay to ensure layout is complete
+                setTimeout(() => {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            }
+        }
+    }, [selectedVersionId]);
+    
+    // Generate version URL for copying
+    const getVersionUrl = (version: ModVersion) => {
+        const isModsPath = location.pathname.startsWith('/mods/');
+        const basePath = isModsPath ? `/mods/${modSlug}` : `/${modSlug}`;
+        return `${window.location.origin}${basePath}/v/${version.version}`;
+    };
+    
+    // Copy version link to clipboard
+    const handleCopyLink = async (e: React.MouseEvent, version: ModVersion) => {
+        e.stopPropagation(); // Prevent accordion toggle
+        const url = getVersionUrl(version);
+        try {
+            await navigator.clipboard.writeText(url);
+            setCopiedVersionId(version.versionId);
+            setTimeout(() => setCopiedVersionId(null), 1500);
+        } catch (err) {
+            console.error('Failed to copy link:', err);
+        }
+    };
 
     // Sort versions by createdAt timestamp (includes full time precision)
     const sortedVersions = [...versions].sort((a, b) => {
@@ -386,10 +488,22 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId }: M
             )}
             {sortedVersions.map((version) => {
                 const isExpanded = expandedVersions.has(version.versionId);
+                const isSelected = version.versionId === selectedVersionId;
                 // Filter variants to only show those attached to this specific version
                 const versionVariants = variants.filter(v => v.parentVersionId === version.versionId);
                 return (
-                    <VersionCard key={version.versionId} $isExpanded={isExpanded}>
+                    <VersionCard 
+                        key={version.versionId} 
+                        $isExpanded={isExpanded}
+                        $isSelected={isSelected}
+                        ref={(el) => {
+                            if (el) {
+                                versionRefs.current.set(version.versionId, el);
+                            } else {
+                                versionRefs.current.delete(version.versionId);
+                            }
+                        }}
+                    >
                         <VersionCardHeader onClick={() => toggleVersion(version.versionId)}>
                             <VersionInfo>
                                 <VersionHeader>
@@ -410,6 +524,15 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId }: M
                                                 Manage
                                             </ManageButton>
                                         )}
+                                        <CopyLinkButton
+                                            onClick={(e) => handleCopyLink(e, version)}
+                                            title="Copy link to this version"
+                                        >
+                                            📋 Link
+                                            {copiedVersionId === version.versionId && (
+                                                <CopiedToast>Copied!</CopiedToast>
+                                            )}
+                                        </CopyLinkButton>
                                         <DownloadButton
                                             onClick={(e) => {
                                                 e.stopPropagation();

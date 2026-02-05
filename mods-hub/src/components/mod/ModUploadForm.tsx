@@ -10,7 +10,7 @@ import type { ModUploadRequest, ModCategory, ModVisibility, ModVariant, ModStatu
 import { useModSettings } from '../../hooks/useMods';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
-import { MarkdownEditor } from '../common/MarkdownEditor';
+import { RichTextEditor } from '../common/RichTextEditor';
 
 // UI-only type that extends ModVariant with file upload fields
 type ModVariantWithFile = ModVariant & {
@@ -369,7 +369,7 @@ export function ModUploadForm({
             </FormGroup>
 
             <FormGroup>
-                <MarkdownEditor
+                <RichTextEditor
                     label="Description"
                     value={description}
                     onChange={setDescription}
@@ -413,7 +413,7 @@ export function ModUploadForm({
             </FormGroup>
 
             <FormGroup>
-                <MarkdownEditor
+                <RichTextEditor
                     label="Changelog"
                     value={changelog}
                     onChange={setChangelog}
@@ -506,7 +506,7 @@ export function ModUploadForm({
                             />
                         </FormGroup>
                         <FormGroup>
-                            <MarkdownEditor
+                            <RichTextEditor
                                 label="Variant Description"
                                 value={variant.description || ''}
                                 onChange={(value) => handleVariantChange(variant.variantId, 'description', value)}

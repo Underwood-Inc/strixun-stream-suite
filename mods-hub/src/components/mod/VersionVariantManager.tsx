@@ -8,7 +8,7 @@ import { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModVariant, ModVersion } from '../../types/mod';
-import { MarkdownEditor } from '../common/MarkdownEditor';
+import { RichTextEditor } from '../common/RichTextEditor';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { useModSettings, useUpdateMod, useDeleteVariant } from '../../hooks/useMods';
 import { createVariant } from '../../services/mods/modVariantsApi';
@@ -402,7 +402,7 @@ export function VersionVariantManager({
                     </FormGroup>
 
                     <FormGroup>
-                        <MarkdownEditor
+                        <RichTextEditor
                             label="Description (optional)"
                             value={newVariant.description || ''}
                             onChange={(value: string) => setNewVariant({ ...newVariant, description: value })}

@@ -10,7 +10,7 @@ import type { VariantVersionUploadRequest } from '../../types/mod';
 import { useModSettings } from '../../hooks/useMods';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
-import { MarkdownEditor } from '../common/MarkdownEditor';
+import { RichTextEditor } from '../common/RichTextEditor';
 
 const Form = styled.form`
   ${getCardStyles('default')}
@@ -158,7 +158,7 @@ export function VariantVersionUpload({
             </FormGroup>
 
             <FormGroup>
-                <MarkdownEditor
+                <RichTextEditor
                     label="Changelog"
                     value={changelog}
                     onChange={setChangelog}
