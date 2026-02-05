@@ -370,7 +370,6 @@ export function ModVersionManagement({ modSlug, modId, versions, variants }: Mod
                                         onChange={(value) => setEditFormData({ ...editFormData, changelog: value })}
                                         placeholder="What's new in this version?"
                                         height={200}
-                                        preview="live"
                                     />
                                 </FormGroup>
                                 

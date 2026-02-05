@@ -439,7 +439,6 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                     onChange={setDescription}
                     placeholder="Describe your mod..."
                     height={300}
-                    preview="live"
                 />
             </FullWidthSection>
 

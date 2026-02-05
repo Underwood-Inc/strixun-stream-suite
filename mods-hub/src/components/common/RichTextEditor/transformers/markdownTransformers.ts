@@ -129,7 +129,7 @@ export const COLLAPSIBLE_TRANSFORMER: ElementTransformer = {
     return `<details>\n<summary>${titleText}</summary>\n${contentText}\n</details>`;
   },
   regExp: /^<details>\s*$/,
-  replace: (parentNode, _children, match, isImport) => {
+  replace: (parentNode, _children, _match, _isImport) => {
     // This handles the opening tag - actual content parsing happens in paste plugin
     const container = $createCollapsibleContainerNode(true);
     const title = $createCollapsibleTitleNode();

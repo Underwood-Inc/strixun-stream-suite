@@ -164,7 +164,6 @@ export function VariantVersionUpload({
                     onChange={setChangelog}
                     placeholder="What's new in this version? Supports **bold**, *italic*, `code`, lists, and more..."
                     height={200}
-                    preview="live"
                 />
             </FormGroup>
 

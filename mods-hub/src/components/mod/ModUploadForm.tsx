@@ -375,7 +375,6 @@ export function ModUploadForm({
                     onChange={setDescription}
                     placeholder="Describe your mod... Supports **bold**, *italic*, `code`, lists, and more..."
                     height={200}
-                    preview="live"
                 />
             </FormGroup>
 
@@ -419,7 +418,6 @@ export function ModUploadForm({
                     onChange={setChangelog}
                     placeholder="What's new in this version? Supports **bold**, *italic*, `code`, lists, and more..."
                     height={200}
-                    preview="live"
                 />
             </FormGroup>
 
@@ -512,7 +510,6 @@ export function ModUploadForm({
                                 onChange={(value) => handleVariantChange(variant.variantId, 'description', value)}
                                 placeholder="Describe this variant..."
                                 height={150}
-                                preview="edit"
                             />
                         </FormGroup>
                         <FormGroup>

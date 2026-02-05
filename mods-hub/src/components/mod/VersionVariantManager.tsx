@@ -408,7 +408,6 @@ export function VersionVariantManager({
                             onChange={(value: string) => setNewVariant({ ...newVariant, description: value })}
                             placeholder="Describe this variant..."
                             height={120}
-                            preview="edit"
                         />
                     </FormGroup>
                     
