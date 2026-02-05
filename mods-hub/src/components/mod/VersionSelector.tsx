@@ -221,7 +221,10 @@ export function VersionSelector({ versions, selectedVersion, modSlug }: VersionS
   };
   
   const handleCopyLink = async () => {
-    const url = `${window.location.origin}${getVersionUrl(selectedVersion)}`;
+    // Always include version in copied URL so link is permanent
+    const isModsPath = location.pathname.startsWith('/mods/');
+    const basePath = isModsPath ? `/mods/${modSlug}` : `/${modSlug}`;
+    const url = `${window.location.origin}${basePath}/v/${selectedVersion.version}`;
     try {
       await navigator.clipboard.writeText(url);
       setShowCopied(true);
