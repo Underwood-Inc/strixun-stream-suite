@@ -6,8 +6,8 @@
 import { useState } from 'react';
 import { formatFileSize } from '@strixun/api-framework';
 
-import { MAX_RICH_TEXT_PAYLOAD } from './constants';
-import type { ToolbarPluginProps } from './types';
+import { MAX_RICH_TEXT_PAYLOAD } from '../constants';
+import type { ToolbarPluginProps } from '../types';
 import {
   Toolbar,
   ToolbarGroup,
@@ -19,10 +19,10 @@ import {
   ModeToggle,
   DisplayModeSelect,
   HiddenInput,
-} from './styles';
-import { LinkModal, TableModal, VideoModal } from './modals';
-import { useToolbarActions, useToolbarState } from './hooks';
-import { colors, spacing } from '../../../theme';
+} from '../styles';
+import { LinkModal, TableModal, VideoModal } from '../modals';
+import { useToolbarActions, useToolbarState } from '../hooks';
+import { colors, spacing } from '../../../../theme';
 
 export function ToolbarPlugin({
   totalUploadedSize,

@@ -1,6 +1,6 @@
 /**
- * LexicalPreview Component
- * Standalone, reusable component for rendering Lexical JSON state as HTML
+ * Preview Component
+ * Standalone, reusable component for rendering rich text editor state as HTML
  * Can be used independently of the RichTextEditor for displaying content
  * Also supports rendering markdown content by converting it first
  */
@@ -9,7 +9,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { createHeadlessEditor } from '@lexical/headless';
 import { $generateHtmlFromNodes } from '@lexical/html';
 import { $convertFromMarkdownString } from '@lexical/markdown';
-import { EXTENDED_TRANSFORMERS } from './markdownTransformers';
+import { EXTENDED_TRANSFORMERS } from './transformers';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { CodeNode } from '@lexical/code';
@@ -24,29 +24,28 @@ import {
   CollapsibleContainerNode,
   CollapsibleContentNode,
   CollapsibleTitleNode,
-} from '../CollapsiblePlugin';
-import { CarouselNode } from '../CarouselPlugin';
-import { ImageNode } from './ImageNode';
-import { VideoEmbedNode } from './VideoEmbedNode';
+  CarouselNode,
+} from './plugins';
+import { ImageNode, VideoEmbedNode } from './nodes';
 import { PreviewContainer } from './styles';
 
 /**
- * Detect if content is Lexical JSON or markdown
+ * Detect if content is editor JSON or markdown
  */
-function isLexicalJson(content: string): boolean {
+function isEditorJson(content: string): boolean {
   if (!content || !content.trim()) return false;
   
   try {
     const parsed = JSON.parse(content);
-    // Lexical JSON has a root object with a specific structure
+    // Editor JSON has a root object with a specific structure
     return parsed && typeof parsed === 'object' && 'root' in parsed;
   } catch {
     return false;
   }
 }
 
-export interface LexicalPreviewProps {
-  /** Lexical JSON state string to render */
+export interface PreviewProps {
+  /** Editor JSON state string to render */
   content: string;
   /** Optional CSS class name */
   className?: string;
@@ -82,30 +81,30 @@ const PREVIEW_NODES = [
 ];
 
 /**
- * LexicalPreview - Renders Lexical JSON state as styled HTML
+ * Preview - Renders rich text editor state as styled HTML
  * 
  * This is a standalone component that can be used anywhere to display
- * content created with the RichTextEditor. It uses Lexical's headless
+ * content created with the RichTextEditor. It uses a headless
  * editor to generate HTML without rendering the full editor UI.
  * 
  * @example
  * // Display saved content from database
- * <LexicalPreview content={mod.description} />
+ * <Preview content={mod.description} />
  * 
  * @example
  * // With custom styling
- * <LexicalPreview content={content} className="mod-description" />
+ * <Preview content={content} className="mod-description" />
  */
-export function LexicalPreview({ content, className, style }: LexicalPreviewProps) {
+export function Preview({ content, className, style }: PreviewProps) {
   const [html, setHtml] = useState<string>('');
 
   // Create headless editor instance (memoized for performance)
   const headlessEditor = useMemo(() => {
     return createHeadlessEditor({
-      namespace: 'LexicalPreview',
+      namespace: 'Preview',
       nodes: PREVIEW_NODES,
       onError: (error) => {
-        console.error('[LexicalPreview] Error:', error);
+        console.error('[Preview] Error:', error);
       },
     });
   }, []);
@@ -118,8 +117,8 @@ export function LexicalPreview({ content, className, style }: LexicalPreviewProp
     }
 
     try {
-      if (isLexicalJson(content)) {
-        // Content is Lexical JSON - parse and render
+      if (isEditorJson(content)) {
+        // Content is editor JSON - parse and render
         const editorState = headlessEditor.parseEditorState(content);
         headlessEditor.setEditorState(editorState);
         headlessEditor.getEditorState().read(() => {
@@ -139,7 +138,7 @@ export function LexicalPreview({ content, className, style }: LexicalPreviewProp
         });
       }
     } catch (e) {
-      console.warn('[LexicalPreview] Could not parse content:', e);
+      console.warn('[Preview] Could not parse content:', e);
       // Fallback: show as preformatted text
       setHtml(`<pre style="white-space: pre-wrap; word-break: break-word;">${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`);
     }
@@ -154,4 +153,4 @@ export function LexicalPreview({ content, className, style }: LexicalPreviewProp
   );
 }
 
-export default LexicalPreview;
+export default Preview;

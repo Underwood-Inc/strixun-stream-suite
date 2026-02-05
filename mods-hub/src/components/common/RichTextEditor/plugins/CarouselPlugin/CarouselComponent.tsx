@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import styled from 'styled-components';
-import { colors, spacing } from '../../../theme';
+import { colors, spacing } from '../../../../../theme';
 import { 
   CarouselImage, 
   generateImageId, 

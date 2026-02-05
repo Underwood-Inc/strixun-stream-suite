@@ -8,7 +8,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import type { EditorState } from 'lexical';
-import type { EmbeddedMediaInfo } from './types';
+import type { EmbeddedMediaInfo } from '../types';
 
 interface ValuePluginProps {
   value: string;

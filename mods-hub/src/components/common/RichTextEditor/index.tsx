@@ -20,7 +20,6 @@ import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
 import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import { AutoLinkPlugin } from '@lexical/react/LexicalAutoLinkPlugin';
 import { ClearEditorPlugin } from '@lexical/react/LexicalClearEditorPlugin';
-import { HorizontalRulePlugin } from '@lexical/extension';
 import { HorizontalRuleNode } from '@lexical/extension';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
@@ -33,12 +32,20 @@ import { SelectionAlwaysOnDisplay } from '@lexical/react/LexicalSelectionAlwaysO
 import { CharacterLimitPlugin } from '@lexical/react/LexicalCharacterLimitPlugin';
 import { validateRichTextPayload, type EmbeddedMediaInfo } from '@strixun/api-framework';
 
-import CollapsiblePlugin, {
+import {
+  CollapsiblePlugin,
   CollapsibleContainerNode,
   CollapsibleContentNode,
   CollapsibleTitleNode,
-} from '../CollapsiblePlugin';
-import CarouselPlugin, { CarouselNode } from '../CarouselPlugin';
+  CarouselPlugin,
+  CarouselNode,
+  ToolbarPlugin,
+  ValuePlugin,
+  EditablePlugin,
+  MarkdownPastePlugin,
+  FloatingLinkEditorPlugin,
+  HorizontalRulePlugin,
+} from './plugins';
 
 import { MAX_RICH_TEXT_PAYLOAD, AUTO_LINK_MATCHERS } from './constants';
 import { editorTheme } from './theme';
@@ -58,15 +65,9 @@ import {
   PaneContent,
   FullPreviewWrapper,
 } from './styles';
-import { ToolbarPlugin } from './ToolbarPlugin';
-import { ValuePlugin } from './ValuePlugin';
-import { EditablePlugin } from './EditablePlugin';
-import { LexicalPreview } from './LexicalPreview';
-import { MarkdownPastePlugin } from './MarkdownPastePlugin';
-import { FloatingLinkEditorPlugin } from './FloatingLinkEditorPlugin';
-import { ImageNode } from './ImageNode';
-import { VideoEmbedNode } from './VideoEmbedNode';
-import { EXTENDED_TRANSFORMERS } from './markdownTransformers';
+import { Preview } from './Preview';
+import { ImageNode, VideoEmbedNode } from './nodes';
+import { EXTENDED_TRANSFORMERS } from './transformers';
 
 /** Error handler for Lexical */
 function onError(error: Error) {
@@ -251,7 +252,7 @@ export function RichTextEditor({
             <SplitPreviewPane>
               <PaneLabel>Live Preview</PaneLabel>
               <PaneContent>
-                <LexicalPreview content={liveContent} />
+                <Preview content={liveContent} />
               </PaneContent>
             </SplitPreviewPane>
           </SplitContainer>
@@ -267,7 +268,7 @@ export function RichTextEditor({
             <FullPreviewWrapper $height={height}>
               <PaneLabel>Full Preview</PaneLabel>
               <PaneContent>
-                <LexicalPreview content={liveContent} />
+                <Preview content={liveContent} />
               </PaneContent>
             </FullPreviewWrapper>
           </>
@@ -279,5 +280,5 @@ export function RichTextEditor({
 
 // Re-export types and components for consumers
 export type { RichTextEditorProps, EditorMode, PreviewDisplayMode } from './types';
-export { LexicalPreview } from './LexicalPreview';
-export type { LexicalPreviewProps } from './LexicalPreview';
+export { Preview } from './Preview';
+export type { PreviewProps } from './Preview';

@@ -9,23 +9,29 @@ import {
   ElementTransformer,
 } from '@lexical/markdown';
 import { $createParagraphNode, LexicalNode } from 'lexical';
-import { $createImageNode, $isImageNode, ImageNode } from './ImageNode';
+import { $createImageNode, $isImageNode, ImageNode } from '../nodes/ImageNode';
 import {
   $createVideoEmbedNode,
   $isVideoEmbedNode,
   VideoEmbedNode,
   parseVideoUrl,
   isVideoUrl,
-} from './VideoEmbedNode';
+} from '../nodes/VideoEmbedNode';
+// Import directly from CollapsiblePlugin files to avoid circular dependency
+// (plugins/index.ts -> MarkdownPastePlugin -> transformers -> plugins/index.ts)
 import {
   $createCollapsibleContainerNode,
-  $createCollapsibleTitleNode,
-  $createCollapsibleContentNode,
   $isCollapsibleContainerNode,
   CollapsibleContainerNode,
+} from '../plugins/CollapsiblePlugin/CollapsibleContainerNode';
+import {
+  $createCollapsibleTitleNode,
   CollapsibleTitleNode,
+} from '../plugins/CollapsiblePlugin/CollapsibleTitleNode';
+import {
+  $createCollapsibleContentNode,
   CollapsibleContentNode,
-} from '../CollapsiblePlugin';
+} from '../plugins/CollapsiblePlugin/CollapsibleContentNode';
 
 /**
  * Image transformer for markdown syntax: ![alt text](url)

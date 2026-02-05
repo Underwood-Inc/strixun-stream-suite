@@ -78,11 +78,38 @@ export const HiddenInput = styled.input`
 
 /** Side-by-side container for editor and preview */
 export const SplitContainer = styled.div<{ $height: number }>`
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: ${spacing.sm};
   min-height: ${props => props.$height}px;
+  height: 500px;
   width: 100%;
+  resize: vertical;
+  overflow: hidden;
+  
+  /* Custom resize handle indicator */
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    background: linear-gradient(
+      135deg,
+      transparent 50%,
+      ${colors.border} 50%,
+      ${colors.border} 60%,
+      transparent 60%,
+      transparent 70%,
+      ${colors.border} 70%,
+      ${colors.border} 80%,
+      transparent 80%
+    );
+    pointer-events: none;
+    opacity: 0.6;
+  }
 `;
 
 /** Left panel (editor) in split mode */
@@ -95,6 +122,7 @@ export const SplitEditorPane = styled.div`
   background: ${colors.bgSecondary};
   min-width: 0;
   width: 100%;
+  height: 100%;
 `;
 
 /** Right panel (preview) in split mode */
@@ -107,6 +135,7 @@ export const SplitPreviewPane = styled.div`
   background: ${colors.bgSecondary};
   min-width: 0;
   width: 100%;
+  height: 100%;
 `;
 
 /** Panel header label */
@@ -138,7 +167,9 @@ export const PaneContent = styled.div`
 
 /** Full preview wrapper */
 export const FullPreviewWrapper = styled.div<{ $height: number }>`
+  position: relative;
   min-height: ${props => props.$height}px;
+  height: 500px;
   border: 1px solid ${colors.border};
   border-radius: 4px;
   overflow: hidden;
@@ -146,4 +177,28 @@ export const FullPreviewWrapper = styled.div<{ $height: number }>`
   display: flex;
   flex-direction: column;
   width: 100%;
+  resize: vertical;
+  
+  /* Custom resize handle indicator */
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    background: linear-gradient(
+      135deg,
+      transparent 50%,
+      ${colors.border} 50%,
+      ${colors.border} 60%,
+      transparent 60%,
+      transparent 70%,
+      ${colors.border} 70%,
+      ${colors.border} 80%,
+      transparent 80%
+    );
+    pointer-events: none;
+    opacity: 0.6;
+  }
 `;

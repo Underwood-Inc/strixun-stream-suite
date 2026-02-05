@@ -17,7 +17,7 @@ import { $isLinkNode, TOGGLE_LINK_COMMAND } from '@lexical/link';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { mergeRegister } from '@lexical/utils';
 import styled from 'styled-components';
-import { colors, spacing } from '../../../theme';
+import { colors, spacing } from '../../../../theme';
 
 const FloatingEditor = styled.div<{ $visible: boolean }>`
   position: absolute;

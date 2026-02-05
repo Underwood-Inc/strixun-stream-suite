@@ -14,6 +14,8 @@ import {
   $createParagraphNode,
   $getSelection,
   $isRangeSelection,
+  $isElementNode,
+  $isDecoratorNode,
   COMMAND_PRIORITY_LOW,
   createCommand,
   INSERT_PARAGRAPH_COMMAND,
@@ -160,7 +162,15 @@ export default function CollapsiblePlugin(): null {
           !$isCollapsibleContentNode(children[1])
         ) {
           for (const child of children) {
-            node.insertBefore(child);
+            // Only element or decorator nodes can be inserted at root level
+            if ($isElementNode(child) || $isDecoratorNode(child)) {
+              node.insertBefore(child);
+            } else {
+              // Wrap inline/text nodes in a paragraph
+              const para = $createParagraphNode();
+              para.append(child);
+              node.insertBefore(para);
+            }
           }
           node.remove();
         }

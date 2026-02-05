@@ -17,7 +17,7 @@ import { $applyNodeReplacement, $getNodeByKey, DecoratorNode } from 'lexical';
 import React, { useCallback } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import styled from 'styled-components';
-import { colors, spacing } from '../../../theme';
+import { colors, spacing } from '../../../../theme';
 
 const ImageWrapper = styled.span`
   display: inline-block;

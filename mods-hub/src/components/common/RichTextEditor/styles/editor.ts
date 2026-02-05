@@ -262,7 +262,15 @@ export const StyledContentEditable = styled(ContentEditable)`
     transform: translateY(-50%) rotate(90deg);
   }
   
+  /* Content hidden when collapsed */
   .Collapsible__content {
-    padding: 0 ${spacing.sm} ${spacing.xs} ${spacing.md};
+    display: none;
+    padding: ${spacing.xs} ${spacing.sm} ${spacing.sm} ${spacing.md};
+  }
+  
+  /* Content visible when open */
+  .Collapsible__container[open] > .Collapsible__content,
+  div.Collapsible__container[open] > .Collapsible__content {
+    display: block;
   }
 `;
