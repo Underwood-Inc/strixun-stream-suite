@@ -27,14 +27,32 @@ export interface CarouselImage {
   isUploaded: boolean;
   /** Size in bytes (only for uploaded images) */
   size: number;
+  /** Optional per-image display time in seconds (overrides default) */
+  displayTime?: number;
+}
+
+export interface CarouselConfig {
+  /** Whether slideshow auto-plays */
+  autoPlay: boolean;
+  /** Default time per slide in seconds */
+  slideInterval: number;
+  /** Transition animation duration in ms */
+  transitionSpeed: number;
 }
 
 export type CarouselViewMode = 'grid' | 'slideshow';
+
+export const DEFAULT_CAROUSEL_CONFIG: CarouselConfig = {
+  autoPlay: true,
+  slideInterval: 3,
+  transitionSpeed: 500,
+};
 
 export type SerializedCarouselNode = Spread<
   {
     images: CarouselImage[];
     viewMode: CarouselViewMode;
+    config: CarouselConfig;
   },
   SerializedLexicalNode
 >;
@@ -56,19 +74,26 @@ function $convertCarouselElement(domNode: HTMLElement): DOMConversionOutput | nu
 export class CarouselNode extends DecoratorNode<ReactNode> {
   __images: CarouselImage[];
   __viewMode: CarouselViewMode;
+  __config: CarouselConfig;
 
   static getType(): string {
     return 'carousel';
   }
 
   static clone(node: CarouselNode): CarouselNode {
-    return new CarouselNode([...node.__images], node.__viewMode, node.__key);
+    return new CarouselNode([...node.__images], node.__viewMode, { ...node.__config }, node.__key);
   }
 
-  constructor(images: CarouselImage[] = [], viewMode: CarouselViewMode = 'grid', key?: NodeKey) {
+  constructor(
+    images: CarouselImage[] = [],
+    viewMode: CarouselViewMode = 'grid',
+    config: CarouselConfig = DEFAULT_CAROUSEL_CONFIG,
+    key?: NodeKey
+  ) {
     super(key);
     this.__images = images;
     this.__viewMode = viewMode;
+    this.__config = config;
   }
 
   createDOM(): HTMLElement {
@@ -116,13 +141,19 @@ export class CarouselNode extends DecoratorNode<ReactNode> {
   }
 
   static importJSON(serializedNode: SerializedCarouselNode): CarouselNode {
-    return $createCarouselNode(serializedNode.images, serializedNode.viewMode || 'grid');
+    const config = serializedNode.config || DEFAULT_CAROUSEL_CONFIG;
+    return $createCarouselNode(
+      serializedNode.images,
+      serializedNode.viewMode || 'grid',
+      { ...DEFAULT_CAROUSEL_CONFIG, ...config }
+    );
   }
 
   exportJSON(): SerializedCarouselNode {
     return {
       images: this.__images,
       viewMode: this.__viewMode,
+      config: this.__config,
       type: 'carousel',
       version: 1,
     };
@@ -144,6 +175,15 @@ export class CarouselNode extends DecoratorNode<ReactNode> {
   setViewMode(viewMode: CarouselViewMode): void {
     const writable = this.getWritable();
     writable.__viewMode = viewMode;
+  }
+
+  getConfig(): CarouselConfig {
+    return this.getLatest().__config;
+  }
+
+  setConfig(config: CarouselConfig): void {
+    const writable = this.getWritable();
+    writable.__config = config;
   }
 
   addImage(image: CarouselImage): void {
@@ -191,8 +231,12 @@ export class CarouselNode extends DecoratorNode<ReactNode> {
   }
 }
 
-export function $createCarouselNode(images: CarouselImage[] = [], viewMode: CarouselViewMode = 'grid'): CarouselNode {
-  return new CarouselNode(images, viewMode);
+export function $createCarouselNode(
+  images: CarouselImage[] = [],
+  viewMode: CarouselViewMode = 'grid',
+  config: CarouselConfig = DEFAULT_CAROUSEL_CONFIG
+): CarouselNode {
+  return new CarouselNode(images, viewMode, config);
 }
 
 export function $isCarouselNode(node: LexicalNode | null | undefined): node is CarouselNode {

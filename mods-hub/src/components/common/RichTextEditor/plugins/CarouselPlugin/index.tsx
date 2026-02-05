@@ -22,6 +22,8 @@ import {
   CarouselNode,
   CarouselImage,
   CarouselViewMode,
+  CarouselConfig,
+  DEFAULT_CAROUSEL_CONFIG,
 } from './CarouselNode';
 import { CarouselComponent } from './CarouselComponent';
 
@@ -54,6 +56,7 @@ interface CarouselPluginProps {
 interface CarouselData {
   images: CarouselImage[];
   viewMode: CarouselViewMode;
+  config: CarouselConfig;
   element: HTMLElement;
 }
 
@@ -121,7 +124,8 @@ export default function CarouselPlugin({
                   // Read data NOW while we're inside the read() callback
                   const images = node.getImages();
                   const viewMode = node.getViewMode();
-                  newCarouselNodes.set(key, { images, viewMode, element });
+                  const config = node.getConfig();
+                  newCarouselNodes.set(key, { images, viewMode, config, element });
                 }
               }
             }
@@ -145,10 +149,15 @@ export default function CarouselPlugin({
             if ($isCarouselNode(node)) {
               const currentImages = node.getImages();
               const currentViewMode = node.getViewMode();
+              const currentConfig = node.getConfig();
               // Only update if data has actually changed
-              if (JSON.stringify(currentImages) !== JSON.stringify(data.images) || currentViewMode !== data.viewMode) {
+              if (
+                JSON.stringify(currentImages) !== JSON.stringify(data.images) ||
+                currentViewMode !== data.viewMode ||
+                JSON.stringify(currentConfig) !== JSON.stringify(data.config)
+              ) {
                 hasChanges = true;
-                newCarouselNodes.set(key, { ...data, images: currentImages, viewMode: currentViewMode });
+                newCarouselNodes.set(key, { ...data, images: currentImages, viewMode: currentViewMode, config: currentConfig });
               }
             }
           }
@@ -206,17 +215,32 @@ export default function CarouselPlugin({
     [editor],
   );
 
+  // Handle config changes for a specific carousel
+  const handleConfigChange = useCallback(
+    (nodeKey: string, config: CarouselConfig) => {
+      editor.update(() => {
+        const node = $getNodeByKey(nodeKey);
+        if ($isCarouselNode(node)) {
+          node.setConfig(config);
+        }
+      });
+    },
+    [editor],
+  );
+
   // Render carousel components into their DOM containers
   return (
     <>
-      {Array.from(carouselNodes.entries()).map(([key, { images, viewMode, element }]) => {
+      {Array.from(carouselNodes.entries()).map(([key, { images, viewMode, config, element }]) => {
         return createPortal(
           <CarouselComponent
             key={key}
             images={images}
             viewMode={viewMode}
+            config={config || DEFAULT_CAROUSEL_CONFIG}
             onImagesChange={(newImages) => handleImagesChange(key, newImages)}
             onViewModeChange={(newMode) => handleViewModeChange(key, newMode)}
+            onConfigChange={(newConfig) => handleConfigChange(key, newConfig)}
             maxUploadSize={maxUploadSize}
             currentUploadSize={currentUploadSize}
             readOnly={!isEditable}

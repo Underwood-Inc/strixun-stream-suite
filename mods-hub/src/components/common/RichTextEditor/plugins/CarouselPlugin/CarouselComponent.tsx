@@ -3,12 +3,13 @@
  * React component for rendering and managing image carousels in the editor
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../../../../theme';
 import { 
   CarouselImage, 
   CarouselViewMode,
+  CarouselConfig,
   generateImageId, 
   isExternalUrl,
 } from './CarouselNode';
@@ -178,21 +179,26 @@ const SlideViewer = styled.div`
   margin-bottom: ${spacing.sm};
 `;
 
-const SlideImageContainer = styled.div`
-  position: relative;
-  width: 100%;
+const SlideTrack = styled.div<{ $offset: number; $transitionSpeed: number }>`
+  display: flex;
   height: 100%;
+  transform: translateX(${props => -props.$offset * 100}%);
+  transition: transform ${props => props.$transitionSpeed}ms ease-in-out;
 `;
 
-const SlideImage = styled.img<{ $isActive: boolean; $direction: 'next' | 'prev' | null }>`
-  position: absolute;
-  top: 0;
-  left: 0;
+const SlideItem = styled.div`
+  flex: 0 0 100%;
   width: 100%;
   height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const SlideImage = styled.img`
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
-  opacity: ${props => props.$isActive ? 1 : 0};
-  transition: opacity 0.3s ease-in-out;
 `;
 
 const SlideNav = styled.button<{ $direction: 'prev' | 'next' }>`
@@ -305,13 +311,73 @@ const ModeButton = styled.button<{ $active: boolean }>`
   }
 `;
 
+const ConfigSection = styled.div`
+  margin-top: ${spacing.sm};
+  padding: ${spacing.sm};
+  background: ${colors.bgSecondary};
+  border-radius: 4px;
+  border: 1px solid ${colors.border};
+`;
+
+const ConfigTitle = styled.div`
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: ${colors.textMuted};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: ${spacing.xs};
+`;
+
+const ConfigRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${spacing.sm};
+  margin-bottom: ${spacing.xs};
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const ConfigLabel = styled.label`
+  font-size: 0.75rem;
+  color: ${colors.textSecondary};
+  min-width: 120px;
+`;
+
+const ConfigInput = styled.input`
+  width: 70px;
+  padding: 4px 6px;
+  background: ${colors.bg};
+  border: 1px solid ${colors.border};
+  border-radius: 3px;
+  color: ${colors.text};
+  font-size: 0.75rem;
+  
+  &:focus {
+    outline: none;
+    border-color: ${colors.accent};
+  }
+`;
+
+const ConfigCheckbox = styled.input`
+  accent-color: ${colors.accent};
+`;
+
+const ConfigUnit = styled.span`
+  font-size: 0.7rem;
+  color: ${colors.textMuted};
+`;
+
 // ============ COMPONENT ============
 
 interface CarouselComponentProps {
   images: CarouselImage[];
   viewMode: CarouselViewMode;
+  config: CarouselConfig;
   onImagesChange: (images: CarouselImage[]) => void;
   onViewModeChange: (mode: CarouselViewMode) => void;
+  onConfigChange: (config: CarouselConfig) => void;
   maxUploadSize: number;
   currentUploadSize: number;
   readOnly?: boolean;
@@ -320,8 +386,10 @@ interface CarouselComponentProps {
 export function CarouselComponent({
   images,
   viewMode,
+  config,
   onImagesChange,
   onViewModeChange,
+  onConfigChange,
   maxUploadSize,
   currentUploadSize,
   readOnly = false,
@@ -330,7 +398,9 @@ export function CarouselComponent({
   const [urlInput, setUrlInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate uploaded size from this carousel
   const carouselUploadedSize = images
@@ -339,6 +409,39 @@ export function CarouselComponent({
   
   const remainingSpace = maxUploadSize - currentUploadSize;
   const sizePercentage = (currentUploadSize / maxUploadSize) * 100;
+
+  // Auto-play logic
+  useEffect(() => {
+    if (!config.autoPlay || viewMode !== 'slideshow' || images.length <= 1 || isPaused) {
+      if (autoPlayRef.current) {
+        clearTimeout(autoPlayRef.current);
+        autoPlayRef.current = null;
+      }
+      return;
+    }
+
+    const currentImage = images[currentSlide];
+    // Use per-image display time if set, otherwise use default interval
+    const displayTime = (currentImage?.displayTime ?? config.slideInterval) * 1000;
+
+    autoPlayRef.current = setTimeout(() => {
+      // Loop back to start when reaching the end
+      setCurrentSlide((prev) => (prev + 1) % images.length);
+    }, displayTime);
+
+    return () => {
+      if (autoPlayRef.current) {
+        clearTimeout(autoPlayRef.current);
+      }
+    };
+  }, [config.autoPlay, config.slideInterval, viewMode, images, currentSlide, isPaused]);
+
+  // Reset slide when images change
+  useEffect(() => {
+    if (currentSlide >= images.length) {
+      setCurrentSlide(Math.max(0, images.length - 1));
+    }
+  }, [images.length, currentSlide]);
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -448,7 +551,11 @@ export function CarouselComponent({
   }, []);
 
   const goToSlide = useCallback((index: number) => {
-    setCurrentSlide(Math.max(0, Math.min(index, images.length - 1)));
+    const len = images.length;
+    if (len === 0) return;
+    // Wrap around for looping
+    const newIndex = ((index % len) + len) % len;
+    setCurrentSlide(newIndex);
   }, [images.length]);
 
   const prevSlide = useCallback(() => {
@@ -458,6 +565,13 @@ export function CarouselComponent({
   const nextSlide = useCallback(() => {
     goToSlide(currentSlide + 1);
   }, [currentSlide, goToSlide]);
+
+  const handleImageDisplayTimeChange = useCallback((imageId: string, time: number | undefined) => {
+    const updatedImages = images.map(img => 
+      img.id === imageId ? { ...img, displayTime: time } : img
+    );
+    onImagesChange(updatedImages);
+  }, [images, onImagesChange]);
 
   return (
     <CarouselContainer>
@@ -478,22 +592,21 @@ export function CarouselComponent({
       )}
 
       {viewMode === 'slideshow' && images.length > 0 ? (
-        <SlideViewer>
-          <SlideImageContainer>
-            {images.map((image, idx) => (
-              <SlideImage
-                key={image.id}
-                src={image.src}
-                alt={image.alt}
-                $isActive={idx === currentSlide}
-                $direction={null}
-              />
+        <SlideViewer 
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+        >
+          <SlideTrack $offset={currentSlide} $transitionSpeed={config.transitionSpeed}>
+            {images.map((image) => (
+              <SlideItem key={image.id}>
+                <SlideImage src={image.src} alt={image.alt} />
+              </SlideItem>
             ))}
-          </SlideImageContainer>
-          <SlideNav type="button" $direction="prev" onClick={prevSlide} disabled={currentSlide === 0}>
+          </SlideTrack>
+          <SlideNav type="button" $direction="prev" onClick={prevSlide}>
             ‹
           </SlideNav>
-          <SlideNav type="button" $direction="next" onClick={nextSlide} disabled={currentSlide >= images.length - 1}>
+          <SlideNav type="button" $direction="next" onClick={nextSlide}>
             ›
           </SlideNav>
           <SlideIndicators>
@@ -582,6 +695,72 @@ export function CarouselComponent({
             Uploaded: {formatFileSize(currentUploadSize)} / {formatFileSize(maxUploadSize)}
             {carouselUploadedSize > 0 && ` (this carousel: ${formatFileSize(carouselUploadedSize)})`}
           </SizeIndicator>
+
+          {viewMode === 'slideshow' && (
+            <ConfigSection>
+              <ConfigTitle>Slideshow Settings</ConfigTitle>
+              <ConfigRow>
+                <ConfigLabel>
+                  <ConfigCheckbox
+                    type="checkbox"
+                    checked={config.autoPlay}
+                    onChange={(e) => onConfigChange({ ...config, autoPlay: e.target.checked })}
+                  />
+                  {' '}Auto-play
+                </ConfigLabel>
+              </ConfigRow>
+              <ConfigRow>
+                <ConfigLabel>Slide interval:</ConfigLabel>
+                <ConfigInput
+                  type="number"
+                  min={1}
+                  max={60}
+                  step={0.5}
+                  value={config.slideInterval}
+                  onChange={(e) => onConfigChange({ ...config, slideInterval: parseFloat(e.target.value) || 3 })}
+                />
+                <ConfigUnit>seconds</ConfigUnit>
+              </ConfigRow>
+              <ConfigRow>
+                <ConfigLabel>Transition speed:</ConfigLabel>
+                <ConfigInput
+                  type="number"
+                  min={100}
+                  max={2000}
+                  step={50}
+                  value={config.transitionSpeed}
+                  onChange={(e) => onConfigChange({ ...config, transitionSpeed: parseInt(e.target.value) || 500 })}
+                />
+                <ConfigUnit>ms</ConfigUnit>
+              </ConfigRow>
+              {images.length > 0 && (
+                <>
+                  <ConfigTitle style={{ marginTop: spacing.sm }}>Per-Image Display Time (optional)</ConfigTitle>
+                  {images.map((image, idx) => (
+                    <ConfigRow key={image.id}>
+                      <ConfigLabel>Slide {idx + 1}:</ConfigLabel>
+                      <ConfigInput
+                        type="number"
+                        min={0.5}
+                        max={60}
+                        step={0.5}
+                        placeholder="default"
+                        value={image.displayTime ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          handleImageDisplayTimeChange(
+                            image.id, 
+                            val === '' ? undefined : parseFloat(val)
+                          );
+                        }}
+                      />
+                      <ConfigUnit>sec {image.displayTime ? '' : `(${config.slideInterval}s)`}</ConfigUnit>
+                    </ConfigRow>
+                  ))}
+                </>
+              )}
+            </ConfigSection>
+          )}
         </>
       )}
     </CarouselContainer>

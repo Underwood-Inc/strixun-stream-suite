@@ -104,4 +104,69 @@ export const PreviewContainer = styled.div`
       margin: 0;
     }
   }
+  
+  /* Collapsible sections */
+  .Collapsible__container,
+  details.Collapsible__container {
+    background: ${colors.bgTertiary};
+    border: 1px solid ${colors.border};
+    border-radius: 4px;
+    margin: ${spacing.xs} 0;
+    
+    &:not([open]) {
+      padding-bottom: 0;
+    }
+  }
+  
+  .Collapsible__title,
+  summary.Collapsible__title {
+    cursor: pointer;
+    padding: ${spacing.xs} ${spacing.sm} ${spacing.xs} ${spacing.md};
+    position: relative;
+    font-weight: 600;
+    font-size: 0.875rem;
+    list-style: none;
+    outline: none;
+    color: ${colors.text};
+    
+    &::marker,
+    &::-webkit-details-marker {
+      display: none;
+    }
+    
+    &::before {
+      content: '';
+      position: absolute;
+      left: ${spacing.xs};
+      top: 50%;
+      transform: translateY(-50%);
+      border-style: solid;
+      border-color: transparent;
+      border-width: 4px 0 4px 5px;
+      border-left-color: ${colors.textSecondary};
+      transition: transform 0.2s ease;
+    }
+  }
+  
+  .Collapsible__container[open] > .Collapsible__title::before,
+  details.Collapsible__container[open] > .Collapsible__title::before,
+  div.Collapsible__container[open] > .Collapsible__title::before {
+    transform: translateY(-50%) rotate(90deg);
+  }
+  
+  .Collapsible__content {
+    padding: 0 ${spacing.sm} ${spacing.xs} ${spacing.md};
+    
+    &[hidden] {
+      display: none;
+    }
+    
+    > *:first-child {
+      margin-top: 0;
+    }
+    
+    > *:last-child {
+      margin-bottom: 0;
+    }
+  }
 `;
