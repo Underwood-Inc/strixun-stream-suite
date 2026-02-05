@@ -7,10 +7,6 @@ import styled from 'styled-components';
 import { colors, spacing } from '../../../../theme';
 
 export const PreviewContainer = styled.div`
-  padding: ${spacing.md};
-  min-height: 150px;
-  height: 100%;
-  overflow-y: auto;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 0.875rem;
   line-height: 1.6;

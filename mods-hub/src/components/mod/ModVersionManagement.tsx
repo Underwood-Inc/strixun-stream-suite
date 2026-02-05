@@ -18,7 +18,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys, useDeleteModVersion, useUpdateModVersion, useUpdateMod } from '../../hooks/useMods';
 import { RichTextEditor } from '../common/RichTextEditor';
-import { MarkdownContent } from '../common/MarkdownContent';
+import { Preview } from '../common/RichTextEditor/Preview';
 import { VersionVariantManager } from './VersionVariantManager';
 
 const Container = styled.div`
@@ -294,7 +294,7 @@ export function ModVersionManagement({ modSlug, modId, versions, variants }: Mod
                                 </div>
                                 {!isEditing && version.changelog && (
                                     <Changelog>
-                                        <MarkdownContent content={version.changelog} />
+                                        <Preview content={version.changelog} />
                                     </Changelog>
                                 )}
                                 <Meta>

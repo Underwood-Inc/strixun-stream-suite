@@ -22,29 +22,37 @@ const SelectorContainer = styled.div`
 `;
 
 const SelectorButton = styled.button`
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  background: var(--border, #3d3627);
+  border: 3px solid var(--border-light, #4a4336);
+  border-radius: 0;
+  color: var(--text, #f9f9f9);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 12px 24px;
+  box-shadow: 0 4px 0 var(--border-light, #4a4336);
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: ${spacing.sm};
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${colors.bgSecondary};
-  border: 2px solid ${colors.border};
-  border-radius: 0;
-  color: ${colors.text};
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
   min-width: 140px;
   justify-content: space-between;
+  font-size: 1rem;
   
-  &:hover {
-    background: ${colors.bgTertiary};
-    border-color: ${colors.accent};
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 var(--border-light, #4a4336);
+    color: var(--text, #f9f9f9);
   }
   
-  &:focus-visible {
-    outline: 2px solid ${colors.accent};
-    outline-offset: 2px;
+  &:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--border-light, #4a4336);
   }
 `;
 
@@ -129,23 +137,32 @@ const VersionDate = styled.span`
 `;
 
 const CopyLinkButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: ${spacing.xs};
-  padding: ${spacing.xs} ${spacing.sm};
-  background: transparent;
-  border: 1px solid ${colors.border};
-  border-radius: 0;
-  color: ${colors.textSecondary};
-  font-size: 0.75rem;
+  font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s ease;
-  margin-left: ${spacing.sm};
+  outline: none;
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  background: var(--border, #3d3627);
+  border: 3px solid var(--border-light, #4a4336);
+  border-radius: 0;
+  color: var(--text, #f9f9f9);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 12px 24px;
+  box-shadow: 0 4px 0 var(--border-light, #4a4336);
+  overflow: hidden;
+  font-size: 1rem;
   
-  &:hover {
-    background: ${colors.bgTertiary};
-    color: ${colors.text};
-    border-color: ${colors.accent};
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 var(--border-light, #4a4336);
+    color: var(--text, #f9f9f9);
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--border-light, #4a4336);
   }
 `;
 

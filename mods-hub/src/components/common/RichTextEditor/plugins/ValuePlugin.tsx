@@ -10,6 +10,9 @@ import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import type { EditorState } from 'lexical';
 import type { EmbeddedMediaInfo } from '../types';
 
+/** Debounce delay for onChange (ms) - balances responsiveness vs performance */
+const DEBOUNCE_DELAY = 150;
+
 interface ValuePluginProps {
   value: string;
   onChange: (value: string) => void;

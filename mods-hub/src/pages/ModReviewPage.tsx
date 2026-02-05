@@ -14,7 +14,7 @@ import type { ModStatus } from '../types/mod';
 import { getButtonStyles } from '../utils/buttonStyles';
 import { getBadgeStyles, getCardStyles } from '../utils/sharedStyles';
 import { getStatusBadgeType } from '../utils/badgeHelpers';
-import { MarkdownContent } from '../components/common/MarkdownContent';
+import { Preview } from '../components/common/RichTextEditor/Preview';
 
 const PageContainer = styled.div`
   max-width: 1200px;
@@ -263,7 +263,7 @@ export function ModReviewPage() {
 
             <Section>
                 <SectionTitle>Description</SectionTitle>
-                <MarkdownContent content={mod.description || ''} />
+                <Preview content={mod.description || ''} />
             </Section>
 
             <Section>

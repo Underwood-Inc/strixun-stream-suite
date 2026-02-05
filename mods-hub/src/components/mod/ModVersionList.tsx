@@ -18,7 +18,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys } from '../../hooks/useMods';
 import { formatDateTime, formatRelativeTime } from '@strixun/shared-config/date-utils';
-import { MarkdownContent } from '../common/MarkdownContent';
+import { Preview } from '../common/RichTextEditor/Preview';
 
 const Container = styled.div`
   display: flex;
@@ -163,23 +163,9 @@ const VersionActions = styled.div`
 `;
 
 const CopyLinkButton = styled.button`
-  background: transparent;
-  border: 1px solid ${colors.border};
-  color: ${colors.textSecondary};
-  padding: ${spacing.xs} ${spacing.sm};
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: ${spacing.xs};
+  ${getButtonStyles('secondary')}
+  font-size: 0.875rem;
   position: relative;
-  
-  &:hover {
-    background: ${colors.bgTertiary};
-    color: ${colors.text};
-    border-color: ${colors.accent};
-  }
 `;
 
 const CopiedToast = styled.span`
@@ -321,19 +307,24 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId, sel
     
     // Refs for scrolling to selected version
     const versionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+    const hasScrolledRef = useRef(false);
     
-    // Scroll to selected version on mount or when selection changes
+    // Scroll to selected version only on explicit URL navigation (not default)
     useEffect(() => {
-        if (selectedVersionId) {
+        // Only scroll if there's a version param in the URL (not just default selection)
+        const urlHasVersion = location.pathname.includes('/v/') || location.search.includes('version=');
+        
+        if (selectedVersionId && urlHasVersion && !hasScrolledRef.current) {
             const element = versionRefs.current.get(selectedVersionId);
             if (element) {
+                hasScrolledRef.current = true;
                 // Small delay to ensure layout is complete
                 setTimeout(() => {
                     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }, 100);
             }
         }
-    }, [selectedVersionId]);
+    }, [selectedVersionId, location.pathname, location.search]);
     
     // Generate version URL for copying
     const getVersionUrl = (version: ModVersion) => {
@@ -548,7 +539,7 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId, sel
                                 </VersionHeader>
                                 {version.changelog && (
                                     <ChangelogContainer>
-                                        <MarkdownContent content={version.changelog} />
+                                        <Preview content={version.changelog} />
                                     </ChangelogContainer>
                                 )}
                                 <Meta>
@@ -607,7 +598,7 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId, sel
                                                 <VariantName>{variant.name}</VariantName>
                                                 {variant.description && (
                                                     <VariantDescription>
-                                                        <MarkdownContent content={variant.description} />
+                                                        <Preview content={variant.description} />
                                                     </VariantDescription>
                                                 )}
                                                 <VariantMeta>

@@ -29,6 +29,11 @@ export {
   StyledContentEditable,
 } from './editor';
 
+// Preview components
+export {
+  PreviewContainer,
+} from './preview';
+
 // Modal components
 export {
   ModalOverlay,

@@ -22,7 +22,7 @@ import { getButtonStyles } from '../utils/buttonStyles';
 import { getCardStyles } from '../utils/sharedStyles';
 import { candyShopAnimation } from '../utils/candyShopAnimation';
 import { InteractiveThumbnail } from '../components/mod/InteractiveThumbnail';
-import { MarkdownContent } from '../components/common/MarkdownContent';
+import { Preview } from '../components/common/RichTextEditor/Preview';
 
 const PageContainer = styled.div`
   display: flex;
@@ -217,6 +217,11 @@ const Description = styled.div`
   line-height: 1.6;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid ${colors.border};
+  border-radius: 4px;
+  padding: ${spacing.sm};
 `;
 
 const Meta = styled.div`
@@ -425,7 +430,7 @@ export function ModDetailPage() {
                 <Info>
                     <Title>{mod.title}</Title>
                     <Description>
-                        <MarkdownContent content={mod.description || ''} />
+                        <Preview content={mod.description || ''} />
                     </Description>
                     <Meta>
                         <span>By {mod.authorDisplayName || 'Unknown User'}</span>

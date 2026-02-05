@@ -17,7 +17,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys } from '../../hooks/useMods';
 import { formatDate } from '@strixun/shared-config/date-utils';
-import { MarkdownContent } from '../common/MarkdownContent';
+import { Preview } from '../common/RichTextEditor/Preview';
 
 const Container = styled.div`
   display: flex;
@@ -214,7 +214,7 @@ export function VariantVersionList({
                             </div>
                             {version.changelog && (
                                                 <ChangelogContainer>
-                                                    <MarkdownContent content={version.changelog} />
+                                                    <Preview content={version.changelog} />
                                                 </ChangelogContainer>
                                             )}
                             <Meta>

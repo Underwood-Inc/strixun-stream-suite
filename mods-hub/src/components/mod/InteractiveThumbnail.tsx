@@ -11,7 +11,7 @@ import { InteractiveThumbnail as SharedInteractiveThumbnail } from '@strixun/sha
 import type { InteractiveThumbnailTheme } from '@strixun/shared-components/react';
 import { colors, spacing } from '../../theme';
 import type { ModMetadata } from '../../types/mod';
-import { MarkdownContent } from '../common/MarkdownContent';
+import { Preview } from '../common/RichTextEditor/Preview';
 
 const ThumbnailImage = styled.img`
   width: 100%;
@@ -167,7 +167,7 @@ export function InteractiveThumbnail({ mod, onError, watchElementRef }: Interact
     <>
       <BackTitle>{mod.title}</BackTitle>
       <BackDescription>
-        <MarkdownContent content={mod.description || 'No description available'} />
+        <Preview content={mod.description || ''} />
       </BackDescription>
       <BackMeta>
         <MetaRow>
