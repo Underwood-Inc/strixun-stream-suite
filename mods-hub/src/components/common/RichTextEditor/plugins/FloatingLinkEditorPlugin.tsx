@@ -20,8 +20,8 @@ import styled from 'styled-components';
 import { colors, spacing } from '../../../../theme';
 
 const FloatingEditor = styled.div<{ $visible: boolean }>`
-  position: absolute;
-  z-index: 100;
+  position: fixed;
+  z-index: 10000;
   background: ${colors.bgSecondary};
   border: 1px solid ${colors.border};
   border-radius: 6px;
@@ -108,8 +108,7 @@ function getSelectedLinkNode(selection: ReturnType<typeof $getSelection>) {
 
 function positionEditorElement(
   editor: HTMLDivElement,
-  rect: DOMRect | null,
-  rootElement: HTMLElement
+  rect: DOMRect | null
 ) {
   if (!rect) {
     editor.style.opacity = '0';
@@ -118,10 +117,10 @@ function positionEditorElement(
     return;
   }
 
-  const rootRect = rootElement.getBoundingClientRect();
+  // Fixed positioning uses viewport coordinates directly
   editor.style.opacity = '1';
-  editor.style.top = `${rect.bottom - rootRect.top + 8}px`;
-  editor.style.left = `${rect.left - rootRect.left}px`;
+  editor.style.top = `${rect.bottom + 8}px`;
+  editor.style.left = `${rect.left}px`;
 }
 
 export function FloatingLinkEditorPlugin() {
@@ -183,20 +182,19 @@ export function FloatingLinkEditorPlugin() {
 
   useEffect(() => {
     const editorElem = editorRef.current;
-    const rootElement = editor.getRootElement();
 
-    if (!editorElem || !rootElement) return;
+    if (!editorElem) return;
 
     const nativeSelection = window.getSelection();
     if (!nativeSelection || nativeSelection.rangeCount === 0) {
-      positionEditorElement(editorElem, null, rootElement);
+      positionEditorElement(editorElem, null);
       return;
     }
 
     const range = nativeSelection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
-    positionEditorElement(editorElem, rect, rootElement);
-  }, [editor, isVisible, linkUrl]);
+    positionEditorElement(editorElem, rect);
+  }, [isVisible, linkUrl]);
 
   const handleSave = useCallback(() => {
     if (lastSelection) {
@@ -227,9 +225,6 @@ export function FloatingLinkEditorPlugin() {
     }
   }, [handleSave]);
 
-  const rootElement = editor.getRootElement();
-  if (!rootElement) return null;
-
   return createPortal(
     <FloatingEditor ref={editorRef} $visible={isVisible}>
       <LinkLabel>Edit Link URL</LinkLabel>
@@ -247,7 +242,7 @@ export function FloatingLinkEditorPlugin() {
         <EditorButton onClick={handleSave}>Save</EditorButton>
       </ButtonRow>
     </FloatingEditor>,
-    rootElement.parentElement || document.body
+    document.body
   );
 }
 

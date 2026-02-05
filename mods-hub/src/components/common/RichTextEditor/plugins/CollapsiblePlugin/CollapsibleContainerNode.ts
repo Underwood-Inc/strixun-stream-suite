@@ -100,7 +100,7 @@ export class CollapsibleContainerNode extends ElementNode {
       detailsDom.addEventListener('toggle', () => {
         const open = editor.getEditorState().read(() => this.getOpen());
         if (open !== detailsDom.open) {
-          editor.update(() => this.toggleOpen());
+          editor.update(() => this.toggleOpen(), { tag: 'history-push' });
         }
       });
       dom = detailsDom;

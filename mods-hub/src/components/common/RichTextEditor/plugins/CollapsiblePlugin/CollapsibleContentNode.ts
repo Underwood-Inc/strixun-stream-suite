@@ -61,7 +61,7 @@ export class CollapsibleContentNode extends ElementNode {
           if (!containerNode.__open) {
             containerNode.toggleOpen();
           }
-        });
+        }, { tag: 'history-push' });
       });
     }
     return dom;
