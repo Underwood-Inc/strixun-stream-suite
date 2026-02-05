@@ -8,6 +8,7 @@ import styled from 'styled-components';
 import { colors, spacing } from '../../../../../theme';
 import { 
   CarouselImage, 
+  CarouselViewMode,
   generateImageId, 
   isExternalUrl,
 } from './CarouselNode';
@@ -170,8 +171,7 @@ const SizeIndicator = styled.div<{ $warning?: boolean; $error?: boolean }>`
 
 const SlideViewer = styled.div`
   position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
+  height: 300px;
   background: ${colors.bgSecondary};
   border-radius: 6px;
   overflow: hidden;
@@ -309,7 +309,9 @@ const ModeButton = styled.button<{ $active: boolean }>`
 
 interface CarouselComponentProps {
   images: CarouselImage[];
+  viewMode: CarouselViewMode;
   onImagesChange: (images: CarouselImage[]) => void;
+  onViewModeChange: (mode: CarouselViewMode) => void;
   maxUploadSize: number;
   currentUploadSize: number;
   readOnly?: boolean;
@@ -317,13 +319,14 @@ interface CarouselComponentProps {
 
 export function CarouselComponent({
   images,
+  viewMode,
   onImagesChange,
+  onViewModeChange,
   maxUploadSize,
   currentUploadSize,
   readOnly = false,
 }: CarouselComponentProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [viewMode, setViewMode] = useState<'grid' | 'slideshow'>('grid');
   const [urlInput, setUrlInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -458,19 +461,21 @@ export function CarouselComponent({
 
   return (
     <CarouselContainer>
-      <CarouselHeader>
-        <CarouselTitle>Image Carousel ({images.length} images)</CarouselTitle>
-        <CarouselActions>
-          <ModeToggle>
-            <ModeButton $active={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
-              Grid
-            </ModeButton>
-            <ModeButton $active={viewMode === 'slideshow'} onClick={() => setViewMode('slideshow')}>
-              Slideshow
-            </ModeButton>
-          </ModeToggle>
-        </CarouselActions>
-      </CarouselHeader>
+      {!readOnly && (
+        <CarouselHeader>
+          <CarouselTitle>Image Carousel ({images.length} images)</CarouselTitle>
+          <CarouselActions>
+            <ModeToggle>
+              <ModeButton type="button" $active={viewMode === 'grid'} onClick={() => onViewModeChange('grid')}>
+                Grid
+              </ModeButton>
+              <ModeButton type="button" $active={viewMode === 'slideshow'} onClick={() => onViewModeChange('slideshow')}>
+                Slideshow
+              </ModeButton>
+            </ModeToggle>
+          </CarouselActions>
+        </CarouselHeader>
+      )}
 
       {viewMode === 'slideshow' && images.length > 0 ? (
         <SlideViewer>
@@ -485,15 +490,16 @@ export function CarouselComponent({
               />
             ))}
           </SlideImageContainer>
-          <SlideNav $direction="prev" onClick={prevSlide} disabled={currentSlide === 0}>
+          <SlideNav type="button" $direction="prev" onClick={prevSlide} disabled={currentSlide === 0}>
             ‹
           </SlideNav>
-          <SlideNav $direction="next" onClick={nextSlide} disabled={currentSlide >= images.length - 1}>
+          <SlideNav type="button" $direction="next" onClick={nextSlide} disabled={currentSlide >= images.length - 1}>
             ›
           </SlideNav>
           <SlideIndicators>
             {images.map((_, idx) => (
               <SlideIndicator 
+                type="button"
                 key={idx} 
                 $active={idx === currentSlide} 
                 onClick={() => goToSlide(idx)}
@@ -521,7 +527,7 @@ export function CarouselComponent({
               )}
               {!readOnly && (
                 <ImageOverlay>
-                  <ActionButton onClick={() => handleRemoveImage(image.id)} $danger>
+                  <ActionButton type="button" onClick={() => handleRemoveImage(image.id)} $danger>
                     Remove
                   </ActionButton>
                 </ImageOverlay>
@@ -553,13 +559,18 @@ export function CarouselComponent({
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               placeholder="Or paste external image URL..."
-              onKeyDown={(e) => e.key === 'Enter' && handleAddUrl()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddUrl();
+                }
+              }}
               onPaste={(e) => {
                 // Stop propagation so Lexical's paste handler doesn't intercept
                 e.stopPropagation();
               }}
             />
-            <ActionButton onClick={handleAddUrl}>Add URL</ActionButton>
+            <ActionButton type="button" onClick={handleAddUrl}>Add URL</ActionButton>
           </UrlInputContainer>
           
           {error && <ErrorMessage>{error}</ErrorMessage>}

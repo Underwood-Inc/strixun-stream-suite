@@ -29,9 +29,12 @@ export interface CarouselImage {
   size: number;
 }
 
+export type CarouselViewMode = 'grid' | 'slideshow';
+
 export type SerializedCarouselNode = Spread<
   {
     images: CarouselImage[];
+    viewMode: CarouselViewMode;
   },
   SerializedLexicalNode
 >;
@@ -52,18 +55,20 @@ function $convertCarouselElement(domNode: HTMLElement): DOMConversionOutput | nu
 
 export class CarouselNode extends DecoratorNode<ReactNode> {
   __images: CarouselImage[];
+  __viewMode: CarouselViewMode;
 
   static getType(): string {
     return 'carousel';
   }
 
   static clone(node: CarouselNode): CarouselNode {
-    return new CarouselNode([...node.__images], node.__key);
+    return new CarouselNode([...node.__images], node.__viewMode, node.__key);
   }
 
-  constructor(images: CarouselImage[] = [], key?: NodeKey) {
+  constructor(images: CarouselImage[] = [], viewMode: CarouselViewMode = 'grid', key?: NodeKey) {
     super(key);
     this.__images = images;
+    this.__viewMode = viewMode;
   }
 
   createDOM(): HTMLElement {
@@ -92,19 +97,32 @@ export class CarouselNode extends DecoratorNode<ReactNode> {
 
   exportDOM(): DOMExportOutput {
     const element = document.createElement('div');
-    element.className = 'carousel-container';
+    element.className = 'carousel-preview';
     element.setAttribute('data-lexical-carousel', 'true');
+    element.style.cssText = 'display: flex; gap: 8px; flex-wrap: wrap; padding: 8px 0;';
+    
+    // Render actual images for preview
+    this.__images.forEach((image) => {
+      const img = document.createElement('img');
+      img.src = image.src;
+      img.alt = image.alt || 'Carousel image';
+      img.style.cssText = 'max-width: 200px; max-height: 150px; border-radius: 4px; object-fit: cover;';
+      element.appendChild(img);
+    });
+    
+    // Store data for potential re-import
     element.setAttribute('data-carousel-images', JSON.stringify(this.__images));
     return { element };
   }
 
   static importJSON(serializedNode: SerializedCarouselNode): CarouselNode {
-    return $createCarouselNode(serializedNode.images);
+    return $createCarouselNode(serializedNode.images, serializedNode.viewMode || 'grid');
   }
 
   exportJSON(): SerializedCarouselNode {
     return {
       images: this.__images,
+      viewMode: this.__viewMode,
       type: 'carousel',
       version: 1,
     };
@@ -117,6 +135,15 @@ export class CarouselNode extends DecoratorNode<ReactNode> {
   setImages(images: CarouselImage[]): void {
     const writable = this.getWritable();
     writable.__images = images;
+  }
+
+  getViewMode(): CarouselViewMode {
+    return this.getLatest().__viewMode;
+  }
+
+  setViewMode(viewMode: CarouselViewMode): void {
+    const writable = this.getWritable();
+    writable.__viewMode = viewMode;
   }
 
   addImage(image: CarouselImage): void {
@@ -164,8 +191,8 @@ export class CarouselNode extends DecoratorNode<ReactNode> {
   }
 }
 
-export function $createCarouselNode(images: CarouselImage[] = []): CarouselNode {
-  return new CarouselNode(images);
+export function $createCarouselNode(images: CarouselImage[] = [], viewMode: CarouselViewMode = 'grid'): CarouselNode {
+  return new CarouselNode(images, viewMode);
 }
 
 export function $isCarouselNode(node: LexicalNode | null | undefined): node is CarouselNode {

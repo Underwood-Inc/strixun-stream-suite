@@ -21,6 +21,7 @@ import {
   $isCarouselNode,
   CarouselNode,
   CarouselImage,
+  CarouselViewMode,
 } from './CarouselNode';
 import { CarouselComponent } from './CarouselComponent';
 
@@ -52,6 +53,7 @@ interface CarouselPluginProps {
  */
 interface CarouselData {
   images: CarouselImage[];
+  viewMode: CarouselViewMode;
   element: HTMLElement;
 }
 
@@ -62,6 +64,7 @@ export default function CarouselPlugin({
 }: CarouselPluginProps): React.ReactElement | null {
   const [editor] = useLexicalComposerContext();
   const [carouselNodes, setCarouselNodes] = useState<Map<string, CarouselData>>(new Map());
+  const [isEditable, setIsEditable] = useState(() => editor.isEditable());
   
   // Use a ref to track current state so we can access it inside Lexical callbacks
   // without causing stale closure issues with the functional setState updater
@@ -71,6 +74,13 @@ export default function CarouselPlugin({
   useEffect(() => {
     carouselNodesRef.current = carouselNodes;
   }, [carouselNodes]);
+  
+  // Track editor editability
+  useEffect(() => {
+    return editor.registerEditableListener((editable) => {
+      setIsEditable(editable);
+    });
+  }, [editor]);
 
   useEffect(() => {
     if (!editor.hasNodes([CarouselNode])) {
@@ -108,9 +118,10 @@ export default function CarouselPlugin({
               if ($isCarouselNode(node)) {
                 const element = editor.getElementByKey(key);
                 if (element) {
-                  // Read images NOW while we're inside the read() callback
+                  // Read data NOW while we're inside the read() callback
                   const images = node.getImages();
-                  newCarouselNodes.set(key, { images, element });
+                  const viewMode = node.getViewMode();
+                  newCarouselNodes.set(key, { images, viewMode, element });
                 }
               }
             }
@@ -121,7 +132,7 @@ export default function CarouselPlugin({
         });
       }),
 
-      // Listen for editor updates to sync carousel images
+      // Listen for editor updates to sync carousel data
       editor.registerUpdateListener(({ editorState }) => {
         editorState.read(() => {
           // Build the new Map completely inside the read() callback
@@ -133,10 +144,11 @@ export default function CarouselPlugin({
             const node = $getNodeByKey(key);
             if ($isCarouselNode(node)) {
               const currentImages = node.getImages();
-              // Only update if images have actually changed
-              if (JSON.stringify(currentImages) !== JSON.stringify(data.images)) {
+              const currentViewMode = node.getViewMode();
+              // Only update if data has actually changed
+              if (JSON.stringify(currentImages) !== JSON.stringify(data.images) || currentViewMode !== data.viewMode) {
                 hasChanges = true;
-                newCarouselNodes.set(key, { ...data, images: currentImages });
+                newCarouselNodes.set(key, { ...data, images: currentImages, viewMode: currentViewMode });
               }
             }
           }
@@ -181,17 +193,33 @@ export default function CarouselPlugin({
     [editor, carouselNodes, onUploadSizeChange],
   );
 
+  // Handle view mode changes for a specific carousel
+  const handleViewModeChange = useCallback(
+    (nodeKey: string, viewMode: CarouselViewMode) => {
+      editor.update(() => {
+        const node = $getNodeByKey(nodeKey);
+        if ($isCarouselNode(node)) {
+          node.setViewMode(viewMode);
+        }
+      });
+    },
+    [editor],
+  );
+
   // Render carousel components into their DOM containers
   return (
     <>
-      {Array.from(carouselNodes.entries()).map(([key, { images, element }]) => {
+      {Array.from(carouselNodes.entries()).map(([key, { images, viewMode, element }]) => {
         return createPortal(
           <CarouselComponent
             key={key}
             images={images}
+            viewMode={viewMode}
             onImagesChange={(newImages) => handleImagesChange(key, newImages)}
+            onViewModeChange={(newMode) => handleViewModeChange(key, newMode)}
             maxUploadSize={maxUploadSize}
             currentUploadSize={currentUploadSize}
+            readOnly={!isEditable}
           />,
           element,
         );

@@ -1,15 +1,16 @@
 /**
  * Preview Component
- * Standalone, reusable component for rendering rich text editor state as HTML
- * Can be used independently of the RichTextEditor for displaying content
- * Also supports rendering markdown content by converting it first
+ * Standalone, reusable component for rendering rich text editor state
+ * Uses a full Lexical editor in read-only mode to properly render all nodes
+ * including decorator nodes like carousels
  */
 
-import { useEffect, useState, useMemo } from 'react';
-import { createHeadlessEditor } from '@lexical/headless';
-import { $generateHtmlFromNodes } from '@lexical/html';
-import { $convertFromMarkdownString } from '@lexical/markdown';
-import { EXTENDED_TRANSFORMERS } from './transformers';
+import { useEffect } from 'react';
+import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
+import { ContentEditable } from '@lexical/react/LexicalContentEditable';
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { CodeNode } from '@lexical/code';
@@ -19,30 +20,22 @@ import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
 import { HashtagNode } from '@lexical/hashtag';
 import { MarkNode } from '@lexical/mark';
 import { OverflowNode } from '@lexical/overflow';
+import { ListPlugin } from '@lexical/react/LexicalListPlugin';
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
+import styled from 'styled-components';
 
 import {
+  CollapsiblePlugin,
   CollapsibleContainerNode,
   CollapsibleContentNode,
   CollapsibleTitleNode,
+  CarouselPlugin,
   CarouselNode,
 } from './plugins';
 import { ImageNode, VideoEmbedNode } from './nodes';
+import { editorTheme } from './theme';
 import { PreviewContainer } from './styles';
-
-/**
- * Detect if content is editor JSON or markdown
- */
-function isEditorJson(content: string): boolean {
-  if (!content || !content.trim()) return false;
-  
-  try {
-    const parsed = JSON.parse(content);
-    // Editor JSON has a root object with a specific structure
-    return parsed && typeof parsed === 'object' && 'root' in parsed;
-  } catch {
-    return false;
-  }
-}
+import { colors } from '../../../theme';
 
 export interface PreviewProps {
   /** Editor JSON state string to render */
@@ -54,7 +47,7 @@ export interface PreviewProps {
 }
 
 /**
- * All nodes that must be registered for proper HTML generation
+ * All nodes that must be registered for proper rendering
  * Keep in sync with RichTextEditor node configuration
  */
 const PREVIEW_NODES = [
@@ -80,76 +73,91 @@ const PREVIEW_NODES = [
   VideoEmbedNode,
 ];
 
+const ReadOnlyContentEditable = styled(ContentEditable)`
+  outline: none;
+  cursor: default;
+`;
+
+const PreviewPlaceholder = styled.div`
+  color: ${colors.textMuted};
+  font-style: italic;
+`;
+
 /**
- * Preview - Renders rich text editor state as styled HTML
+ * Plugin to load content and set editor to read-only
+ */
+function PreviewStatePlugin({ content }: { content: string }) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    // Set editor to read-only
+    editor.setEditable(false);
+
+    if (!content) return;
+
+    try {
+      // Check if content is valid editor JSON
+      const parsed = JSON.parse(content);
+      if (parsed && typeof parsed === 'object' && 'root' in parsed) {
+        const editorState = editor.parseEditorState(content);
+        editor.setEditorState(editorState);
+      }
+    } catch (e) {
+      console.warn('[Preview] Could not parse content:', e);
+    }
+  }, [content, editor]);
+
+  return null;
+}
+
+/**
+ * Preview - Renders rich text editor state with full fidelity
  * 
- * This is a standalone component that can be used anywhere to display
- * content created with the RichTextEditor. It uses a headless
- * editor to generate HTML without rendering the full editor UI.
+ * Uses a complete Lexical editor in read-only mode to properly render
+ * all content including decorator nodes like carousels with their
+ * full functionality (Grid/Slideshow modes).
  * 
  * @example
  * // Display saved content from database
  * <Preview content={mod.description} />
- * 
- * @example
- * // With custom styling
- * <Preview content={content} className="mod-description" />
  */
 export function Preview({ content, className, style }: PreviewProps) {
-  const [html, setHtml] = useState<string>('');
+  const initialConfig = {
+    namespace: 'Preview',
+    theme: editorTheme,
+    nodes: PREVIEW_NODES,
+    editable: false,
+    onError: (error: Error) => {
+      console.error('[Preview] Error:', error);
+    },
+  };
 
-  // Create headless editor instance (memoized for performance)
-  const headlessEditor = useMemo(() => {
-    return createHeadlessEditor({
-      namespace: 'Preview',
-      nodes: PREVIEW_NODES,
-      onError: (error) => {
-        console.error('[Preview] Error:', error);
-      },
-    });
-  }, []);
-
-  // Generate HTML when content changes
-  useEffect(() => {
-    if (!content) {
-      setHtml('');
-      return;
-    }
-
-    try {
-      if (isEditorJson(content)) {
-        // Content is editor JSON - parse and render
-        const editorState = headlessEditor.parseEditorState(content);
-        headlessEditor.setEditorState(editorState);
-        headlessEditor.getEditorState().read(() => {
-          const generatedHtml = $generateHtmlFromNodes(headlessEditor, null);
-          setHtml(generatedHtml);
-        });
-      } else {
-        // Content is likely markdown - convert first
-        headlessEditor.update(() => {
-          $convertFromMarkdownString(content, EXTENDED_TRANSFORMERS);
-        }, { discrete: true });
-        
-        // Then generate HTML from the converted state
-        headlessEditor.getEditorState().read(() => {
-          const generatedHtml = $generateHtmlFromNodes(headlessEditor, null);
-          setHtml(generatedHtml);
-        });
-      }
-    } catch (e) {
-      console.warn('[Preview] Could not parse content:', e);
-      // Fallback: show as preformatted text
-      setHtml(`<pre style="white-space: pre-wrap; word-break: break-word;">${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`);
-    }
-  }, [content, headlessEditor]);
+  if (!content) {
+    return (
+      <PreviewContainer className={className} style={style}>
+        <PreviewPlaceholder>No content</PreviewPlaceholder>
+      </PreviewContainer>
+    );
+  }
 
   return (
-    <PreviewContainer
-      className={className}
-      style={style}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <PreviewContainer className={className} style={style}>
+      <LexicalComposer initialConfig={initialConfig}>
+        <RichTextPlugin
+          contentEditable={<ReadOnlyContentEditable />}
+          placeholder={null}
+          ErrorBoundary={LexicalErrorBoundary}
+        />
+        <ListPlugin />
+        <TablePlugin />
+        <CollapsiblePlugin />
+        <CarouselPlugin
+          maxUploadSize={50 * 1024 * 1024}
+          currentUploadSize={0}
+        />
+        <PreviewStatePlugin content={content} />
+      </LexicalComposer>
+    </PreviewContainer>
   );
 }
 

@@ -3,7 +3,7 @@
  * TypeScript interfaces and types for the rich text editor
  */
 
-import type { validateRichTextPayload, EmbeddedMediaInfo } from '@strixun/api-framework';
+import type { EmbeddedMediaInfo } from '@strixun/api-framework';
 
 /** Props for the main RichTextEditor component */
 export interface RichTextEditorProps {
@@ -34,7 +34,6 @@ export interface ToolbarPluginProps {
   totalUploadedSize: number;
   maxUploadSize: number;
   showPayloadSize?: boolean;
-  validation?: ReturnType<typeof validateRichTextPayload> | null;
   payloadPercentage: number;
   uploadedImageCount: number;
 }

@@ -84,4 +84,24 @@ export const PreviewContainer = styled.div`
     border-radius: 4px;
     margin: ${spacing.sm} 0;
   }
+  
+  .carousel-preview {
+    display: flex;
+    gap: ${spacing.sm};
+    flex-wrap: wrap;
+    padding: ${spacing.sm} 0;
+    margin: ${spacing.sm} 0;
+    border: 1px solid ${colors.border};
+    border-radius: 4px;
+    padding: ${spacing.sm};
+    background: ${colors.bgSecondary};
+    
+    img {
+      max-width: 200px;
+      max-height: 150px;
+      border-radius: 4px;
+      object-fit: cover;
+      margin: 0;
+    }
+  }
 `;

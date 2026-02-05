@@ -25,7 +25,7 @@ export const ToolbarGroup = styled.div`
   align-items: center;
 `;
 
-export const ToolbarButton = styled.button<{ $active?: boolean }>`
+export const ToolbarButton = styled.button.attrs({ type: 'button' })<{ $active?: boolean }>`
   background: ${props => props.$active ? colors.accent + '30' : 'transparent'};
   border: none;
   color: ${props => props.$active ? colors.accent : colors.textSecondary};
@@ -97,7 +97,7 @@ export const PayloadIndicator = styled.div<{ $warning?: boolean; $error?: boolea
   gap: ${spacing.xs};
 `;
 
-export const PreviewToggle = styled.button<{ $active?: boolean }>`
+export const PreviewToggle = styled.button.attrs({ type: 'button' })<{ $active?: boolean }>`
   background: ${props => props.$active ? colors.accent : 'transparent'};
   border: 1px solid ${props => props.$active ? colors.accent : colors.border};
   color: ${props => props.$active ? colors.bg : colors.textSecondary};
@@ -122,7 +122,7 @@ export const ModeControlsContainer = styled.div`
 `;
 
 /** Primary Edit/Preview toggle */
-export const ModeToggle = styled.button<{ $active?: boolean }>`
+export const ModeToggle = styled.button.attrs({ type: 'button' })<{ $active?: boolean }>`
   background: ${props => props.$active ? colors.accent : 'transparent'};
   border: 1px solid ${props => props.$active ? colors.accent : colors.border};
   color: ${props => props.$active ? colors.bg : colors.textSecondary};

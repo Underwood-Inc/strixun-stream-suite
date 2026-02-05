@@ -4,7 +4,7 @@
  * Supports formatting, lists, tables, images, videos, collapsibles, and more
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
@@ -30,7 +30,7 @@ import { OverflowNode } from '@lexical/overflow';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { SelectionAlwaysOnDisplay } from '@lexical/react/LexicalSelectionAlwaysOnDisplay';
 import { CharacterLimitPlugin } from '@lexical/react/LexicalCharacterLimitPlugin';
-import { validateRichTextPayload, type EmbeddedMediaInfo } from '@strixun/api-framework';
+import type { EmbeddedMediaInfo } from '@strixun/api-framework';
 
 import {
   CollapsiblePlugin,
@@ -57,7 +57,6 @@ import {
   Placeholder,
   Label,
   HelpText,
-  ErrorBanner,
 } from './styles';
 import { ImageNode, VideoEmbedNode } from './nodes';
 import { EXTENDED_TRANSFORMERS } from './transformers';
@@ -96,7 +95,6 @@ export function RichTextEditor({
   maxLength,
 }: RichTextEditorProps) {
   const [embeddedMedia, setEmbeddedMedia] = useState<EmbeddedMediaInfo[]>([]);
-  const [validation, setValidation] = useState<ReturnType<typeof validateRichTextPayload> | null>(null);
   const [carouselUploadSize, setCarouselUploadSize] = useState(0);
 
   // Calculate total uploaded size (inline images + carousel images)
@@ -105,12 +103,6 @@ export function RichTextEditor({
     .filter(m => m.type === 'image' && m.url.startsWith('data:'))
     .reduce((total, m) => total + m.size, 0);
   const totalUploadedSize = inlineUploadedSize + carouselUploadSize;
-
-  // Validate payload when content or media changes
-  useEffect(() => {
-    const result = validateRichTextPayload(value, embeddedMedia);
-    setValidation(result);
-  }, [value, embeddedMedia]);
 
   // Count only uploaded images (not external URLs)
   const uploadedImageCount = embeddedMedia.filter(m => m.type === 'image' && m.url.startsWith('data:')).length;
@@ -159,19 +151,13 @@ export function RichTextEditor({
               totalUploadedSize={totalUploadedSize}
               maxUploadSize={MAX_RICH_TEXT_PAYLOAD}
               showPayloadSize={showPayloadSize}
-              validation={validation}
               payloadPercentage={payloadPercentage}
               uploadedImageCount={uploadedImageCount}
             />
-            {validation && !validation.valid && (
-              <ErrorBanner>
-                {validation.errors.join(' | ')}
-              </ErrorBanner>
-            )}
           </>
         )}
 
-        <EditorWrapper $height={height} $hasError={validation?.valid === false}>
+        <EditorWrapper $height={height}>
           <RichTextPlugin
             contentEditable={<StyledContentEditable />}
             placeholder={<Placeholder>{placeholder}</Placeholder>}

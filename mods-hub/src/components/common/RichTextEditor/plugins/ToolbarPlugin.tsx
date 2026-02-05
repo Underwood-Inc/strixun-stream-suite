@@ -25,7 +25,6 @@ export function ToolbarPlugin({
   totalUploadedSize,
   maxUploadSize,
   showPayloadSize,
-  validation,
   payloadPercentage,
   uploadedImageCount,
 }: ToolbarPluginProps) {
@@ -177,7 +176,7 @@ export function ToolbarPlugin({
           </span>
         )}
 
-        {showPayloadSize && validation && (
+        {showPayloadSize && (
           <PayloadIndicator $warning={payloadPercentage > 70} $error={payloadPercentage >= 100}>
             Uploaded: {formatFileSize(totalUploadedSize)} / {formatFileSize(MAX_RICH_TEXT_PAYLOAD)}
             {uploadedImageCount > 0 && ` (${uploadedImageCount} uploaded)`}
