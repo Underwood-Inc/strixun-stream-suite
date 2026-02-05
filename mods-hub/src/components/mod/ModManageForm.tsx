@@ -13,7 +13,7 @@ import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixu
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getBadgeStyles } from '../../utils/sharedStyles';
 import { getStatusBadgeType } from '../../utils/badgeHelpers';
-import { MarkdownEditor } from '../common/MarkdownEditor';
+import { RichTextEditor } from '../common/RichTextEditor';
 
 // Variant management has been moved to per-version management in ModVersionManagement component
 const MAX_THUMBNAIL_SIZE = DEFAULT_UPLOAD_LIMITS.maxThumbnailSize; // 1 MB (from shared framework)
@@ -433,13 +433,12 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
 
             {/* Description: Full width */}
             <FullWidthSection>
-                <MarkdownEditor
+                <RichTextEditor
                     label="Description"
                     value={description}
                     onChange={setDescription}
                     placeholder="Describe your mod..."
                     height={300}
-                    preview="live"
                 />
             </FullWidthSection>
 

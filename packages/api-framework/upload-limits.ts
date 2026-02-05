@@ -38,7 +38,10 @@ export interface UploadLimitsConfig {
     maxInlineImageSize?: number;
     /** Maximum total payload size for rich text content with embedded media (default: 5 MB) */
     maxRichTextPayloadSize?: number;
-    /** Maximum number of inline images allowed in rich text (default: 10) */
+    /** 
+     * @deprecated No longer enforced. Use maxRichTextPayloadSize for size-based limits.
+     * Only uploaded images count toward size limits; external URLs are free.
+     */
     maxInlineImageCount?: number;
 }
 
@@ -51,8 +54,8 @@ export const DEFAULT_UPLOAD_LIMITS: Required<UploadLimitsConfig> = {
     maxThumbnailSize: 1 * 1024 * 1024, // 1 MB
     maxProfilePictureSize: 5 * 1024 * 1024, // 5 MB
     maxCloudSaveSize: BASE_UPLOAD_LIMIT,
-    maxInlineImageSize: 512 * 1024, // 512 KB per inline image
-    maxRichTextPayloadSize: 5 * 1024 * 1024, // 5 MB total for rich text with embedded media
+    maxInlineImageSize: 5 * 1024 * 1024, // 5 MB per inline image
+    maxRichTextPayloadSize: 50 * 1024 * 1024, // 50 MB total for rich text with embedded media
     maxInlineImageCount: 10, // Max 10 inline images per description
 };
 
@@ -162,6 +165,10 @@ export function calculateRichTextPayloadSize(
 /**
  * Validate rich text content with embedded media
  * 
+ * IMPORTANT: Only UPLOADED images (base64 data URIs) count toward size limits.
+ * External image URLs (http/https) do NOT count toward the upload size limit.
+ * There is NO hard limit on image count - only total uploaded size matters.
+ * 
  * @param textContent - The text/markdown content
  * @param embeddedMedia - Array of embedded media info
  * @param limits - Upload limits configuration (uses defaults if not provided)
@@ -175,38 +182,33 @@ export function validateRichTextPayload(
     const config = getUploadLimits(limits);
     const errors: string[] = [];
     
-    // Count images
+    // Get all images
     const images = embeddedMedia.filter(m => m.type === 'image');
     const imageCount = images.length;
     
-    // Validate image count
-    if (imageCount > config.maxInlineImageCount) {
-        errors.push(`Too many images (${imageCount}). Maximum allowed: ${config.maxInlineImageCount}`);
-    }
+    // Filter to only UPLOADED images (base64 data URIs, not external URLs)
+    // External URLs (http/https) don't count toward size limits
+    const uploadedImages = images.filter(img => 
+        img.url.startsWith('data:') && img.size > 0
+    );
     
-    // Validate individual image sizes
-    images.forEach((img, index) => {
-        if (img.size > config.maxInlineImageSize) {
-            errors.push(
-                `Image ${index + 1} (${formatFileSize(img.size)}) exceeds maximum size of ${formatFileSize(config.maxInlineImageSize)}`
-            );
-        }
-    });
+    // Calculate total payload size (text + uploaded media only)
+    // External URLs don't contribute to payload size
+    const textSize = new TextEncoder().encode(textContent).length;
+    const uploadedMediaSize = uploadedImages.reduce((sum, img) => sum + img.size, 0);
+    const totalSize = textSize + uploadedMediaSize;
     
-    // Calculate total payload size
-    const totalSize = calculateRichTextPayloadSize(textContent, embeddedMedia);
-    
-    // Validate total payload size
+    // Validate total uploaded payload size
     if (totalSize > config.maxRichTextPayloadSize) {
         errors.push(
-            `Total content size (${formatFileSize(totalSize)}) exceeds maximum of ${formatFileSize(config.maxRichTextPayloadSize)}`
+            `Total uploaded content size (${formatFileSize(totalSize)}) exceeds maximum of ${formatFileSize(config.maxRichTextPayloadSize)}`
         );
     }
     
     return {
         valid: errors.length === 0,
         totalSize,
-        imageCount,
+        imageCount, // Still report total count for informational purposes
         errors,
     };
 }

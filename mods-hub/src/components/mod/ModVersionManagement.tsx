@@ -17,8 +17,8 @@ import { candyShopAnimation } from '../../utils/candyShopAnimation';
 import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys, useDeleteModVersion, useUpdateModVersion, useUpdateMod } from '../../hooks/useMods';
-import { MarkdownEditor } from '../common/MarkdownEditor';
-import { MarkdownContent } from '../common/MarkdownContent';
+import { RichTextEditor } from '../common/RichTextEditor';
+import { Preview } from '../common/RichTextEditor/Preview';
 import { VersionVariantManager } from './VersionVariantManager';
 
 const Container = styled.div`
@@ -294,7 +294,7 @@ export function ModVersionManagement({ modSlug, modId, versions, variants }: Mod
                                 </div>
                                 {!isEditing && version.changelog && (
                                     <Changelog>
-                                        <MarkdownContent content={version.changelog} />
+                                        <Preview content={version.changelog} />
                                     </Changelog>
                                 )}
                                 <Meta>
@@ -364,13 +364,12 @@ export function ModVersionManagement({ modSlug, modId, versions, variants }: Mod
                                 </FormGroup>
                                 
                                 <FormGroup>
-                                    <MarkdownEditor
+                                    <RichTextEditor
                                         label="Changelog"
                                         value={editFormData.changelog || ''}
                                         onChange={(value) => setEditFormData({ ...editFormData, changelog: value })}
                                         placeholder="What's new in this version?"
                                         height={200}
-                                        preview="live"
                                     />
                                 </FormGroup>
                                 

@@ -12,8 +12,8 @@ import { useModSettings } from '../../hooks/useMods';
 import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixun/api-framework';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
-import { MarkdownEditor } from '../common/MarkdownEditor';
-import { MarkdownContent } from '../common/MarkdownContent';
+import { RichTextEditor } from '../common/RichTextEditor';
+import { Preview } from '../common/RichTextEditor/Preview';
 
 // UI-only type that extends ModVariant with file upload fields
 type ModVariantWithFile = ModVariant & {
@@ -832,13 +832,12 @@ export function ModUploadWizard({
                 </FormGroup>
 
                 <FormGroup>
-                    <MarkdownEditor
+                    <RichTextEditor
                         label="Description"
                         value={description}
                         onChange={setDescription}
                         placeholder="Describe your mod... Supports **bold**, *italic*, `code`, lists, and more..."
                         height={200}
-                        preview="live"
                     />
                 </FormGroup>
 
@@ -886,13 +885,12 @@ export function ModUploadWizard({
                 </FormGroup>
 
                 <FormGroup>
-                    <MarkdownEditor
+                    <RichTextEditor
                         label="Changelog"
                         value={changelog}
                         onChange={setChangelog}
                         placeholder="What's new in this version? Supports **bold**, *italic*, `code`, lists, and more..."
                         height={200}
-                        preview="live"
                     />
                 </FormGroup>
 
@@ -969,7 +967,7 @@ export function ModUploadWizard({
                 <ReviewSection>
                     <ReviewLabel>Description</ReviewLabel>
                     <ReviewValue>
-                        {description ? <MarkdownContent content={description} /> : <ReviewEmpty>No description</ReviewEmpty>}
+                        {description ? <Preview content={description} /> : <ReviewEmpty>No description</ReviewEmpty>}
                     </ReviewValue>
                 </ReviewSection>
 
@@ -987,7 +985,7 @@ export function ModUploadWizard({
                     <ReviewSection>
                         <ReviewLabel>Changelog</ReviewLabel>
                         <ReviewValue>
-                            <MarkdownContent content={changelog} />
+                            <Preview content={changelog} />
                         </ReviewValue>
                     </ReviewSection>
                 )}
@@ -1053,13 +1051,12 @@ export function ModUploadWizard({
                                 />
                             </FormGroup>
                             <FormGroup>
-                                <MarkdownEditor
+                                <RichTextEditor
                                     label="Variant Description"
                                     value={variant.description || ''}
                                     onChange={(value) => handleVariantChange(variant.variantId, 'description', value)}
                                     placeholder="Describe this variant..."
                                     height={150}
-                                    preview="edit"
                                 />
                             </FormGroup>
                             <FormGroup>

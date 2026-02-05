@@ -11,7 +11,7 @@ import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
 import { VariantVersionList } from './VariantVersionList';
 import { VariantVersionUpload } from './VariantVersionUpload';
-import { MarkdownContent } from '../common/MarkdownContent';
+import { Preview } from '../common/RichTextEditor/Preview';
 import { useVariantVersions, useDeleteModVersion, useUpdateMod } from '../../hooks/useMods';
 import type { VariantVersionUploadRequest } from '../../types/mod';
 
@@ -228,7 +228,7 @@ export function VariantManagement({ modSlug, modId, variants }: VariantManagemen
                                     <VariantName>{variant.name}</VariantName>
                                     {variant.description && (
                                         <VariantDescription>
-                                            <MarkdownContent content={variant.description} />
+                                            <Preview content={variant.description} />
                                         </VariantDescription>
                                     )}
                                     <VariantMeta>

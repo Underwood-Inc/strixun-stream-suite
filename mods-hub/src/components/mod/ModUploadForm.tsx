@@ -10,7 +10,7 @@ import type { ModUploadRequest, ModCategory, ModVisibility, ModVariant, ModStatu
 import { useModSettings } from '../../hooks/useMods';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
-import { MarkdownEditor } from '../common/MarkdownEditor';
+import { RichTextEditor } from '../common/RichTextEditor';
 
 // UI-only type that extends ModVariant with file upload fields
 type ModVariantWithFile = ModVariant & {
@@ -369,13 +369,12 @@ export function ModUploadForm({
             </FormGroup>
 
             <FormGroup>
-                <MarkdownEditor
+                <RichTextEditor
                     label="Description"
                     value={description}
                     onChange={setDescription}
                     placeholder="Describe your mod... Supports **bold**, *italic*, `code`, lists, and more..."
                     height={200}
-                    preview="live"
                 />
             </FormGroup>
 
@@ -413,13 +412,12 @@ export function ModUploadForm({
             </FormGroup>
 
             <FormGroup>
-                <MarkdownEditor
+                <RichTextEditor
                     label="Changelog"
                     value={changelog}
                     onChange={setChangelog}
                     placeholder="What's new in this version? Supports **bold**, *italic*, `code`, lists, and more..."
                     height={200}
-                    preview="live"
                 />
             </FormGroup>
 
@@ -506,13 +504,12 @@ export function ModUploadForm({
                             />
                         </FormGroup>
                         <FormGroup>
-                            <MarkdownEditor
+                            <RichTextEditor
                                 label="Variant Description"
                                 value={variant.description || ''}
                                 onChange={(value) => handleVariantChange(variant.variantId, 'description', value)}
                                 placeholder="Describe this variant..."
                                 height={150}
-                                preview="edit"
                             />
                         </FormGroup>
                         <FormGroup>

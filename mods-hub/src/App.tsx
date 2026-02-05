@@ -145,6 +145,8 @@ export function App() {
                             </ProtectedRoute>
                         } 
                     />
+                    {/* Versioned mod detail routes - must come before non-versioned */}
+                    <Route path="/mods/:slug/v/:version" element={<ModDetailPage />} />
                     <Route path="/mods/:slug" element={<ModDetailPage />} />
                     <Route 
                         path="/:slug/review" 
@@ -154,6 +156,7 @@ export function App() {
                             </ProtectedRoute>
                         } 
                     />
+                    <Route path="/:slug/v/:version" element={<ModDetailPage />} />
                     <Route path="/:slug" element={<ModDetailPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
