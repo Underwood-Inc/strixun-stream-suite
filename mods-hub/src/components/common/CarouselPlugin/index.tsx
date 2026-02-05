@@ -13,7 +13,7 @@ import {
   createCommand,
   LexicalCommand,
 } from 'lexical';
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 import {
@@ -44,13 +44,33 @@ interface CarouselPluginProps {
   onUploadSizeChange?: (size: number) => void;
 }
 
+/**
+ * Data structure storing carousel info for rendering.
+ * We store the actual images data here (not just a node reference)
+ * because Lexical node methods like getImages() can only be called
+ * inside editor.read() or editor.update() callbacks.
+ */
+interface CarouselData {
+  images: CarouselImage[];
+  element: HTMLElement;
+}
+
 export default function CarouselPlugin({
   maxUploadSize,
   currentUploadSize,
   onUploadSizeChange,
 }: CarouselPluginProps): React.ReactElement | null {
   const [editor] = useLexicalComposerContext();
-  const [carouselNodes, setCarouselNodes] = useState<Map<string, { node: CarouselNode; element: HTMLElement }>>(new Map());
+  const [carouselNodes, setCarouselNodes] = useState<Map<string, CarouselData>>(new Map());
+  
+  // Use a ref to track current state so we can access it inside Lexical callbacks
+  // without causing stale closure issues with the functional setState updater
+  const carouselNodesRef = useRef<Map<string, CarouselData>>(carouselNodes);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    carouselNodesRef.current = carouselNodes;
+  }, [carouselNodes]);
 
   useEffect(() => {
     if (!editor.hasNodes([CarouselNode])) {
@@ -77,7 +97,8 @@ export default function CarouselPlugin({
       // Listen for mutations to track carousel nodes
       editor.registerMutationListener(CarouselNode, (mutations) => {
         editor.getEditorState().read(() => {
-          const newCarouselNodes = new Map(carouselNodes);
+          // Build the new Map completely inside the read() callback
+          const newCarouselNodes = new Map(carouselNodesRef.current);
 
           for (const [key, mutation] of mutations) {
             if (mutation === 'destroyed') {
@@ -87,17 +108,47 @@ export default function CarouselPlugin({
               if ($isCarouselNode(node)) {
                 const element = editor.getElementByKey(key);
                 if (element) {
-                  newCarouselNodes.set(key, { node, element });
+                  // Read images NOW while we're inside the read() callback
+                  const images = node.getImages();
+                  newCarouselNodes.set(key, { images, element });
                 }
               }
             }
           }
 
+          // Pass the completed Map directly (not a function updater)
           setCarouselNodes(newCarouselNodes);
         });
       }),
+
+      // Listen for editor updates to sync carousel images
+      editor.registerUpdateListener(({ editorState }) => {
+        editorState.read(() => {
+          // Build the new Map completely inside the read() callback
+          let hasChanges = false;
+          const currentNodes = carouselNodesRef.current;
+          const newCarouselNodes = new Map(currentNodes);
+
+          for (const [key, data] of newCarouselNodes) {
+            const node = $getNodeByKey(key);
+            if ($isCarouselNode(node)) {
+              const currentImages = node.getImages();
+              // Only update if images have actually changed
+              if (JSON.stringify(currentImages) !== JSON.stringify(data.images)) {
+                hasChanges = true;
+                newCarouselNodes.set(key, { ...data, images: currentImages });
+              }
+            }
+          }
+
+          // Only update state if there were changes, pass completed Map directly
+          if (hasChanges) {
+            setCarouselNodes(newCarouselNodes);
+          }
+        });
+      }),
     );
-  }, [editor, carouselNodes]);
+  }, [editor]);
 
   // Handle image changes for a specific carousel
   const handleImagesChange = useCallback(
@@ -109,19 +160,20 @@ export default function CarouselPlugin({
 
           // Calculate total uploaded size from all carousels
           if (onUploadSizeChange) {
-            let totalSize = 0;
-            editor.getEditorState().read(() => {
-              // This is a simplified approach - in production you'd want to
-              // traverse all nodes to find all carousels
-              for (const [, { node: carouselNode }] of carouselNodes) {
-                totalSize += carouselNode.getUploadedSize();
-              }
-            });
-            // Add the new size from this update
             const newNodeSize = images
               .filter(img => img.isUploaded)
               .reduce((total, img) => total + img.size, 0);
-            onUploadSizeChange(totalSize + newNodeSize);
+            
+            // Calculate total from all other carousels + this one
+            let totalSize = newNodeSize;
+            for (const [key, data] of carouselNodes) {
+              if (key !== nodeKey) {
+                totalSize += data.images
+                  .filter(img => img.isUploaded)
+                  .reduce((total, img) => total + img.size, 0);
+              }
+            }
+            onUploadSizeChange(totalSize);
           }
         }
       });
@@ -132,8 +184,7 @@ export default function CarouselPlugin({
   // Render carousel components into their DOM containers
   return (
     <>
-      {Array.from(carouselNodes.entries()).map(([key, { node, element }]) => {
-        const images = node.getImages();
+      {Array.from(carouselNodes.entries()).map(([key, { images, element }]) => {
         return createPortal(
           <CarouselComponent
             key={key}

@@ -14,7 +14,7 @@ import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { CodeNode } from '@lexical/code';
 import { LinkNode, AutoLinkNode } from '@lexical/link';
-import { HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode';
+import { HorizontalRuleNode } from '@lexical/extension';
 import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
 import { HashtagNode } from '@lexical/hashtag';
 import { MarkNode } from '@lexical/mark';

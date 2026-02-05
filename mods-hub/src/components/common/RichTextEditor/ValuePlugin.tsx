@@ -36,10 +36,14 @@ function extractMediaFromState(root: Record<string, unknown>): EmbeddedMediaInfo
 
     // Handle carousel nodes
     if (node.type === 'carousel' && Array.isArray(node.images)) {
-      for (const img of node.images as Array<{ url: string }>) {
-        const url = img.url;
-        let size = 0;
-        if (url.startsWith('data:')) {
+      for (const img of node.images as Array<{ src?: string; url?: string; size?: number }>) {
+        // CarouselImage uses 'src', not 'url'
+        const url = img.src || img.url;
+        if (!url || typeof url !== 'string') continue;
+        
+        // Use stored size if available, otherwise calculate from base64
+        let size = img.size || 0;
+        if (size === 0 && url.startsWith('data:')) {
           const base64Part = url.split(',')[1];
           if (base64Part) {
             size = Math.ceil(base64Part.length * 0.75);

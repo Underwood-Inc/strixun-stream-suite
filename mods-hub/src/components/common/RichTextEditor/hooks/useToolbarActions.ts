@@ -26,7 +26,7 @@ import {
   INSERT_UNORDERED_LIST_COMMAND,
   INSERT_CHECK_LIST_COMMAND,
 } from '@lexical/list';
-import { INSERT_HORIZONTAL_RULE_COMMAND } from '@lexical/react/LexicalHorizontalRuleNode';
+import { INSERT_HORIZONTAL_RULE_COMMAND } from '@lexical/extension';
 import { INSERT_TABLE_COMMAND } from '@lexical/table';
 import { INSERT_COLLAPSIBLE_COMMAND } from '../../CollapsiblePlugin';
 import { INSERT_CAROUSEL_COMMAND } from '../../CarouselPlugin';

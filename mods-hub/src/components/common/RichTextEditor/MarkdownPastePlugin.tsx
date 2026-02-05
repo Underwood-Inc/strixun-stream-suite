@@ -6,21 +6,35 @@
 import { useEffect, useCallback } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $convertFromMarkdownString } from '@lexical/markdown';
-import { $createParagraphNode, $createTextNode, $getRoot, $insertNodes } from 'lexical';
+import {
+  $createParagraphNode,
+  $createTextNode,
+  $getRoot,
+  $insertNodes,
+  $getSelection,
+  $isRangeSelection,
+  COMMAND_PRIORITY_HIGH,
+  PASTE_COMMAND,
+  createEditor,
+  type LexicalNode,
+} from 'lexical';
 import { EXTENDED_TRANSFORMERS, isVideoUrl, parseVideoUrl, preprocessDetailsBlocks } from './markdownTransformers';
 import {
   $createCollapsibleContainerNode,
   $createCollapsibleTitleNode,
   $createCollapsibleContentNode,
+  CollapsibleContainerNode,
+  CollapsibleContentNode,
+  CollapsibleTitleNode,
 } from '../CollapsiblePlugin';
-import { $createVideoEmbedNode } from './VideoEmbedNode';
-import { $createImageNode } from './ImageNode';
-import {
-  $getSelection,
-  $isRangeSelection,
-  COMMAND_PRIORITY_HIGH,
-  PASTE_COMMAND,
-} from 'lexical';
+import { $createVideoEmbedNode, VideoEmbedNode } from './VideoEmbedNode';
+import { $createImageNode, ImageNode } from './ImageNode';
+import { HeadingNode, QuoteNode } from '@lexical/rich-text';
+import { ListNode, ListItemNode } from '@lexical/list';
+import { CodeNode } from '@lexical/code';
+import { LinkNode, AutoLinkNode } from '@lexical/link';
+import { HorizontalRuleNode } from '@lexical/extension';
+import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
 import { MAX_INLINE_IMAGE_SIZE } from './constants';
 
 /**
@@ -79,6 +93,7 @@ export function MarkdownPastePlugin() {
 
   /**
    * Handle pasted image file
+   * Uses discrete history entry so the paste can be undone as a single action
    */
   const handleImagePaste = useCallback((file: File): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -99,13 +114,14 @@ export function MarkdownPastePlugin() {
       reader.onload = () => {
         const base64 = reader.result as string;
         
+        // Use discrete: true to create a separate history entry for undo/redo
         editor.update(() => {
           const imageNode = $createImageNode({
             src: base64,
             altText: file.name || 'Pasted image',
           });
           $insertNodes([imageNode]);
-        });
+        }, { discrete: true });
         
         resolve(true);
       };
@@ -163,6 +179,7 @@ export function MarkdownPastePlugin() {
           
           const videoInfo = parseVideoUrl(text.trim());
           if (videoInfo) {
+            // Use discrete: true for proper undo/redo support
             editor.update(() => {
               const selection = $getSelection();
               if ($isRangeSelection(selection) && !selection.isCollapsed()) {
@@ -170,10 +187,9 @@ export function MarkdownPastePlugin() {
               }
               
               const videoNode = $createVideoEmbedNode(videoInfo);
-              const paragraphNode = $createParagraphNode();
-              paragraphNode.append(videoNode);
-              $getRoot().append(paragraphNode);
-            });
+              // Insert at cursor position, not at root
+              $insertNodes([videoNode]);
+            }, { discrete: true });
             return true;
           }
         }
@@ -190,19 +206,35 @@ export function MarkdownPastePlugin() {
         // Pre-process to extract <details> blocks
         const { processed, detailsBlocks } = preprocessDetailsBlocks(text);
 
-        // Convert markdown to Lexical nodes
-        editor.update(() => {
-          const selection = $getSelection();
-          
-          // If there's a selection, delete it first
-          if ($isRangeSelection(selection) && !selection.isCollapsed()) {
-            selection.removeText();
-          }
+        // Create a temporary headless editor to parse markdown without affecting the main editor
+        const tempEditor = createEditor({
+          nodes: [
+            HeadingNode,
+            QuoteNode,
+            ListNode,
+            ListItemNode,
+            CodeNode,
+            LinkNode,
+            AutoLinkNode,
+            HorizontalRuleNode,
+            TableNode,
+            TableCellNode,
+            TableRowNode,
+            ImageNode,
+            VideoEmbedNode,
+            CollapsibleContainerNode,
+            CollapsibleContentNode,
+            CollapsibleTitleNode,
+          ],
+        });
 
-          // Convert the markdown string to Lexical nodes
+        // Parse markdown in the temp editor
+        let nodesToInsert: LexicalNode[] = [];
+        
+        tempEditor.update(() => {
           $convertFromMarkdownString(processed, EXTENDED_TRANSFORMERS);
           
-          // Now replace [COLLAPSIBLE:n] placeholders with actual collapsible nodes
+          // Handle collapsible placeholders
           if (detailsBlocks.length > 0) {
             const root = $getRoot();
             const allNodes = root.getAllTextNodes();
@@ -216,17 +248,14 @@ export function MarkdownPastePlugin() {
                 const block = detailsBlocks[index];
                 
                 if (block) {
-                  // Create the collapsible structure
                   const container = $createCollapsibleContainerNode(true);
                   const title = $createCollapsibleTitleNode();
                   const contentNode = $createCollapsibleContentNode();
                   
-                  // Title is already cleaned by preprocessDetailsBlocks
                   const titlePara = $createParagraphNode();
                   titlePara.append($createTextNode(block.title));
                   title.append(titlePara);
                   
-                  // Content is already cleaned, split by lines and create paragraphs
                   const contentLines = block.content.split('\n').filter(line => line.trim());
                   for (const line of contentLines) {
                     if (line.trim()) {
@@ -236,14 +265,12 @@ export function MarkdownPastePlugin() {
                     }
                   }
                   
-                  // If no content lines, add empty paragraph
                   if (contentNode.getChildrenSize() === 0) {
                     contentNode.append($createParagraphNode());
                   }
                   
                   container.append(title, contentNode);
                   
-                  // Replace the placeholder paragraph with the collapsible
                   const parentParagraph = textNode.getParent();
                   if (parentParagraph) {
                     parentParagraph.replace(container);
@@ -252,7 +279,40 @@ export function MarkdownPastePlugin() {
               }
             }
           }
-        });
+          
+          // Extract the children from the temp editor's root
+          const root = $getRoot();
+          nodesToInsert = root.getChildren();
+        }, { discrete: true });
+
+        // Now insert the parsed nodes into the actual editor at the cursor position
+        editor.update(() => {
+          const selection = $getSelection();
+          
+          // If there's a selection, delete it first
+          if ($isRangeSelection(selection) && !selection.isCollapsed()) {
+            selection.removeText();
+          }
+
+          // Clone nodes and insert at cursor position
+          if (nodesToInsert.length > 0) {
+            // We need to export and re-import nodes to move them between editors
+            const clonedNodes = nodesToInsert.map(node => {
+              const json = node.exportJSON();
+              // Import the node into the current editor context
+              const nodeClass = editor._nodes.get(json.type);
+              if (nodeClass) {
+                return nodeClass.klass.importJSON(json);
+              }
+              // Fallback: create a paragraph with the text content
+              const para = $createParagraphNode();
+              para.append($createTextNode(node.getTextContent()));
+              return para;
+            });
+            
+            $insertNodes(clonedNodes);
+          }
+        }, { discrete: true });
 
         return true;
       },

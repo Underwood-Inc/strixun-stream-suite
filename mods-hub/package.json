@@ -28,6 +28,7 @@
   "dependencies": {
     "@lexical/clipboard": "^0.40.0",
     "@lexical/code": "^0.40.0",
+    "@lexical/extension": "^0.40.0",
     "@lexical/hashtag": "^0.40.0",
     "@lexical/headless": "^0.40.0",
     "@lexical/html": "^0.40.0",

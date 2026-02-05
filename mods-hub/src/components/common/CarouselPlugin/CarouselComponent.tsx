@@ -178,10 +178,21 @@ const SlideViewer = styled.div`
   margin-bottom: ${spacing.sm};
 `;
 
-const SlideImage = styled.img`
+const SlideImageContainer = styled.div`
+  position: relative;
+  width: 100%;
+  height: 100%;
+`;
+
+const SlideImage = styled.img<{ $isActive: boolean; $direction: 'next' | 'prev' | null }>`
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
+  opacity: ${props => props.$isActive ? 1 : 0};
+  transition: opacity 0.3s ease-in-out;
 `;
 
 const SlideNav = styled.button<{ $direction: 'prev' | 'next' }>`
@@ -463,7 +474,17 @@ export function CarouselComponent({
 
       {viewMode === 'slideshow' && images.length > 0 ? (
         <SlideViewer>
-          <SlideImage src={images[currentSlide]?.src} alt={images[currentSlide]?.alt} />
+          <SlideImageContainer>
+            {images.map((image, idx) => (
+              <SlideImage
+                key={image.id}
+                src={image.src}
+                alt={image.alt}
+                $isActive={idx === currentSlide}
+                $direction={null}
+              />
+            ))}
+          </SlideImageContainer>
           <SlideNav $direction="prev" onClick={prevSlide} disabled={currentSlide === 0}>
             ‹
           </SlideNav>
@@ -493,7 +514,7 @@ export function CarouselComponent({
             >
               <ImagePreview src={image.src} alt={image.alt} />
               <ImageBadge $type={image.isUploaded ? 'uploaded' : 'external'}>
-                {image.isUploaded ? 'Uploaded' : 'External'}
+                {image.isUploaded ? 'Local File' : 'URL'}
               </ImageBadge>
               {image.isUploaded && image.size > 0 && (
                 <ImageSize>{formatFileSize(image.size)}</ImageSize>
@@ -533,6 +554,10 @@ export function CarouselComponent({
               onChange={(e) => setUrlInput(e.target.value)}
               placeholder="Or paste external image URL..."
               onKeyDown={(e) => e.key === 'Enter' && handleAddUrl()}
+              onPaste={(e) => {
+                // Stop propagation so Lexical's paste handler doesn't intercept
+                e.stopPropagation();
+              }}
             />
             <ActionButton onClick={handleAddUrl}>Add URL</ActionButton>
           </UrlInputContainer>
