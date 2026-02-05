@@ -25,7 +25,6 @@ import {
   $createCollapsibleContentNode,
   $createCollapsibleTitleNode,
 } from './CollapsiblePlugin';
-import { MAX_INLINE_IMAGE_SIZE } from '../constants';
 
 /**
  * Simple markdown to HTML converter
@@ -138,12 +137,6 @@ export function MarkdownPastePlugin() {
   const handleImagePaste = useCallback((file: File): Promise<boolean> => {
     return new Promise((resolve) => {
       if (!file.type.startsWith('image/')) {
-        resolve(false);
-        return;
-      }
-
-      if (file.size > MAX_INLINE_IMAGE_SIZE) {
-        console.warn(`[MarkdownPastePlugin] Image too large: ${file.size} bytes`);
         resolve(false);
         return;
       }

@@ -54,8 +54,8 @@ export const DEFAULT_UPLOAD_LIMITS: Required<UploadLimitsConfig> = {
     maxThumbnailSize: 1 * 1024 * 1024, // 1 MB
     maxProfilePictureSize: 5 * 1024 * 1024, // 5 MB
     maxCloudSaveSize: BASE_UPLOAD_LIMIT,
-    maxInlineImageSize: 512 * 1024, // 512 KB per inline image
-    maxRichTextPayloadSize: 5 * 1024 * 1024, // 5 MB total for rich text with embedded media
+    maxInlineImageSize: 5 * 1024 * 1024, // 5 MB per inline image
+    maxRichTextPayloadSize: 50 * 1024 * 1024, // 50 MB total for rich text with embedded media
     maxInlineImageCount: 10, // Max 10 inline images per description
 };
 
@@ -191,15 +191,6 @@ export function validateRichTextPayload(
     const uploadedImages = images.filter(img => 
         img.url.startsWith('data:') && img.size > 0
     );
-    
-    // Validate individual uploaded image sizes only
-    uploadedImages.forEach((img, index) => {
-        if (img.size > config.maxInlineImageSize) {
-            errors.push(
-                `Uploaded image ${index + 1} (${formatFileSize(img.size)}) exceeds maximum size of ${formatFileSize(config.maxInlineImageSize)}`
-            );
-        }
-    });
     
     // Calculate total payload size (text + uploaded media only)
     // External URLs don't contribute to payload size

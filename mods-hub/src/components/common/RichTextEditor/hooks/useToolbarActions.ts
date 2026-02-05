@@ -30,7 +30,6 @@ import { INSERT_HORIZONTAL_RULE_COMMAND } from '@lexical/extension';
 import { INSERT_TABLE_COMMAND } from '@lexical/table';
 import { INSERT_COLLAPSIBLE_COMMAND, INSERT_CAROUSEL_COMMAND } from '../plugins';
 import { formatFileSize } from '@strixun/api-framework';
-import { MAX_INLINE_IMAGE_SIZE } from '../constants';
 
 export interface UseToolbarActionsProps {
   totalUploadedSize: number;
@@ -150,11 +149,6 @@ export function useToolbarActions({ totalUploadedSize, maxUploadSize }: UseToolb
 
     if (!file.type.startsWith('image/')) {
       setImageError('Please select an image file');
-      return;
-    }
-
-    if (file.size > MAX_INLINE_IMAGE_SIZE) {
-      setImageError(`Image too large. Max per image: ${formatFileSize(MAX_INLINE_IMAGE_SIZE)}`);
       return;
     }
 
