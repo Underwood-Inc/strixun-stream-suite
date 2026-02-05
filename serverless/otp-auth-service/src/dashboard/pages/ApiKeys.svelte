@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiClient } from '$dashboard/lib/api-client';
-  import type { Customer, ApiKey, ApiKeyResponse } from '$dashboard/lib/types';
+  import type { Customer, ApiKey, ApiKeyResponse, ApiKeyVerifyResponse } from '$dashboard/lib/types';
   import Card from '$dashboard/components/Card.svelte';
   import ObfuscatedText from '@shared-components/svelte/ObfuscatedText.svelte';
+  import CodeBlock from '@shared-components/svelte/CodeBlock.svelte';
 
   export let customer: Customer | null = null;
 
@@ -13,6 +14,16 @@
   let newKeyName = '';
   let showNewKeyModal = false;
   let newApiKey: string | null = null;
+  
+  // Test API key state
+  let showTestModal = false;
+  let testResult: ApiKeyVerifyResponse | null = null;
+  let testingKeyId: string | null = null;
+  let testError: string | null = null;
+  
+  // Code snippet modal state
+  let showCodeSnippetModal = false;
+  let codeSnippet: string = '';
 
   onMount(async () => {
     await loadApiKeys();
@@ -98,11 +109,99 @@
     }
   }
 
+  /**
+   * Test an API key to verify it works
+   * First reveals the key, then tests it
+   */
+  async function handleTestKey(keyId: string) {
+    if (!customer?.customerId) return;
+    
+    testingKeyId = keyId;
+    testError = null;
+    testResult = null;
+    showTestModal = true;
+    
+    try {
+      // First, reveal the API key
+      const response = await fetch(`/admin/customers/${customer.customerId}/api-keys/${keyId}/reveal`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to reveal API key for testing');
+      }
+      
+      const revealData = await response.json() as { apiKey?: string };
+      const apiKeyValue = revealData.apiKey;
+      
+      if (!apiKeyValue) {
+        throw new Error('Could not retrieve API key value');
+      }
+      
+      // Now test the key
+      const result = await apiClient.testApiKey(apiKeyValue);
+      testResult = result;
+    } catch (err) {
+      testError = err instanceof Error ? err.message : 'Failed to test API key';
+    } finally {
+      testingKeyId = null;
+    }
+  }
+
+  /**
+   * Show the code snippet modal for end-to-end testing
+   */
+  async function handleShowCodeSnippet(keyId: string) {
+    if (!customer?.customerId) return;
+    
+    codeSnippet = '';
+    showCodeSnippetModal = true;
+    
+    try {
+      // First, reveal the API key
+      const response = await fetch(`/admin/customers/${customer.customerId}/api-keys/${keyId}/reveal`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to reveal API key');
+      }
+      
+      const revealData = await response.json() as { apiKey?: string };
+      const apiKeyValue = revealData.apiKey;
+      
+      if (!apiKeyValue) {
+        throw new Error('Could not retrieve API key value');
+      }
+      
+      // Get the code snippet
+      const snippetResponse = await apiClient.getTestSnippet(apiKeyValue);
+      codeSnippet = snippetResponse.snippet;
+    } catch (err) {
+      codeSnippet = `<!-- Error: ${err instanceof Error ? err.message : 'Failed to generate snippet'} -->`;
+    }
+  }
+
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
     alert('API key copied to clipboard!');
     showNewKeyModal = false;
     newApiKey = null;
+  }
+
+  function closeTestModal() {
+    showTestModal = false;
+    testResult = null;
+    testError = null;
+  }
+
+  function closeSnippetModal() {
+    showCodeSnippetModal = false;
+    codeSnippet = '';
   }
 </script>
 
@@ -172,6 +271,20 @@
                   <td>
                     {#if key.status === 'active'}
                       <div class="api-keys__actions">
+                        <button 
+                          class="api-keys__button api-keys__button--test" 
+                          onclick={() => handleTestKey(key.keyId)}
+                          disabled={testingKeyId === key.keyId}
+                        >
+                          {testingKeyId === key.keyId ? '...' : 'Test'}
+                        </button>
+                        <button 
+                          class="api-keys__button api-keys__button--code" 
+                          onclick={() => handleShowCodeSnippet(key.keyId)}
+                          title="Get HTML+JS code for end-to-end testing"
+                        >
+                          {'</>'}
+                        </button>
                         <button class="api-keys__button api-keys__button--warning" onclick={() => handleRotateKey(key.keyId)}>
                           Rotate
                         </button>
@@ -208,6 +321,158 @@
       <button class="api-keys__button api-keys__button--primary" onclick={() => copyToClipboard(newApiKey!)}>
         Copy to Clipboard
       </button>
+    </div>
+  </div>
+{/if}
+
+<!-- Test Result Modal -->
+{#if showTestModal}
+  <div 
+    class="api-keys__modal" 
+    role="dialog"
+    tabindex="-1"
+    aria-modal="true"
+    aria-labelledby="test-modal-title"
+    onclick={(e) => e.target === e.currentTarget && closeTestModal()}
+    onkeydown={(e) => e.key === 'Escape' && closeTestModal()}
+  >
+    <div class="api-keys__modal-content api-keys__modal-content--test">
+      <button class="api-keys__modal-close" onclick={closeTestModal} aria-label="Close modal">×</button>
+      
+      {#if testingKeyId}
+        <div class="api-keys__test-loading">
+          <div class="api-keys__spinner"></div>
+          <p>Testing API key...</p>
+        </div>
+      {:else if testError}
+        <h2 id="test-modal-title" class="api-keys__modal-title api-keys__modal-title--error">✗ Test Failed</h2>
+        <p class="api-keys__modal-text">{testError}</p>
+      {:else if testResult}
+        <h2 id="test-modal-title" class="api-keys__modal-title" class:api-keys__modal-title--success={testResult.valid} class:api-keys__modal-title--error={!testResult.valid}>
+          {testResult.valid ? '✓ Multi-Tenant Integration Test Passed' : '✗ Integration Test Failed'}
+        </h2>
+        
+        <!-- Test Summary -->
+        {#if testResult.testSummary}
+          <p class="api-keys__test-summary" class:api-keys__test-summary--success={testResult.valid} class:api-keys__test-summary--error={!testResult.valid}>
+            {testResult.testSummary}
+          </p>
+        {/if}
+        
+        <!-- Test Steps -->
+        {#if testResult.testSteps && testResult.testSteps.length > 0}
+          <div class="api-keys__test-section">
+            <h3>Test Steps</h3>
+            <ul class="api-keys__test-steps">
+              {#each testResult.testSteps as step}
+                <li class="api-keys__test-step" class:api-keys__test-step--passed={step.status === 'passed'} class:api-keys__test-step--failed={step.status === 'failed'} class:api-keys__test-step--skipped={step.status === 'skipped'}>
+                  <span class="api-keys__step-number">{step.step}</span>
+                  <span class="api-keys__step-icon">
+                    {#if step.status === 'passed'}✓{:else if step.status === 'failed'}✗{:else if step.status === 'skipped'}○{:else}•{/if}
+                  </span>
+                  <div class="api-keys__step-content">
+                    <span class="api-keys__step-name">{step.name}</span>
+                    <span class="api-keys__step-message">{step.message}</span>
+                    {#if step.duration !== undefined}
+                      <span class="api-keys__step-duration">{step.duration}ms</span>
+                    {/if}
+                  </div>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+        
+        {#if testResult.valid}
+          <div class="api-keys__test-result">
+            <div class="api-keys__test-section">
+              <h3>Key Information</h3>
+              <dl class="api-keys__test-details">
+                <dt>Key ID</dt>
+                <dd>{testResult.keyId}</dd>
+                <dt>Name</dt>
+                <dd>{testResult.name}</dd>
+                <dt>Customer ID</dt>
+                <dd><code>{testResult.customerId}</code></dd>
+                <dt>Status</dt>
+                <dd><span class="api-keys__status status-active">{testResult.status}</span></dd>
+                <dt>Plan</dt>
+                <dd><span class="api-keys__plan">{testResult.customerPlan}</span></dd>
+              </dl>
+            </div>
+            
+            <div class="api-keys__test-section">
+              <h3>Rate Limits</h3>
+              {#if testResult.rateLimits}
+                <dl class="api-keys__test-details">
+                  <dt>Per Hour</dt>
+                  <dd>{testResult.rateLimits.requestsPerHour.toLocaleString()} requests</dd>
+                  <dt>Per Day</dt>
+                  <dd>{testResult.rateLimits.requestsPerDay.toLocaleString()} requests</dd>
+                </dl>
+              {/if}
+            </div>
+            
+            <div class="api-keys__test-section">
+              <h3>Available Services ({testResult.services.filter(s => s.available).length}/{testResult.services.length})</h3>
+              <ul class="api-keys__services-list">
+                {#each testResult.services as service}
+                  <li class:api-keys__service--available={service.available} class:api-keys__service--unavailable={!service.available}>
+                    <span class="api-keys__service-icon">{service.available ? '✓' : '✗'}</span>
+                    <span class="api-keys__service-name">{service.name}</span>
+                    <code class="api-keys__service-endpoint">{service.endpoint}</code>
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          </div>
+        {:else}
+          <p class="api-keys__modal-text api-keys__modal-text--error">{testResult.error || 'The API key is not valid. Please check the key or contact support.'}</p>
+        {/if}
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- Code Snippet Modal -->
+{#if showCodeSnippetModal}
+  <div 
+    class="api-keys__modal" 
+    role="dialog"
+    tabindex="-1"
+    aria-modal="true"
+    aria-labelledby="snippet-modal-title"
+    onclick={(e) => e.target === e.currentTarget && closeSnippetModal()}
+    onkeydown={(e) => e.key === 'Escape' && closeSnippetModal()}
+  >
+    <div class="api-keys__modal-content api-keys__modal-content--snippet">
+      <button class="api-keys__modal-close" onclick={closeSnippetModal} aria-label="Close modal">×</button>
+      
+      <h2 id="snippet-modal-title" class="api-keys__modal-title">{'</>'} End-to-End Test Page</h2>
+      <p class="api-keys__modal-text">
+        Copy this HTML code and save it as a <code>.html</code> file. Open it in your browser to test the complete OTP flow.
+      </p>
+      
+      <div class="api-keys__snippet-instructions">
+        <h4>Instructions:</h4>
+        <ol>
+          <li>Copy the code below</li>
+          <li>Save it as <code>test-otp.html</code></li>
+          <li>Open the file in your browser</li>
+          <li>Enter your email and test the full OTP flow</li>
+        </ol>
+      </div>
+      
+      <div class="api-keys__snippet-container">
+        {#if codeSnippet}
+          <CodeBlock code={codeSnippet} language="html" />
+        {:else}
+          <div class="api-keys__test-loading">
+            <div class="api-keys__spinner"></div>
+            <p>Generating code snippet...</p>
+          </div>
+        {/if}
+      </div>
     </div>
   </div>
 {/if}
@@ -477,6 +742,366 @@
     word-break: break-all;
     color: var(--accent);
     font-weight: 600;
+  }
+
+  /* Test button styles */
+  .api-keys__button--test {
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: var(--info);
+    border: 2px solid var(--info);
+    border-radius: var(--radius-sm);
+    color: #000;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .api-keys__button--test:hover {
+    opacity: 0.9;
+  }
+
+  .api-keys__button--test:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
+  /* Code snippet button */
+  .api-keys__button--code {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--bg-dark);
+    border: 2px solid var(--accent);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.75rem;
+    font-family: monospace;
+  }
+
+  .api-keys__button--code:hover {
+    background: var(--accent);
+    color: #000;
+  }
+
+  /* Modal close button */
+  .api-keys__modal-close {
+    position: absolute;
+    top: var(--spacing-md);
+    right: var(--spacing-md);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    line-height: 1;
+  }
+
+  .api-keys__modal-close:hover {
+    color: var(--text);
+  }
+
+  /* Test modal content */
+  .api-keys__modal-content--test,
+  .api-keys__modal-content--snippet {
+    position: relative;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .api-keys__modal-title--success {
+    color: var(--success);
+  }
+
+  .api-keys__modal-title--error {
+    color: var(--danger);
+  }
+
+  /* Test loading state */
+  .api-keys__test-loading {
+    text-align: center;
+    padding: var(--spacing-xl);
+  }
+
+  .api-keys__spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto var(--spacing-md);
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Test result sections */
+  .api-keys__test-result {
+    margin-top: var(--spacing-lg);
+  }
+
+  .api-keys__test-section {
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: var(--bg-dark);
+    border-radius: var(--radius-md);
+  }
+
+  .api-keys__test-section h3 {
+    margin-bottom: var(--spacing-sm);
+    font-size: 1rem;
+    color: var(--accent);
+  }
+
+  .api-keys__test-details {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--spacing-xs) var(--spacing-md);
+  }
+
+  .api-keys__test-details dt {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .api-keys__test-details dd {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+
+  .api-keys__plan {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--accent);
+    color: #000;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  /* Services list */
+  .api-keys__services-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .api-keys__services-list li {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xs) 0;
+    font-size: 0.875rem;
+  }
+
+  .api-keys__service--available .api-keys__service-icon {
+    color: var(--success);
+  }
+
+  .api-keys__service--unavailable {
+    opacity: 0.5;
+  }
+
+  .api-keys__service--unavailable .api-keys__service-icon {
+    color: var(--danger);
+  }
+
+  .api-keys__service-name {
+    flex: 1;
+  }
+
+  .api-keys__service-endpoint {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background: var(--bg);
+    padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-sm);
+  }
+
+  /* Code snippet modal */
+  .api-keys__modal-content--snippet {
+    max-width: 900px;
+  }
+
+  .api-keys__snippet-instructions {
+    background: var(--bg-dark);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .api-keys__snippet-instructions h4 {
+    margin-bottom: var(--spacing-sm);
+    color: var(--accent);
+  }
+
+  .api-keys__snippet-instructions ol {
+    margin: 0;
+    padding-left: var(--spacing-lg);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .api-keys__snippet-instructions li {
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .api-keys__snippet-instructions code {
+    background: var(--bg);
+    padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+  }
+
+  .api-keys__snippet-container {
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    max-height: 400px;
+    overflow: auto;
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .api-keys__snippet-code {
+    margin: 0;
+    padding: var(--spacing-md);
+    font-family: monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: pre;
+    color: var(--text);
+  }
+
+  .api-keys__button--copy {
+    width: 100%;
+    margin-top: var(--spacing-md);
+  }
+
+  /* Test summary styles */
+  .api-keys__test-summary {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-lg);
+    font-weight: 600;
+  }
+
+  .api-keys__test-summary--success {
+    background: rgba(0, 210, 106, 0.15);
+    border: 1px solid var(--success);
+    color: var(--success);
+  }
+
+  .api-keys__test-summary--error {
+    background: rgba(255, 71, 87, 0.15);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+  }
+
+  /* Test steps styles */
+  .api-keys__test-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .api-keys__test-step {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    background: var(--bg-dark);
+    border-left: 3px solid var(--border);
+  }
+
+  .api-keys__test-step--passed {
+    border-left-color: var(--success);
+  }
+
+  .api-keys__test-step--failed {
+    border-left-color: var(--danger);
+    background: rgba(255, 71, 87, 0.1);
+  }
+
+  .api-keys__test-step--skipped {
+    border-left-color: var(--warning);
+    opacity: 0.7;
+  }
+
+  .api-keys__step-number {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--border);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .api-keys__test-step--passed .api-keys__step-number {
+    background: var(--success);
+    color: #000;
+  }
+
+  .api-keys__test-step--failed .api-keys__step-number {
+    background: var(--danger);
+    color: #000;
+  }
+
+  .api-keys__step-icon {
+    font-size: 1rem;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .api-keys__test-step--passed .api-keys__step-icon {
+    color: var(--success);
+  }
+
+  .api-keys__test-step--failed .api-keys__step-icon {
+    color: var(--danger);
+  }
+
+  .api-keys__test-step--skipped .api-keys__step-icon {
+    color: var(--warning);
+  }
+
+  .api-keys__step-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .api-keys__step-name {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text);
+  }
+
+  .api-keys__step-message {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    word-break: break-word;
+  }
+
+  .api-keys__step-duration {
+    font-size: 0.625rem;
+    color: var(--muted);
+    font-family: monospace;
+  }
+
+  .api-keys__modal-text--error {
+    color: var(--danger);
   }
 </style>
 

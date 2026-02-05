@@ -16,6 +16,7 @@ import * as domainHandlers from '../handlers/domain.js';
 import * as publicHandlers from '../handlers/public.js';
 import * as debugHandlers from '../handlers/auth/debug.js';
 import * as dataRequestHandlers from '../handlers/admin/data-requests.js';
+import * as apiKeyVerifyHandlers from '../handlers/admin/api-key-verify.js';
 
 // Import auth helpers
 import { authenticateRequest, handleAdminRoute, handleSuperAdminRoute, handleAdminOrSuperAdminRoute, type RouteResult } from './dashboard/auth.js';
@@ -211,8 +212,11 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
             };
         }
 
+        // Extract jwtToken if auth is JwtAuth type
+        const jwtToken = 'jwtToken' in auth ? auth.jwtToken : null;
+        
         return {
-            response: await adminHandlers.handleRevealApiKey(request, env, pathCustomerId, keyId),
+            response: await adminHandlers.handleRevealApiKey(request, env, pathCustomerId, keyId, jwtToken),
             customerId: auth.customerId
         };
     }
@@ -292,6 +296,23 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
             return { response: authError, customerId: null };
         }
         return { response: await dataRequestHandlers.handleGetDataRequest(request, env, requestId), customerId: null };
+    }
+
+    // API Key verification endpoint - allows developers to test their API keys
+    // This is a PUBLIC endpoint that only requires the X-OTP-API-Key header
+    if (path === '/api-key/verify' && request.method === 'POST') {
+        return {
+            response: await apiKeyVerifyHandlers.handleVerifyApiKey(request, env),
+            customerId: null // Key verification is done by the handler itself
+        };
+    }
+    
+    // API Key test snippet endpoint - returns HTML+JS code for end-to-end testing
+    if (path === '/api-key/test-snippet' && request.method === 'GET') {
+        return {
+            response: await apiKeyVerifyHandlers.handleGetTestSnippet(request, env),
+            customerId: null
+        };
     }
 
     return null; // Route not matched

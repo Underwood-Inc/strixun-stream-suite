@@ -9,6 +9,7 @@ import type {
   Customer,
   ApiKey,
   ApiKeyResponse,
+  ApiKeyVerifyResponse,
   AuditLogsResponse,
   Analytics,
   RealtimeAnalytics,
@@ -218,6 +219,42 @@ export class ApiClient {
       throw new Error(error?.detail || 'Failed to get email analytics');
     }
     return response.data;
+  }
+
+  /**
+   * Test an API key to verify it's valid and see what services are available
+   * @param apiKey - The API key to test
+   * @returns API key verification result with services and rate limits
+   */
+  async testApiKey(apiKey: string): Promise<ApiKeyVerifyResponse> {
+    // Use fetch directly since we need to set a custom header
+    const response = await fetch(`${API_BASE_URL}/api-key/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-OTP-API-Key': apiKey
+      }
+    });
+    
+    const data = await response.json();
+    return data as ApiKeyVerifyResponse;
+  }
+
+  /**
+   * Get the HTML+JS test snippet for end-to-end testing
+   * @param apiKey - The API key to include in the snippet
+   * @returns HTML+JS code snippet
+   */
+  async getTestSnippet(apiKey: string): Promise<{ success: boolean; snippet: string; instructions: string[] }> {
+    const response = await fetch(`${API_BASE_URL}/api-key/test-snippet?apiKey=${encodeURIComponent(apiKey)}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    return data;
   }
 }
 

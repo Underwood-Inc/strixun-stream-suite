@@ -96,3 +96,50 @@ export interface ErrorAnalytics {
     timestamp: string;
   }>;
 }
+
+/**
+ * Individual test step result
+ */
+export interface TestStep {
+  step: number;
+  name: string;
+  status: 'pending' | 'running' | 'passed' | 'failed' | 'skipped';
+  message: string;
+  duration?: number;
+}
+
+/**
+ * API Key verification response
+ * Returned when testing an API key to show its status and available services
+ */
+export interface ApiKeyVerifyResponse {
+  success: boolean;
+  valid: boolean;
+  keyId?: string;
+  name?: string;
+  status?: 'active' | 'inactive' | 'revoked';
+  customerId?: string;
+  customerStatus?: string;
+  customerPlan?: string;
+  createdAt?: string;
+  lastUsed?: string | null;
+  ssoConfig?: {
+    isolationMode: string;
+    globalSsoEnabled: boolean;
+  };
+  services: {
+    name: string;
+    endpoint: string;
+    available: boolean;
+  }[];
+  rateLimits?: {
+    requestsPerHour: number;
+    requestsPerDay: number;
+  };
+  error?: string;
+  testedAt: string;
+  /** Step-by-step test results */
+  testSteps?: TestStep[];
+  /** Summary of what was tested */
+  testSummary?: string;
+}

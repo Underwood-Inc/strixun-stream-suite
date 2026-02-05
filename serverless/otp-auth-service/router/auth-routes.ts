@@ -310,7 +310,11 @@ export async function handleAuthRoutes(
                 }
                 
                 // Validate origin against allowedOrigins
-                const isOriginAllowed = allowedOrigins.includes('*') || 
+                // DEVELOPMENT: Allow 'null' origin (from file:// URLs) for API key testing
+                const isDev = env.ENVIRONMENT !== 'production';
+                const isNullOriginInDev = isDev && requestOrigin === 'null';
+                
+                const isOriginAllowed = isNullOriginInDev || allowedOrigins.includes('*') || 
                     allowedOrigins.some(allowed => {
                         if (allowed === '*') return true;
                         if (allowed === requestOrigin) return true;

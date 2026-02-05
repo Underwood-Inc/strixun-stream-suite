@@ -41,29 +41,39 @@ function getEffectiveAllowedOrigins(
     // If localhost is detected and we're in dev mode, always allow it
     const isLocalhost = origin && (origin.includes('localhost') || origin.includes('127.0.0.1'));
     
+    // CRITICAL: Handle 'null' origin from file:// URLs in development
+    // When developers open HTML test files directly from filesystem, Origin is 'null'
+    const isNullOrigin = origin === 'null';
+    
     // If we have explicit allowedOrigins with actual values, use them
     if (options.allowedOrigins && 
         (typeof options.allowedOrigins === 'function' || 
          (Array.isArray(options.allowedOrigins) && options.allowedOrigins.length > 0))) {
-        // If localhost in dev and not explicitly allowed, create a function that allows it
-        if (isLocalhost && !isProduction && allowLocalhostInDev) {
+        // In development, create a function that allows localhost and 'null' origins (for file:// URLs)
+        const needsDevOverride = !isProduction && allowLocalhostInDev && (isLocalhost || isNullOrigin);
+        
+        if (needsDevOverride) {
             const explicitOrigins = Array.isArray(options.allowedOrigins) 
                 ? options.allowedOrigins 
                 : [];
             
-            // Check if localhost is already explicitly allowed
-            const localhostAllowed = explicitOrigins.some(allowed => {
+            // Check if origin is already explicitly allowed
+            const alreadyAllowed = explicitOrigins.some(allowed => {
                 if (allowed === '*' || allowed === origin) return true;
-                if (allowed.endsWith('*')) {
+                if (allowed.endsWith('*') && origin) {
                     const prefix = allowed.slice(0, -1);
-                    return origin && origin.startsWith(prefix);
+                    return origin.startsWith(prefix);
                 }
                 return false;
             });
             
-            // If not explicitly allowed, create a function that allows both explicit origins and localhost
-            if (!localhostAllowed) {
+            // If not explicitly allowed, create a function that allows dev origins
+            if (!alreadyAllowed) {
                 return (checkOrigin: string) => {
+                    // Allow 'null' origin in dev (file:// URLs)
+                    if (checkOrigin === 'null' && !isProduction) {
+                        return true;
+                    }
                     // Allow localhost in dev
                     if ((checkOrigin.includes('localhost') || checkOrigin.includes('127.0.0.1')) && !isProduction) {
                         return true;
@@ -80,7 +90,7 @@ function getEffectiveAllowedOrigins(
             }
         }
         
-        // Return as-is if localhost is already handled or we're in production
+        // Return as-is if already handled or we're in production
         return options.allowedOrigins;
     }
     
