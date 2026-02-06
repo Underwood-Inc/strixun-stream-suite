@@ -35,7 +35,7 @@
     "services/**/*.ts",
     "utils/**/*.ts",
     "router/**/*.ts",
-    "templates/**/*.ts",
+    "html-snippets/**/*.ts",
     "vite-env.d.ts"
   ],
   "exclude": [

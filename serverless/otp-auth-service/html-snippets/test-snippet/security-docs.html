@@ -1,0 +1,265 @@
+<!-- Security Documentation Section -->
+<div class="card security-docs">
+    <div class="collapsible-header" onclick="toggleSecurityDocs()">
+        <h2>⚠️ Security & Integration Guide</h2>
+        <span class="toggle-icon" id="toggleIcon">▼</span>
+    </div>
+    <div class="collapsible-content expanded" id="securityContent">
+        <p style="margin: 1rem 0; color: var(--text-muted); font-size: 0.875rem;">
+            <strong>IMPORTANT:</strong> Read this before integrating into your production application.
+        </p>
+        
+        <!-- API Key Purpose -->
+        <h3>🔑 What This API Key Does vs. Doesn't Do</h3>
+        <table class="security-table">
+            <thead>
+                <tr>
+                    <th>Purpose</th>
+                    <th>API Key</th>
+                    <th>JWT Token</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Identifies Tenant/Customer</td>
+                    <td><span class="badge badge-success">✓ Yes</span></td>
+                    <td><span class="badge badge-warning">Inherits</span></td>
+                </tr>
+                <tr>
+                    <td>Per-key origin restrictions (optional)</td>
+                    <td><span class="badge badge-success">✓ Yes</span></td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td>Applies rate limits</td>
+                    <td><span class="badge badge-success">✓ Yes</span></td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td>Authenticates the USER</td>
+                    <td><span class="badge badge-danger">✗ No</span></td>
+                    <td><span class="badge badge-success">✓ Yes</span></td>
+                </tr>
+                <tr>
+                    <td>Grants data access</td>
+                    <td><span class="badge badge-danger">✗ No</span></td>
+                    <td><span class="badge badge-success">✓ Yes</span></td>
+                </tr>
+                <tr>
+                    <td>Should be kept secret</td>
+                    <td><span class="badge badge-warning">Depends*</span></td>
+                    <td><span class="badge badge-success">✓ Always</span></td>
+                </tr>
+            </tbody>
+        </table>
+        <p style="font-size: 0.75rem; color: var(--text-muted);">
+            * Backend = keep secret. Frontend = visible (optionally restrict via per-key origins).
+        </p>
+        
+        <!-- Security Model - PLAIN AS MUD -->
+        <div style="background: var(--bg-light); border: 2px solid var(--accent); border-radius: 8px; padding: 1rem; margin: 1.5rem 0;">
+            <h3 style="margin: 0 0 0.75rem 0; color: var(--accent);">🔐 Security Model - How It Actually Works</h3>
+            
+            <p style="font-size: 0.9rem; margin-bottom: 1rem; font-weight: bold;">
+                The API key itself IS the security. No valid key = no access. Period.
+            </p>
+            
+            <table class="security-table" style="margin-bottom: 1rem;">
+                <thead>
+                    <tr>
+                        <th>Scenario</th>
+                        <th>What Happens</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>No API key provided</strong></td>
+                        <td><span class="badge badge-danger">401 Unauthorized</span> — Nothing happens</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Invalid/revoked API key</strong></td>
+                        <td><span class="badge badge-danger">401 Unauthorized</span> — Nothing happens</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Valid key, NO origins configured</strong></td>
+                        <td><span class="badge badge-success">✓ Works</span> — Key authenticates, any origin allowed</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Valid key, origins configured</strong></td>
+                        <td><span class="badge badge-success">✓ Works</span> — Only from those specific origins</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div style="background: var(--bg); padding: 0.75rem; border-radius: 4px; font-size: 0.85rem;">
+                <p style="margin: 0 0 0.5rem 0;"><strong>Think of it like a password:</strong></p>
+                <ul style="margin: 0; padding-left: 1.25rem;">
+                    <li><strong>Backend keys:</strong> Stored in env vars, never exposed. Works from "any origin" because it's only used from YOUR server.</li>
+                    <li><strong>Frontend keys:</strong> Visible in browser JS. Configure origins to prevent someone from copying it and using it elsewhere.</li>
+                </ul>
+                <p style="margin: 0.75rem 0 0 0; color: var(--warning);">
+                    <strong>⚠️ "Any origin" doesn't mean "anyone can access"</strong> — it means "anyone WITH THE VALID KEY can access from any origin."
+                </p>
+            </div>
+        </div>
+        
+        <!-- Integration Methods -->
+        <h3>🛡️ Integration Methods</h3>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('backend')">✅ Backend-Only (Recommended)</button>
+            <button class="tab-btn" onclick="showTab('frontend')">⚡ Direct Frontend</button>
+        </div>
+        
+        <!-- Backend Tab -->
+        <div id="tab-backend" class="tab-content active">
+            <div class="method-box recommended">
+                <h4>✅ Method 1: Backend-Only Integration</h4>
+                <p style="font-size: 0.8rem; color: var(--success); margin-bottom: 0.5rem;">
+                    <strong>HIGHEST SECURITY</strong> — API key never reaches the browser
+                </p>
+            </div>
+            
+            <div class="mermaid-container">
+                <div class="diagram-title">Backend Integration Flow</div>
+                <div class="mermaid">
+sequenceDiagram
+    participant B as Browser
+    participant Y as Your Server
+    participant O as OTP Auth API
+    
+    Note over Y: API Key in env vars only
+    
+    B->>Y: Request OTP
+    Y->>O: POST /auth/request-otp + API Key
+    O-->>Y: OTP sent to email
+    Y-->>B: Success response
+    
+    B->>Y: Submit OTP code
+    Y->>O: POST /auth/verify-otp + API Key
+    O-->>Y: JWT token
+    Y-->>B: Set HttpOnly cookie
+                </div>
+            </div>
+            
+            <div class="code-example">
+<span class="comment">// YOUR BACKEND SERVER (Node.js example)</span>
+<span class="keyword">const</span> OTP_API_KEY = process.env.OTP_AUTH_API_KEY; <span class="comment">// Secret!</span>
+
+app.post(<span class="string">'/api/auth/request-otp'</span>, <span class="keyword">async</span> (req, res) => {
+    <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'{{BASE_URL}}/auth/request-otp'</span>, {
+        method: <span class="string">'POST'</span>,
+        headers: {
+            <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>,
+            <span class="string">'X-OTP-API-Key'</span>: OTP_API_KEY
+        },
+        body: JSON.stringify({ email: req.body.email })
+    });
+    res.json(<span class="keyword">await</span> response.json());
+});
+            </div>
+        </div>
+        
+        <!-- Frontend Tab -->
+        <div id="tab-frontend" class="tab-content">
+            <div class="method-box alternative">
+                <h4>⚡ Method 2: Direct Frontend Integration</h4>
+                <p style="font-size: 0.8rem; color: var(--warning); margin-bottom: 0.5rem;">
+                    <strong>MODERATE SECURITY</strong> — API key visible (optionally add origin restrictions)
+                </p>
+            </div>
+            
+            <div class="mermaid-container">
+                <div class="diagram-title">Direct Frontend Flow</div>
+                <div class="mermaid">
+sequenceDiagram
+    participant B as Browser
+    participant O as OTP Auth API
+    participant H as Hacker
+    
+    Note over B,O: Key visible (configure origins for restrictions)
+    
+    B->>O: POST /auth/request-otp + API Key
+    O-->>B: OTP sent to email
+    
+    H->>O: Tries to use stolen key
+    O-->>H: 403 if origin restricted
+                </div>
+            </div>
+            
+            <div class="code-example">
+<span class="comment">// YOUR FRONTEND (React/Vue/Vanilla JS)</span>
+<span class="keyword">const</span> OTP_API_KEY = <span class="string">'otp_live_sk_xxx'</span>; <span class="comment">// Visible (restrict with per-key origins)</span>
+
+<span class="keyword">async function</span> <span class="function">requestOTP</span>(email) {
+    <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'{{BASE_URL}}/auth/request-otp'</span>, {
+        method: <span class="string">'POST'</span>,
+        headers: {
+            <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>,
+            <span class="string">'X-OTP-API-Key'</span>: OTP_API_KEY
+        },
+        body: JSON.stringify({ email })
+    });
+    <span class="keyword">return</span> response.json();
+}
+            </div>
+        </div>
+        
+        <!-- CORS Setup -->
+        <h3>🌐 CORS Configuration (Per-Key)</h3>
+        <div class="mermaid-container">
+            <div class="mermaid">
+flowchart TD
+    A[Request arrives] --> B{Has API Key?}
+    B -->|No| Z[401 Unauthorized]
+    B -->|Yes| C{Key Valid?}
+    C -->|No| Z
+    C -->|Yes| D{Key has origins?}
+    D -->|No| E["✓ Allow ANY origin"]
+    D -->|Yes| F{Origin in list?}
+    F -->|Yes| G["✓ Allow request"]
+    F -->|No| H["✗ 403 Forbidden"]
+    
+    style E fill:#28a745,color:#fff
+    style G fill:#28a745,color:#fff
+    style H fill:#ea2b1f,color:#fff
+    style Z fill:#ea2b1f,color:#fff
+            </div>
+        </div>
+        
+        <ul>
+            <li><strong>No origins = ANY origin allowed</strong> (key is the auth)</li>
+            <li><strong>With origins = ONLY those origins</strong> (extra security)</li>
+            <li>Configure in <strong>Dashboard → API Keys → 🌐 button</strong> per key</li>
+            <li>Server-to-server calls work regardless (no Origin header)</li>
+        </ul>
+        <p style="background: var(--bg); padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.8rem; color: var(--warning); margin-top: 0.5rem;">
+            <strong>Remember:</strong> "Any origin" ≠ "anyone can access". It means anyone <em>with the valid key</em> can access from any origin. No key = no access.
+        </p>
+        
+        <!-- Key Compromise -->
+        <h3>🚨 If API Key Is Compromised</h3>
+        <div class="mermaid-container">
+            <div class="mermaid">
+flowchart LR
+    A[Key Compromised] --> B[Dashboard]
+    B --> C[Revoke Key]
+    C --> D[Create New Key]
+    D --> E[Update App]
+    
+    style A fill:#ea2b1f,color:#fff
+    style C fill:#ffc107,color:#000
+    style E fill:#28a745,color:#fff
+            </div>
+        </div>
+        
+        <!-- Environment Info -->
+        <h3>📋 This Test Page</h3>
+        <ul>
+            <li><strong>API Base URL:</strong> <code>{{BASE_URL}}</code></li>
+            <li><strong>No origin config?</strong> This page works immediately from any origin</li>
+            <li><strong>Origin config?</strong> Add this page's origin via Dashboard → API Keys → 🌐 button</li>
+            <li><strong>Serving locally:</strong> Run <code>python -m http.server 8080</code> (add <code>http://localhost:8080</code> if using origin restrictions)</li>
+        </ul>
+    </div>
+</div>

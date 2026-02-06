@@ -6,7 +6,7 @@
 import { getCorsHeadersRecord } from '../../utils/cors.js';
 import { verifyApiKey, getApiKeysForCustomer } from '../../services/api-key.js';
 import { fetchCustomerByCustomerId } from '@strixun/api-framework';
-import { generateTestHtmlSnippet } from '../../templates/test-snippet/index.js';
+import { generateTestHtmlSnippet } from '../../html-snippets/test-snippet/index.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
