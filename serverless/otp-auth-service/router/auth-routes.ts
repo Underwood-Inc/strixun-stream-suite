@@ -23,6 +23,7 @@ interface Env {
 interface ApiKeyAuth {
     customerId: string;
     keyId: string;
+    allowedOrigins?: string[];
 }
 
 interface RouteResult {
@@ -421,10 +422,12 @@ export async function handleAuthRoutes(
         // - API key does NOT replace JWT - it's additional functionality
         const handlerResponse = await handleRequestOTP(request, env, customerId);
         
-        // Apply CORS headers: env.ALLOWED_ORIGINS (always checked) intersected with customer config (if set)
-        // This allows third-party developers to restrict origins further, but env.ALLOWED_ORIGINS is the base
-        // NOTE: This is ONLY for CORS - JWT is still required for authentication
-        const corsHeaders = getCorsHeaders(env, request, customer);
+        // CORS: Use API key's per-key origins (not customer config)
+        // Valid API key with origins → use those. Valid key without origins → ['*'] (allow any)
+        const corsCustomer = apiKeyAuth 
+            ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }
+            : customer;
+        const corsHeaders = getCorsHeaders(env, request, corsCustomer);
         const responseWithCors = new Response(handlerResponse.body, {
             status: handlerResponse.status,
             statusText: handlerResponse.statusText,
@@ -449,9 +452,12 @@ export async function handleAuthRoutes(
         const tenantCustomerId = apiKeyAuth?.customerId ?? null;
         const handlerResponse = await handleVerifyOTP(request, env, tenantCustomerId);
         
-        // Apply CORS headers: env.ALLOWED_ORIGINS (always checked) intersected with customer config (if set)
-        // This is the ONLY thing API key does - provides CORS bypass for allowed origins
-        const corsHeaders = getCorsHeaders(env, request, customer);
+        // CORS: Use API key's per-key origins (not customer config)
+        // Valid API key with origins → use those. Valid key without origins → ['*'] (allow any)
+        const corsCustomer = apiKeyAuth 
+            ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }
+            : customer;
+        const corsHeaders = getCorsHeaders(env, request, corsCustomer);
         const responseWithCors = new Response(handlerResponse.body, {
             status: handlerResponse.status,
             statusText: handlerResponse.statusText,

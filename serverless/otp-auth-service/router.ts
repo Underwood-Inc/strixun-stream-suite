@@ -92,10 +92,33 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
     let customerId: string | null = null;
     let endpoint = path.split('/').pop() || 'unknown';
     
-    // Handle CORS preflight
+    // Handle CORS preflight - check for API key to use per-key allowed origins
     if (request.method === 'OPTIONS') {
+        const apiKeyHeader = request.headers.get('X-OTP-API-Key');
+        let corsCustomer = null;
+        
+        if (apiKeyHeader) {
+            try {
+                const { verifyApiKey } = await import('./services/api-key.js');
+                const apiKeyAuth = await verifyApiKey(apiKeyHeader.trim(), env);
+                if (apiKeyAuth) {
+                    // Valid key: use per-key origins or ['*'] if none configured
+                    corsCustomer = { 
+                        config: { 
+                            allowedOrigins: apiKeyAuth.allowedOrigins?.length 
+                                ? apiKeyAuth.allowedOrigins 
+                                : ['*'] 
+                        } 
+                    };
+                }
+                // Invalid key: corsCustomer stays null = restrictive CORS
+            } catch (e) {
+                // Error: corsCustomer stays null = restrictive CORS
+            }
+        }
+        
         return new Response(null, {
-            headers: getCorsHeaders(env, request),
+            headers: getCorsHeaders(env, request, corsCustomer),
         });
     }
     

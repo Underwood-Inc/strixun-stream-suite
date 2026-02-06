@@ -67,7 +67,6 @@ interface ApiKeyVerifyResponse {
  * 6. Returns available services and rate limits
  */
 export async function handleVerifyApiKey(request: Request, env: Env): Promise<Response> {
-    const corsHeaders = getCorsHeadersRecord(env, request);
     const testSteps: TestStep[] = [];
     let stepNumber = 1;
     
@@ -75,10 +74,36 @@ export async function handleVerifyApiKey(request: Request, env: Env): Promise<Re
         testSteps.push({ step: stepNumber++, name, status, message, duration });
     };
     
+    // Pre-check API key to determine CORS headers
+    // ONLY valid API keys get permissive CORS. Invalid/missing = restrictive.
+    const apiKeyHeader = request.headers.get('X-OTP-API-Key');
+    let corsCustomer: { config: { allowedOrigins: string[] } } | null = null;
+    
+    if (apiKeyHeader?.trim()) {
+        try {
+            const earlyVerification = await verifyApiKey(apiKeyHeader, env);
+            if (earlyVerification) {
+                // Valid key: use per-key origins or ['*'] if none configured
+                corsCustomer = { 
+                    config: { 
+                        allowedOrigins: earlyVerification.allowedOrigins?.length 
+                            ? earlyVerification.allowedOrigins 
+                            : ['*'] 
+                    } 
+                };
+            }
+            // Invalid key: corsCustomer stays null = restrictive CORS
+        } catch (e) {
+            // Error: corsCustomer stays null = restrictive CORS
+        }
+    }
+    
+    const corsHeaders = getCorsHeadersRecord(env, request, corsCustomer);
+    
     try {
         // STEP 1: Check API key header presence
         const step1Start = Date.now();
-        const apiKey = request.headers.get('X-OTP-API-Key');
+        const apiKey = apiKeyHeader;
         
         if (!apiKey) {
             addStep('API Key Header Check', 'failed', 'Missing X-OTP-API-Key header in request');
