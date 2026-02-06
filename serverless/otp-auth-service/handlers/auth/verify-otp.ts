@@ -123,9 +123,15 @@ async function decryptRequestBody(request: Request, env: Env): Promise<{ email: 
 /**
  * Verify OTP endpoint
  * POST /auth/verify-otp
+ * 
+ * @param request - The incoming request
+ * @param env - Environment bindings
+ * @param tenantCustomerId - The API key owner's customerId (for OTP retrieval and tenant isolation)
+ *                          This is NOT the user's customerId - users are looked up by EMAIL.
  */
-export async function handleVerifyOTP(request: Request, env: Env, customerId: string | null = null): Promise<Response> {
-    // NOTE: customerId parameter may be null initially, but ensureCustomerAccount will resolve it to MANDATORY value
+export async function handleVerifyOTP(request: Request, env: Env, tenantCustomerId: string | null = null): Promise<Response> {
+    // CRITICAL: tenantCustomerId is for OTP retrieval (tenant isolation) ONLY
+    // The user's customerId is ALWAYS looked up by EMAIL via ensureCustomerAccount
     try {
         // Decrypt/parse request body
         const { email, otp } = await decryptRequestBody(request, env);
@@ -173,10 +179,10 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         // CF-Connecting-IP is set by Cloudflare and cannot be spoofed
         const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         
-        // Retrieve OTP data
-        const otpResult = await retrieveOTP(email, customerId, env);
+        // Retrieve OTP data (uses tenantCustomerId for tenant-scoped OTP lookup)
+        const otpResult = await retrieveOTP(email, tenantCustomerId, env);
         if (!otpResult) {
-            await recordOTPFailureService(emailHash, clientIP, customerId, env);
+            await recordOTPFailureService(emailHash, clientIP, tenantCustomerId, env);
             const errorResponse = createGenericOTPError(request);
             errorResponse.headers.set('Content-Type', 'application/problem+json');
             Object.entries(getCorsHeaders(env, request)).forEach(([key, value]) => {
@@ -189,7 +195,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         
         // Verify email matches (use constant-time comparison)
         if (!constantTimeEquals(otpData.email || '', emailLower)) {
-            await recordOTPFailureService(emailHash, clientIP, customerId, env);
+            await recordOTPFailureService(emailHash, clientIP, tenantCustomerId, env);
             const errorResponse = createGenericOTPError(request);
             errorResponse.headers.set('Content-Type', 'application/problem+json');
             Object.entries(getCorsHeaders(env, request)).forEach(([key, value]) => {
@@ -201,7 +207,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         // Check expiration
         if (new Date(otpData.expiresAt) < new Date()) {
             await deleteOTP(otpKey, latestOtpKey, env);
-            await recordOTPFailureService(emailHash, clientIP, customerId, env);
+            await recordOTPFailureService(emailHash, clientIP, tenantCustomerId, env);
             const errorResponse = createGenericOTPError(request);
             errorResponse.headers.set('Content-Type', 'application/problem+json');
             Object.entries(getCorsHeaders(env, request)).forEach(([key, value]) => {
@@ -213,7 +219,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         // Check attempts
         if (otpData.attempts >= 5) {
             await deleteOTP(otpKey, latestOtpKey, env);
-            await recordOTPFailureService(emailHash, clientIP, customerId, env);
+            await recordOTPFailureService(emailHash, clientIP, tenantCustomerId, env);
             
             return new Response(JSON.stringify({ 
                 type: 'https://tools.ietf.org/html/rfc6585#section-4',
@@ -245,16 +251,16 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         if (!isValidOTP) {
             await incrementOTPAttempts(otpKey, otpData, env);
             
-            // Track failed attempt
-            if (customerId) {
-                await trackUsage(customerId, 'failedAttempts', 1, env);
-                await sendWebhook(customerId, 'otp.failed', {
+            // Track failed attempt (against tenant, not user - API key owner pays for quota)
+            if (tenantCustomerId) {
+                await trackUsage(tenantCustomerId, 'failedAttempts', 1, env);
+                await sendWebhook(tenantCustomerId, 'otp.failed', {
                     email: emailLower,
                     remainingAttempts: 5 - otpData.attempts
                 }, env);
             }
             
-            await recordOTPFailureService(emailHash, clientIP, customerId, env);
+            await recordOTPFailureService(emailHash, clientIP, tenantCustomerId, env);
             
             const genericError = createGenericOTPError(request);
             const errorData = JSON.parse(await genericError.text());
@@ -277,9 +283,11 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         
         // BUSINESS RULE: Customer account MUST ALWAYS be created for customers on login
         // ensureCustomerAccount will throw if it cannot create the account after retries
+        // CRITICAL: Pass null - user is ALWAYS looked up by EMAIL, not by API key owner's customerId
+        // The API key (tenantCustomerId) is for ACCESS CONTROL, not authentication!
         let resolvedCustomerId: string;
         try {
-            resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
+            resolvedCustomerId = await ensureCustomerAccount(emailLower, null, env);
         } catch (customerError) {
             console.error(`[OTP Verify] CRITICAL: Failed to ensure customer account for ${emailLower}:`, customerError);
             // Return error response - customer account creation is required

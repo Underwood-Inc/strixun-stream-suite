@@ -256,6 +256,49 @@ export class ApiClient {
     const data = await response.json();
     return data;
   }
+
+  /**
+   * Get customer configuration including allowed origins
+   * @returns Customer configuration object
+   */
+  async getConfig(): Promise<{ allowedOrigins?: string[]; rateLimits?: any; emailConfig?: any }> {
+    const response = await this.api.get<{ config: any }>('/admin/config');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get configuration');
+    }
+    return response.data.config || {};
+  }
+
+  /**
+   * Update customer configuration
+   * @param config - Configuration to update (partial updates allowed)
+   * @returns Updated configuration
+   */
+  async updateConfig(config: { allowedOrigins?: string[]; rateLimits?: any }): Promise<{ config: any }> {
+    const response = await this.api.put<{ config: any }>('/admin/config', config);
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to update configuration');
+    }
+    return response.data;
+  }
+
+  /**
+   * Update allowed origins for a specific API key
+   * Each key can have its own set of allowed origins for CORS
+   */
+  async updateKeyOrigins(customerId: string, keyId: string, allowedOrigins: string[]): Promise<{ success: boolean; allowedOrigins: string[]; message: string }> {
+    const response = await this.client.put<{ success: boolean; allowedOrigins: string[]; message: string }>(
+      `/admin/customers/${customerId}/api-keys/${keyId}/origins`,
+      { allowedOrigins }
+    );
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { error?: string; message?: string } | undefined;
+      throw new Error(error?.message || error?.error || 'Failed to update allowed origins');
+    }
+    return response.data;
+  }
 }
 
 // Export singleton instance

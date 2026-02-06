@@ -95,14 +95,39 @@ otp-auth-service/
 - ✓ Passwordless OTP authentication
 - ✓ JWT token management
 - ✓ API key management (multi-tenant)
+- ✓ Per-tenant CORS configuration
 - ✓ Audit logging
 - ✓ Analytics dashboard
 - ✓ OpenAPI 3.1.0 spec
 - ✓ Swagger UI integration
 - ✓ Developer dashboard (Svelte 5 + TypeScript)
 
+## Multi-Tenant Integration
+
+Third-party developers can integrate this authentication service using API keys.
+
+### Two Integration Methods:
+
+| Method | Security | Best For |
+|--------|----------|----------|
+| **Backend-Only** | Highest | Production apps with servers |
+| **Direct Frontend** | Moderate | Static sites, SPAs, JAMstack |
+
+**Backend-Only:** API key stored on YOUR server, never exposed to browsers.
+
+**Direct Frontend:** API key in browser JS, protected by origin restrictions configured in dashboard.
+
+See **[MULTI_TENANCY_GUIDE.md](./MULTI_TENANCY_GUIDE.md)** for complete documentation with diagrams and code examples.
+
+### Quick Setup (Frontend Integration):
+
+1. Get API key from Dashboard → API Keys
+2. Add your domains to Allowed Origins (CORS)
+3. Use the API key in your frontend with `X-OTP-API-Key` header
+
 ## Documentation
 
+- [Multi-Tenancy Guide](./MULTI_TENANCY_GUIDE.md) - API key integration for third-party developers
 - [Dashboard README](./dashboard/README.md) - Dashboard development
 - [API Standards](./API_STANDARDS.md) - API documentation
 - [Local Testing](./LOCAL_TESTING.md) - Testing guide

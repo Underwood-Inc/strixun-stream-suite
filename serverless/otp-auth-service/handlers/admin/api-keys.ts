@@ -32,6 +32,8 @@ interface ApiKeyData {
     rotatedAt?: string;
     replacedBy?: string;
     revokedAt?: string;
+    /** Allowed origins for CORS when using this API key */
+    allowedOrigins?: string[];
 }
 
 interface EncryptedKeyData {
@@ -52,6 +54,7 @@ interface ApiKeyResponse {
     lastUsed: string | null;
     status: string;
     apiKey: EncryptedKeyData | null; // Double-encrypted (only customer can decrypt with their JWT)
+    allowedOrigins?: string[]; // Per-key CORS origins
 }
 
 interface CreateApiKeyBody {
@@ -128,7 +131,8 @@ export async function handleListApiKeys(
                             createdAt: k.createdAt,
                             lastUsed: k.lastUsed,
                             status: k.status,
-                            apiKey: null
+                            apiKey: null,
+                            allowedOrigins: k.allowedOrigins || []
                         };
                     }
                     
@@ -162,7 +166,8 @@ export async function handleListApiKeys(
                 createdAt: k.createdAt,
                 lastUsed: k.lastUsed,
                 status: k.status,
-                apiKey: doubleEncryptedKey
+                apiKey: doubleEncryptedKey,
+                allowedOrigins: k.allowedOrigins || []
             };
         }));
         
@@ -481,6 +486,112 @@ export async function handleRevokeApiKey(
         const errorMessage = error instanceof Error ? error.message : String(error);
         return new Response(JSON.stringify({
             error: 'Failed to revoke API key',
+            message: errorMessage
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+interface UpdateOriginsBody {
+    allowedOrigins: string[];
+}
+
+interface UpdateOriginsResponse {
+    success: boolean;
+    keyId: string;
+    allowedOrigins: string[];
+    message: string;
+}
+
+/**
+ * Update allowed origins for a specific API key
+ * PUT /admin/customers/{customerId}/api-keys/{keyId}/origins
+ * 
+ * Each API key can have its own set of allowed origins for CORS
+ */
+export async function handleUpdateKeyOrigins(
+    request: Request,
+    env: Env,
+    customerId: string,
+    keyId: string
+): Promise<Response> {
+    try {
+        const body = await request.json() as UpdateOriginsBody;
+        
+        if (!Array.isArray(body.allowedOrigins)) {
+            return new Response(JSON.stringify({ 
+                error: 'Invalid request',
+                message: 'allowedOrigins must be an array of strings'
+            }), {
+                status: 400,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Validate origins format
+        const validatedOrigins: string[] = [];
+        for (const origin of body.allowedOrigins) {
+            if (typeof origin !== 'string') continue;
+            const trimmed = origin.trim();
+            if (!trimmed) continue;
+            
+            // Basic validation - must be a URL or localhost pattern
+            if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+                validatedOrigins.push(trimmed);
+            } else {
+                return new Response(JSON.stringify({ 
+                    error: 'Invalid origin',
+                    message: `Origin "${trimmed}" must start with http:// or https://`
+                }), {
+                    status: 400,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                });
+            }
+        }
+        
+        // Get keys from index
+        const keyDataStrings = await indexGet(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId);
+        const customerKeys: ApiKeyData[] = keyDataStrings.map(s => JSON.parse(s) as ApiKeyData);
+        const keyData = customerKeys.find(k => k.keyId === keyId);
+        
+        if (!keyData) {
+            return new Response(JSON.stringify({ error: 'API key not found' }), {
+                status: 404,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Update allowed origins - remove old entry, add updated entry
+        const { indexRemove, indexAdd: indexAddEntry } = await import('@strixun/kv-entities');
+        const oldKeyString = JSON.stringify(keyData);
+        await indexRemove(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId, oldKeyString);
+        
+        keyData.allowedOrigins = validatedOrigins;
+        await indexAddEntry(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId, JSON.stringify(keyData));
+        
+        // Log security event
+        await logSecurityEvent(customerId, 'api_key_origins_updated', {
+            keyId: keyId,
+            keyName: keyData.name,
+            originsCount: validatedOrigins.length
+        }, env);
+        
+        const response: UpdateOriginsResponse = {
+            success: true,
+            keyId,
+            allowedOrigins: validatedOrigins,
+            message: `Allowed origins updated successfully. ${validatedOrigins.length} origin(s) configured.`
+        };
+        
+        return new Response(JSON.stringify(response), {
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return new Response(JSON.stringify({
+            error: 'Failed to update allowed origins',
             message: errorMessage
         }), {
             status: 500,

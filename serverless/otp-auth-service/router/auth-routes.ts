@@ -187,13 +187,28 @@ export async function handleAuthRoutes(
     let apiKeyAuth: ApiKeyAuth | null = null;
     let jwtAuth: { customerId: string; payload: any } | null = null;
     
-    // Step 1: Check API key first (to get keyId for SSO validation)
-    // API keys are for multi-tenant identification, not authentication
+    // Step 1: ALWAYS validate API key if provided
+    // SECURITY: If an API key is provided, it MUST be valid - we never ignore invalid keys
     const AUTH_ENDPOINTS_NO_JWT = ['/auth/request-otp', '/auth/verify-otp'];
     const isAuthEndpointNoJWT = AUTH_ENDPOINTS_NO_JWT.includes(path);
     
-    if (!isAuthEndpointNoJWT) {
+    // Always attempt to validate API key if the header is present
+    const apiKeyHeader = request.headers.get('X-OTP-API-Key');
+    if (apiKeyHeader) {
         apiKeyAuth = await authenticateRequest(request, env);
+        
+        // CRITICAL: If API key was provided but validation failed, REJECT immediately
+        // We NEVER allow requests with invalid API keys to proceed
+        if (!apiKeyAuth) {
+            console.log(`[AuthRoutes] REJECTED: Invalid or revoked API key provided`);
+            return {
+                response: new Response(JSON.stringify({ error: 'Invalid or revoked API key' }), {
+                    status: 401,
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: null
+            };
+        }
     }
     
     // Step 2: Try JWT authentication with SSO validation
@@ -209,23 +224,7 @@ export async function handleAuthRoutes(
     }
     
     // Step 3: Validate API key and JWT consistency
-    // CRITICAL: API keys MUST be in X-OTP-API-Key header ONLY
-    // Authorization header is for JWT tokens ONLY
-    const apiKeyHeader = request.headers.get('X-OTP-API-Key');
-    const hasApiKeyInHeader = !!apiKeyHeader;
-    
-    // If API key is provided but invalid, reject request
-    if (!isAuthEndpointNoJWT && hasApiKeyInHeader && !apiKeyAuth) {
-        // API key was provided but is invalid/revoked - reject request
-        console.log(`[AuthRoutes] API key provided but invalid or revoked`);
-        return {
-            response: new Response(JSON.stringify({ error: 'Invalid or revoked API key' }), {
-                status: 401,
-                headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
-            }),
-            customerId: null
-        };
-    }
+    // Note: Invalid API key rejection is already handled above in Step 1
     
     // If both JWT and API key are provided, validate they match the same customer entity
     // This ensures the authenticated user (JWT) belongs to the identified entity (API key)
@@ -254,67 +253,51 @@ export async function handleAuthRoutes(
     if (customerId) {
         customer = await getCustomerCached(customerId, (id) => getCustomer(id, env));
         
-        // SECURITY: Validate origin when API key is used (prevents API key abuse from unauthorized origins)
-        // This is critical because API keys can be stolen and used from any origin if not validated
-        // CORS headers alone don't prevent server-side requests - we need explicit origin validation
-        // NOTE: API key is ONLY for CORS bypass - NOTHING CHANGES in application logic
+        // MULTI-TENANT CORS: Per-key origin restrictions
+        // This enables third-party developers to use API keys from their own domains
+        // - API key has allowedOrigins configured → ONLY allow from those specific origins
+        // - API key has NO allowedOrigins → allow from ANY origin (key is the auth)
         if (apiKeyAuth) {
             const requestOrigin = request.headers.get('Origin');
             
-            // CRITICAL: env.ALLOWED_ORIGINS is ALWAYS checked first, never a fallback
-            // Get base allowed origins from env.ALLOWED_ORIGINS (required)
+            // MULTI-TENANCY CORS LOGIC:
+            // - If API key has NO origins configured → Allow from ANY origin (API key is the auth)
+            // - If API key HAS origins configured → Only allow from those specific origins
+            // This gives developers flexibility: simple mode (any origin) or strict mode (specific origins)
+            
             let allowedOrigins: string[] = [];
-            if (env.ALLOWED_ORIGINS) {
-                allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(o => o.length > 0);
+            let originRestrictionEnabled = false;
+            
+            // Check if API key has its own allowed origins configured
+            if (apiKeyAuth.allowedOrigins && apiKeyAuth.allowedOrigins.length > 0) {
+                allowedOrigins = apiKeyAuth.allowedOrigins;
+                originRestrictionEnabled = true;
+                console.log('[AuthRoutes] Per-key origin restriction ENABLED:', {
+                    keyId: apiKeyAuth.keyId,
+                    originsCount: allowedOrigins.length
+                });
+            } else {
+                console.log('[AuthRoutes] No origin restriction for this key (any origin allowed):', {
+                    keyId: apiKeyAuth.keyId,
+                    customerId
+                });
             }
             
-            // If customer config exists, intersect with env.ALLOWED_ORIGINS (customer can only restrict further)
-            if (customer?.config?.allowedOrigins && customer.config.allowedOrigins.length > 0) {
-                const customerOrigins = customer.config.allowedOrigins;
-                // Intersect: only allow origins that are in BOTH env.ALLOWED_ORIGINS and customer config
-                allowedOrigins = allowedOrigins.filter(origin => 
-                    customerOrigins.includes('*') || customerOrigins.includes(origin)
-                );
-            }
-            
-            // SECURITY: If allowedOrigins is empty (env.ALLOWED_ORIGINS not set), reject browser requests
-            // Server-to-server requests (no Origin header) are allowed when allowedOrigins is empty
-            if (requestOrigin) {
-                // Browser request - must validate origin
-                if (allowedOrigins.length === 0) {
-                    // SECURITY: env.ALLOWED_ORIGINS not set - reject browser requests
-                    // env.ALLOWED_ORIGINS must be configured in worker secrets
-                    const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
-                    await logSecurityEvent(customerId, 'origin_blocked_no_config', {
-                        origin: requestOrigin,
-                        endpoint: path,
-                        method: request.method,
-                        ip: clientIP,
-                        keyId: apiKeyAuth.keyId,
-                        reason: 'env.ALLOWED_ORIGINS not configured - must set ALLOWED_ORIGINS secret in worker configuration'
-                    }, env);
-                    
-                    return {
-                        response: new Response(JSON.stringify({ 
-                            error: 'Origin validation required',
-                            detail: 'env.ALLOWED_ORIGINS must be configured in worker secrets. This is required for all requests.'
-                        }), {
-                            status: 403,
-                            headers: { 
-                                ...getCorsHeaders(env, request, customer), 
-                                'Content-Type': 'application/json' 
-                            },
-                        }),
-                        customerId
-                    };
-                }
-                
+            // If no Origin header (server-to-server request), allow it
+            // Server-to-server requests don't have CORS restrictions
+            if (!requestOrigin) {
+                console.log('[AuthRoutes] No Origin header (server-to-server), allowing request');
+            } else if (!originRestrictionEnabled) {
+                // API key has NO origins configured - allow from any origin
+                // The API key itself is the authentication, origin doesn't matter
+                console.log('[AuthRoutes] No origin restriction configured, allowing any origin:', {
+                    origin: requestOrigin,
+                    keyId: apiKeyAuth.keyId
+                });
+            } else {
+                // API key HAS origins configured - must validate origin
                 // Validate origin against allowedOrigins
-                // DEVELOPMENT: Allow 'null' origin (from file:// URLs) for API key testing
-                const isDev = env.ENVIRONMENT !== 'production';
-                const isNullOriginInDev = isDev && requestOrigin === 'null';
-                
-                const isOriginAllowed = isNullOriginInDev || allowedOrigins.includes('*') || 
+                const isOriginAllowed = allowedOrigins.includes('*') || 
                     allowedOrigins.some(allowed => {
                         if (allowed === '*') return true;
                         if (allowed === requestOrigin) return true;
@@ -327,12 +310,11 @@ export async function handleAuthRoutes(
                     });
                 
                 if (!isOriginAllowed) {
-                    // SECURITY: Reject request if origin doesn't match allowed origins
-                    // This prevents API key abuse from unauthorized origins
+                    // Origin not in key's allowed list
                     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
                     await logSecurityEvent(customerId, 'origin_blocked', {
                         origin: requestOrigin,
-                        allowedOrigins: allowedOrigins,
+                        allowedOrigins: allowedOrigins.slice(0, 5), // Log first 5 only
                         endpoint: path,
                         method: request.method,
                         ip: clientIP,
@@ -342,7 +324,7 @@ export async function handleAuthRoutes(
                     return {
                         response: new Response(JSON.stringify({ 
                             error: 'Origin not allowed',
-                            detail: 'This API key is not authorized for requests from this origin'
+                            detail: `Origin "${requestOrigin}" is not in this API key's allowed origins. Add it in the dashboard.`
                         }), {
                             status: 403,
                             headers: { 
@@ -353,9 +335,9 @@ export async function handleAuthRoutes(
                         customerId
                     };
                 }
+                
+                console.log('[AuthRoutes] Origin allowed:', { requestOrigin, keyId: apiKeyAuth.keyId });
             }
-            // If no Origin header (server-to-server request), allow regardless of allowedOrigins configuration
-            // This allows backend services to use API keys without Origin restrictions
         }
         
         // Check IP allowlist (CF-Connecting-IP is set by Cloudflare and cannot be spoofed)
@@ -433,10 +415,9 @@ export async function handleAuthRoutes(
     // Note: AUTH_ENDPOINTS_NO_JWT and isAuthEndpointNoJWT are already declared above (lines 162-163)
     if (path === '/auth/request-otp' && request.method === 'POST') {
         // THIRD-PARTY DEVELOPER INTEGRATION: API key provides CORS bypass for allowed origins
-        // - API key is OPTIONAL and ONLY provides CORS bypass and multi-tenant features
-        // - JWT is STILL REQUIRED for authentication (if provided)
-        // - env.ALLOWED_ORIGINS is ALWAYS checked first (required)
-        // - Customer.config.allowedOrigins can restrict further (intersection with env.ALLOWED_ORIGINS)
+        // - API key is OPTIONAL and provides multi-tenant identification
+        // - JWT is STILL REQUIRED for user authentication
+        // - Per-key allowedOrigins restricts which origins can use this key (if configured)
         // - API key does NOT replace JWT - it's additional functionality
         const handlerResponse = await handleRequestOTP(request, env, customerId);
         
@@ -457,10 +438,16 @@ export async function handleAuthRoutes(
         return { response: responseWithCors, customerId };
     }
     if (path === '/auth/verify-otp' && request.method === 'POST') {
-        // API key is OPTIONAL and ONLY provides CORS bypass for allowed origins
-        // NOTHING CHANGES in application logic - JWT requirements are UNCHANGED
-        // API key is purely additive functionality for CORS bypass only
-        const handlerResponse = await handleVerifyOTP(request, env, customerId);
+        // API key is OPTIONAL and provides:
+        // 1. CORS bypass for allowed origins
+        // 2. Tenant isolation for OTP storage/retrieval
+        //
+        // CRITICAL: API key is for ACCESS CONTROL, not authentication!
+        // - tenantCustomerId (from API key) = used for OTP retrieval (tenant-scoped storage)
+        // - User's actual identity = looked up by EMAIL inside handleVerifyOTP
+        // - User does NOT inherit API key owner's customerId, permissions, or super admin status
+        const tenantCustomerId = apiKeyAuth?.customerId ?? null;
+        const handlerResponse = await handleVerifyOTP(request, env, tenantCustomerId);
         
         // Apply CORS headers: env.ALLOWED_ORIGINS (always checked) intersected with customer config (if set)
         // This is the ONLY thing API key does - provides CORS bypass for allowed origins

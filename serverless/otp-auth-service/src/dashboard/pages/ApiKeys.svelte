@@ -24,6 +24,16 @@
   // Code snippet modal state
   let showCodeSnippetModal = false;
   let codeSnippet: string = '';
+  
+  // Per-key origins modal state
+  let showOriginsModal = false;
+  let editingKeyId: string | null = null;
+  let editingKeyName: string = '';
+  let editingOrigins: string[] = [];
+  let newOrigin = '';
+  let originsSaving = false;
+  let originsError: string | null = null;
+  let originsSuccess: string | null = null;
 
   onMount(async () => {
     await loadApiKeys();
@@ -203,6 +213,98 @@
     showCodeSnippetModal = false;
     codeSnippet = '';
   }
+
+  function downloadSnippet() {
+    if (!codeSnippet) return;
+    const blob = new Blob([codeSnippet], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'otp-auth-test.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ===== Per-Key Allowed Origins Functions =====
+  
+  function openOriginsModal(key: ApiKey) {
+    editingKeyId = key.keyId;
+    editingKeyName = key.name;
+    editingOrigins = [...(key.allowedOrigins || [])];
+    newOrigin = '';
+    originsError = null;
+    originsSuccess = null;
+    showOriginsModal = true;
+  }
+  
+  function closeOriginsModal() {
+    showOriginsModal = false;
+    editingKeyId = null;
+    editingKeyName = '';
+    editingOrigins = [];
+    newOrigin = '';
+    originsError = null;
+    originsSuccess = null;
+  }
+  
+  function addOrigin() {
+    const origin = newOrigin.trim();
+    if (!origin) return;
+    
+    // Validate URL format
+    if (!origin.startsWith('http://') && !origin.startsWith('https://')) {
+      originsError = 'Origin must start with http:// or https://';
+      return;
+    }
+    
+    // Remove trailing slash
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    
+    // Check for duplicates
+    if (editingOrigins.includes(normalizedOrigin)) {
+      originsError = 'This origin is already added';
+      return;
+    }
+    
+    editingOrigins = [...editingOrigins, normalizedOrigin];
+    newOrigin = '';
+    originsError = null;
+    originsSuccess = null;
+  }
+  
+  function removeOrigin(origin: string) {
+    editingOrigins = editingOrigins.filter(o => o !== origin);
+    originsSuccess = null;
+  }
+  
+  async function saveKeyOrigins() {
+    if (!customer?.customerId || !editingKeyId) return;
+    
+    originsSaving = true;
+    originsError = null;
+    originsSuccess = null;
+    
+    try {
+      await apiClient.updateKeyOrigins(customer.customerId, editingKeyId, editingOrigins);
+      originsSuccess = 'Allowed origins saved successfully!';
+      // Update local state
+      const keyIndex = apiKeys.findIndex(k => k.keyId === editingKeyId);
+      if (keyIndex >= 0) {
+        apiKeys[keyIndex] = { ...apiKeys[keyIndex], allowedOrigins: editingOrigins };
+        apiKeys = [...apiKeys]; // Trigger reactivity
+      }
+      setTimeout(() => {
+        closeOriginsModal();
+      }, 1500);
+    } catch (err) {
+      console.error('Failed to save allowed origins:', err);
+      originsError = err instanceof Error ? err.message : 'Failed to save configuration';
+    } finally {
+      originsSaving = false;
+    }
+  }
 </script>
 
 <div class="api-keys">
@@ -285,6 +387,13 @@
                         >
                           {'</>'}
                         </button>
+                        <button 
+                          class="api-keys__button api-keys__button--origins" 
+                          onclick={() => openOriginsModal(key)}
+                          title="Configure allowed origins for CORS"
+                        >
+                          🌐 {key.allowedOrigins?.length || 0}
+                        </button>
                         <button class="api-keys__button api-keys__button--warning" onclick={() => handleRotateKey(key.keyId)}>
                           Rotate
                         </button>
@@ -301,6 +410,7 @@
         </div>
       {/if}
     </Card>
+
   {/if}
 </div>
 
@@ -414,7 +524,7 @@
             </div>
             
             <div class="api-keys__test-section">
-              <h3>Available Services ({testResult.services.filter(s => s.available).length}/{testResult.services.length})</h3>
+              <h3>Available Services ({testResult.services.filter((s: { available: boolean }) => s.available).length}/{testResult.services.length})</h3>
               <ul class="api-keys__services-list">
                 {#each testResult.services as service}
                   <li class:api-keys__service--available={service.available} class:api-keys__service--unavailable={!service.available}>
@@ -446,32 +556,154 @@
     onkeydown={(e) => e.key === 'Escape' && closeSnippetModal()}
   >
     <div class="api-keys__modal-content api-keys__modal-content--snippet">
-      <button class="api-keys__modal-close" onclick={closeSnippetModal} aria-label="Close modal">×</button>
-      
-      <h2 id="snippet-modal-title" class="api-keys__modal-title">{'</>'} End-to-End Test Page</h2>
-      <p class="api-keys__modal-text">
-        Copy this HTML code and save it as a <code>.html</code> file. Open it in your browser to test the complete OTP flow.
-      </p>
-      
-      <div class="api-keys__snippet-instructions">
-        <h4>Instructions:</h4>
-        <ol>
-          <li>Copy the code below</li>
-          <li>Save it as <code>test-otp.html</code></li>
-          <li>Open the file in your browser</li>
-          <li>Enter your email and test the full OTP flow</li>
-        </ol>
+      <!-- Modal Header -->
+      <div class="api-keys__modal-header">
+        <h2 id="snippet-modal-title" class="api-keys__modal-title">{'</>'} End-to-End Test Page</h2>
+        <button class="api-keys__modal-close" onclick={closeSnippetModal} aria-label="Close modal">×</button>
       </div>
       
-      <div class="api-keys__snippet-container">
-        {#if codeSnippet}
-          <CodeBlock code={codeSnippet} language="html" />
-        {:else}
-          <div class="api-keys__test-loading">
-            <div class="api-keys__spinner"></div>
-            <p>Generating code snippet...</p>
-          </div>
+      <!-- Modal Body -->
+      <div class="api-keys__modal-body">
+        <p class="api-keys__modal-text">
+          Download or copy this HTML code. Open it in your browser to test the complete OTP flow.
+        </p>
+        
+        <div class="api-keys__snippet-instructions">
+          <h4>Instructions:</h4>
+          <ol>
+            <li>Click "Download HTML" below to save the file</li>
+            <li>Open the downloaded file in your browser</li>
+            <li>Enter your email and test the full OTP flow</li>
+          </ol>
+        </div>
+        
+        <div class="api-keys__snippet-container">
+          {#if codeSnippet}
+            <CodeBlock code={codeSnippet} language="html" />
+          {:else}
+            <div class="api-keys__test-loading">
+              <div class="api-keys__spinner"></div>
+              <p>Generating code snippet...</p>
+            </div>
+          {/if}
+        </div>
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="api-keys__modal-footer">
+        <button 
+          class="api-keys__button--secondary" 
+          onclick={closeSnippetModal}
+        >
+          Close
+        </button>
+        <button 
+          class="api-keys__button--download" 
+          onclick={downloadSnippet}
+          disabled={!codeSnippet}
+        >
+          ⬇️ Download HTML
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Per-Key Origins Modal -->
+{#if showOriginsModal}
+  <div 
+    class="api-keys__modal" 
+    role="dialog"
+    tabindex="-1"
+    aria-modal="true"
+    aria-labelledby="origins-modal-title"
+    onclick={(e) => e.target === e.currentTarget && closeOriginsModal()}
+    onkeydown={(e) => e.key === 'Escape' && closeOriginsModal()}
+  >
+    <div class="api-keys__modal-content api-keys__modal-content--origins">
+      <!-- Modal Header -->
+      <div class="api-keys__modal-header">
+        <h2 id="origins-modal-title" class="api-keys__modal-title">🌐 Allowed Origins</h2>
+        <button class="api-keys__modal-close" onclick={closeOriginsModal} aria-label="Close modal">×</button>
+      </div>
+      
+      <!-- Modal Body -->
+      <div class="api-keys__modal-body">
+        <p class="api-keys__modal-text">
+          Configure which domains can use the API key <strong>"{editingKeyName}"</strong>.
+        </p>
+        <p class="api-keys__modal-text api-keys__modal-text--info">
+          <strong>No origins configured</strong> = Key works from <em>any</em> origin.<br/>
+          <strong>Origins configured</strong> = Key <em>only</em> works from those specific origins.
+        </p>
+        
+        {#if originsError}
+          <div class="api-keys__origins-error">{originsError}</div>
         {/if}
+        
+        {#if originsSuccess}
+          <div class="api-keys__origins-success">{originsSuccess}</div>
+        {/if}
+        
+        <div class="api-keys__origins-add">
+          <input
+            type="text"
+            class="api-keys__input"
+            placeholder="https://your-app.com"
+            bind:value={newOrigin}
+            onkeypress={(e: KeyboardEvent) => e.key === 'Enter' && addOrigin()}
+          />
+          <button class="api-keys__button api-keys__button--add-origin" onclick={addOrigin}>
+            Add
+          </button>
+        </div>
+        
+        <div class="api-keys__origins-help">
+          <strong>Examples:</strong>
+          <code>https://myapp.com</code>,
+          <code>http://localhost:3000</code>
+        </div>
+        
+        {#if editingOrigins.length === 0}
+          <div class="api-keys__origins-empty">
+            <p>No allowed origins configured for this key.</p>
+            <p class="api-keys__origins-empty-hint">
+              Add origins to use this API key from a browser.
+            </p>
+          </div>
+        {:else}
+          <ul class="api-keys__origins-list">
+            {#each editingOrigins as origin}
+              <li class="api-keys__origin-item">
+                <code class="api-keys__origin-value">{origin}</code>
+                <button 
+                  class="api-keys__origin-remove" 
+                  onclick={() => removeOrigin(origin)}
+                  aria-label={`Remove ${origin}`}
+                >
+                  ×
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="api-keys__modal-footer">
+        <button 
+          class="api-keys__button--secondary" 
+          onclick={closeOriginsModal}
+        >
+          Cancel
+        </button>
+        <button 
+          class="api-keys__button--download" 
+          onclick={saveKeyOrigins}
+          disabled={originsSaving}
+        >
+          {originsSaving ? 'Saving...' : 'Save Origins'}
+        </button>
       </div>
     </div>
   </div>
@@ -711,6 +943,7 @@
     align-items: center;
     justify-content: center;
     z-index: 10000;
+    padding: 1rem;
   }
 
   .api-keys__modal-content {
@@ -720,6 +953,9 @@
     padding: var(--spacing-xl);
     max-width: 600px;
     width: 90%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
   }
 
   .api-keys__modal-title {
@@ -781,13 +1017,93 @@
     color: #000;
   }
 
+  /* Origins button */
+  .api-keys__button--origins {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--bg-dark);
+    border: 2px solid var(--info);
+    border-radius: var(--radius-sm);
+    color: var(--info);
+    font-weight: 600;
+    font-size: 0.75rem;
+  }
+
+  .api-keys__button--origins:hover {
+    background: var(--info);
+    color: #000;
+  }
+
+  /* Add origin button */
+  .api-keys__button--add-origin {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #000;
+    font-weight: 600;
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  .api-keys__button--add-origin:hover {
+    background: var(--accent-light);
+  }
+
+  /* Origins modal */
+  .api-keys__modal-content--origins {
+    max-width: 600px;
+  }
+
+  /* Modal structure */
+  .api-keys__modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .api-keys__modal-header .api-keys__modal-title {
+    margin-bottom: 0;
+  }
+
+  .api-keys__modal-body {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .api-keys__modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border);
+    margin-top: var(--spacing-md);
+  }
+
+  .api-keys__button--secondary {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    width: auto;
+  }
+
+  .api-keys__button--secondary:hover {
+    background: var(--bg-dark);
+    border-color: var(--text-secondary);
+  }
+
   /* Modal close button */
   .api-keys__modal-close {
-    position: absolute;
-    top: var(--spacing-md);
-    right: var(--spacing-md);
     background: transparent;
     border: none;
+    flex-shrink: 0;
     color: var(--text-secondary);
     font-size: 1.5rem;
     cursor: pointer;
@@ -804,8 +1120,6 @@
   .api-keys__modal-content--snippet {
     position: relative;
     max-width: 700px;
-    max-height: 90vh;
-    overflow-y: auto;
   }
 
   .api-keys__modal-title--success {
@@ -923,6 +1237,47 @@
   /* Code snippet modal */
   .api-keys__modal-content--snippet {
     max-width: 900px;
+    width: 95%;
+  }
+  
+  /* Responsive modal adjustments */
+  @media (max-width: 768px) {
+    .api-keys__modal {
+      padding: var(--spacing-md) var(--spacing-sm);
+    }
+    
+    .api-keys__modal-content {
+      padding: var(--spacing-md);
+    }
+    
+    .api-keys__modal-content--snippet {
+      width: 100%;
+    }
+  }
+
+  .api-keys__button--download {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background: var(--success);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    white-space: nowrap;
+    width: auto;
+  }
+
+  .api-keys__button--download:hover {
+    background: #2fb350;
+  }
+
+  .api-keys__button--download:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .api-keys__snippet-instructions {
@@ -1102,6 +1457,128 @@
 
   .api-keys__modal-text--error {
     color: var(--danger);
+  }
+
+  /* ===== Allowed Origins Styles ===== */
+  
+  .api-keys__section-description {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: var(--spacing-lg);
+    line-height: 1.5;
+  }
+  
+  .api-keys__origins-add {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .api-keys__button--secondary {
+    background: var(--bg-dark);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 4px 0 var(--border);
+  }
+
+  .api-keys__button--secondary:hover {
+    background: var(--accent);
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 var(--border);
+  }
+  
+  .api-keys__origins-help {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .api-keys__origins-help code {
+    background: var(--bg-dark);
+    padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    margin: 0 var(--spacing-xs);
+  }
+  
+  .api-keys__origins-empty {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--text-secondary);
+    background: var(--bg-dark);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border);
+  }
+  
+  .api-keys__origins-empty-hint {
+    margin-top: var(--spacing-sm);
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+  
+  .api-keys__origins-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--spacing-lg) 0;
+  }
+  
+  .api-keys__origin-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  .api-keys__origin-value {
+    font-family: monospace;
+    font-size: 0.875rem;
+    color: var(--accent);
+    word-break: break-all;
+  }
+  
+  .api-keys__origin-remove {
+    background: transparent;
+    border: none;
+    color: var(--danger);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  
+  .api-keys__origin-remove:hover {
+    opacity: 1;
+  }
+  
+  .api-keys__origins-save {
+    width: 100%;
+  }
+  
+  .api-keys__origins-error {
+    color: var(--danger);
+    background: rgba(255, 71, 87, 0.1);
+    border: 1px solid var(--danger);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    font-size: 0.875rem;
+  }
+  
+  .api-keys__origins-success {
+    color: var(--success);
+    background: rgba(0, 210, 106, 0.1);
+    border: 1px solid var(--success);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    font-size: 0.875rem;
   }
 </style>
 

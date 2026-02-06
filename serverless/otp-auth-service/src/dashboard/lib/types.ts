@@ -37,6 +37,8 @@ export interface ApiKey {
   createdAt: string;
   lastUsed: string | null;
   status: 'active' | 'revoked';
+  /** Allowed origins for CORS when using this API key */
+  allowedOrigins?: string[];
 }
 
 export interface ApiKeyResponse {

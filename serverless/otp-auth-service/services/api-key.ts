@@ -83,6 +83,11 @@ interface ApiKeyData {
      * Controls inter-tenant session sharing for this API key
      */
     ssoConfig?: SSOConfig;
+    /**
+     * Allowed origins for CORS when using this API key
+     * Each key can have different origins for different apps/domains
+     */
+    allowedOrigins?: string[];
 }
 
 interface ApiKeyResult {
@@ -97,6 +102,10 @@ interface ApiKeyVerification {
      * SSO configuration for session validation
      */
     ssoConfig?: SSOConfig;
+    /**
+     * Allowed origins for CORS when using this API key
+     */
+    allowedOrigins?: string[];
 }
 
 /**
@@ -259,7 +268,8 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     return {
         customerId: keyData.customerId,
         keyId: keyData.keyId,
-        ssoConfig: keyData.ssoConfig // Return SSO config for session validation
+        ssoConfig: keyData.ssoConfig, // Return SSO config for session validation
+        allowedOrigins: keyData.allowedOrigins // Return per-key allowed origins for CORS
     };
 }
 

@@ -243,6 +243,35 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
         };
     }
 
+    // Update API key allowed origins
+    // PUT /admin/customers/{customerId}/api-keys/{keyId}/origins
+    const updateOriginsMatch = path.match(/^\/admin\/customers\/([^\/]+)\/api-keys\/([^\/]+)\/origins$/);
+    if (updateOriginsMatch && request.method === 'PUT') {
+        const pathCustomerId = updateOriginsMatch[1];
+        const keyId = updateOriginsMatch[2];
+        const auth = await authenticateRequest(request, env);
+        
+        if (!auth.authenticated) {
+            return { response: createUnauthorizedResponse(request, env), customerId: null };
+        }
+
+        // Authorization: only the customer can update their own key origins
+        if (auth.customerId !== pathCustomerId) {
+            return {
+                response: new Response(JSON.stringify({ error: 'Forbidden: You can only update origins for your own API keys' }), {
+                    status: 403,
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+                customerId: auth.customerId
+            };
+        }
+
+        return {
+            response: await adminHandlers.handleUpdateKeyOrigins(request, env, pathCustomerId, keyId),
+            customerId: auth.customerId
+        };
+    }
+
     // Customer status management endpoints
     const suspendCustomerMatch = path.match(/^\/admin\/customers\/([^\/]+)\/suspend$/);
     if (suspendCustomerMatch && request.method === 'POST') {
