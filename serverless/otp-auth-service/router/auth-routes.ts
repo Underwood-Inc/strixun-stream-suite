@@ -472,8 +472,24 @@ export async function handleAuthRoutes(
     }
     if (path === '/auth/me' && request.method === 'GET') {
         const handlerResponse = await authHandlers.handleGetMe(request, env);
+        
+        // CORS: Use API key's per-key origins (not customer config)
+        // Valid API key with origins → use those. Valid key without origins → ['*'] (allow any)
+        const corsCustomer = apiKeyAuth 
+            ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }
+            : customer;
+        const corsHeaders = getCorsHeaders(env, request, corsCustomer);
+        const responseWithCors = new Response(handlerResponse.body, {
+            status: handlerResponse.status,
+            statusText: handlerResponse.statusText,
+            headers: {
+                ...Object.fromEntries(handlerResponse.headers.entries()),
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+        
         // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
-        return { response: handlerResponse, customerId };
+        return { response: responseWithCors, customerId };
     }
     if (path === '/auth/encryption/dek' && request.method === 'GET') {
         if (!jwtAuth || !jwtAuth.customerId) {
@@ -499,8 +515,23 @@ export async function handleAuthRoutes(
     }
     if (path === '/auth/logout' && request.method === 'POST') {
         const handlerResponse = await authHandlers.handleLogout(request, env);
+        
+        // CORS: Use API key's per-key origins (not customer config)
+        const corsCustomer = apiKeyAuth 
+            ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }
+            : customer;
+        const corsHeaders = getCorsHeaders(env, request, corsCustomer);
+        const responseWithCors = new Response(handlerResponse.body, {
+            status: handlerResponse.status,
+            statusText: handlerResponse.statusText,
+            headers: {
+                ...Object.fromEntries(handlerResponse.headers.entries()),
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+        
         // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
-        return { response: handlerResponse, customerId };
+        return { response: responseWithCors, customerId };
     }
     
     // CRITICAL: User lookup endpoint removed - we ONLY use customerId, NO userId

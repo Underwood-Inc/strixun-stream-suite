@@ -101,7 +101,9 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         const apiKeyEndpoints = [
             '/api-key/verify',
             '/auth/request-otp', 
-            '/auth/verify-otp'
+            '/auth/verify-otp',
+            '/auth/me',
+            '/auth/logout'
         ];
         
         const isApiKeyEndpoint = apiKeyEndpoints.some(ep => path === ep || path.startsWith(ep));
