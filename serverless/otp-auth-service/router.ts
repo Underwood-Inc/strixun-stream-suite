@@ -92,33 +92,31 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
     let customerId: string | null = null;
     let endpoint = path.split('/').pop() || 'unknown';
     
-    // Handle CORS preflight - check for API key to use per-key allowed origins
+    // Handle CORS preflight
+    // CRITICAL: OPTIONS preflight does NOT include custom headers like X-OTP-API-Key!
+    // For API key endpoints, we must return permissive CORS in preflight.
+    // Security is enforced in the actual POST/GET handler, not in preflight.
     if (request.method === 'OPTIONS') {
-        const apiKeyHeader = request.headers.get('X-OTP-API-Key');
-        let corsCustomer = null;
+        // API key endpoints that need permissive CORS preflight
+        const apiKeyEndpoints = [
+            '/api-key/verify',
+            '/auth/request-otp', 
+            '/auth/verify-otp'
+        ];
         
-        if (apiKeyHeader) {
-            try {
-                const { verifyApiKey } = await import('./services/api-key.js');
-                const apiKeyAuth = await verifyApiKey(apiKeyHeader.trim(), env);
-                if (apiKeyAuth) {
-                    // Valid key: use per-key origins or ['*'] if none configured
-                    corsCustomer = { 
-                        config: { 
-                            allowedOrigins: apiKeyAuth.allowedOrigins?.length 
-                                ? apiKeyAuth.allowedOrigins 
-                                : ['*'] 
-                        } 
-                    };
-                }
-                // Invalid key: corsCustomer stays null = restrictive CORS
-            } catch (e) {
-                // Error: corsCustomer stays null = restrictive CORS
-            }
+        const isApiKeyEndpoint = apiKeyEndpoints.some(ep => path === ep || path.startsWith(ep));
+        
+        if (isApiKeyEndpoint) {
+            // Allow any origin for API key endpoints - security check happens in actual request
+            const corsCustomer = { config: { allowedOrigins: ['*'] } };
+            return new Response(null, {
+                headers: getCorsHeaders(env, request, corsCustomer),
+            });
         }
         
+        // Non-API-key endpoints use standard CORS (env.ALLOWED_ORIGINS)
         return new Response(null, {
-            headers: getCorsHeaders(env, request, corsCustomer),
+            headers: getCorsHeaders(env, request),
         });
     }
     
