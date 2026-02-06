@@ -954,6 +954,7 @@
     max-width: 600px;
     width: 90%;
     max-height: 80vh;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
   }
@@ -1116,7 +1117,12 @@
   }
 
   /* Test modal content */
-  .api-keys__modal-content--test,
+  .api-keys__modal-content--test {
+    position: relative;
+    max-width: 700px;
+    overflow-y: auto;
+  }
+  
   .api-keys__modal-content--snippet {
     position: relative;
     max-width: 700px;
