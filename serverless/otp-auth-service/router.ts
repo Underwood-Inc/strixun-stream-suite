@@ -93,7 +93,30 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
     let endpoint = path.split('/').pop() || 'unknown';
     
     // Handle CORS preflight
+    // CRITICAL: OPTIONS preflight does NOT include custom headers like X-OTP-API-Key!
+    // For API key endpoints, we must return permissive CORS in preflight.
+    // Security is enforced in the actual POST/GET handler, not in preflight.
     if (request.method === 'OPTIONS') {
+        // API key endpoints that need permissive CORS preflight
+        const apiKeyEndpoints = [
+            '/api-key/verify',
+            '/auth/request-otp', 
+            '/auth/verify-otp',
+            '/auth/me',
+            '/auth/logout'
+        ];
+        
+        const isApiKeyEndpoint = apiKeyEndpoints.some(ep => path === ep || path.startsWith(ep));
+        
+        if (isApiKeyEndpoint) {
+            // Allow any origin for API key endpoints - security check happens in actual request
+            const corsCustomer = { config: { allowedOrigins: ['*'] } };
+            return new Response(null, {
+                headers: getCorsHeaders(env, request, corsCustomer),
+            });
+        }
+        
+        // Non-API-key endpoints use standard CORS (env.ALLOWED_ORIGINS)
         return new Response(null, {
             headers: getCorsHeaders(env, request),
         });

@@ -34,7 +34,9 @@
     "handlers/**/*.ts",
     "services/**/*.ts",
     "utils/**/*.ts",
-    "router/**/*.ts"
+    "router/**/*.ts",
+    "html-snippets/**/*.ts",
+    "vite-env.d.ts"
   ],
   "exclude": [
     "node_modules",

@@ -9,6 +9,7 @@ import type {
   Customer,
   ApiKey,
   ApiKeyResponse,
+  ApiKeyVerifyResponse,
   AuditLogsResponse,
   Analytics,
   RealtimeAnalytics,
@@ -216,6 +217,85 @@ export class ApiClient {
     if (response.status !== 200 || !response.data) {
       const error = response.data as { detail?: string } | undefined;
       throw new Error(error?.detail || 'Failed to get email analytics');
+    }
+    return response.data;
+  }
+
+  /**
+   * Test an API key to verify it's valid and see what services are available
+   * @param apiKey - The API key to test
+   * @returns API key verification result with services and rate limits
+   */
+  async testApiKey(apiKey: string): Promise<ApiKeyVerifyResponse> {
+    // Use fetch directly since we need to set a custom header
+    const response = await fetch(`${API_BASE_URL}/api-key/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-OTP-API-Key': apiKey
+      }
+    });
+    
+    const data = await response.json();
+    return data as ApiKeyVerifyResponse;
+  }
+
+  /**
+   * Get the HTML+JS test snippet for end-to-end testing
+   * @param apiKey - The API key to include in the snippet
+   * @returns HTML+JS code snippet
+   */
+  async getTestSnippet(apiKey: string): Promise<{ success: boolean; snippet: string; instructions: string[] }> {
+    const response = await fetch(`${API_BASE_URL}/api-key/test-snippet?apiKey=${encodeURIComponent(apiKey)}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    return data;
+  }
+
+  /**
+   * Get customer configuration including allowed origins
+   * @returns Customer configuration object
+   */
+  async getConfig(): Promise<{ allowedOrigins?: string[]; rateLimits?: any; emailConfig?: any }> {
+    const response = await this.api.get<{ config: any }>('/admin/config');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get configuration');
+    }
+    return response.data.config || {};
+  }
+
+  /**
+   * Update customer configuration
+   * @param config - Configuration to update (partial updates allowed)
+   * @returns Updated configuration
+   */
+  async updateConfig(config: { allowedOrigins?: string[]; rateLimits?: any }): Promise<{ config: any }> {
+    const response = await this.api.put<{ config: any }>('/admin/config', config);
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to update configuration');
+    }
+    return response.data;
+  }
+
+  /**
+   * Update allowed origins for a specific API key
+   * Each key can have its own set of allowed origins for CORS
+   */
+  async updateKeyOrigins(customerId: string, keyId: string, allowedOrigins: string[]): Promise<{ success: boolean; allowedOrigins: string[]; message: string }> {
+    const response = await this.client.put<{ success: boolean; allowedOrigins: string[]; message: string }>(
+      `/admin/customers/${customerId}/api-keys/${keyId}/origins`,
+      { allowedOrigins }
+    );
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { error?: string; message?: string } | undefined;
+      throw new Error(error?.message || error?.error || 'Failed to update allowed origins');
     }
     return response.data;
   }

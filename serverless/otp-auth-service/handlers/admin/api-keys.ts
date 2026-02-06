@@ -13,7 +13,7 @@ import { createApiKeyForCustomer } from '../../services/api-key.js';
 import { logSecurityEvent } from '../../services/security.js';
 import { decryptData, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomer } from '@strixun/api-framework';
-import { entityKey } from '@strixun/kv-entities';
+import { indexGet } from '@strixun/kv-entities';
 // Uses shared encryption suite from serverless/shared/encryption
 
 interface Env {
@@ -32,6 +32,8 @@ interface ApiKeyData {
     rotatedAt?: string;
     replacedBy?: string;
     revokedAt?: string;
+    /** Allowed origins for CORS when using this API key */
+    allowedOrigins?: string[];
 }
 
 interface EncryptedKeyData {
@@ -52,6 +54,7 @@ interface ApiKeyResponse {
     lastUsed: string | null;
     status: string;
     apiKey: EncryptedKeyData | null; // Double-encrypted (only customer can decrypt with their JWT)
+    allowedOrigins?: string[]; // Per-key CORS origins
 }
 
 interface CreateApiKeyBody {
@@ -106,8 +109,9 @@ export async function handleListApiKeys(
     jwtToken: string | null = null
 ): Promise<Response> {
     try {
-        const customerApiKeysKey = entityKey('otp-auth', 'customer-apikeys', customerId).key;
-        const keys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) as ApiKeyData[] | null || [];
+        // Use indexGet to match where createApiKeyForCustomer stores keys
+        const keyDataStrings = await indexGet(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId);
+        const keys: ApiKeyData[] = keyDataStrings.map(s => JSON.parse(s) as ApiKeyData);
         
         // Decrypt API keys from storage (server-side encryption with JWT_SECRET)
         const jwtSecret = getJWTSecret(env);
@@ -127,7 +131,8 @@ export async function handleListApiKeys(
                             createdAt: k.createdAt,
                             lastUsed: k.lastUsed,
                             status: k.status,
-                            apiKey: null
+                            apiKey: null,
+                            allowedOrigins: k.allowedOrigins || []
                         };
                     }
                     
@@ -161,7 +166,8 @@ export async function handleListApiKeys(
                 createdAt: k.createdAt,
                 lastUsed: k.lastUsed,
                 status: k.status,
-                apiKey: doubleEncryptedKey
+                apiKey: doubleEncryptedKey,
+                allowedOrigins: k.allowedOrigins || []
             };
         }));
         
@@ -295,12 +301,12 @@ export async function handleRotateApiKey(
     keyId: string
 ): Promise<Response> {
     try {
-        // Find the API key in customer's list
-        const customerApiKeysKey = entityKey('otp-auth', 'customer-apikeys', customerId).key;
-        const customerKeys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) as ApiKeyData[] | null || [];
-        const keyIndex = customerKeys.findIndex(k => k.keyId === keyId);
+        // Get keys from index where createApiKeyForCustomer stores them
+        const keyDataStrings = await indexGet(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId);
+        const customerKeys: ApiKeyData[] = keyDataStrings.map(s => JSON.parse(s) as ApiKeyData);
+        const oldKeyData = customerKeys.find(k => k.keyId === keyId);
         
-        if (keyIndex < 0) {
+        if (!oldKeyData) {
             return new Response(JSON.stringify({ error: 'API key not found' }), {
                 status: 404,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -310,15 +316,20 @@ export async function handleRotateApiKey(
         // Create new API key
         const { apiKey: newApiKey, keyId: newKeyId } = await createApiKeyForCustomer(
             customerId, 
-            `${customerKeys[keyIndex].name} (rotated)`, 
+            `${oldKeyData.name} (rotated)`, 
             env
         );
         
-        // Mark old key as rotated (keep for 7 days grace period)
-        customerKeys[keyIndex].status = 'rotated';
-        customerKeys[keyIndex].rotatedAt = new Date().toISOString();
-        customerKeys[keyIndex].replacedBy = newKeyId;
-        await env.OTP_AUTH_KV.put(customerApiKeysKey, JSON.stringify(customerKeys));
+        // Mark old key as rotated - update in index
+        // Remove old entry, add updated entry
+        const { indexRemove, indexAdd: indexAddEntry } = await import('@strixun/kv-entities');
+        const oldKeyString = JSON.stringify(oldKeyData);
+        await indexRemove(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId, oldKeyString);
+        
+        oldKeyData.status = 'rotated';
+        oldKeyData.rotatedAt = new Date().toISOString();
+        oldKeyData.replacedBy = newKeyId;
+        await indexAddEntry(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId, JSON.stringify(oldKeyData));
         
         // Log rotation
         await logSecurityEvent(customerId, 'api_key_rotated', {
@@ -374,9 +385,9 @@ export async function handleRevealApiKey(
             });
         }
         
-        // Find the API key in customer's list
-        const customerApiKeysKey = entityKey('otp-auth', 'customer-apikeys', customerId).key;
-        const customerKeys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) as ApiKeyData[] | null || [];
+        // Get keys from index where createApiKeyForCustomer stores them
+        const keyDataStrings = await indexGet(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId);
+        const customerKeys: ApiKeyData[] = keyDataStrings.map(s => JSON.parse(s) as ApiKeyData);
         const keyData = customerKeys.find(k => k.keyId === keyId);
         
         if (!keyData) {
@@ -438,22 +449,27 @@ export async function handleRevokeApiKey(
     keyId: string
 ): Promise<Response> {
     try {
-        // Find the API key in customer's list
-        const customerApiKeysKey = entityKey('otp-auth', 'customer-apikeys', customerId).key;
-        const customerKeys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) as ApiKeyData[] | null || [];
-        const keyIndex = customerKeys.findIndex(k => k.keyId === keyId);
+        // Get keys from index where createApiKeyForCustomer stores them
+        const keyDataStrings = await indexGet(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId);
+        const customerKeys: ApiKeyData[] = keyDataStrings.map(s => JSON.parse(s) as ApiKeyData);
+        const keyData = customerKeys.find(k => k.keyId === keyId);
         
-        if (keyIndex < 0) {
+        if (!keyData) {
             return new Response(JSON.stringify({ error: 'API key not found' }), {
                 status: 404,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        // Mark as revoked in customer's list
-        customerKeys[keyIndex].status = 'revoked';
-        customerKeys[keyIndex].revokedAt = new Date().toISOString();
-        await env.OTP_AUTH_KV.put(customerApiKeysKey, JSON.stringify(customerKeys));
+        // Mark as revoked - update in index
+        // Remove old entry, add updated entry
+        const { indexRemove, indexAdd: indexAddEntry } = await import('@strixun/kv-entities');
+        const oldKeyString = JSON.stringify(keyData);
+        await indexRemove(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId, oldKeyString);
+        
+        keyData.status = 'revoked';
+        keyData.revokedAt = new Date().toISOString();
+        await indexAddEntry(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId, JSON.stringify(keyData));
         
         // Note: We can't delete the hash->keyId mapping without the original key
         // But we check status in verifyApiKey, so revoked keys won't work
@@ -470,6 +486,112 @@ export async function handleRevokeApiKey(
         const errorMessage = error instanceof Error ? error.message : String(error);
         return new Response(JSON.stringify({
             error: 'Failed to revoke API key',
+            message: errorMessage
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+interface UpdateOriginsBody {
+    allowedOrigins: string[];
+}
+
+interface UpdateOriginsResponse {
+    success: boolean;
+    keyId: string;
+    allowedOrigins: string[];
+    message: string;
+}
+
+/**
+ * Update allowed origins for a specific API key
+ * PUT /admin/customers/{customerId}/api-keys/{keyId}/origins
+ * 
+ * Each API key can have its own set of allowed origins for CORS
+ */
+export async function handleUpdateKeyOrigins(
+    request: Request,
+    env: Env,
+    customerId: string,
+    keyId: string
+): Promise<Response> {
+    try {
+        const body = await request.json() as UpdateOriginsBody;
+        
+        if (!Array.isArray(body.allowedOrigins)) {
+            return new Response(JSON.stringify({ 
+                error: 'Invalid request',
+                message: 'allowedOrigins must be an array of strings'
+            }), {
+                status: 400,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Validate origins format
+        const validatedOrigins: string[] = [];
+        for (const origin of body.allowedOrigins) {
+            if (typeof origin !== 'string') continue;
+            const trimmed = origin.trim();
+            if (!trimmed) continue;
+            
+            // Basic validation - must be a URL or localhost pattern
+            if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+                validatedOrigins.push(trimmed);
+            } else {
+                return new Response(JSON.stringify({ 
+                    error: 'Invalid origin',
+                    message: `Origin "${trimmed}" must start with http:// or https://`
+                }), {
+                    status: 400,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                });
+            }
+        }
+        
+        // Get keys from index
+        const keyDataStrings = await indexGet(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId);
+        const customerKeys: ApiKeyData[] = keyDataStrings.map(s => JSON.parse(s) as ApiKeyData);
+        const keyData = customerKeys.find(k => k.keyId === keyId);
+        
+        if (!keyData) {
+            return new Response(JSON.stringify({ error: 'API key not found' }), {
+                status: 404,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Update allowed origins - remove old entry, add updated entry
+        const { indexRemove, indexAdd: indexAddEntry } = await import('@strixun/kv-entities');
+        const oldKeyString = JSON.stringify(keyData);
+        await indexRemove(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId, oldKeyString);
+        
+        keyData.allowedOrigins = validatedOrigins;
+        await indexAddEntry(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId, JSON.stringify(keyData));
+        
+        // Log security event
+        await logSecurityEvent(customerId, 'api_key_origins_updated', {
+            keyId: keyId,
+            keyName: keyData.name,
+            originsCount: validatedOrigins.length
+        }, env);
+        
+        const response: UpdateOriginsResponse = {
+            success: true,
+            keyId,
+            allowedOrigins: validatedOrigins,
+            message: `Allowed origins updated successfully. ${validatedOrigins.length} origin(s) configured.`
+        };
+        
+        return new Response(JSON.stringify(response), {
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return new Response(JSON.stringify({
+            error: 'Failed to update allowed origins',
             message: errorMessage
         }), {
             status: 500,

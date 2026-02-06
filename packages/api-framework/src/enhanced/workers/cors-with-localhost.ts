@@ -41,29 +41,39 @@ function getEffectiveAllowedOrigins(
     // If localhost is detected and we're in dev mode, always allow it
     const isLocalhost = origin && (origin.includes('localhost') || origin.includes('127.0.0.1'));
     
+    // CRITICAL: Handle 'null' origin from file:// URLs in development
+    // When developers open HTML test files directly from filesystem, Origin is 'null'
+    const isNullOrigin = origin === 'null';
+    
     // If we have explicit allowedOrigins with actual values, use them
     if (options.allowedOrigins && 
         (typeof options.allowedOrigins === 'function' || 
          (Array.isArray(options.allowedOrigins) && options.allowedOrigins.length > 0))) {
-        // If localhost in dev and not explicitly allowed, create a function that allows it
-        if (isLocalhost && !isProduction && allowLocalhostInDev) {
+        // In development, create a function that allows localhost and 'null' origins (for file:// URLs)
+        const needsDevOverride = !isProduction && allowLocalhostInDev && (isLocalhost || isNullOrigin);
+        
+        if (needsDevOverride) {
             const explicitOrigins = Array.isArray(options.allowedOrigins) 
                 ? options.allowedOrigins 
                 : [];
             
-            // Check if localhost is already explicitly allowed
-            const localhostAllowed = explicitOrigins.some(allowed => {
+            // Check if origin is already explicitly allowed
+            const alreadyAllowed = explicitOrigins.some(allowed => {
                 if (allowed === '*' || allowed === origin) return true;
-                if (allowed.endsWith('*')) {
+                if (allowed.endsWith('*') && origin) {
                     const prefix = allowed.slice(0, -1);
-                    return origin && origin.startsWith(prefix);
+                    return origin.startsWith(prefix);
                 }
                 return false;
             });
             
-            // If not explicitly allowed, create a function that allows both explicit origins and localhost
-            if (!localhostAllowed) {
+            // If not explicitly allowed, create a function that allows dev origins
+            if (!alreadyAllowed) {
                 return (checkOrigin: string) => {
+                    // Allow 'null' origin in dev (file:// URLs)
+                    if (checkOrigin === 'null' && !isProduction) {
+                        return true;
+                    }
                     // Allow localhost in dev
                     if ((checkOrigin.includes('localhost') || checkOrigin.includes('127.0.0.1')) && !isProduction) {
                         return true;
@@ -80,7 +90,7 @@ function getEffectiveAllowedOrigins(
             }
         }
         
-        // Return as-is if localhost is already handled or we're in production
+        // Return as-is if already handled or we're in production
         return options.allowedOrigins;
     }
     
@@ -129,6 +139,9 @@ export function handleCORSPreflight(
 /**
  * Create CORS headers helper for Cloudflare Workers
  * Automatically extracts ENVIRONMENT from env and allows localhost in dev
+ * 
+ * MULTI-TENANCY: When customer has allowedOrigins configured, use THOSE instead of env.ALLOWED_ORIGINS
+ * This allows each tenant to configure their own domains for API key usage
  */
 export function getCorsHeaders(
     env: { ENVIRONMENT?: string; ALLOWED_ORIGINS?: string; [key: string]: any },
@@ -137,29 +150,29 @@ export function getCorsHeaders(
 ): Headers {
     const requestOrigin = request.headers.get('Origin');
     
-    // CRITICAL: env.ALLOWED_ORIGINS is ALWAYS checked first, never a fallback
-    // Get base allowed origins from env.ALLOWED_ORIGINS (required)
+    // MULTI-TENANCY: Customer's allowedOrigins takes precedence
+    // This enables third-party developers to use API keys from their own domains
     let allowedOrigins: string[] = [];
+    let usingCustomerOrigins = false;
     
-    if (env.ALLOWED_ORIGINS) {
-        allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(o => o.length > 0);
-    }
-    
-    // If customer config exists, intersect with env.ALLOWED_ORIGINS (customer can only restrict further)
+    // Check if customer has configured their own allowed origins
     if (customer?.config?.allowedOrigins && customer.config.allowedOrigins.length > 0) {
-        const customerOrigins = customer.config.allowedOrigins;
-        // Intersect: only allow origins that are in BOTH env.ALLOWED_ORIGINS and customer config
-        allowedOrigins = allowedOrigins.filter(origin => 
-            customerOrigins.includes('*') || customerOrigins.includes(origin)
-        );
+        // Use CUSTOMER's configured origins (multi-tenant mode)
+        allowedOrigins = customer.config.allowedOrigins;
+        usingCustomerOrigins = true;
+    } else {
+        // Fallback to platform origins
+        if (env.ALLOWED_ORIGINS) {
+            allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(o => o.length > 0);
+        }
     }
     
     // Debug logging for CORS issues
-    if (env.ENVIRONMENT === 'production' && allowedOrigins.length === 0) {
-        console.error('[CORS] CRITICAL: env.ALLOWED_ORIGINS is not set!', {
+    if (env.ENVIRONMENT === 'production' && allowedOrigins.length === 0 && !usingCustomerOrigins) {
+        console.error('[CORS] CRITICAL: No origins configured!', {
             environment: env.ENVIRONMENT,
-            hasAllowedOrigins: !!env.ALLOWED_ORIGINS,
-            allowedOriginsValue: env.ALLOWED_ORIGINS ? `${env.ALLOWED_ORIGINS.substring(0, 50)}...` : 'undefined',
+            hasEnvAllowedOrigins: !!env.ALLOWED_ORIGINS,
+            hasCustomerOrigins: !!customer?.config?.allowedOrigins,
             requestOrigin,
         });
     }
@@ -173,6 +186,7 @@ export function getCorsHeaders(
         console.warn('[CORS] Origin not in allowed list:', {
             requestOrigin,
             allowedOriginsCount: allowedOrigins.length,
+            usingCustomerOrigins,
             firstFewAllowed: allowedOrigins.slice(0, 3),
         });
     }

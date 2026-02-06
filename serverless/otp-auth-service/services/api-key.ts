@@ -6,7 +6,7 @@
  */
 
 import { generateApiKey as generateKey, hashApiKey as hashApiKeyUtil, encryptData, decryptData, getJWTSecret } from '../utils/crypto.js';
-import { getCustomer } from './customer.js';
+import { fetchCustomerByCustomerId } from '@strixun/api-framework';
 import { getEntity, putEntity, indexGet, indexAdd } from '@strixun/kv-entities';
 
 interface Env {
@@ -83,6 +83,11 @@ interface ApiKeyData {
      * Controls inter-tenant session sharing for this API key
      */
     ssoConfig?: SSOConfig;
+    /**
+     * Allowed origins for CORS when using this API key
+     * Each key can have different origins for different apps/domains
+     */
+    allowedOrigins?: string[];
 }
 
 interface ApiKeyResult {
@@ -97,6 +102,10 @@ interface ApiKeyVerification {
      * SSO configuration for session validation
      */
     ssoConfig?: SSOConfig;
+    /**
+     * Allowed origins for CORS when using this API key
+     */
+    allowedOrigins?: string[];
 }
 
 /**
@@ -178,10 +187,12 @@ export async function createApiKeyForCustomer(
     };
     
     // Store API key entity using hash as ID
+    console.log('[CreateApiKey] Storing key with hash:', apiKeyHash.substring(0, 16) + '...', 'for key ending:', apiKey.substring(apiKey.length - 8));
     await putEntity(env.OTP_AUTH_KV, 'auth', 'apikey', apiKeyHash, apiKeyData);
     
     // CRITICAL: Verify the key was stored correctly (for debugging)
     const verifyStored = await getEntity<ApiKeyData>(env.OTP_AUTH_KV, 'auth', 'apikey', apiKeyHash);
+    console.log('[CreateApiKey] Storage verification:', verifyStored ? 'SUCCESS' : 'FAILED');
     if (!verifyStored) {
         console.error(`[ApiKeyService] CRITICAL: API key was not stored correctly!`, {
             hashPrefix: apiKeyHash.substring(0, 16) + '...',
@@ -215,11 +226,14 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     
     // Validate API key format before attempting lookup
     if (!trimmedApiKey.startsWith('otp_live_sk_') && !trimmedApiKey.startsWith('otp_test_sk_')) {
+        console.log('[VerifyApiKey] Invalid format, rejecting');
         return null;
     }
     
     const apiKeyHash = await hashApiKeyUtil(trimmedApiKey);
+    console.log('[VerifyApiKey] Looking up hash:', apiKeyHash.substring(0, 16) + '...', 'for key ending:', trimmedApiKey.substring(trimmedApiKey.length - 8));
     const keyData = await getEntity<ApiKeyData>(env.OTP_AUTH_KV, 'auth', 'apikey', apiKeyHash);
+    console.log('[VerifyApiKey] KV lookup result:', keyData ? `Found (keyId: ${keyData.keyId}, status: ${keyData.status})` : 'NOT FOUND');
     
     if (!keyData) {
         return null;
@@ -234,20 +248,28 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     await putEntity(env.OTP_AUTH_KV, 'auth', 'apikey', apiKeyHash, keyData);
     
     // Check if customer exists and is active
-    const customer = await getCustomer(keyData.customerId, env);
+    // CRITICAL: Use the api-framework's fetchCustomerByCustomerId which calls customer-api service
+    // The local getCustomer looks in local KV which may not have the customer data
+    console.log('[VerifyApiKey] Looking up customer via customer-api:', keyData.customerId);
+    const customer = await fetchCustomerByCustomerId(keyData.customerId, env);
+    console.log('[VerifyApiKey] Customer lookup result:', customer ? `Found (status: ${customer.status})` : 'NOT FOUND');
     if (!customer) {
+        console.log('[VerifyApiKey] REJECTED: Customer not found in customer-api');
         return null;
     }
     
     // Only allow active customers
     if (customer.status !== 'active') {
+        console.log('[VerifyApiKey] REJECTED: Customer status is', customer.status);
         return null;
     }
     
+    console.log('[VerifyApiKey] SUCCESS: Returning verification for', keyData.keyId);
     return {
         customerId: keyData.customerId,
         keyId: keyData.keyId,
-        ssoConfig: keyData.ssoConfig // Return SSO config for session validation
+        ssoConfig: keyData.ssoConfig, // Return SSO config for session validation
+        allowedOrigins: keyData.allowedOrigins // Return per-key allowed origins for CORS
     };
 }
 

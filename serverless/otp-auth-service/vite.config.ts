@@ -170,6 +170,22 @@ export default defineConfig({
         target: 'http://localhost:8787',
         changeOrigin: true,
         secure: false,
+      },
+      // API Key verification/test endpoints
+      '/api-key': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+        secure: false,
+        // CRITICAL: Forward cookies for HttpOnly cookie authentication
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) {
+              console.log('[Vite Proxy] /api-key - Cookies sent:', req.headers.cookie);
+            }
+          });
+        },
       }
     }
   }
