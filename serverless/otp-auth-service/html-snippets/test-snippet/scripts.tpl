@@ -167,7 +167,10 @@ async function getMe() {
     btn.textContent = 'Loading...';
     
     try {
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 
+            'Content-Type': 'application/json',
+            'X-OTP-API-Key': API_KEY
+        };
         if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
         
         const response = await fetch(BASE_URL + '/auth/me', {
@@ -201,7 +204,10 @@ async function logout() {
     btn.textContent = 'Logging out...';
     
     try {
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 
+            'Content-Type': 'application/json',
+            'X-OTP-API-Key': API_KEY
+        };
         if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
         
         const response = await fetch(BASE_URL + '/auth/logout', {
