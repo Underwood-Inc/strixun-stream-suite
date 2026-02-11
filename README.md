@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.3.0-blue?style=for-the-badge&logo=github)
+![Version](https://img.shields.io/badge/version-1.4.0-blue?style=for-the-badge&logo=github)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![OBS Studio](https://img.shields.io/badge/OBS%20Studio-28%2B-orange?style=for-the-badge&logo=obsstudio)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=for-the-badge)
