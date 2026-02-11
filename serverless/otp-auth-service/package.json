@@ -1,6 +1,6 @@
 {
   "name": "@strixun/otp-auth-service",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Multi-tenant OTP authentication service - Cloudflare Worker with email OTP, JWT tokens, API key management, and analytics - Strixun Stream Suite",
   "private": true,
   "packageManager": "pnpm@9.15.1",
