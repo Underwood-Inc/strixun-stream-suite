@@ -30,11 +30,26 @@
     
     // Check authentication with timeout
     // CRITICAL: HttpOnly cookie SSO means we cannot read a token client-side.
-    // Session restore must call a cookie-authenticated endpoint.
+    // Step 1: Hit /auth/me (same fast endpoint all other SSO apps use) to verify cookie.
+    // Step 2: If authenticated, load customer data from /customer/me separately.
     const authCheck = async () => {
       try {
-        await loadCustomer();
-        isAuthenticated = customer !== null;
+        // Step 1: Fast SSO check via /auth/me (proxied to otp-auth-service)
+        const authResult = await apiClient.checkAuth();
+        if (!authResult) {
+          isAuthenticated = false;
+          return;
+        }
+        
+        // Step 2: SSO confirmed - load full customer data from customer-api
+        isAuthenticated = true;
+        try {
+          await loadCustomer();
+        } catch (customerError) {
+          // Auth is valid but customer data failed to load
+          // Keep authenticated (SSO works), customer data will be null
+          console.warn('Customer data load failed (SSO still valid):', customerError);
+        }
       } catch (error) {
         console.error('Auth check failed:', error);
         apiClient.setToken(null);
@@ -53,7 +68,7 @@
         loading = false;
         isAuthenticated = false;
       }
-    }, 3000);
+    }, 5000);
     
     authCheck().finally(() => {
       clearTimeout(timeout);
