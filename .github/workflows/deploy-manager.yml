@@ -1709,7 +1709,7 @@ jobs:
           # Verify the key was embedded in the build (check that VITE_MODS_ENCRYPTION_KEY is referenced)
           # Note: We check for the env var name, not the actual value, to avoid exposing secrets
           echo "🔍 Verifying encryption key was embedded in build..."
-          if grep -r "VITE_MODS_ENCRYPTION_KEY" ../dist/mods-hub/assets/*.js 2>/dev/null | head -1 > /dev/null; then
+          if grep -r "VITE_MODS_ENCRYPTION_KEY" ../../dist/mods-hub/assets/*.js 2>/dev/null | head -1 > /dev/null; then
             echo "✓ Encryption key reference found in build output"
           else
             echo "⚠  WARNING: Encryption key reference not found in build - key may not be embedded"
@@ -1725,8 +1725,8 @@ jobs:
         run: |
           # Create project if it doesn't exist (suppress error if already exists)
           pnpm exec wrangler pages project create mods-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
-          # Build outputs to ../dist/mods-hub (relative to mods-hub directory)
-          pnpm exec wrangler pages deploy ../dist/mods-hub --project-name=mods-hub --branch=main
+          # Build outputs to ../../dist/mods-hub (relative to apps/mods-hub directory)
+          pnpm exec wrangler pages deploy ../../dist/mods-hub --project-name=mods-hub --branch=main
       
       - name: Rollback on Failure
         if: failure()
@@ -1777,8 +1777,8 @@ jobs:
         run: |
           # Create project if it doesn't exist (suppress error if already exists)
           pnpm exec wrangler pages project create access-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
-          # Build outputs to ../dist/access-hub (relative to access-hub directory)
-          pnpm exec wrangler pages deploy ../dist/access-hub --project-name=access-hub --branch=main
+          # Build outputs to ../../dist/access-hub (relative to apps/access-hub directory)
+          pnpm exec wrangler pages deploy ../../dist/access-hub --project-name=access-hub --branch=main
       
       - name: Rollback on Failure
         if: failure()
@@ -1841,8 +1841,8 @@ jobs:
         run: |
           # Create project if it doesn't exist (suppress error if already exists)
           pnpm exec wrangler pages project create chat-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
-          # Build outputs to ../dist/chat-hub (relative to chat-hub directory)
-          pnpm exec wrangler pages deploy ../dist/chat-hub --project-name=chat-hub --branch=main
+          # Build outputs to ../../dist/chat-hub (relative to apps/chat-hub directory)
+          pnpm exec wrangler pages deploy ../../dist/chat-hub --project-name=chat-hub --branch=main
       
       - name: Rollback on Failure
         if: failure()
