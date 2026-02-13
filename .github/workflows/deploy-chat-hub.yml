@@ -6,7 +6,7 @@ on:
       - main
       - master
     paths:
-      - 'chat-hub/**'
+      - 'apps/chat-hub/**'
       - 'packages/chat/**'
   workflow_dispatch:
 
@@ -36,7 +36,7 @@ jobs:
       
       - name: Check for test script
         id: check_test
-        working-directory: chat-hub
+        working-directory: apps/chat-hub
         run: |
           if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
             echo "has_tests=true" >> $GITHUB_OUTPUT
@@ -46,7 +46,7 @@ jobs:
       
       - name: Run Chat Hub Tests
         if: steps.check_test.outputs.has_tests == 'true'
-        working-directory: chat-hub
+        working-directory: apps/chat-hub
         run: pnpm test
       
       - name: Skip Tests (No test script)
@@ -93,7 +93,7 @@ jobs:
           pnpm --filter "@strixun/otp-login" run build:react
       
       - name: Build Chat Hub
-        working-directory: chat-hub
+        working-directory: apps/chat-hub
         env:
           VITE_CHAT_SIGNALING_URL: https://chat-api.idling.app
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
@@ -101,7 +101,7 @@ jobs:
       
       - name: Deploy to Cloudflare Pages
         id: deploy
-        working-directory: chat-hub
+        working-directory: apps/chat-hub
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}

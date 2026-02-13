@@ -9,7 +9,7 @@ on:
   push:
     branches: [main, master]
     paths:
-      - 'mods-hub/**'
+      - 'apps/mods-hub/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
   workflow_dispatch:
@@ -143,7 +143,7 @@ jobs:
           echo "* All workspace dependencies built successfully"
       
       - name: Build Mods Hub
-        working-directory: mods-hub
+        working-directory: apps/mods-hub
         env:
           VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods-api.idling.app' }}
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
@@ -179,7 +179,7 @@ jobs:
         
       - name: Deploy to Cloudflare Pages
         id: deploy
-        working-directory: mods-hub
+        working-directory: apps/mods-hub
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}

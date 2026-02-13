@@ -4,7 +4,7 @@
  */
 
 @use '@shared-styles/variables' as *;
-@use '../../../../shared-styles/mixins' as *;
+@use '../../../../packages/shared-styles/mixins' as *;
 
 // Minimum width for app containers (standard mobile minimum)
 $min-app-width: 320px;

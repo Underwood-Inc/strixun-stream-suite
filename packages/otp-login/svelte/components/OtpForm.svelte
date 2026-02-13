@@ -9,7 +9,7 @@
   
   import { OtpLoginCore } from '../../core';
   import type { OtpLoginState } from '../../core';
-  import { OTP_LENGTH, OTP_LENGTH_DESCRIPTION, OTP_PLACEHOLDER, OTP_HTML_PATTERN } from '../../../../shared-config/otp-config.js';
+  import { OTP_LENGTH, OTP_LENGTH_DESCRIPTION, OTP_PLACEHOLDER, OTP_HTML_PATTERN } from '../../../shared-config/otp-config.js';
 
   export let state: OtpLoginState;
   export let onOtpChange: (e: Event) => void;
@@ -68,8 +68,8 @@
 </form>
 
 <style lang="scss">
-  @use '../../../../shared-styles/mixins' as *;
-  @use '../../../../shared-styles/animations' as *;
+  @use '../../../shared-styles/mixins' as *;
+  @use '../../../shared-styles/animations' as *;
 
   .otp-login-form {
     display: flex;

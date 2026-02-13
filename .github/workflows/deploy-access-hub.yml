@@ -6,7 +6,7 @@ on:
       - main
       - master
     paths:
-      - 'access-hub/**'
+      - 'apps/access-hub/**'
   workflow_dispatch:
 
 jobs:
@@ -35,7 +35,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Build Access Hub
-        working-directory: access-hub
+        working-directory: apps/access-hub
         env:
           VITE_ACCESS_API_URL: https://access-api.idling.app
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
@@ -44,7 +44,7 @@ jobs:
       
       - name: Deploy to Cloudflare Pages
         id: deploy
-        working-directory: access-hub
+        working-directory: apps/access-hub
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}

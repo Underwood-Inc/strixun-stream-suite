@@ -113,7 +113,7 @@
 {/if}
 
 <style lang="scss">
-  @use '../../../../shared-styles/animations' as *;
+  @use '../../../shared-styles/animations' as *;
 
   .otp-login-error {
     background: var(--card);

@@ -1680,7 +1680,7 @@ jobs:
           pnpm --filter "@strixun/dice-board-game" run build
       
       - name: Build Mods Hub
-        working-directory: mods-hub
+        working-directory: apps/mods-hub
         env:
           VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods-api.idling.app' }}
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
@@ -1716,7 +1716,7 @@ jobs:
       
       - name: Deploy to Cloudflare Pages
         id: deploy
-        working-directory: mods-hub
+        working-directory: apps/mods-hub
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
@@ -1759,7 +1759,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Build Access Hub
-        working-directory: access-hub
+        working-directory: apps/access-hub
         env:
           VITE_ACCESS_API_URL: https://access-api.idling.app
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
@@ -1768,7 +1768,7 @@ jobs:
       
       - name: Deploy to Cloudflare Pages
         id: deploy
-        working-directory: access-hub
+        working-directory: apps/access-hub
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
@@ -1824,7 +1824,7 @@ jobs:
           pnpm --filter "@strixun/otp-login" run build:react
       
       - name: Build Chat Hub
-        working-directory: chat-hub
+        working-directory: apps/chat-hub
         env:
           VITE_CHAT_SIGNALING_URL: https://chat-api.idling.app
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
@@ -1832,7 +1832,7 @@ jobs:
       
       - name: Deploy to Cloudflare Pages
         id: deploy
-        working-directory: chat-hub
+        working-directory: apps/chat-hub
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}

@@ -295,7 +295,7 @@
 </div>
 
 <style lang="scss">
-  @use '../../shared-styles/_variables.scss' as *;
+  @use '../shared-styles/_variables.scss' as *;
 
   .rate-limit-info-card {
     display: flex;

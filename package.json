@@ -7,9 +7,9 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "build:packages": "turbo run build --filter=./packages/* --filter=./dice-board-game",
-    "build:apps": "turbo run build --filter=./mods-hub --filter=./control-panel --filter=./serverless/*/app --filter=./serverless/*/dashboard",
-    "build:all": "turbo run build --filter=./packages/* --filter=./dice-board-game --filter=./mods-hub --filter=./control-panel --filter=./serverless/*/app --filter=./serverless/*/dashboard --filter=.",
+    "build:packages": "turbo run build --filter=./packages/*",
+    "build:apps": "turbo run build --filter=./apps/* --filter=./serverless/*/app --filter=./serverless/*/dashboard",
+    "build:all": "turbo run build --filter=./packages/* --filter=./apps/* --filter=./serverless/*/app --filter=./serverless/*/dashboard --filter=.",
     "build:clean": "turbo run build --force",
     "dev": "pnpm build:packages && vite",
     "dev:turbo": "turbo run dev --concurrency=26",

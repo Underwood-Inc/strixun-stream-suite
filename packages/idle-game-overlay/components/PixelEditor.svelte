@@ -256,8 +256,8 @@
 </div>
 
 <style lang="scss">
-  @use '../../shared-styles/_variables.scss' as *;
-  @use '../../shared-styles/_animations.scss' as *;
+  @use '../shared-styles/_variables.scss' as *;
+  @use '../shared-styles/_animations.scss' as *;
 
   .pixel-editor {
     display: flex;

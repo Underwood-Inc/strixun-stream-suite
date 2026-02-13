@@ -4,12 +4,12 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'mods-hub/**'
+      - 'apps/mods-hub/**'
       - '.github/workflows/mods-hub-tests.yml'
   pull_request:
     branches: [main, develop]
     paths:
-      - 'mods-hub/**'
+      - 'apps/mods-hub/**'
       - '.github/workflows/mods-hub-tests.yml'
   workflow_dispatch:
 
@@ -37,15 +37,15 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Run API service unit tests
-        working-directory: mods-hub
+        working-directory: apps/mods-hub
         run: pnpm test:api
       
       - name: Run API service integration tests
-        working-directory: mods-hub
+        working-directory: apps/mods-hub
         run: pnpm test:api
       
       - name: Generate coverage report
-        working-directory: mods-hub
+        working-directory: apps/mods-hub
         run: pnpm test:api:coverage
         continue-on-error: true
       
@@ -70,7 +70,7 @@ jobs:
         continue-on-error: true
       
       - name: Display coverage summary
-        working-directory: mods-hub
+        working-directory: apps/mods-hub
         if: always()
         continue-on-error: true
         run: |
@@ -107,6 +107,6 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Build
-        working-directory: mods-hub
+        working-directory: apps/mods-hub
         run: pnpm build
 

@@ -4,8 +4,8 @@
  * Matches the Svelte version's arcade button styling
  */
 
-@use '../../../shared-styles/animations' as *;
-@use '../../../shared-styles/mixins' as *;
+@use '../../shared-styles/animations' as *;
+@use '../../shared-styles/mixins' as *;
 
 /* Standalone Login Form */
 .otp-login {

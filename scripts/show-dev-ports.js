@@ -18,7 +18,7 @@ const services = [
   },
   {
     name: 'Mods Hub',
-    location: 'mods-hub',
+    location: 'apps/mods-hub',
     port: 3001,
     type: 'Frontend',
     url: 'http://localhost:3001',
@@ -34,7 +34,7 @@ const services = [
   },
   {
     name: 'Control Panel',
-    location: 'control-panel',
+    location: 'apps/control-panel',
     port: 5175,
     type: 'Frontend',
     url: 'http://localhost:5175',
@@ -42,7 +42,7 @@ const services = [
   },
   {
     name: 'Access Hub',
-    location: 'access-hub',
+    location: 'apps/access-hub',
     port: 5178,
     type: 'Frontend',
     url: 'http://localhost:5178',
@@ -58,7 +58,7 @@ const services = [
   },
   {
     name: 'Dice Board Game',
-    location: 'dice-board-game',
+    location: 'apps/dice-board-game',
     port: 5179,
     type: 'Frontend',
     url: 'http://localhost:5179',
@@ -66,7 +66,7 @@ const services = [
   },
   {
     name: 'Chat Hub',
-    location: 'chat-hub',
+    location: 'apps/chat-hub',
     port: 5180,
     type: 'Frontend',
     url: 'http://localhost:5180',
