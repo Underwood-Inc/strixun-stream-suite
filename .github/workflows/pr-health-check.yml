@@ -108,8 +108,8 @@ jobs:
         id: parse
         if: always()
         run: |
-          ERRORS=$(grep -c " error " lint-output.txt 2>/dev/null || echo "0")
-          WARNINGS=$(grep -c " warning " lint-output.txt 2>/dev/null || echo "0")
+          ERRORS=$(grep -c " error " lint-output.txt 2>/dev/null) || ERRORS=0
+          WARNINGS=$(grep -c " warning " lint-output.txt 2>/dev/null) || WARNINGS=0
           echo "errors=$ERRORS" >> $GITHUB_OUTPUT
           echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
 
@@ -152,8 +152,8 @@ jobs:
         if: always()
         run: |
           # Extract pass/fail counts from turbo output
-          PASSED=$(grep -cE "✓|passed|success" test-output.txt 2>/dev/null || echo "0")
-          FAILED=$(grep -cE "✗|failed|FAIL" test-output.txt 2>/dev/null || echo "0")
+          PASSED=$(grep -cE "✓|passed|success" test-output.txt 2>/dev/null) || PASSED=0
+          FAILED=$(grep -cE "✗|failed|FAIL" test-output.txt 2>/dev/null) || FAILED=0
           echo "passed=$PASSED" >> $GITHUB_OUTPUT
           echo "failed=$FAILED" >> $GITHUB_OUTPUT
 
