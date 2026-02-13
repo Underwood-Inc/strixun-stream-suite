@@ -8,7 +8,7 @@
  */
 
 // Import OTP configuration
-import { OTP_LENGTH } from '../../shared-config/otp-config.js';
+import { OTP_LENGTH } from '../shared-config/otp-config.js';
 
 // Import types
 import type {

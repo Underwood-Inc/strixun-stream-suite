@@ -5,7 +5,7 @@
  * SECURITY: HTTPS provides transport security. Service key encryption removed (was obfuscation only).
  */
 
-import { OTP_PATTERN, OTP_LENGTH_DESCRIPTION } from '../../shared-config/otp-config.js';
+import { OTP_PATTERN, OTP_LENGTH_DESCRIPTION } from '../shared-config/otp-config.js';
 import type { OtpLoginConfig, OtpLoginState, LoginSuccessData } from './types.js';
 import { parseErrorResponse, handleNetworkError } from './utils.js';
 import { stopCountdown } from './countdown.js';

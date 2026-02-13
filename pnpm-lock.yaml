@@ -62,6 +62,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: ^4.1.3
         version: 4.1.3(storybook@8.6.15(prettier@3.7.4))
+      '@eslint/js':
+        specifier: ^9.39.2
+        version: 9.39.2
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.57.0
@@ -98,12 +101,6 @@ importers:
       '@types/node':
         specifier: ^25.0.3
         version: 25.0.3
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^8.50.1
-        version: 8.50.1(@typescript-eslint/parser@8.50.1(eslint@9.39.2)(typescript@5.9.3))(eslint@9.39.2)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^8.50.1
-        version: 8.50.1(eslint@9.39.2)(typescript@5.9.3)
       '@vitest/browser-playwright':
         specifier: ^4.0.16
         version: 4.0.16(playwright@1.57.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))(vitest@4.0.16)
@@ -116,6 +113,9 @@ importers:
       eslint-plugin-svelte:
         specifier: ^3.13.1
         version: 3.13.1(eslint@9.39.2)(svelte@5.46.0)
+      globals:
+        specifier: ^16.2.0
+        version: 16.5.0
       jsdom:
         specifier: ^25.0.1
         version: 25.0.1
@@ -152,6 +152,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.50.1
+        version: 8.50.1(eslint@9.39.2)(typescript@5.9.3)
       vite:
         specifier: ^7.3.0
         version: 7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
@@ -165,8 +168,11 @@ importers:
         specifier: ^4.54.0
         version: 4.56.0(@cloudflare/workers-types@4.20251225.0)
 
-  access-hub:
+  apps/access-hub:
     dependencies:
+      '@strixun/shared-components':
+        specifier: workspace:*
+        version: link:../../packages/shared-components
       react:
         specifier: ^19.0.0
         version: 19.2.3
@@ -174,6 +180,9 @@ importers:
         specifier: ^19.0.0
         version: 19.2.3(react@19.2.3)
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.17.0
+        version: 9.39.2
       '@types/react':
         specifier: ^19.0.1
         version: 19.2.7
@@ -211,17 +220,20 @@ importers:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
 
-  chat-hub:
+  apps/chat-hub:
     dependencies:
       '@strixun/auth-store':
         specifier: workspace:*
-        version: link:../packages/auth-store
+        version: link:../../packages/auth-store
       '@strixun/chat':
         specifier: workspace:*
-        version: link:../packages/chat
+        version: link:../../packages/chat
       '@strixun/otp-login':
         specifier: workspace:*
-        version: link:../packages/otp-login
+        version: link:../../packages/otp-login
+      '@strixun/shared-components':
+        specifier: workspace:*
+        version: link:../../packages/shared-components
       react:
         specifier: ^19.0.0
         version: 19.2.3
@@ -232,6 +244,9 @@ importers:
         specifier: ^4.5.2
         version: 4.5.7(@types/react@19.2.7)(react@19.2.3)
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.17.0
+        version: 9.39.2
       '@types/react':
         specifier: ^19.0.1
         version: 19.2.7
@@ -240,7 +255,7 @@ importers:
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.7.0(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))
+        version: 4.7.0(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))
       concurrently:
         specifier: ^9.1.2
         version: 9.2.1
@@ -258,7 +273,7 @@ importers:
         version: 15.15.0
       sass:
         specifier: ^1.77.0
-        version: 1.97.1
+        version: 1.97.2
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -267,15 +282,15 @@ importers:
         version: 8.50.1(eslint@9.39.2)(typescript@5.9.3)
       vite:
         specifier: ^7.3.0
-        version: 7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
+        version: 7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
       vite-plugin-pwa:
         specifier: ^0.20.0
-        version: 0.20.5(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))(workbox-build@7.4.0(@types/babel__core@7.20.5))(workbox-window@7.4.0)
+        version: 0.20.5(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))(workbox-build@7.4.0(@types/babel__core@7.20.5))(workbox-window@7.4.0)
       vitest:
         specifier: ^4.0.16
-        version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
+        version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
 
-  control-panel:
+  apps/control-panel:
     dependencies:
       react:
         specifier: ^19.0.0
@@ -327,7 +342,7 @@ importers:
         specifier: ^2.0.2
         version: 2.3.0(rollup@4.54.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))
 
-  dice-board-game:
+  apps/dice-board-game:
     dependencies:
       '@react-three/drei':
         specifier: ^10.0.0-rc.1
@@ -348,6 +363,9 @@ importers:
         specifier: ^5.0.2
         version: 5.0.9(@types/react@19.2.7)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3))
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.39.2
+        version: 9.39.2
       '@types/node':
         specifier: ^22.10.2
         version: 22.19.3
@@ -360,12 +378,6 @@ importers:
       '@types/three':
         specifier: ^0.169.0
         version: 0.169.0
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^8.50.1
-        version: 8.50.1(@typescript-eslint/parser@8.50.1(eslint@9.39.2)(typescript@5.9.3))(eslint@9.39.2)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^8.50.1
-        version: 8.50.1(eslint@9.39.2)(typescript@5.9.3)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.7.0(vite@7.3.0(@types/node@22.19.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))
@@ -381,6 +393,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.50.1
+        version: 8.50.1(eslint@9.39.2)(typescript@5.9.3)
       vite:
         specifier: ^7.3.0
         version: 7.3.0(@types/node@22.19.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
@@ -388,7 +403,7 @@ importers:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@22.19.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
 
-  mods-hub:
+  apps/mods-hub:
     dependencies:
       '@lexical/clipboard':
         specifier: ^0.40.0
@@ -443,40 +458,40 @@ importers:
         version: 0.40.0
       '@strixun/api-framework':
         specifier: workspace:*
-        version: link:../packages/api-framework
+        version: link:../../packages/api-framework
       '@strixun/auth-store':
         specifier: workspace:*
-        version: link:../packages/auth-store
+        version: link:../../packages/auth-store
       '@strixun/chat':
         specifier: workspace:*
-        version: link:../packages/chat
+        version: link:../../packages/chat
       '@strixun/dice-board-game':
         specifier: workspace:*
         version: link:../dice-board-game
       '@strixun/e2e-helpers':
         specifier: workspace:*
-        version: link:../packages/e2e-helpers
+        version: link:../../packages/e2e-helpers
       '@strixun/error-utils':
         specifier: workspace:*
-        version: link:../packages/error-utils
+        version: link:../../packages/error-utils
       '@strixun/otp-login':
         specifier: workspace:*
-        version: link:../packages/otp-login
+        version: link:../../packages/otp-login
       '@strixun/search-query-parser':
         specifier: workspace:*
-        version: link:../packages/search-query-parser
+        version: link:../../packages/search-query-parser
       '@strixun/shared-components':
         specifier: workspace:*
-        version: link:../shared-components
+        version: link:../../packages/shared-components
       '@strixun/shared-config':
         specifier: workspace:*
-        version: link:../shared-config
+        version: link:../../packages/shared-config
       '@strixun/shared-styles':
         specifier: workspace:*
-        version: link:../shared-styles
+        version: link:../../packages/shared-styles
       '@strixun/virtualized-table':
         specifier: workspace:*
-        version: link:../packages/virtualized-table
+        version: link:../../packages/virtualized-table
       '@tanstack/react-query':
         specifier: ^5.62.11
         version: 5.90.12(react@19.2.3)
@@ -911,6 +926,135 @@ importers:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
 
+  packages/shared-components:
+    dependencies:
+      '@tanstack/react-table':
+        specifier: ^8.21.3
+        version: 8.21.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tanstack/react-virtual':
+        specifier: ^3.13.18
+        version: 3.13.18(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tanstack/svelte-table':
+        specifier: ^8.21.3
+        version: 8.21.3(svelte@5.46.0)
+      '@tanstack/svelte-virtual':
+        specifier: ^3.13.18
+        version: 3.13.18(svelte@5.46.0)
+      prismjs:
+        specifier: ^1.29.0
+        version: 1.30.0
+    devDependencies:
+      '@chromatic-com/storybook':
+        specifier: ^4.1.3
+        version: 4.1.3(storybook@8.6.15(prettier@3.7.4))
+      '@cloudflare/workers-types':
+        specifier: ^4.20241127.0
+        version: 4.20251225.0
+      '@storybook/addon-a11y':
+        specifier: ^8.6.15
+        version: 8.6.15(storybook@8.6.15(prettier@3.7.4))
+      '@storybook/addon-docs':
+        specifier: ^8.6.15
+        version: 8.6.15(@types/react@19.2.7)(storybook@8.6.15(prettier@3.7.4))
+      '@storybook/addon-svelte-csf':
+        specifier: ^5.0.10
+        version: 5.0.10(@storybook/svelte@8.6.15(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0))(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)))(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))
+      '@storybook/manager-api':
+        specifier: ^8.6.15
+        version: 8.6.15(storybook@8.6.15(prettier@3.7.4))
+      '@storybook/svelte':
+        specifier: ^8.6.15
+        version: 8.6.15(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0)
+      '@storybook/svelte-vite':
+        specifier: ^8.6.15
+        version: 8.6.15(@babel/core@7.28.5)(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)))(postcss-load-config@3.1.4(postcss@8.5.6))(postcss@8.5.6)(sass@1.97.2)(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))
+      '@storybook/theming':
+        specifier: ^8.6.15
+        version: 8.6.15(storybook@8.6.15(prettier@3.7.4))
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^6.2.1
+        version: 6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))
+      '@testing-library/jest-dom':
+        specifier: ^6.6.3
+        version: 6.9.1
+      '@testing-library/react':
+        specifier: ^16.1.0
+        version: 16.3.1(@testing-library/dom@10.4.0)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@testing-library/user-event':
+        specifier: ^14.5.2
+        version: 14.5.2(@testing-library/dom@10.4.0)
+      '@tsconfig/svelte':
+        specifier: ^5.0.6
+        version: 5.0.6
+      '@types/node':
+        specifier: ^25.0.3
+        version: 25.0.3
+      '@types/prismjs':
+        specifier: ^1.26.0
+        version: 1.26.5
+      '@types/react':
+        specifier: ^19.0.1
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: ^19.0.1
+        version: 19.2.3(@types/react@19.2.7)
+      '@types/react-window':
+        specifier: ^1.8.8
+        version: 1.8.8
+      '@types/styled-components':
+        specifier: ^5.1.34
+        version: 5.1.36
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))
+      '@vitest/coverage-v8':
+        specifier: ^4.0.16
+        version: 4.0.16(@vitest/browser@4.0.16(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))(vitest@4.0.16))(vitest@4.0.16)
+      jsdom:
+        specifier: ^25.0.1
+        version: 25.0.1
+      react:
+        specifier: ^19.0.0
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.3(react@19.2.3)
+      react-window:
+        specifier: ^1.8.10
+        version: 1.8.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      sass:
+        specifier: ^1.97.1
+        version: 1.97.2
+      storybook:
+        specifier: ^8.6.15
+        version: 8.6.15(prettier@3.7.4)
+      styled-components:
+        specifier: ^6.1.13
+        version: 6.1.19(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      svelte:
+        specifier: ^5.46.0
+        version: 5.46.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.3.0
+        version: 7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
+      vitest:
+        specifier: ^4.0.16
+        version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
+      wrangler:
+        specifier: ^4.54.0
+        version: 4.56.0(@cloudflare/workers-types@4.20251225.0)
+
+  packages/shared-config: {}
+
+  packages/shared-styles:
+    dependencies:
+      styled-components:
+        specifier: ^6.0.0
+        version: 6.1.19(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+
   packages/status-flair:
     dependencies:
       svelte:
@@ -1213,7 +1357,7 @@ importers:
         version: link:../../packages/service-client
       '@strixun/shared-components':
         specifier: workspace:*
-        version: link:../../shared-components
+        version: link:../../packages/shared-components
       '@strixun/status-flair':
         specifier: workspace:*
         version: link:../../packages/status-flair
@@ -1432,135 +1576,6 @@ importers:
       vite:
         specifier: ^7.3.0
         version: 7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
-
-  shared-components:
-    dependencies:
-      '@tanstack/react-table':
-        specifier: ^8.21.3
-        version: 8.21.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tanstack/react-virtual':
-        specifier: ^3.13.18
-        version: 3.13.18(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tanstack/svelte-table':
-        specifier: ^8.21.3
-        version: 8.21.3(svelte@5.46.0)
-      '@tanstack/svelte-virtual':
-        specifier: ^3.13.18
-        version: 3.13.18(svelte@5.46.0)
-      prismjs:
-        specifier: ^1.29.0
-        version: 1.30.0
-    devDependencies:
-      '@chromatic-com/storybook':
-        specifier: ^4.1.3
-        version: 4.1.3(storybook@8.6.15(prettier@3.7.4))
-      '@cloudflare/workers-types':
-        specifier: ^4.20241127.0
-        version: 4.20251225.0
-      '@storybook/addon-a11y':
-        specifier: ^8.6.15
-        version: 8.6.15(storybook@8.6.15(prettier@3.7.4))
-      '@storybook/addon-docs':
-        specifier: ^8.6.15
-        version: 8.6.15(@types/react@19.2.7)(storybook@8.6.15(prettier@3.7.4))
-      '@storybook/addon-svelte-csf':
-        specifier: ^5.0.10
-        version: 5.0.10(@storybook/svelte@8.6.15(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0))(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)))(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))
-      '@storybook/manager-api':
-        specifier: ^8.6.15
-        version: 8.6.15(storybook@8.6.15(prettier@3.7.4))
-      '@storybook/svelte':
-        specifier: ^8.6.15
-        version: 8.6.15(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0)
-      '@storybook/svelte-vite':
-        specifier: ^8.6.15
-        version: 8.6.15(@babel/core@7.28.5)(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)))(postcss-load-config@3.1.4(postcss@8.5.6))(postcss@8.5.6)(sass@1.97.1)(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))
-      '@storybook/theming':
-        specifier: ^8.6.15
-        version: 8.6.15(storybook@8.6.15(prettier@3.7.4))
-      '@sveltejs/vite-plugin-svelte':
-        specifier: ^6.2.1
-        version: 6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))
-      '@testing-library/jest-dom':
-        specifier: ^6.6.3
-        version: 6.9.1
-      '@testing-library/react':
-        specifier: ^16.1.0
-        version: 16.3.1(@testing-library/dom@10.4.0)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@testing-library/user-event':
-        specifier: ^14.5.2
-        version: 14.5.2(@testing-library/dom@10.4.0)
-      '@tsconfig/svelte':
-        specifier: ^5.0.6
-        version: 5.0.6
-      '@types/node':
-        specifier: ^25.0.3
-        version: 25.0.3
-      '@types/prismjs':
-        specifier: ^1.26.0
-        version: 1.26.5
-      '@types/react':
-        specifier: ^19.0.1
-        version: 19.2.7
-      '@types/react-dom':
-        specifier: ^19.0.1
-        version: 19.2.3(@types/react@19.2.7)
-      '@types/react-window':
-        specifier: ^1.8.8
-        version: 1.8.8
-      '@types/styled-components':
-        specifier: ^5.1.34
-        version: 5.1.36
-      '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.7.0(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))
-      '@vitest/coverage-v8':
-        specifier: ^4.0.16
-        version: 4.0.16(@vitest/browser@4.0.16(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))(vitest@4.0.16))(vitest@4.0.16)
-      jsdom:
-        specifier: ^25.0.1
-        version: 25.0.1
-      react:
-        specifier: ^19.0.0
-        version: 19.2.3
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.3(react@19.2.3)
-      react-window:
-        specifier: ^1.8.10
-        version: 1.8.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      sass:
-        specifier: ^1.97.1
-        version: 1.97.1
-      storybook:
-        specifier: ^8.6.15
-        version: 8.6.15(prettier@3.7.4)
-      styled-components:
-        specifier: ^6.1.13
-        version: 6.1.19(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      svelte:
-        specifier: ^5.46.0
-        version: 5.46.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vite:
-        specifier: ^7.3.0
-        version: 7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
-      vitest:
-        specifier: ^4.0.16
-        version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
-      wrangler:
-        specifier: ^4.54.0
-        version: 4.56.0(@cloudflare/workers-types@4.20251225.0)
-
-  shared-config: {}
-
-  shared-styles:
-    dependencies:
-      styled-components:
-        specifier: ^6.0.0
-        version: 6.1.19(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
 
 packages:
 
@@ -2984,7 +2999,6 @@ packages:
   '@humanwhocodes/config-array@0.9.5':
     resolution: {integrity: sha512-ObyMyWxZiCu/yTisA7uzx81s40xR2fD5Cg/2Kq7G02ajkNubJf6BopgDTmDyc3U7sXpNKM8cYOw7s7Tyr+DnCw==}
     engines: {node: '>=10.10.0'}
-    deprecated: Use @eslint/config-array instead
 
   '@humanwhocodes/module-importer@1.0.1':
     resolution: {integrity: sha512-bxveV4V8v5Yb4ncFTT3rPSgZBOpCkjfK0y4oVVVJwIuDVBRMDXrPyXRL988i5ap9m9bnyEEjWfm5WkBmtffLfA==}
@@ -2992,7 +3006,6 @@ packages:
 
   '@humanwhocodes/object-schema@1.2.1':
     resolution: {integrity: sha512-ZnQMnLV4e7hDlUvw8H+U8ASL02SS2Gn6+9Ac3wGGLIe7+je2AeAOxPY+izIPJDfFDb7eDjev0Us8MO1iFRN8hA==}
-    deprecated: Use @eslint/object-schema instead
 
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
@@ -5407,7 +5420,6 @@ packages:
   eslint@8.4.1:
     resolution: {integrity: sha512-TxU/p7LB1KxQ6+7aztTnO7K0i+h0tDi81YRY9VzB6Id71kNz+fFYnf5HD5UOQmxkzcoa0TlVZf9dpMtUv0GpWg==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
-    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
 
   eslint@9.39.2:
@@ -5703,7 +5715,6 @@ packages:
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
 
   globals@13.24.0:
     resolution: {integrity: sha512-AhO5QUcj8llrbG09iWhPU2B204J1xnPeL8kQmVorSsy+Sjj1sk8gIyh6cUocGmH4L0UuhAJy+hJMRA4mgA4mFQ==}
@@ -5883,7 +5894,6 @@ packages:
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
-    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
   inherits@2.0.3:
     resolution: {integrity: sha512-x00IRNXNy63jwGkJmzPigoySHbaqpNuzKbBOmzK+g2OdZpQ9w+sxCN+VSB3ja7IAge2OP2qpfxTjeNcyjmW1uw==}
@@ -7094,12 +7104,10 @@ packages:
 
   rimraf@2.7.1:
     resolution: {integrity: sha512-uWjbaKIK3T1OSVptzX7Nl6PvQ3qAGtKEtVRjRuazjfL3Bx5eI409VZSqgND+4UNnmzLVdPj9FqFJNPqBZFve4w==}
-    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
-    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   robust-predicates@3.0.2:
@@ -8127,7 +8135,6 @@ packages:
   whatwg-encoding@3.1.1:
     resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
     engines: {node: '>=18'}
-    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
   whatwg-mimetype@3.0.0:
     resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
@@ -8236,7 +8243,6 @@ packages:
   wrangler@4.56.0:
     resolution: {integrity: sha512-Nqi8duQeRbA+31QrD6QlWHW3IZVnuuRxMy7DEg46deUzywivmaRV/euBN5KKXDPtA24VyhYsK7I0tkb7P5DM2w==}
     engines: {node: '>=20.0.0'}
-    deprecated: Version 4.55.0 and 4.56.0 can incorrectly automatically delegate 'wrangler deploy' to 'opennextjs-cloudflare'. Use an older or newer version.
     hasBin: true
     peerDependencies:
       '@cloudflare/workers-types': ^4.20251217.0
@@ -10525,6 +10531,23 @@ snapshots:
     transitivePeerDependencies:
       - babel-plugin-macros
 
+  '@storybook/addon-svelte-csf@5.0.10(@storybook/svelte@8.6.15(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0))(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)))(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))':
+    dependencies:
+      '@storybook/csf': 0.1.13
+      '@storybook/svelte': 8.6.15(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0)
+      '@sveltejs/vite-plugin-svelte': 6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))
+      dedent: 1.7.1
+      es-toolkit: 1.43.0
+      esrap: 1.4.9
+      magic-string: 0.30.21
+      storybook: 8.6.15(prettier@3.7.4)
+      svelte: 5.46.0
+      svelte-ast-print: 0.4.2(svelte@5.46.0)
+      vite: 7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
+      zimmerframe: 1.1.4
+    transitivePeerDependencies:
+      - babel-plugin-macros
+
   '@storybook/blocks@8.6.15(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(storybook@8.6.15(prettier@3.7.4))':
     dependencies:
       '@storybook/icons': 1.6.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -10541,6 +10564,14 @@ snapshots:
       storybook: 8.6.15(prettier@3.7.4)
       ts-dedent: 2.2.0
       vite: 7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
+
+  '@storybook/builder-vite@8.6.15(storybook@8.6.15(prettier@3.7.4))(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))':
+    dependencies:
+      '@storybook/csf-plugin': 8.6.15(storybook@8.6.15(prettier@3.7.4))
+      browser-assert: 1.2.1
+      storybook: 8.6.15(prettier@3.7.4)
+      ts-dedent: 2.2.0
+      vite: 7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
 
   '@storybook/components@8.6.15(storybook@8.6.15(prettier@3.7.4))':
     dependencies:
@@ -10621,6 +10652,32 @@ snapshots:
       ts-dedent: 2.2.0
       typescript: 5.9.3
       vite: 7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
+    transitivePeerDependencies:
+      - '@babel/core'
+      - coffeescript
+      - less
+      - postcss
+      - postcss-load-config
+      - pug
+      - sass
+      - stylus
+      - sugarss
+      - supports-color
+
+  '@storybook/svelte-vite@8.6.15(@babel/core@7.28.5)(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)))(postcss-load-config@3.1.4(postcss@8.5.6))(postcss@8.5.6)(sass@1.97.2)(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))':
+    dependencies:
+      '@storybook/builder-vite': 8.6.15(storybook@8.6.15(prettier@3.7.4))(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))
+      '@storybook/svelte': 8.6.15(storybook@8.6.15(prettier@3.7.4))(svelte@5.46.0)
+      '@sveltejs/vite-plugin-svelte': 6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))
+      magic-string: 0.30.21
+      storybook: 8.6.15(prettier@3.7.4)
+      svelte: 5.46.0
+      svelte-preprocess: 5.1.4(@babel/core@7.28.5)(postcss-load-config@3.1.4(postcss@8.5.6))(postcss@8.5.6)(sass@1.97.2)(svelte@5.46.0)(typescript@5.9.3)
+      svelte2tsx: 0.7.46(svelte@5.46.0)(typescript@5.9.3)
+      sveltedoc-parser: 4.2.1
+      ts-dedent: 2.2.0
+      typescript: 5.9.3
+      vite: 7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
     transitivePeerDependencies:
       - '@babel/core'
       - coffeescript
@@ -11178,18 +11235,6 @@ snapshots:
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
       vite: 7.3.0(@types/node@22.19.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
-    transitivePeerDependencies:
-      - supports-color
-
-  '@vitejs/plugin-react@4.7.0(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))':
-    dependencies:
-      '@babel/core': 7.28.5
-      '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.28.5)
-      '@babel/plugin-transform-react-jsx-source': 7.27.1(@babel/core@7.28.5)
-      '@rolldown/pluginutils': 1.0.0-beta.27
-      '@types/babel__core': 7.20.5
-      react-refresh: 0.17.0
-      vite: 7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -15289,6 +15334,21 @@ snapshots:
       sass: 1.97.1
       typescript: 5.9.3
 
+  svelte-preprocess@5.1.4(@babel/core@7.28.5)(postcss-load-config@3.1.4(postcss@8.5.6))(postcss@8.5.6)(sass@1.97.2)(svelte@5.46.0)(typescript@5.9.3):
+    dependencies:
+      '@types/pug': 2.0.10
+      detect-indent: 6.1.0
+      magic-string: 0.30.21
+      sorcery: 0.11.1
+      strip-indent: 3.0.0
+      svelte: 5.46.0
+    optionalDependencies:
+      '@babel/core': 7.28.5
+      postcss: 8.5.6
+      postcss-load-config: 3.1.4(postcss@8.5.6)
+      sass: 1.97.2
+      typescript: 5.9.3
+
   svelte2tsx@0.7.46(svelte@5.46.0)(typescript@5.9.3):
     dependencies:
       dedent-js: 1.0.1
@@ -15715,12 +15775,12 @@ snapshots:
       - tsx
       - yaml
 
-  vite-plugin-pwa@0.20.5(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))(workbox-build@7.4.0(@types/babel__core@7.20.5))(workbox-window@7.4.0):
+  vite-plugin-pwa@0.20.5(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))(workbox-build@7.4.0(@types/babel__core@7.20.5))(workbox-window@7.4.0):
     dependencies:
       debug: 4.4.3
       pretty-bytes: 6.1.1
       tinyglobby: 0.2.15
-      vite: 7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
+      vite: 7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
       workbox-build: 7.4.0(@types/babel__core@7.20.5)
       workbox-window: 7.4.0
     transitivePeerDependencies:

@@ -6,6 +6,8 @@
       "dependsOn": ["^build"],
       "outputs": [
         "dist/**",
+        "../../dist/**",
+        "../../../dist/**",
         ".next/**",
         "!.next/cache/**"
       ],
@@ -16,22 +18,22 @@
     },
     "build:react": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"],
+      "outputs": ["dist/**", "../../dist/**", "../../../dist/**"],
       "cache": true
     },
     "build:vanilla": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"],
+      "outputs": ["dist/**", "../../dist/**", "../../../dist/**"],
       "cache": true
     },
     "build:svelte": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"],
+      "outputs": ["dist/**", "../../dist/**", "../../../dist/**"],
       "cache": true
     },
     "build:all": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"],
+      "outputs": ["dist/**", "../../dist/**", "../../../dist/**"],
       "cache": true
     },
     "dev": {

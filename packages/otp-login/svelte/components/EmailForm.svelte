@@ -206,8 +206,8 @@
 </form>
 
 <style lang="scss">
-  @use '../../../../shared-styles/mixins' as *;
-  @use '../../../../shared-styles/animations' as *;
+  @use '../../../shared-styles/mixins' as *;
+  @use '../../../shared-styles/animations' as *;
 
   .otp-login-form {
     display: flex;

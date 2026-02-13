@@ -165,7 +165,7 @@
 <svelte:component this={Tooltip} config={createTooltipConfig()} visible={true} />
 
 <style lang="scss">
-  @use '../../shared-styles/_variables.scss' as *;
+  @use '../shared-styles/_variables.scss' as *;
 
   :global(.item-tooltip) {
     padding: 16px;

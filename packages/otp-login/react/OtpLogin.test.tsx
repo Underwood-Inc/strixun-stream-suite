@@ -56,7 +56,7 @@ vi.mock('../core', () => {
 });
 
 // Mock getOtpEncryptionKey
-vi.mock('../../../shared-config/otp-encryption', () => ({
+vi.mock('../../shared-config/otp-encryption', () => ({
   getOtpEncryptionKey: vi.fn(() => 'a'.repeat(32)),
 }));
 

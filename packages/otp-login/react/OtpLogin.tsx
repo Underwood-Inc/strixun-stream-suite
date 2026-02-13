@@ -9,7 +9,7 @@ import type { ChangeEvent, KeyboardEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 // Service key encryption removed - it was obfuscation only (key is in bundle)
 import { OtpLoginCore, type LoginSuccessData, type OtpLoginConfig, type OtpLoginState } from '../core';
-import { OTP_LENGTH, OTP_HTML_PATTERN, OTP_PLACEHOLDER, OTP_LENGTH_DESCRIPTION } from '../../../shared-config/otp-config';
+import { OTP_LENGTH, OTP_HTML_PATTERN, OTP_PLACEHOLDER, OTP_LENGTH_DESCRIPTION } from '../../shared-config/otp-config';
 import './OtpLogin.scss';
 
 export interface OtpLoginProps {

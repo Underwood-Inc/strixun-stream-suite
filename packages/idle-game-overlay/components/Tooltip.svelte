@@ -145,8 +145,8 @@
 {/if}
 
 <style lang="scss">
-  @use '../../shared-styles/_variables.scss' as *;
-  @use '../../shared-styles/_animations.scss' as *;
+  @use '../shared-styles/_variables.scss' as *;
+  @use '../shared-styles/_animations.scss' as *;
 
   .tooltip {
     pointer-events: auto;

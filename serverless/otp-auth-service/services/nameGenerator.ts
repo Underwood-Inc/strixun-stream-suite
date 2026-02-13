@@ -10,7 +10,7 @@
  * @module services/nameGenerator
  */
 
-import { DISPLAY_NAME_MIN_LENGTH, DISPLAY_NAME_MAX_LENGTH, DISPLAY_NAME_MAX_WORDS } from '../../../shared-config/display-name-constants.js';
+import { DISPLAY_NAME_MIN_LENGTH, DISPLAY_NAME_MAX_LENGTH, DISPLAY_NAME_MAX_WORDS } from '../../../packages/shared-config/display-name-constants.js';
 
 interface CloudflareEnv {
   OTP_AUTH_KV: KVNamespace;

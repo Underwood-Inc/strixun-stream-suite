@@ -21,6 +21,8 @@
 name: Deploy Service(s)
 
 on:
+  push:
+    branches: [master]
   workflow_dispatch:
     inputs:
       environment:
@@ -120,7 +122,7 @@ jobs:
   # Test jobs - required before deployment
   test_root:
     needs: setup
-    if: ${{ inputs.deploy_mods_hub || inputs.deploy_storybook || inputs.deploy_pages }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_mods_hub || inputs.deploy_storybook || inputs.deploy_pages }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -148,7 +150,7 @@ jobs:
 
   test_otp_auth:
     needs: setup
-    if: ${{ inputs.deploy_otp_auth }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_otp_auth }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -187,7 +189,7 @@ jobs:
   # Test jobs for services (skip if no test script)
   test_twitch_api:
     needs: setup
-    if: ${{ inputs.deploy_twitch_api }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_twitch_api }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -231,7 +233,7 @@ jobs:
 
   test_mods_api:
     needs: setup
-    if: ${{ inputs.deploy_mods_api }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_mods_api }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -278,7 +280,7 @@ jobs:
 
   test_customer_api:
     needs: setup
-    if: ${{ inputs.deploy_customer_api }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_customer_api }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -325,7 +327,7 @@ jobs:
 
   test_game_api:
     needs: setup
-    if: ${{ inputs.deploy_game_api }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_game_api }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -372,7 +374,7 @@ jobs:
 
   test_url_shortener:
     needs: setup
-    if: ${{ inputs.deploy_url_shortener }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_url_shortener }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -419,7 +421,7 @@ jobs:
 
   test_access_service:
     needs: setup
-    if: ${{ inputs.deploy_access_service }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_access_service }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -471,7 +473,7 @@ jobs:
 
   test_chat_api:
     needs: setup
-    if: ${{ inputs.deploy_chat_api }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_chat_api }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -518,7 +520,7 @@ jobs:
 
   test_streamkit_api:
     needs: setup
-    if: ${{ inputs.deploy_streamkit_api }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_streamkit_api }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -567,7 +569,7 @@ jobs:
   # Twitch API Deployment
   deploy_twitch_api:
     needs: setup
-    if: ${{ inputs.deploy_twitch_api }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_twitch_api }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -641,7 +643,7 @@ jobs:
   # Mods API Deployment
   deploy_mods_api:
     needs: [setup, test_mods_api]
-    if: ${{ inputs.deploy_mods_api && (needs.test_mods_api.result == 'success' || needs.test_mods_api.result == 'skipped') }}
+    if: ${{ (github.event_name == 'push' || inputs.deploy_mods_api) && (needs.test_mods_api.result == 'success' || needs.test_mods_api.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -741,7 +743,7 @@ jobs:
   # OTP Auth Service Deployment
   deploy_otp_auth:
     needs: [setup, test_otp_auth]
-    if: ${{ inputs.deploy_otp_auth && needs.test_otp_auth.result == 'success' }}
+    if: ${{ (github.event_name == 'push' || inputs.deploy_otp_auth) && needs.test_otp_auth.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -847,7 +849,7 @@ jobs:
   # Customer API Deployment
   deploy_customer_api:
     needs: setup
-    if: ${{ inputs.deploy_customer_api }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_customer_api }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -936,7 +938,7 @@ jobs:
   # Game API Deployment
   deploy_game_api:
     needs: [setup, test_game_api]
-    if: ${{ inputs.deploy_game_api && (needs.test_game_api.result == 'success' || needs.test_game_api.result == 'skipped') }}
+    if: ${{ (github.event_name == 'push' || inputs.deploy_game_api) && (needs.test_game_api.result == 'success' || needs.test_game_api.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -1005,7 +1007,7 @@ jobs:
   # URL Shortener Deployment
   deploy_url_shortener:
     needs: setup
-    if: ${{ inputs.deploy_url_shortener }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_url_shortener }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -1079,7 +1081,7 @@ jobs:
   # Access Service Deployment
   deploy_access_service:
     needs: [setup, test_access_service]
-    if: ${{ inputs.deploy_access_service && (needs.test_access_service.result == 'success' || needs.test_access_service.result == 'skipped') }}
+    if: ${{ (github.event_name == 'push' || inputs.deploy_access_service) && (needs.test_access_service.result == 'success' || needs.test_access_service.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -1196,7 +1198,7 @@ jobs:
   # Chat Signaling API Deployment
   deploy_chat_api:
     needs: [setup, test_chat_api]
-    if: ${{ inputs.deploy_chat_api && (needs.test_chat_api.result == 'success' || needs.test_chat_api.result == 'skipped') }}
+    if: ${{ (github.event_name == 'push' || inputs.deploy_chat_api) && (needs.test_chat_api.result == 'success' || needs.test_chat_api.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -1277,7 +1279,7 @@ jobs:
   # Streamkit API Deployment
   deploy_streamkit_api:
     needs: [setup, test_streamkit_api]
-    if: ${{ inputs.deploy_streamkit_api && (needs.test_streamkit_api.result == 'success' || needs.test_streamkit_api.result == 'skipped') }}
+    if: ${{ (github.event_name == 'push' || inputs.deploy_streamkit_api) && (needs.test_streamkit_api.result == 'success' || needs.test_streamkit_api.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -1645,7 +1647,7 @@ jobs:
   # Mods Hub Deployment (Cloudflare Pages) - Production only
   deploy_mods_hub:
     needs: [setup, test_root]
-    if: ${{ inputs.deploy_mods_hub && inputs.environment == 'production' && needs.test_root.result == 'success' }}
+    if: ${{ (github.event_name == 'push' || inputs.deploy_mods_hub) && (github.event_name == 'push' || inputs.environment == 'production') && needs.test_root.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -1680,7 +1682,7 @@ jobs:
           pnpm --filter "@strixun/dice-board-game" run build
       
       - name: Build Mods Hub
-        working-directory: mods-hub
+        working-directory: apps/mods-hub
         env:
           VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods-api.idling.app' }}
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
@@ -1716,7 +1718,7 @@ jobs:
       
       - name: Deploy to Cloudflare Pages
         id: deploy
-        working-directory: mods-hub
+        working-directory: apps/mods-hub
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
@@ -1736,7 +1738,7 @@ jobs:
   # Access Hub Deployment (Cloudflare Pages) - Production only
   deploy_access_hub:
     needs: [setup, test_root]
-    if: ${{ inputs.deploy_access_hub && inputs.environment == 'production' && needs.test_root.result == 'success' }}
+    if: ${{ (github.event_name == 'push' || inputs.deploy_access_hub) && (github.event_name == 'push' || inputs.environment == 'production') && needs.test_root.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -1759,7 +1761,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Build Access Hub
-        working-directory: access-hub
+        working-directory: apps/access-hub
         env:
           VITE_ACCESS_API_URL: https://access-api.idling.app
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
@@ -1768,7 +1770,7 @@ jobs:
       
       - name: Deploy to Cloudflare Pages
         id: deploy
-        working-directory: access-hub
+        working-directory: apps/access-hub
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
@@ -1788,7 +1790,7 @@ jobs:
   # Chat Hub Deployment (Cloudflare Pages) - Production only
   deploy_chat_hub:
     needs: [setup, test_root]
-    if: ${{ inputs.deploy_chat_hub && inputs.environment == 'production' && needs.test_root.result == 'success' }}
+    if: ${{ (github.event_name == 'push' || inputs.deploy_chat_hub) && (github.event_name == 'push' || inputs.environment == 'production') && needs.test_root.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -1824,7 +1826,7 @@ jobs:
           pnpm --filter "@strixun/otp-login" run build:react
       
       - name: Build Chat Hub
-        working-directory: chat-hub
+        working-directory: apps/chat-hub
         env:
           VITE_CHAT_SIGNALING_URL: https://chat-api.idling.app
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
@@ -1832,7 +1834,7 @@ jobs:
       
       - name: Deploy to Cloudflare Pages
         id: deploy
-        working-directory: chat-hub
+        working-directory: apps/chat-hub
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
@@ -1852,7 +1854,7 @@ jobs:
   # Storybook Deployment (Cloudflare Pages) - Production only
   deploy_storybook:
     needs: [setup, test_root]
-    if: ${{ inputs.deploy_storybook && inputs.environment == 'production' && needs.test_root.result == 'success' }}
+    if: ${{ (github.event_name == 'push' || inputs.deploy_storybook) && (github.event_name == 'push' || inputs.environment == 'production') && needs.test_root.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -1898,7 +1900,7 @@ jobs:
   # GitHub Pages Deployment - Build (Production only)
   deploy_pages_build:
     needs: [setup, test_root]
-    if: ${{ inputs.deploy_pages && inputs.environment == 'production' && needs.test_root.result == 'success' }}
+    if: ${{ (github.event_name == 'push' || inputs.deploy_pages) && (github.event_name == 'push' || inputs.environment == 'production') && needs.test_root.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -2059,7 +2061,7 @@ jobs:
   # GitHub Pages Deployment - Deploy
   deploy_pages:
     needs: deploy_pages_build
-    if: ${{ inputs.deploy_pages }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_pages }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -2088,7 +2090,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Test Results" >> $GITHUB_STEP_SUMMARY
           
-          if [ "${{ inputs.deploy_mods_hub }}" == "true" ] || [ "${{ inputs.deploy_storybook }}" == "true" ] || [ "${{ inputs.deploy_pages }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_mods_hub }}" == "true" ] || [ "${{ github.event_name == 'push' || inputs.deploy_storybook }}" == "true" ] || [ "${{ github.event_name == 'push' || inputs.deploy_pages }}" == "true" ]; then
             if [ "${{ needs.test_root.result }}" == "success" ]; then
               echo "✓ **Root/Client Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_root.result }}" == "failure" ]; then
@@ -2098,7 +2100,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_otp_auth }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_otp_auth }}" == "true" ]; then
             if [ "${{ needs.test_otp_auth.result }}" == "success" ]; then
               echo "✓ **OTP Auth Service Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_otp_auth.result }}" == "failure" ]; then
@@ -2108,7 +2110,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_twitch_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_twitch_api }}" == "true" ]; then
             if [ "${{ needs.test_twitch_api.result }}" == "success" ]; then
               echo "✓ **Twitch API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_twitch_api.result }}" == "failure" ]; then
@@ -2120,7 +2122,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_mods_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_mods_api }}" == "true" ]; then
             if [ "${{ needs.test_mods_api.result }}" == "success" ]; then
               echo "✓ **Mods API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_mods_api.result }}" == "failure" ]; then
@@ -2132,7 +2134,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_customer_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_customer_api }}" == "true" ]; then
             if [ "${{ needs.test_customer_api.result }}" == "success" ]; then
               echo "✓ **Customer API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_customer_api.result }}" == "failure" ]; then
@@ -2144,7 +2146,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_game_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_game_api }}" == "true" ]; then
             if [ "${{ needs.test_game_api.result }}" == "success" ]; then
               echo "✓ **Game API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_game_api.result }}" == "failure" ]; then
@@ -2156,7 +2158,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_url_shortener }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_url_shortener }}" == "true" ]; then
             if [ "${{ needs.test_url_shortener.result }}" == "success" ]; then
               echo "✓ **URL Shortener Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_url_shortener.result }}" == "failure" ]; then
@@ -2168,7 +2170,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_access_service }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_access_service }}" == "true" ]; then
             if [ "${{ needs.test_access_service.result }}" == "success" ]; then
               echo "✓ **Access Service Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_access_service.result }}" == "failure" ]; then
@@ -2180,7 +2182,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_chat_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_chat_api }}" == "true" ]; then
             if [ "${{ needs.test_chat_api.result }}" == "success" ]; then
               echo "✓ **Chat API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_chat_api.result }}" == "failure" ]; then
@@ -2192,7 +2194,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_streamkit_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_streamkit_api }}" == "true" ]; then
             if [ "${{ needs.test_streamkit_api.result }}" == "success" ]; then
               echo "✓ **Streamkit API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_streamkit_api.result }}" == "failure" ]; then
@@ -2207,7 +2209,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Deployment Results" >> $GITHUB_STEP_SUMMARY
           
-          if [ "${{ inputs.deploy_twitch_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_twitch_api }}" == "true" ]; then
             if [ "${{ needs.deploy_twitch_api.result }}" == "success" ]; then
               echo "✓ **Twitch API** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
@@ -2215,7 +2217,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_mods_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_mods_api }}" == "true" ]; then
             if [ "${{ needs.deploy_mods_api.result }}" == "success" ]; then
               echo "✓ **Mods API** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
@@ -2223,7 +2225,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_otp_auth }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_otp_auth }}" == "true" ]; then
             if [ "${{ needs.deploy_otp_auth.result }}" == "success" ]; then
               echo "✓ **OTP Auth Service** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
@@ -2231,7 +2233,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_customer_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_customer_api }}" == "true" ]; then
             if [ "${{ needs.deploy_customer_api.result }}" == "success" ]; then
               echo "✓ **Customer API** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
@@ -2239,7 +2241,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_game_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_game_api }}" == "true" ]; then
             if [ "${{ needs.deploy_game_api.result }}" == "success" ]; then
               echo "✓ **Game API** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
@@ -2247,7 +2249,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_url_shortener }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_url_shortener }}" == "true" ]; then
             if [ "${{ needs.deploy_url_shortener.result }}" == "success" ]; then
               echo "✓ **URL Shortener** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
@@ -2255,7 +2257,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_access_service }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_access_service }}" == "true" ]; then
             if [ "${{ needs.deploy_access_service.result }}" == "success" ]; then
               echo "✓ **Access Service** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
@@ -2263,7 +2265,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_chat_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_chat_api }}" == "true" ]; then
             if [ "${{ needs.deploy_chat_api.result }}" == "success" ]; then
               echo "✓ **Chat Signaling API** - Deployed to chat-api.idling.app" >> $GITHUB_STEP_SUMMARY
             else
@@ -2271,7 +2273,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_streamkit_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_streamkit_api }}" == "true" ]; then
             if [ "${{ needs.deploy_streamkit_api.result }}" == "success" ]; then
               echo "✓ **Streamkit API** - Deployed to streamkit-api.idling.app" >> $GITHUB_STEP_SUMMARY
             else
@@ -2279,7 +2281,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_mods_hub }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_mods_hub }}" == "true" ]; then
             if [ "${{ needs.deploy_mods_hub.result }}" == "success" ]; then
               echo "✓ **Mods Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
             else
@@ -2287,7 +2289,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_access_hub }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_access_hub }}" == "true" ]; then
             if [ "${{ needs.deploy_access_hub.result }}" == "success" ]; then
               echo "✓ **Access Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
             else
@@ -2295,7 +2297,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_chat_hub }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_chat_hub }}" == "true" ]; then
             if [ "${{ needs.deploy_chat_hub.result }}" == "success" ]; then
               echo "✓ **Chat Hub** - Deployed to chat.idling.app" >> $GITHUB_STEP_SUMMARY
             else
@@ -2303,7 +2305,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_streamkit_api }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_streamkit_api }}" == "true" ]; then
             if [ "${{ needs.deploy_streamkit_api.result }}" == "success" ]; then
               echo "✓ **Streamkit API** - Deployed to streamkit-api.idling.app" >> $GITHUB_STEP_SUMMARY
             else
@@ -2311,7 +2313,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_storybook }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_storybook }}" == "true" ]; then
             if [ "${{ needs.deploy_storybook.result }}" == "success" ]; then
               echo "✓ **Storybook** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
             else
@@ -2319,7 +2321,7 @@ jobs:
             fi
           fi
           
-          if [ "${{ inputs.deploy_pages }}" == "true" ]; then
+          if [ "${{ github.event_name == 'push' || inputs.deploy_pages }}" == "true" ]; then
             if [ "${{ needs.deploy_pages.result }}" == "success" ]; then
               echo "✓ **GitHub Pages** - Deployed" >> $GITHUB_STEP_SUMMARY
             else

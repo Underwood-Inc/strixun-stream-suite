@@ -18,7 +18,7 @@
     "predeploy": "pnpm build:all",
     "predeploy:prod": "pnpm build:all",
     "predev": "pnpm build:all",
-    "dev": "wrangler dev --port 8793 --local",
+    "dev": "wrangler dev --port 8793 --local --env development",
     "dev:watch": "node scripts/watch-app.js",
     "dev:sync": "node scripts/browser-sync.js",
     "dev:all": "concurrently -n worker,watch,sync -c yellow,cyan,magenta \"pnpm dev\" \"pnpm dev:watch\" \"pnpm dev:sync\"",

@@ -1,0 +1,399 @@
+# Strixun Stream Suite - PR Health Check
+#
+# Runs on every PR targeting master to validate quality:
+# - Full monorepo build
+# - Cloudflare Workers dry-run deploys
+# - Linting (non-blocking, annotations only)
+# - Test suite (non-blocking)
+# - PR comment with results + comparison to previous run
+
+name: PR Health Check
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+concurrency:
+  group: pr-health-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ------------------------------------------------------------------
+  # Shared setup: install deps once and cache for downstream jobs
+  # ------------------------------------------------------------------
+  setup:
+    name: Install Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      - run: pnpm install --frozen-lockfile
+
+  # ------------------------------------------------------------------
+  # Build: full monorepo build (blocking - must pass)
+  # ------------------------------------------------------------------
+  build:
+    name: Build All
+    needs: setup
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.build.outcome }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build all packages and apps
+        id: build
+        run: pnpm run build:all 2>&1 | tee build-output.txt
+        env:
+          NODE_ENV: production
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build-output.txt
+          retention-days: 7
+
+  # ------------------------------------------------------------------
+  # Lint: run linter across all packages (non-blocking)
+  # ------------------------------------------------------------------
+  lint:
+    name: Lint
+    needs: setup
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    outputs:
+      result: ${{ steps.lint.outcome }}
+      warning_count: ${{ steps.parse.outputs.warnings }}
+      error_count: ${{ steps.parse.outputs.errors }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run linter
+        id: lint
+        continue-on-error: true
+        run: pnpm lint:all 2>&1 | tee lint-output.txt
+
+      - name: Parse lint results
+        id: parse
+        if: always()
+        run: |
+          if [ -f lint-output.txt ] && [ -s lint-output.txt ]; then
+            # Match ESLint stylish output format: "line:col  error|warning  message  rule"
+            ERRORS=$(grep -cP '\d+:\d+\s+error\s' lint-output.txt 2>/dev/null) || ERRORS=0
+            WARNINGS=$(grep -cP '\d+:\d+\s+warning\s' lint-output.txt 2>/dev/null) || WARNINGS=0
+          else
+            ERRORS=0
+            WARNINGS=0
+          fi
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
+
+      - name: Annotate lint issues
+        if: always() && steps.lint.outcome == 'failure'
+        run: |
+          ERRORS="${{ steps.parse.outputs.errors }}"
+          WARNINGS="${{ steps.parse.outputs.warnings }}"
+          echo "::error::ESLint: $ERRORS error(s), $WARNINGS warning(s). See lint-log artifact for details."
+
+      - name: Upload lint log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-log
+          path: lint-output.txt
+          retention-days: 7
+
+  # ------------------------------------------------------------------
+  # Tests: run full test suite (non-blocking)
+  # ------------------------------------------------------------------
+  test:
+    name: Tests
+    needs: setup
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    outputs:
+      result: ${{ steps.test.outcome }}
+      passed_count: ${{ steps.parse.outputs.passed }}
+      failed_count: ${{ steps.parse.outputs.failed }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run test suite
+        id: test
+        continue-on-error: true
+        run: pnpm test:all 2>&1 | tee test-output.txt
+
+      - name: Parse test results
+        id: parse
+        if: always()
+        run: |
+          if [ -f test-output.txt ] && [ -s test-output.txt ]; then
+            # Sum vitest/jest "Tests X passed|failed" lines across packages
+            PASSED=$(grep -oP 'Tests\s+\K\d+(?=\s+passed)' test-output.txt 2>/dev/null | awk '{s+=$1} END {print s+0}')
+            FAILED=$(grep -oP 'Tests\s+\K\d+(?=\s+failed)' test-output.txt 2>/dev/null | awk '{s+=$1} END {print s+0}')
+            # Fallback: count turbo task outcomes if no vitest/jest summary found
+            if [ "${PASSED:-0}" = "0" ] && [ "${FAILED:-0}" = "0" ]; then
+              PASSED=$(grep -oP 'Tasks:\s+\K\d+(?=\s+successful)' test-output.txt 2>/dev/null) || PASSED=0
+              FAILED=$(grep -cP '\bFAIL\b' test-output.txt 2>/dev/null) || FAILED=0
+            fi
+          else
+            PASSED=0
+            FAILED=0
+          fi
+          echo "passed=${PASSED:-0}" >> $GITHUB_OUTPUT
+          echo "failed=${FAILED:-0}" >> $GITHUB_OUTPUT
+
+      - name: Annotate test issues
+        if: always() && steps.test.outcome == 'failure'
+        run: |
+          PASSED="${{ steps.parse.outputs.passed }}"
+          FAILED="${{ steps.parse.outputs.failed }}"
+          echo "::error::Tests: $PASSED passed, $FAILED failed. See test-log artifact for details."
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-log
+          path: test-output.txt
+          retention-days: 7
+
+  # ------------------------------------------------------------------
+  # Dry Run: Cloudflare Workers dry-run deploys (non-blocking)
+  # ------------------------------------------------------------------
+  dry-run-workers:
+    name: CF Workers Dry Run
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    outputs:
+      result: ${{ steps.summary.outputs.result }}
+      details: ${{ steps.summary.outputs.details }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm run build:packages
+
+      - name: Dry-run all Cloudflare Workers
+        id: dryrun
+        run: |
+          RESULTS=""
+          OVERALL="success"
+
+          WORKERS=(
+            "serverless/otp-auth-service"
+            "serverless/mods-api"
+            "serverless/twitch-api"
+            "serverless/customer-api"
+            "serverless/game-api"
+            "serverless/url-shortener"
+            "serverless/access-service"
+            "serverless/chat-signaling"
+            "serverless/streamkit-api"
+            "serverless/music-api"
+          )
+
+          for WORKER_DIR in "${WORKERS[@]}"; do
+            WORKER_NAME=$(basename "$WORKER_DIR")
+            echo "::group::Dry-run $WORKER_NAME"
+
+            # Some workers need a build step first
+            if [ -f "$WORKER_DIR/package.json" ]; then
+              HAS_BUILD=$(node -e "const p=require('./$WORKER_DIR/package.json'); console.log(p.scripts && p.scripts['build:worker'] ? 'yes' : 'no')" 2>/dev/null || echo "no")
+              if [ "$HAS_BUILD" == "yes" ]; then
+                echo "Building worker..."
+                cd "$WORKER_DIR" && pnpm run build:worker 2>&1 || true
+                cd "$GITHUB_WORKSPACE"
+              fi
+            fi
+
+            if pnpm exec wrangler deploy --dry-run --config "$WORKER_DIR/wrangler.toml" 2>&1 | tee -a dryrun-output.txt; then
+              RESULTS="${RESULTS}pass:${WORKER_NAME},"
+            else
+              RESULTS="${RESULTS}fail:${WORKER_NAME},"
+              OVERALL="failure"
+            fi
+            echo "::endgroup::"
+          done
+
+          echo "results=$RESULTS" >> $GITHUB_OUTPUT
+          echo "overall=$OVERALL" >> $GITHUB_OUTPUT
+
+      - name: Summarize dry-run results
+        id: summary
+        if: always()
+        run: |
+          echo "result=${{ steps.dryrun.outputs.overall || 'failure' }}" >> $GITHUB_OUTPUT
+          echo "details=${{ steps.dryrun.outputs.results }}" >> $GITHUB_OUTPUT
+
+      - name: Upload dry-run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dryrun-log
+          path: dryrun-output.txt
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ------------------------------------------------------------------
+  # Report: comment on PR with results + comparison to previous run
+  # ------------------------------------------------------------------
+  report:
+    name: PR Report
+    needs: [build, lint, test, dry-run-workers]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build report and comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Build uses job result directly (no continue-on-error on the job)
+            const buildResult = '${{ needs.build.result }}';
+            // Lint, test, dry-run use outputs.result (job-level continue-on-error masks actual result)
+            const lintResult = '${{ needs.lint.outputs.result }}' || '${{ needs.lint.result }}';
+            const testResult = '${{ needs.test.outputs.result }}' || '${{ needs.test.result }}';
+            const dryRunResult = '${{ needs.dry-run-workers.outputs.result }}' || '${{ needs.dry-run-workers.result }}';
+            const dryRunDetails = '${{ needs.dry-run-workers.outputs.details }}' || '';
+            const lintErrors = '${{ needs.lint.outputs.error_count }}' || '0';
+            const lintWarnings = '${{ needs.lint.outputs.warning_count }}' || '0';
+            const testPassed = '${{ needs.test.outputs.passed_count }}' || '0';
+            const testFailed = '${{ needs.test.outputs.failed_count }}' || '0';
+
+            // Status emoji helper
+            const s = (r) => r === 'success' ? '✅' : r === 'failure' ? '❌' : r === 'skipped' ? '⏭️' : '⚠️';
+
+            // Parse dry-run worker details
+            let workerRows = '';
+            if (dryRunDetails) {
+              const entries = dryRunDetails.split(',').filter(Boolean);
+              for (const entry of entries) {
+                const [status, name] = entry.split(':');
+                workerRows += `| ${name} | ${status === 'pass' ? '✅ Pass' : '❌ Fail'} |\n`;
+              }
+            }
+
+            // Build the comment body
+            const marker = '<!-- pr-health-check-report -->';
+            const timestamp = new Date().toISOString().replace('T', ' ').split('.')[0] + ' UTC';
+
+            let body = `${marker}\n`;
+            body += `## PR Health Check Report\n\n`;
+            body += `**Run:** [#${context.runNumber}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) | **Updated:** ${timestamp}\n\n`;
+            body += `### Summary\n\n`;
+            body += `| Check | Status | Details |\n`;
+            body += `|-------|--------|----------|\n`;
+            body += `| Build | ${s(buildResult)} ${buildResult} | Full monorepo build |\n`;
+            body += `| Lint | ${s(lintResult)} ${lintResult} | ${lintErrors} errors, ${lintWarnings} warnings |\n`;
+            body += `| Tests | ${s(testResult)} ${testResult} | ${testPassed} passed, ${testFailed} failed |\n`;
+            body += `| CF Workers Dry Run | ${s(dryRunResult)} ${dryRunResult} | Non-blocking |\n`;
+            body += `\n`;
+
+            if (workerRows) {
+              body += `<details>\n<summary>Cloudflare Workers Dry Run Details</summary>\n\n`;
+              body += `| Worker | Status |\n|--------|--------|\n`;
+              body += workerRows;
+              body += `\n</details>\n\n`;
+            }
+
+            // Find previous comment for comparison
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100
+            });
+
+            const prevComment = comments
+              .filter(c => c.body.includes(marker))
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+            if (prevComment) {
+              // Parse previous results for comparison
+              const prevBody = prevComment.body;
+              const extract = (label) => {
+                const match = prevBody.match(new RegExp(`\\| ${label} \\| (✅|❌|⏭️|⚠️) (\\w+)`));
+                return match ? match[2] : 'unknown';
+              };
+
+              const prevBuild = extract('Build');
+              const prevLint = extract('Lint');
+              const prevTests = extract('Tests');
+              const prevDryRun = extract('CF Workers Dry Run');
+
+              const delta = (prev, curr) => {
+                if (prev === curr) return `no change (${curr})`;
+                if (prev === 'failure' && curr === 'success') return `❌ → ✅ improved!`;
+                if (prev === 'success' && curr === 'failure') return `✅ → ❌ regressed`;
+                return `${prev} → ${curr}`;
+              };
+
+              body += `### Comparison with Previous Run\n\n`;
+              body += `| Check | Change |\n|-------|--------|\n`;
+              body += `| Build | ${delta(prevBuild, buildResult)} |\n`;
+              body += `| Lint | ${delta(prevLint, lintResult)} |\n`;
+              body += `| Tests | ${delta(prevTests, testResult)} |\n`;
+              body += `| CF Dry Run | ${delta(prevDryRun, dryRunResult)} |\n`;
+              body += `\n`;
+            }
+
+            body += `\n> 💡 **Build** is blocking. **Lint**, **Tests**, and **CF Dry Run** are non-blocking (informational only).`;
+
+            // Create a new comment (not update) so history is preserved
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

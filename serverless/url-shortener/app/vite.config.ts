@@ -4,7 +4,7 @@ import path from 'path';
 
 // SCSS config - Vite 7.x types changed but includePaths still works at runtime
 const scssConfig: Record<string, unknown> = {
-  includePaths: [path.resolve(__dirname, '../../../shared-styles')]
+  includePaths: [path.resolve(__dirname, '../../../packages/shared-styles')]
 };
 
 export default defineConfig({
@@ -21,9 +21,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '$lib': path.resolve(__dirname, './src/lib'),
-      '@shared-styles': path.resolve(__dirname, '../../../shared-styles'),
-      '@shared-components': path.resolve(__dirname, '../../../shared-components'),
-      '@mods-hub/components': path.resolve(__dirname, '../../../mods-hub/src/components')
+      '@shared-styles': path.resolve(__dirname, '../../../packages/shared-styles'),
+      '@shared-components': path.resolve(__dirname, '../../../packages/shared-components'),
+      '@mods-hub/components': path.resolve(__dirname, '../../../apps/mods-hub/src/components')
     }
   },
   build: {
