@@ -7,7 +7,7 @@
 import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import type { BoardTile, BoardConfig, HexCoordinate } from '../src/types/index.js';
-import { hexToPixel, hexNeighbors } from '../src/utils/hex-math.js';
+import { hexToPixel } from '../src/utils/hex-math.js';
 
 interface BoardSceneProps {
   board: BoardTile[];
@@ -55,7 +55,7 @@ export function BoardScene({
   }, [board, config.tileSize]);
   
   // Calculate board center for camera positioning
-  const boardCenter = useMemo(() => {
+  const _boardCenter = useMemo(() => {
     if (tileMeshes.length === 0) return new THREE.Vector3(0, 0, 0);
     const positions = tileMeshes.map(m => m.position);
     const center = positions.reduce((acc, pos) => acc.add(pos), new THREE.Vector3(0, 0, 0));
@@ -105,7 +105,7 @@ export function BoardScene({
     const elements: Array<{ type: 'tree' | 'rock' | 'grass'; position: THREE.Vector3 }> = [];
     
     // Use a simple seed based on tile count to make it deterministic
-    let seed = tileMeshes.length;
+    const seed = tileMeshes.length;
     
     // Add random decorations around tiles
     tileMeshes.forEach(({ tile, position }, idx) => {

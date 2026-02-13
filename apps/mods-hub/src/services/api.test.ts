@@ -9,10 +9,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createMockAPIClient } from '@strixun/api-framework/test-utils';
 
 // Use vi.hoisted to create mock client before factory runs
 const { mockApiClient } = vi.hoisted(() => {
-    const { createMockAPIClient } = require('@strixun/api-framework/test-utils');
     const mockClient = createMockAPIClient(vi);
     return { mockApiClient: mockClient };
 });

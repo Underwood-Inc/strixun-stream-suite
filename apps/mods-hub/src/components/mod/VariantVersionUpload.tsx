@@ -127,7 +127,7 @@ export function VariantVersionUpload({
 
     return (
         <Form onSubmit={handleSubmit}>
-            <Title>Upload New Version for "{variantName}"</Title>
+            <Title>Upload New Version for &quot;{variantName}&quot;</Title>
             
             <FormGroup>
                 <Label>Version File *</Label>

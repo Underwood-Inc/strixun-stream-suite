@@ -6,7 +6,7 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Environment } from '@react-three/drei';
+import { OrbitControls, Environment } from '@react-three/drei';
 import type { DiceBoardGameProps } from './types.js';
 import { BoardScene } from './BoardScene.jsx';
 import { DiceRoller } from './DiceRoller.jsx';

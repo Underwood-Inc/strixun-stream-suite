@@ -95,7 +95,7 @@ function getErrorMessage(error: unknown): { title: string; message: string } | n
 
 export function ModUploadPage() {
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuthStore();
+    const { isAuthenticated, customer } = useAuthStore();
     const { hasPermission, isLoading: permissionLoading } = useUploadPermission();
     const uploadMod = useUploadMod();
     const addNotification = useUIStore((state) => state.addNotification);
@@ -196,7 +196,6 @@ export function ModUploadPage() {
     }
 
     // CRITICAL: Check for customerId - required for mod operations
-    const { customer } = useAuthStore();
     if (!customer?.customerId) {
         return (
             <PageContainer>

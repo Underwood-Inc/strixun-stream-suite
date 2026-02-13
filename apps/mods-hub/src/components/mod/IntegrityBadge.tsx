@@ -198,19 +198,12 @@ export function IntegrityBadge({ modId, slug, versionId, style = 'flat' }: Integ
     
     // Validate inputs - both slug/modId and versionId are required
     const identifier = slug || modId;
-    if (!identifier) {
-        console.error('[IntegrityBadge] Missing identifier (both slug and modId are undefined):', { slug, modId, versionId });
-        return null; // Don't render badge if we can't construct a valid URL
-    }
     
-    if (!versionId) {
-        console.error('[IntegrityBadge] Missing versionId:', { slug, modId, versionId });
-        return null; // Don't render badge if versionId is missing
-    }
-    
+    // ALL hooks must be called before any early returns (React rules-of-hooks)
     // Fetch badge - works without auth (public API)
     // Optionally includes auth token for enhanced verification if available
     useEffect(() => {
+        if (!identifier || !versionId) return; // Guard: skip fetch when inputs are missing
         let cancelled = false;
         
         const fetchBadge = async () => {
@@ -286,6 +279,17 @@ export function IntegrityBadge({ modId, slug, versionId, style = 'flat' }: Integ
         };
     }, [badgeUrl]);
     
+    // Early returns AFTER all hooks
+    if (!identifier) {
+        console.error('[IntegrityBadge] Missing identifier (both slug and modId are undefined):', { slug, modId, versionId });
+        return null; // Don't render badge if we can't construct a valid URL
+    }
+    
+    if (!versionId) {
+        console.error('[IntegrityBadge] Missing versionId:', { slug, modId, versionId });
+        return null; // Don't render badge if versionId is missing
+    }
+    
     const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
         console.error('[IntegrityBadge] Image failed to load:', {
             badgeUrl,
@@ -327,7 +331,7 @@ export function IntegrityBadge({ modId, slug, versionId, style = 'flat' }: Integ
                 <TooltipSectionTitle>Badge States</TooltipSectionTitle>
                 <TooltipList>
                     <li><strong>Verified (Green):</strong> File has integrity tracking enabled (hash exists). For authenticated users, this also means the file hash matches the stored hash - file is authentic and unchanged.</li>
-                    <li><strong>Tampered (Orange):</strong> File hash doesn't match stored hash - file may have been modified or corrupted. Only shown to authenticated users who can verify the file.</li>
+                    <li><strong>Tampered (Orange):</strong> File hash doesn&apos;t match stored hash - file may have been modified or corrupted. Only shown to authenticated users who can verify the file.</li>
                     <li><strong>Unverified (Red):</strong> No hash available - file was uploaded before integrity system or hash calculation failed.</li>
                 </TooltipList>
             </TooltipSection>
@@ -335,7 +339,7 @@ export function IntegrityBadge({ modId, slug, versionId, style = 'flat' }: Integ
             <TooltipSection>
                 <TooltipSectionTitle>What Verification Means</TooltipSectionTitle>
                 <TooltipList>
-                    <li><strong>Public Badge:</strong> Shows "Verified" if the file has integrity tracking enabled (hash exists). This indicates the file was uploaded with the integrity system active.</li>
+                    <li><strong>Public Badge:</strong> Shows &quot;Verified&quot; if the file has integrity tracking enabled (hash exists). This indicates the file was uploaded with the integrity system active.</li>
                     <li><strong>Authenticated Verification:</strong> For logged-in users, the badge performs real-time verification by comparing the current file hash with the stored hash.</li>
                     <li>The file can be independently verified using its hash when downloading</li>
                     <li>Safe to download and use with confidence (when verified)</li>
@@ -347,7 +351,7 @@ export function IntegrityBadge({ modId, slug, versionId, style = 'flat' }: Integ
                 <TooltipSectionTitle>Technical Details</TooltipSectionTitle>
                 <TooltipDescription style={{ fontSize: '0.8rem', marginTop: 0 }}>
                     The hash is calculated on the original, decrypted file content using HMAC-SHA256 
-                    with a secret keyphrase at upload time. For public badges, the badge shows "Verified" 
+                    with a secret keyphrase at upload time. For public badges, the badge shows &quot;Verified&quot; 
                     if a hash exists (indicating integrity tracking is enabled). For authenticated users 
                     with matching tokens, real-time verification compares the current file hash with the 
                     stored hash. This ensures the hash represents the actual file content and cannot be 

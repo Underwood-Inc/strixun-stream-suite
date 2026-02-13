@@ -341,7 +341,7 @@ test.describe('ModId Uniqueness', () => {
     });
     
     expect(response.ok).toBe(true);
-    let dataRaw = await response.json() as any;
+    const dataRaw = await response.json() as any;
     const data = await decryptResponseIfNeeded(response, dataRaw, token) as { mod: { modId: string } };
     expect(data.mod.modId).toBe(mod.modId);
     
@@ -639,7 +639,7 @@ test.describe('ModId and Slug as Index Keys', () => {
     });
     
     expect(responseById.ok).toBe(true);
-    let dataByIdRaw = await responseById.json() as any;
+    const dataByIdRaw = await responseById.json() as any;
     const dataById = await decryptResponseIfNeeded(responseById, dataByIdRaw, token) as { mod: { modId: string; slug: string } };
     expect(dataById.mod.modId).toBe(mod.modId);
     
@@ -649,7 +649,7 @@ test.describe('ModId and Slug as Index Keys', () => {
     });
     
     expect(responseBySlug.ok).toBe(true);
-    let dataBySlugRaw = await responseBySlug.json() as any;
+    const dataBySlugRaw = await responseBySlug.json() as any;
     const dataBySlug = await decryptResponseIfNeeded(responseBySlug, dataBySlugRaw, token) as { mod: { modId: string; slug: string } };
     expect(dataBySlug.mod.modId).toBe(mod.modId);
     expect(dataBySlug.mod.slug).toBe(mod.slug);
@@ -690,7 +690,7 @@ test.describe('ModId and Slug as Index Keys', () => {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     expect(responseById.ok).toBe(true);
-    let dataByIdRaw = await responseById.json() as any;
+    const dataByIdRaw = await responseById.json() as any;
     const dataById = await decryptResponseIfNeeded(responseById, dataByIdRaw, token) as { mod: { modId: string; slug: string } };
 
     // Access by slug (public browsing - JWT optional)
@@ -698,7 +698,7 @@ test.describe('ModId and Slug as Index Keys', () => {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     expect(responseBySlug.ok).toBe(true);
-    let dataBySlugRaw = await responseBySlug.json() as any;
+    const dataBySlugRaw = await responseBySlug.json() as any;
     const dataBySlug = await decryptResponseIfNeeded(responseBySlug, dataBySlugRaw, token) as { mod: { modId: string; slug: string } };
     
     // Verify public browsing works without JWT

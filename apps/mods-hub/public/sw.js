@@ -127,7 +127,7 @@ async function networkFirst(request) {
     }
     
     return response;
-  } catch (error) {
+  } catch {
     // Network failed, try cache
     const cachedResponse = await caches.match(request);
     if (cachedResponse) {
@@ -171,7 +171,7 @@ async function cacheFirst(request) {
     }
     
     return response;
-  } catch (error) {
+  } catch {
     return new Response('Resource not available', { 
       status: 503, 
       statusText: 'Service Unavailable',

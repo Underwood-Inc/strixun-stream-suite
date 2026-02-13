@@ -130,8 +130,8 @@ export function applyEventOutcome(
   const outcome = event.outcomes[outcomeIndex];
   if (!outcome) return state;
 
-  let newPlayer = { ...state.player };
-  let newInventory = [...state.player.inventory];
+  const newPlayer = { ...state.player };
+  const newInventory = [...state.player.inventory];
   let newBuffs = [...state.player.buffs];
   let newDebuffs = [...state.player.debuffs];
 

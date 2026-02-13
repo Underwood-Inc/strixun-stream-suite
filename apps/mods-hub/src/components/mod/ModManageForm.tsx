@@ -447,8 +447,8 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                     ℹ Variant Management Moved
                 </RecommendationTitle>
                 <RecommendationText>
-                    Variants are now managed under each specific mod version in the "Version Management" section below.
-                    This allows you to attach variants to the correct version automatically. Scroll down to find the version you want to add variants to and click "Manage Variants".
+                    Variants are now managed under each specific mod version in the &quot;Version Management&quot; section below.
+                    This allows you to attach variants to the correct version automatically. Scroll down to find the version you want to add variants to and click &quot;Manage Variants&quot;.
                 </RecommendationText>
             </RecommendationSection>
 

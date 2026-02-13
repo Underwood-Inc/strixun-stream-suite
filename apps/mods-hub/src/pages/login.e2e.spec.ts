@@ -32,7 +32,7 @@ const TEST_EMAIL = process.env.E2E_TEST_EMAIL || 'test@example.com';
  * With HttpOnly cookies, tokens are not accessible via JavaScript
  * Check for auth_token cookie instead
  */
-async function isAuthenticated(page: Page): Promise<boolean> {
+async function _isAuthenticated(page: Page): Promise<boolean> {
   const cookies = await page.context().cookies();
   const authCookie = cookies.find(c => c.name === 'auth_token');
   return !!authCookie?.value;

@@ -127,7 +127,7 @@ export function ToolbarPlugin({
 
         {/* Blocks */}
         <ToolbarGroup>
-          <ToolbarButton onClick={insertQuote} title="Quote">"</ToolbarButton>
+          <ToolbarButton onClick={insertQuote} title="Quote">&quot;</ToolbarButton>
           <ToolbarButton onClick={insertCodeBlock} title="Code Block">{'{ }'}</ToolbarButton>
           <ToolbarButton onClick={insertHorizontalRule} title="Horizontal Rule">―</ToolbarButton>
           <ToolbarButton onClick={insertCollapsible} title="Collapsible Section">▼</ToolbarButton>

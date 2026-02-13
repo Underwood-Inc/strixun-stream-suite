@@ -90,7 +90,7 @@ export function ValuePlugin({
         const root = parsedState.toJSON().root;
         const media = extractMediaFromState(root as Record<string, unknown>);
         onMediaChange(media);
-      } catch (e) {
+      } catch (_e) {
         console.warn('[RichTextEditor] Could not parse saved state, starting fresh');
       }
     }

@@ -182,7 +182,7 @@ export function VariantVersionList({
     if (versions.length === 0) {
         return (
             <Container>
-                <Title>Versions for "{variantName}"</Title>
+                <Title>Versions for &quot;{variantName}&quot;</Title>
                 <EmptyState>
                     No versions available for this variant yet.
                 </EmptyState>
@@ -192,7 +192,7 @@ export function VariantVersionList({
 
     return (
         <Container>
-            <Title>Versions for "{variantName}" ({versions.length})</Title>
+            <Title>Versions for &quot;{variantName}&quot; ({versions.length})</Title>
             {downloadError && (
                 <div style={{ 
                     padding: spacing.md, 

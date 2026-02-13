@@ -65,7 +65,7 @@ export function GamesPicker({ value, onChange, placeholder = 'Select a game...' 
 
     // Custom render function to show game name and platforms
     const renderGameOption = useMemo(() => {
-        return (option: PortalSelectOption) => {
+        const GameOption = (option: PortalSelectOption) => {
             const game = allGames.find(g => g.id === option.value);
             if (!game) return option.label;
 
@@ -78,6 +78,8 @@ export function GamesPicker({ value, onChange, placeholder = 'Select a game...' 
                 </>
             );
         };
+        GameOption.displayName = 'GameOption';
+        return GameOption;
     }, []);
 
     return (

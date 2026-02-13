@@ -103,7 +103,7 @@ export default function APIKeysManagementPage() {
                         <EmptyIcon>🔑</EmptyIcon>
                         <EmptyTitle>No API Keys Found</EmptyTitle>
                         <EmptyMessage>
-                            You haven't created any API keys yet. API keys are used for multi-tenant
+                            You haven&apos;t created any API keys yet. API keys are used for multi-tenant
                             identification and enable you to build your own SSO ecosystems.
                         </EmptyMessage>
                     </EmptyState>
