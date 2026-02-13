@@ -41,7 +41,7 @@
     "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/kv-entities build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build",
     "predev": "pnpm run build:deps && pnpm run build:worker",
     "dev": "concurrently -n worker,app -c yellow,cyan --kill-others-on-fail --success first \"pnpm dev:worker\" \"pnpm dev:app\"",
-    "dev:worker": "wrangler dev --port 8787 --local",
+    "dev:worker": "wrangler dev --port 8787 --local --env development",
     "dev:app": "vite",
     "dev:all": "concurrently -n worker,customer-api,app -c yellow,green,cyan --kill-others-on-fail --success first \"pnpm dev:worker\" \"pnpm --filter strixun-customer-api dev\" \"pnpm dev:app\"",
     "setup:test-secrets": "node scripts/setup-test-secrets.js",

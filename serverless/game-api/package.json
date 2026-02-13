@@ -11,7 +11,7 @@
     "predeploy": "pnpm run build:deps && pnpm run build:worker",
     "pretest": "pnpm run build:deps && pnpm run build:worker",
     "predev": "pnpm run build:deps && pnpm run build:worker",
-    "dev": "wrangler dev --port 8794 --local",
+    "dev": "wrangler dev --port 8794 --local --env development",
     "deploy": "wrangler deploy",
     "deploy:prod": "wrangler deploy --env production",
     "tail": "wrangler tail",
