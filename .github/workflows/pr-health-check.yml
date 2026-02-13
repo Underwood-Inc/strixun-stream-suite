@@ -102,16 +102,30 @@ jobs:
 
       - name: Run linter
         id: lint
-        run: pnpm lint:all 2>&1 | tee lint-output.txt || true
+        continue-on-error: true
+        run: pnpm lint:all 2>&1 | tee lint-output.txt
 
       - name: Parse lint results
         id: parse
         if: always()
         run: |
-          ERRORS=$(grep -c " error " lint-output.txt 2>/dev/null) || ERRORS=0
-          WARNINGS=$(grep -c " warning " lint-output.txt 2>/dev/null) || WARNINGS=0
+          if [ -f lint-output.txt ] && [ -s lint-output.txt ]; then
+            # Match ESLint stylish output format: "line:col  error|warning  message  rule"
+            ERRORS=$(grep -cP '\d+:\d+\s+error\s' lint-output.txt 2>/dev/null) || ERRORS=0
+            WARNINGS=$(grep -cP '\d+:\d+\s+warning\s' lint-output.txt 2>/dev/null) || WARNINGS=0
+          else
+            ERRORS=0
+            WARNINGS=0
+          fi
           echo "errors=$ERRORS" >> $GITHUB_OUTPUT
           echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
+
+      - name: Annotate lint issues
+        if: always() && steps.lint.outcome == 'failure'
+        run: |
+          ERRORS="${{ steps.parse.outputs.errors }}"
+          WARNINGS="${{ steps.parse.outputs.warnings }}"
+          echo "::error::ESLint: $ERRORS error(s), $WARNINGS warning(s). See lint-log artifact for details."
 
       - name: Upload lint log
         if: always()
@@ -131,6 +145,8 @@ jobs:
     continue-on-error: true
     outputs:
       result: ${{ steps.test.outcome }}
+      passed_count: ${{ steps.parse.outputs.passed }}
+      failed_count: ${{ steps.parse.outputs.failed }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -145,17 +161,35 @@ jobs:
 
       - name: Run test suite
         id: test
-        run: pnpm test:all 2>&1 | tee test-output.txt || true
+        continue-on-error: true
+        run: pnpm test:all 2>&1 | tee test-output.txt
 
       - name: Parse test results
         id: parse
         if: always()
         run: |
-          # Extract pass/fail counts from turbo output
-          PASSED=$(grep -cE "✓|passed|success" test-output.txt 2>/dev/null) || PASSED=0
-          FAILED=$(grep -cE "✗|failed|FAIL" test-output.txt 2>/dev/null) || FAILED=0
-          echo "passed=$PASSED" >> $GITHUB_OUTPUT
-          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          if [ -f test-output.txt ] && [ -s test-output.txt ]; then
+            # Sum vitest/jest "Tests X passed|failed" lines across packages
+            PASSED=$(grep -oP 'Tests\s+\K\d+(?=\s+passed)' test-output.txt 2>/dev/null | awk '{s+=$1} END {print s+0}')
+            FAILED=$(grep -oP 'Tests\s+\K\d+(?=\s+failed)' test-output.txt 2>/dev/null | awk '{s+=$1} END {print s+0}')
+            # Fallback: count turbo task outcomes if no vitest/jest summary found
+            if [ "${PASSED:-0}" = "0" ] && [ "${FAILED:-0}" = "0" ]; then
+              PASSED=$(grep -oP 'Tasks:\s+\K\d+(?=\s+successful)' test-output.txt 2>/dev/null) || PASSED=0
+              FAILED=$(grep -cP '\bFAIL\b' test-output.txt 2>/dev/null) || FAILED=0
+            fi
+          else
+            PASSED=0
+            FAILED=0
+          fi
+          echo "passed=${PASSED:-0}" >> $GITHUB_OUTPUT
+          echo "failed=${FAILED:-0}" >> $GITHUB_OUTPUT
+
+      - name: Annotate test issues
+        if: always() && steps.test.outcome == 'failure'
+        run: |
+          PASSED="${{ steps.parse.outputs.passed }}"
+          FAILED="${{ steps.parse.outputs.failed }}"
+          echo "::error::Tests: $PASSED passed, $FAILED failed. See test-log artifact for details."
 
       - name: Upload test log
         if: always()
@@ -265,13 +299,17 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            // Build uses job result directly (no continue-on-error on the job)
             const buildResult = '${{ needs.build.result }}';
-            const lintResult = '${{ needs.lint.result }}';
-            const testResult = '${{ needs.test.result }}';
-            const dryRunResult = '${{ needs.dry-run-workers.result }}';
+            // Lint, test, dry-run use outputs.result (job-level continue-on-error masks actual result)
+            const lintResult = '${{ needs.lint.outputs.result }}' || '${{ needs.lint.result }}';
+            const testResult = '${{ needs.test.outputs.result }}' || '${{ needs.test.result }}';
+            const dryRunResult = '${{ needs.dry-run-workers.outputs.result }}' || '${{ needs.dry-run-workers.result }}';
             const dryRunDetails = '${{ needs.dry-run-workers.outputs.details }}' || '';
             const lintErrors = '${{ needs.lint.outputs.error_count }}' || '0';
             const lintWarnings = '${{ needs.lint.outputs.warning_count }}' || '0';
+            const testPassed = '${{ needs.test.outputs.passed_count }}' || '0';
+            const testFailed = '${{ needs.test.outputs.failed_count }}' || '0';
 
             // Status emoji helper
             const s = (r) => r === 'success' ? '✅' : r === 'failure' ? '❌' : r === 'skipped' ? '⏭️' : '⚠️';
@@ -298,7 +336,7 @@ jobs:
             body += `|-------|--------|----------|\n`;
             body += `| Build | ${s(buildResult)} ${buildResult} | Full monorepo build |\n`;
             body += `| Lint | ${s(lintResult)} ${lintResult} | ${lintErrors} errors, ${lintWarnings} warnings |\n`;
-            body += `| Tests | ${s(testResult)} ${testResult} | Non-blocking |\n`;
+            body += `| Tests | ${s(testResult)} ${testResult} | ${testPassed} passed, ${testFailed} failed |\n`;
             body += `| CF Workers Dry Run | ${s(dryRunResult)} ${dryRunResult} | Non-blocking |\n`;
             body += `\n`;
 
@@ -334,19 +372,19 @@ jobs:
               const prevTests = extract('Tests');
               const prevDryRun = extract('CF Workers Dry Run');
 
-              const delta = (label, prev, curr) => {
-                if (prev === curr) return `${label}: no change (${curr})`;
-                if (prev === 'failure' && curr === 'success') return `${label}: ❌ → ✅ improved!`;
-                if (prev === 'success' && curr === 'failure') return `${label}: ✅ → ❌ regressed`;
-                return `${label}: ${prev} → ${curr}`;
+              const delta = (prev, curr) => {
+                if (prev === curr) return `no change (${curr})`;
+                if (prev === 'failure' && curr === 'success') return `❌ → ✅ improved!`;
+                if (prev === 'success' && curr === 'failure') return `✅ → ❌ regressed`;
+                return `${prev} → ${curr}`;
               };
 
               body += `### Comparison with Previous Run\n\n`;
               body += `| Check | Change |\n|-------|--------|\n`;
-              body += `| ${delta('Build', prevBuild, buildResult)} |\n`;
-              body += `| ${delta('Lint', prevLint, lintResult)} |\n`;
-              body += `| ${delta('Tests', prevTests, testResult)} |\n`;
-              body += `| ${delta('CF Dry Run', prevDryRun, dryRunResult)} |\n`;
+              body += `| Build | ${delta(prevBuild, buildResult)} |\n`;
+              body += `| Lint | ${delta(prevLint, lintResult)} |\n`;
+              body += `| Tests | ${delta(prevTests, testResult)} |\n`;
+              body += `| CF Dry Run | ${delta(prevDryRun, dryRunResult)} |\n`;
               body += `\n`;
             }
 
