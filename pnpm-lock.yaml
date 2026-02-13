@@ -225,6 +225,9 @@ importers:
       '@strixun/otp-login':
         specifier: workspace:*
         version: link:../../packages/otp-login
+      '@strixun/shared-components':
+        specifier: workspace:*
+        version: link:../../packages/shared-components
       react:
         specifier: ^19.0.0
         version: 19.2.3
@@ -5408,7 +5411,6 @@ packages:
   eslint@8.4.1:
     resolution: {integrity: sha512-TxU/p7LB1KxQ6+7aztTnO7K0i+h0tDi81YRY9VzB6Id71kNz+fFYnf5HD5UOQmxkzcoa0TlVZf9dpMtUv0GpWg==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
-    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
 
   eslint@9.39.2:
