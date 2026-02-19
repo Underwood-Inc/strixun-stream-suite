@@ -171,8 +171,7 @@ function requestToAPIRequest(request: Request): APIRequest {
 }
 
 /**
- * Extract customer from request using verified authentication.
- * Tries RS256 (OIDC/JWKS) first, falls back to HS256 (legacy).
+ * Extract customer from request using RS256 OIDC verification.
  */
 async function extractCustomerFromRequest(
   request: Request,
@@ -180,8 +179,7 @@ async function extractCustomerFromRequest(
 ): Promise<{ id: string; customerId: string } | null> {
   try {
     const { extractAuth } = await import('../../../route-protection.js');
-    const { verifyJWT } = await import('../../../jwt.js');
-    const auth = await extractAuth(request, env, verifyJWT);
+    const auth = await extractAuth(request, env);
     if (!auth?.customerId) return null;
     return {
       id: auth.customerId,

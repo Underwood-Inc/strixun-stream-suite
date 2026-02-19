@@ -1,33 +1,25 @@
 /**
  * Authentication Handlers
  * 
- * OTP authentication endpoints for Twitch API worker
- * Note: These are legacy endpoints - new auth should use OTP Auth Service
+ * OTP authentication endpoints for Twitch API worker.
+ * Token creation is delegated to otp-auth-service (RS256 OIDC issuer).
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
-import { getJWTSecret, hashEmail, verifyJWT } from '../utils/auth.js';
+import { hashEmail, authenticateRequest } from '../utils/auth.js';
 
 /**
  * Generate secure 9-digit OTP (cryptographically secure, no modulo bias)
- * @returns {string} 9-digit OTP code
  */
 function generateOTP() {
-    // Use 2 Uint32 values to get 64 bits, eliminating modulo bias
     const array = new Uint32Array(2);
     crypto.getRandomValues(array);
-    // Combine two 32-bit values for 64-bit range (0 to 2^64-1)
-    // Then modulo 1,000,000,000 for 9-digit code
-    // This eliminates modulo bias since 2^64 is much larger than 1,000,000,000
     const value = (Number(array[0]) * 0x100000000 + Number(array[1])) % 1000000000;
     return value.toString().padStart(9, '0');
 }
 
 /**
  * Check rate limit for OTP requests
- * @param {string} emailHash - Hashed email
- * @param {*} env - Worker environment
- * @returns {Promise<{limited: boolean, resetAt?: number, attempts: number, remaining: number}>}
  */
 async function checkOTPRateLimit(emailHash, env) {
     try {
@@ -39,7 +31,6 @@ async function checkOTPRateLimit(emailHash, env) {
             try {
                 rateLimit = JSON.parse(rateLimitData);
             } catch (e) {
-                // Invalid data, reset
                 rateLimit = null;
             }
         }
@@ -49,58 +40,31 @@ async function checkOTPRateLimit(emailHash, env) {
         const MAX_ATTEMPTS = 5;
         
         if (rateLimit) {
-            // Check if window has expired
             if (now - rateLimit.firstAttempt > RATE_LIMIT_WINDOW) {
-                // Reset rate limit
-                rateLimit = {
-                    attempts: 0,
-                    firstAttempt: now,
-                    lastAttempt: now
-                };
+                rateLimit = { attempts: 0, firstAttempt: now, lastAttempt: now };
             } else if (rateLimit.attempts >= MAX_ATTEMPTS) {
-                // Rate limited
                 const resetAt = rateLimit.firstAttempt + RATE_LIMIT_WINDOW;
-                return {
-                    limited: true,
-                    resetAt: resetAt,
-                    attempts: rateLimit.attempts
-                };
+                return { limited: true, resetAt, attempts: rateLimit.attempts };
             }
         } else {
-            // Initialize rate limit
-            rateLimit = {
-                attempts: 0,
-                firstAttempt: now,
-                lastAttempt: now
-            };
+            rateLimit = { attempts: 0, firstAttempt: now, lastAttempt: now };
         }
         
-        // Increment attempts
         rateLimit.attempts++;
         rateLimit.lastAttempt = now;
         
-        // Store updated rate limit
         await env.TWITCH_CACHE.put(rateLimitKey, JSON.stringify(rateLimit), {
             expirationTtl: Math.ceil(RATE_LIMIT_WINDOW / 1000)
         });
         
-        return {
-            limited: false,
-            attempts: rateLimit.attempts,
-            remaining: MAX_ATTEMPTS - rateLimit.attempts
-        };
+        return { limited: false, attempts: rateLimit.attempts, remaining: MAX_ATTEMPTS - rateLimit.attempts };
     } catch (error) {
-        // On error, allow the request (fail open)
         return { limited: false, attempts: 0, remaining: 5 };
     }
 }
 
 /**
  * Send OTP email via Resend
- * @param {string} email - Recipient email
- * @param {string} otp - OTP code
- * @param {*} env - Worker environment
- * @returns {Promise<boolean>} Success status
  */
 async function sendOTPEmail(email, otp, env) {
     try {
@@ -147,42 +111,7 @@ async function sendOTPEmail(email, otp, env) {
 }
 
 /**
- * Create JWT token
- * @param {object} payload - Token payload
- * @param {string} secret - Secret key for signing
- * @returns {Promise<string>} JWT token
- */
-async function createJWT(payload, secret) {
-    const header = {
-        alg: 'HS256',
-        typ: 'JWT'
-    };
-    
-    const encoder = new TextEncoder();
-    const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-    const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-    
-    const signatureInput = `${headerB64}.${payloadB64}`;
-    const keyData = encoder.encode(secret);
-    const key = await crypto.subtle.importKey(
-        'raw',
-        keyData,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-    );
-    
-    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(signatureInput));
-    const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-        .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-    
-    return `${signatureInput}.${signatureB64}`;
-}
-
-/**
  * Generate user ID from email
- * @param {string} email - Email address
- * @returns {Promise<string>} User ID
  */
 async function generateUserId(email) {
     const hash = await hashEmail(email);
@@ -190,9 +119,29 @@ async function generateUserId(email) {
 }
 
 /**
+ * Request a RS256 token from the OIDC issuer (otp-auth-service)
+ * via the service-to-service endpoint.
+ */
+async function requestOIDCToken(customerId, env) {
+    const authServiceUrl = env.AUTH_SERVICE_URL || env.OTP_AUTH_URL || 'http://localhost:8787';
+    const res = await fetch(`${authServiceUrl}/auth/service/issue-token`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Service-Key': env.SERVICE_API_KEY || '',
+        },
+        body: JSON.stringify({ customerId }),
+    });
+    if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(`OIDC token issuance failed (${res.status}): ${errBody}`);
+    }
+    return await res.json();
+}
+
+/**
  * Handle OTP request endpoint
  * POST /auth/request-otp
- * Body: { email: string }
  */
 export async function handleRequestOTP(request, env) {
     try {
@@ -213,9 +162,7 @@ export async function handleRequestOTP(request, env) {
             const resetAt = new Date(rateLimitCheck.resetAt);
             const locale = request.headers.get('Accept-Language') || 'en-US';
             const resetAtFormatted = resetAt.toLocaleString(locale, {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
+                hour: 'numeric', minute: '2-digit', hour12: true
             });
             
             return new Response(JSON.stringify({
@@ -235,19 +182,13 @@ export async function handleRequestOTP(request, env) {
             });
         }
         
-        // Generate OTP
         const otp = generateOTP();
         
-        // Store OTP in KV (10 minute expiration)
         const otpKey = `otp_${emailHash}`;
         await env.TWITCH_CACHE.put(otpKey, JSON.stringify({
-            otp,
-            email,
-            createdAt: Date.now(),
-            attempts: 0
+            otp, email, createdAt: Date.now(), attempts: 0
         }), { expirationTtl: 600 });
         
-        // Send OTP email
         const emailSent = await sendOTPEmail(email, otp, env);
         
         if (!emailSent) {
@@ -258,9 +199,7 @@ export async function handleRequestOTP(request, env) {
         }
         
         return new Response(JSON.stringify({ 
-            success: true, 
-            message: 'OTP sent to email',
-            remaining: rateLimitCheck.remaining
+            success: true, message: 'OTP sent to email', remaining: rateLimitCheck.remaining
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
@@ -275,14 +214,13 @@ export async function handleRequestOTP(request, env) {
 /**
  * Handle OTP verification endpoint
  * POST /auth/verify-otp
- * Body: { email: string, otp: string }
+ * Delegates token creation to otp-auth-service (RS256 OIDC issuer).
  */
 export async function handleVerifyOTP(request, env) {
     try {
         const body = await request.json();
         const { email, otp } = body;
         
-        // Validate input
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             return new Response(JSON.stringify({ error: 'Valid email address required' }), {
                 status: 400,
@@ -300,7 +238,6 @@ export async function handleVerifyOTP(request, env) {
         const emailHash = await hashEmail(email);
         const emailLower = email.toLowerCase().trim();
         
-        // Get latest OTP key
         const latestOtpKey = await env.TWITCH_CACHE.get(`otp_latest_${emailHash}`);
         if (!latestOtpKey) {
             return new Response(JSON.stringify({ error: 'OTP not found or expired' }), {
@@ -309,7 +246,6 @@ export async function handleVerifyOTP(request, env) {
             });
         }
         
-        // Get OTP data
         const otpDataStr = await env.TWITCH_CACHE.get(latestOtpKey);
         if (!otpDataStr) {
             return new Response(JSON.stringify({ error: 'OTP not found or expired' }), {
@@ -320,7 +256,6 @@ export async function handleVerifyOTP(request, env) {
         
         const otpData = JSON.parse(otpDataStr);
         
-        // Verify email matches
         if (otpData.email !== emailLower) {
             return new Response(JSON.stringify({ error: 'Invalid OTP' }), {
                 status: 401,
@@ -328,7 +263,6 @@ export async function handleVerifyOTP(request, env) {
             });
         }
         
-        // Check expiration
         if (new Date(otpData.expiresAt) < new Date()) {
             await env.TWITCH_CACHE.delete(latestOtpKey);
             await env.TWITCH_CACHE.delete(`otp_latest_${emailHash}`);
@@ -338,7 +272,6 @@ export async function handleVerifyOTP(request, env) {
             });
         }
         
-        // Check attempts
         if (otpData.attempts >= 5) {
             await env.TWITCH_CACHE.delete(latestOtpKey);
             await env.TWITCH_CACHE.delete(`otp_latest_${emailHash}`);
@@ -348,11 +281,9 @@ export async function handleVerifyOTP(request, env) {
             });
         }
         
-        // Verify OTP using constant-time comparison to prevent timing attacks
         const expectedOtp = String(otpData.otp).padStart(9, '0');
         const providedOtp = String(otp).padStart(9, '0');
         
-        // Constant-time string comparison
         let isValid = expectedOtp.length === providedOtp.length;
         for (let i = 0; i < expectedOtp.length; i++) {
             isValid = isValid && (expectedOtp.charCodeAt(i) === providedOtp.charCodeAt(i));
@@ -362,79 +293,57 @@ export async function handleVerifyOTP(request, env) {
             otpData.attempts++;
             await env.TWITCH_CACHE.put(latestOtpKey, JSON.stringify(otpData), { expirationTtl: 600 });
             return new Response(JSON.stringify({ 
-                error: 'Invalid OTP',
-                remainingAttempts: 5 - otpData.attempts
+                error: 'Invalid OTP', remainingAttempts: 5 - otpData.attempts
             }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        // OTP is valid! Delete it (single-use)
         await env.TWITCH_CACHE.delete(latestOtpKey);
         await env.TWITCH_CACHE.delete(`otp_latest_${emailHash}`);
         
-        // Get or create user
         const userId = await generateUserId(emailLower);
         const userKey = `user_${emailHash}`;
         let user = await env.TWITCH_CACHE.get(userKey, { type: 'json' });
         
         if (!user) {
-            // Create new user
             user = {
                 userId,
                 email: emailLower,
                 createdAt: new Date().toISOString(),
                 lastLogin: new Date().toISOString(),
             };
-            await env.TWITCH_CACHE.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 }); // 1 year
+            await env.TWITCH_CACHE.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
         } else {
-            // Update last login
             user.lastLogin = new Date().toISOString();
             await env.TWITCH_CACHE.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
         }
         
-        // Generate CSRF token for this session
-        const csrfToken = crypto.randomUUID ? crypto.randomUUID() : 
-            Array.from(crypto.getRandomValues(new Uint8Array(16)))
-                .map(b => b.toString(16).padStart(2, '0')).join('');
+        // Delegate token creation to otp-auth-service (RS256 OIDC issuer)
+        const customerId = user.customerId || userId;
+        const oidcResult = await requestOIDCToken(customerId, env);
         
-        // Generate JWT token (7 hours expiration for security)
-        const expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000); // 7 hours
-        const tokenPayload = {
-            userId,
-            email: emailLower,
-            csrf: csrfToken,
-            exp: Math.floor(expiresAt.getTime() / 1000),
-            iat: Math.floor(Date.now() / 1000),
-        };
-        
-        const jwtSecret = getJWTSecret(env);
-        const token = await createJWT(tokenPayload, jwtSecret);
-        
-        // Store session
-        const sessionKey = `session_${userId}`;
+        // Store session keyed by customerId
+        const sessionKey = `session_${customerId}`;
         await env.TWITCH_CACHE.put(sessionKey, JSON.stringify({
-            userId,
-            email: emailLower,
-            token: await hashEmail(token),
-            expiresAt: expiresAt.toISOString(),
+            userId: customerId,
+            tokenHash: await hashEmail(oidcResult.token),
+            expiresAt: new Date(Date.now() + oidcResult.expires_in * 1000).toISOString(),
             createdAt: new Date().toISOString(),
-        }), { expirationTtl: 25200 }); // 7 hours
+        }), { expirationTtl: oidcResult.expires_in });
         
         return new Response(JSON.stringify({ 
             success: true,
-            token,
-            userId,
-            email: emailLower,
-            expiresAt: expiresAt.toISOString(),
+            token: oidcResult.token,
+            userId: customerId,
+            expiresAt: new Date(Date.now() + oidcResult.expires_in * 1000).toISOString(),
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
-            error: 'Failed to verify OTP',
-            message: error.message 
+            error: 'Failed to verify OTP', message: error.message 
         }), {
             status: 500,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -445,53 +354,29 @@ export async function handleVerifyOTP(request, env) {
 /**
  * Get current user endpoint
  * GET /auth/me
+ * Uses RS256 OIDC verification via extractAuth.
  */
 export async function handleGetMe(request, env) {
     try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return new Response(JSON.stringify({ error: 'Authorization header required' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
+        const auth = await authenticateRequest(request, env);
         
-        const token = authHeader.substring(7);
-        const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-        
-        if (!payload) {
+        if (!auth) {
             return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        // Get user data
-        const emailHash = await hashEmail(payload.email);
-        const userKey = `user_${emailHash}`;
-        const user = await env.TWITCH_CACHE.get(userKey, { type: 'json' });
-        
-        if (!user) {
-            return new Response(JSON.stringify({ error: 'User not found' }), {
-                status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-        
         return new Response(JSON.stringify({ 
             success: true,
-            userId: user.userId,
-            email: user.email,
-            createdAt: user.createdAt,
-            lastLogin: user.lastLogin,
+            userId: auth.customerId,
+            customerId: auth.customerId,
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
-            error: 'Failed to get user info',
-            message: error.message 
+            error: 'Failed to get user info', message: error.message 
         }), {
             status: 500,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -505,19 +390,9 @@ export async function handleGetMe(request, env) {
  */
 export async function handleLogout(request, env) {
     try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return new Response(JSON.stringify({ error: 'Authorization header required' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
+        const auth = await authenticateRequest(request, env);
         
-        const token = authHeader.substring(7);
-        const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-        
-        if (!payload) {
+        if (!auth) {
             return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -525,27 +400,24 @@ export async function handleLogout(request, env) {
         }
         
         // Add token to blacklist
-        const tokenHash = await hashEmail(token);
+        const tokenHash = await hashEmail(auth.jwtToken);
         const blacklistKey = `blacklist_${tokenHash}`;
         await env.TWITCH_CACHE.put(blacklistKey, JSON.stringify({
             token: tokenHash,
             revokedAt: new Date().toISOString(),
-        }), { expirationTtl: 25200 }); // 7 hours
+        }), { expirationTtl: 25200 });
         
-        // Delete session
-        const sessionKey = `session_${payload.userId}`;
+        const sessionKey = `session_${auth.customerId}`;
         await env.TWITCH_CACHE.delete(sessionKey);
         
         return new Response(JSON.stringify({ 
-            success: true,
-            message: 'Logged out successfully'
+            success: true, message: 'Logged out successfully'
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
-            error: 'Failed to logout',
-            message: error.message 
+            error: 'Failed to logout', message: error.message 
         }), {
             status: 500,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -556,23 +428,13 @@ export async function handleLogout(request, env) {
 /**
  * Refresh token endpoint
  * POST /auth/refresh
+ * Delegates token creation to otp-auth-service (RS256 OIDC issuer).
  */
 export async function handleRefresh(request, env) {
     try {
-        const body = await request.json();
-        const { token } = body;
+        const auth = await authenticateRequest(request, env);
         
-        if (!token) {
-            return new Response(JSON.stringify({ error: 'Token required' }), {
-                status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-        
-        const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-        
-        if (!payload) {
+        if (!auth) {
             return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -580,7 +442,7 @@ export async function handleRefresh(request, env) {
         }
         
         // Check if token is blacklisted
-        const tokenHash = await hashEmail(token);
+        const tokenHash = await hashEmail(auth.jwtToken);
         const blacklistKey = `blacklist_${tokenHash}`;
         const blacklisted = await env.TWITCH_CACHE.get(blacklistKey);
         if (blacklisted) {
@@ -590,48 +452,30 @@ export async function handleRefresh(request, env) {
             });
         }
         
-        // Generate new CSRF token for refreshed session
-        const newCsrfToken = crypto.randomUUID ? crypto.randomUUID() : 
-            Array.from(crypto.getRandomValues(new Uint8Array(16)))
-                .map(b => b.toString(16).padStart(2, '0')).join('');
+        // Delegate new token creation to OIDC issuer
+        const oidcResult = await requestOIDCToken(auth.customerId, env);
         
-        // Generate new token (7 hours expiration)
-        const expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000); // 7 hours
-        const newTokenPayload = {
-            userId: payload.userId,
-            email: payload.email,
-            csrf: newCsrfToken,
-            exp: Math.floor(expiresAt.getTime() / 1000),
-            iat: Math.floor(Date.now() / 1000),
-        };
-        
-        const newToken = await createJWT(newTokenPayload, jwtSecret);
-        
-        // Update session
-        const sessionKey = `session_${payload.userId}`;
+        const sessionKey = `session_${auth.customerId}`;
         await env.TWITCH_CACHE.put(sessionKey, JSON.stringify({
-            userId: payload.userId,
-            email: payload.email,
-            token: await hashEmail(newToken),
-            expiresAt: expiresAt.toISOString(),
+            userId: auth.customerId,
+            tokenHash: await hashEmail(oidcResult.token),
+            expiresAt: new Date(Date.now() + oidcResult.expires_in * 1000).toISOString(),
             createdAt: new Date().toISOString(),
-        }), { expirationTtl: 25200 }); // 7 hours
+        }), { expirationTtl: oidcResult.expires_in });
         
         return new Response(JSON.stringify({ 
             success: true,
-            token: newToken,
-            expiresAt: expiresAt.toISOString(),
+            token: oidcResult.token,
+            expiresAt: new Date(Date.now() + oidcResult.expires_in * 1000).toISOString(),
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
-            error: 'Failed to refresh token',
-            message: error.message 
+            error: 'Failed to refresh token', message: error.message 
         }), {
             status: 500,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
-

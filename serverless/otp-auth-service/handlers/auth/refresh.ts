@@ -90,7 +90,8 @@ function resolveCookieDomains(env: Env, _request: Request): string[] {
 
 export async function handleRefresh(request: Request, env: Env): Promise<Response> {
     try {
-        // 1. Extract refresh_token from cookie
+        // 1. Extract refresh_token from cookie first, then fall back to request body.
+        //    Body fallback is necessary for file:// test pages that cannot store cookies.
         const cookieHeader = request.headers.get('Cookie');
         let rawToken: string | null = null;
 
@@ -98,6 +99,13 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
             const cookies = cookieHeader.split(';').map(c => c.trim());
             const rt = cookies.find(c => c.startsWith('refresh_token='));
             if (rt) rawToken = rt.substring('refresh_token='.length).trim();
+        }
+
+        if (!rawToken) {
+            try {
+                const body = await request.clone().json() as { refresh_token?: string };
+                if (body?.refresh_token) rawToken = body.refresh_token;
+            } catch { /* no body or not JSON -- fine */ }
         }
 
         if (!rawToken) {

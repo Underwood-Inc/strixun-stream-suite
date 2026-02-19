@@ -86,13 +86,9 @@ export function authenticateSuperAdmin(request: Request, env: Env): boolean {
 }
 
 /**
- * Authenticate super-admin request via JWT token (customerId-based)
- * 
- * NEW: Now checks Authorization Service for super-admin role
- * 
- * @param request - HTTP request
- * @param env - Worker environment
- * @returns customerId if authenticated as super-admin, null otherwise
+ * Authenticate super-admin request via JWT token (customerId-based).
+ * Trusts the isSuperAdmin claim in the RS256-verified JWT first,
+ * then falls back to the Access Service for dynamically-assigned roles.
  */
 export async function authenticateSuperAdminJWT(request: Request, env: Env): Promise<string | null> {
     try {
@@ -102,6 +98,10 @@ export async function authenticateSuperAdminJWT(request: Request, env: Env): Pro
 
         const payload = await verifyTokenOIDC(token, env);
         if (!payload || !payload.customerId) return null;
+
+        if (payload.isSuperAdmin === true) {
+            return payload.customerId;
+        }
 
         const isSuper = await isSuperAdmin(payload.customerId, env);
         return isSuper ? payload.customerId : null;

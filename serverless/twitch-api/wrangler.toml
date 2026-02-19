@@ -20,7 +20,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # Production environment
 [env.production]
-vars = { ENVIRONMENT = "production" }
+vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", AUTH_SERVICE_URL = "https://auth.idling.app" }
 
 # Production KV Namespace
 [[env.production.kv_namespaces]]
@@ -34,7 +34,7 @@ zone_name = "idling.app"
 
 # Development environment
 [env.development]
-vars = { ENVIRONMENT = "development", JWT_SECRET = "dev-jwt-secret-do-not-use-in-production-abc123", TWITCH_CLIENT_ID = "dev-twitch-client-id", TWITCH_CLIENT_SECRET = "dev-twitch-client-secret", ALLOWED_ORIGINS = "http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5178,http://localhost:5180,http://localhost:8787,http://localhost:3000" }
+vars = { ENVIRONMENT = "development", JWT_SECRET = "dev-jwt-secret-do-not-use-in-production-abc123", JWT_ISSUER = "http://localhost:8787", AUTH_SERVICE_URL = "http://localhost:8787", SERVICE_API_KEY = "dev-service-api-key-for-local-testing", TWITCH_CLIENT_ID = "dev-twitch-client-id", TWITCH_CLIENT_SECRET = "dev-twitch-client-secret", ALLOWED_ORIGINS = "http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5178,http://localhost:5180,http://localhost:8787,http://localhost:3000" }
 
 # Development KV Namespace (using same namespace for testing)
 [[env.development.kv_namespaces]]

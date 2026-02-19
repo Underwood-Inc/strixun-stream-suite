@@ -4,8 +4,7 @@
  * POST /auth/introspect
  *
  * Allows resource servers (identified by API key = OIDC client) to validate
- * an access token and retrieve its associated metadata. Supports both
- * RS256 (OIDC) and HS256 (legacy) tokens.
+ * an access token and retrieve its associated metadata. RS256 (OIDC) only.
  *
  * Checks the JWT deny-list so revoked tokens correctly return active: false.
  *
@@ -13,13 +12,12 @@
  */
 
 import { getCorsHeadersRecord } from '../../utils/cors.js';
-import { verifyJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
+import { hashEmail } from '../../utils/crypto.js';
 import { getSigningContext, verifyAsymmetricJWT, importPublicKey } from '../../utils/asymmetric-jwt.js';
 import { entityKey } from '@strixun/kv-entities';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
-    JWT_SECRET?: string;
     OIDC_SIGNING_KEY?: string;
     [key: string]: any;
 }
@@ -44,22 +42,14 @@ export async function handleIntrospect(request: Request, env: Env): Promise<Resp
         return inactiveResponse(env, request);
     }
 
-    // Verify the token (RS256 first, HS256 fallback)
+    // Verify the token via RS256 (OIDC)
     let payload: Record<string, unknown> | null = null;
     try {
         const ctx = await getSigningContext(env);
         const pubKey = await importPublicKey(ctx.publicJwk);
         payload = await verifyAsymmetricJWT(token, pubKey);
     } catch {
-        // OIDC_SIGNING_KEY not configured
-    }
-    if (!payload) {
-        try {
-            const secret = getJWTSecret(env);
-            payload = await verifyJWT(token, secret) as Record<string, unknown> | null;
-        } catch {
-            // JWT_SECRET not configured
-        }
+        // RS256 verification failed
     }
 
     if (!payload) {

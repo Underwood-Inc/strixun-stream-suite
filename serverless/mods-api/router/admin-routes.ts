@@ -9,7 +9,6 @@
 import { wrapWithEncryption } from '@strixun/api-framework';
 import { getCorsHeaders } from '../utils/cors.js';
 import { protectAdminRoute, type RouteProtectionEnv } from '@strixun/api-framework';
-import { verifyJWT } from '../utils/auth.js';
 import { createError } from '../utils/errors.js';
 
 /**
@@ -24,8 +23,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         const protection = await protectAdminRoute(
             request,
             env,
-            'admin', // All mods-api admin routes require admin or super-admin role
-            verifyJWT
+            'admin',
         );
 
         // If not allowed, return error immediately (prevents any data download)

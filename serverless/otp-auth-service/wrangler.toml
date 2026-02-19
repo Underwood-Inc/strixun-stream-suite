@@ -11,7 +11,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # Environment variables (secrets should be set via wrangler secret put)
 # DO NOT put actual secrets here - use wrangler CLI:
-#   wrangler secret put JWT_SECRET          # REQUIRED: JWT signing secret (use: openssl rand -hex 32)
+#   wrangler secret put JWT_SECRET          # REQUIRED: Used for AES encryption of API keys at rest (NOT for JWT signing)
 #   wrangler secret put RESEND_API_KEY       # REQUIRED: Resend API key from https://resend.com/api-keys
 #   wrangler secret put RESEND_FROM_EMAIL    # REQUIRED: Verified email address (e.g., noreply@yourdomain.com)
 #   wrangler secret put ALLOWED_ORIGINS      # OPTIONAL: Comma-separated CORS origins (recommended for production)

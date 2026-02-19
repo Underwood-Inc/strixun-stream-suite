@@ -59,6 +59,9 @@ export interface AuditLogsResponse {
     end: string;
   };
   total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
   events: AuditLog[];
 }
 

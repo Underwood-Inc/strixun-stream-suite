@@ -13,33 +13,43 @@ import { handleGameLootBox } from '../handlers/game/loot-box.js';
 import { handleGameLoot } from '../handlers/game/loot.js';
 import { handleGameSaveState } from '../handlers/game/save-state.js';
 import { getCorsHeaders, getCorsHeadersRecord } from '../utils/cors.js';
-import { getJWTSecret, verifyJWT } from '../utils/crypto.js';
+import { verifyTokenOIDC } from '../utils/verify-token.js';
 
 /**
- * Authenticate request and extract user info
- * Returns auth object with userId, customerId, and jwtToken for encryption
+ * Authenticate request and extract user info.
+ * RS256 via OIDC only.
  */
 async function authenticateRequest(request, env) {
     try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return null;
+        let token = null;
+
+        const cookieHeader = request.headers.get('Cookie');
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const authCookie = cookies.find(c => c.startsWith('auth_token='));
+            if (authCookie) {
+                token = authCookie.substring('auth_token='.length).trim();
+            }
         }
 
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authHeader.substring(7).trim();
-        const jwtSecret = await getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
+        if (!token) {
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring(7).trim();
+            }
+        }
 
+        if (!token) return null;
+
+        const payload = await verifyTokenOIDC(token, env);
         if (!payload || !payload.sub) {
             return null;
         }
 
         return {
             userId: payload.sub,
-            email: payload.email,
-            customerId: payload.customerId || null,
-            jwtToken: token // Include JWT token for encryption
+            customerId: payload.customerId || payload.sub,
+            jwtToken: token,
         };
     } catch (error) {
         console.error('Authentication error:', error);

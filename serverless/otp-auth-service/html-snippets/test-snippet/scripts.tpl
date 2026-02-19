@@ -9,6 +9,7 @@ const API_KEY = '{{API_KEY}}';
 const BASE_URL = '{{BASE_URL}}';
 let authToken = null;
 let idToken = null;
+let refreshToken = null;
 
 // Toggle security documentation
 function toggleSecurityDocs() {
@@ -148,6 +149,7 @@ async function verifyOTP() {
         if (response.ok) {
             authToken = data.access_token || data.token;
             idToken = data.id_token || null;
+            refreshToken = data.refresh_token || null;
             document.getElementById('step2').classList.add('completed');
             document.getElementById('refreshBtn').disabled = false;
             document.getElementById('getMeBtn').disabled = false;
@@ -185,10 +187,14 @@ async function refreshTokens() {
     btn.textContent = 'Refreshing...';
     
     try {
+        // file:// pages cannot store HttpOnly cookies, so we pass the
+        // refresh_token in the request body as a fallback.
+        const body = refreshToken ? JSON.stringify({ refresh_token: refreshToken }) : undefined;
         const response = await fetch(BASE_URL + '/auth/refresh', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include'
+            credentials: 'include',
+            body
         });
         const data = await response.json();
         
@@ -199,6 +205,7 @@ async function refreshTokens() {
         if (response.ok) {
             authToken = data.access_token || data.token;
             idToken = data.id_token || null;
+            refreshToken = data.refresh_token || refreshToken;
             document.getElementById('step3').classList.add('completed');
 
             // Update OIDC token card with refreshed tokens

@@ -182,7 +182,11 @@ export function getCorsHeaders(
         allowedOrigins.includes('*') || 
         (requestOrigin && allowedOrigins.includes(requestOrigin));
     
-    if (!originAllowed && requestOrigin) {
+    // Suppress the warning for 'null' origins in dev -- file:// test pages always
+    // send Origin: null and the downstream createCORSHeaders already handles it.
+    const isDevNullOrigin = requestOrigin === 'null' && env.ENVIRONMENT !== 'production';
+
+    if (!originAllowed && requestOrigin && !isDevNullOrigin) {
         console.warn('[CORS] Origin not in allowed list:', {
             requestOrigin,
             allowedOriginsCount: allowedOrigins.length,

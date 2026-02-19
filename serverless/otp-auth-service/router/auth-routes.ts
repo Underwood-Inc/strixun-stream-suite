@@ -13,6 +13,7 @@ import * as authHandlers from '../handlers/auth.js';
 import { handleRequestOTP } from '../handlers/auth/request-otp.js';
 import { handleVerifyOTP } from '../handlers/auth/verify-otp.js';
 import { handleRefresh } from '../handlers/auth/refresh.js';
+import { handleServiceIssueToken } from '../handlers/auth/service-issue.js';
 // CRITICAL: user-lookup removed - we ONLY use customerId, NO userId
 // CRITICAL: wrapWithEncryption removed - main router handles ALL encryption (avoids double-encryption)
 
@@ -122,7 +123,7 @@ async function authenticateJWT(
     }
     
     try {
-        // Try RS256 first (OIDC), then fall back to HS256 (legacy)
+        // Verify via RS256 (OIDC)
         let payload: any = null;
         try {
             const { getSigningContext, verifyAsymmetricJWT, importPublicKey } = await import('../utils/asymmetric-jwt.js');
@@ -133,16 +134,8 @@ async function authenticateJWT(
                 payload = rs256Result;
                 console.log('[AuthRoutes] authenticateJWT - Token verified via RS256');
             }
-        } catch {
-            // OIDC_SIGNING_KEY not set — RS256 not available
-        }
-        if (!payload) {
-            const { verifyJWT, getJWTSecret } = await import('../utils/crypto.js');
-            const jwtSecret = getJWTSecret(env);
-            payload = await verifyJWT(token, jwtSecret);
-            if (payload) {
-                console.log('[AuthRoutes] authenticateJWT - Token verified via HS256 (legacy)');
-            }
+        } catch (err) {
+            console.error('[AuthRoutes] RS256 verification error:', err);
         }
         
         if (!payload || !payload.customerId) {
@@ -568,6 +561,10 @@ export async function handleAuthRoutes(
         });
 
         return { response: responseWithCors, customerId };
+    }
+    if (path === '/auth/service/issue-token' && request.method === 'POST') {
+        const handlerResponse = await handleServiceIssueToken(request, env);
+        return { response: handlerResponse, customerId: null };
     }
     if (path === '/auth/logout' && request.method === 'POST') {
         const handlerResponse = await authHandlers.handleLogout(request, env);

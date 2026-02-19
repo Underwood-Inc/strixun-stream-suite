@@ -144,8 +144,11 @@ export async function handleDeleteCustomerData(request: Request, env: Env, custo
 }
 
 /**
- * Get audit logs
- * GET /admin/audit-logs
+ * Get audit logs (paginated)
+ * GET /admin/audit-logs?page=1&pageSize=50&startDate=...&endDate=...&eventType=...
+ *
+ * Iterates KV day-buckets in reverse chronological order so the newest
+ * events are fetched first.  Returns only the requested page slice.
  */
 export async function handleGetAuditLogs(request: Request, env: Env, customerId: string): Promise<Response> {
     try {
@@ -153,35 +156,49 @@ export async function handleGetAuditLogs(request: Request, env: Env, customerId:
         const startDate = url.searchParams.get('startDate') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         const endDate = url.searchParams.get('endDate') || new Date().toISOString().split('T')[0];
         const eventType = url.searchParams.get('eventType');
-        
+        const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+        const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize') || '50', 10)));
+
         const events: AuditEvent[] = [];
-        
-        // Iterate through date range
+
+        // Build date list in reverse (newest first) so sorting is cheaper
         const start = new Date(startDate);
         const end = new Date(endDate);
-        
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            const dateStr = d.toISOString().split('T')[0];
+        const dates: string[] = [];
+        for (let d = new Date(end); d >= start; d.setDate(d.getDate() - 1)) {
+            dates.push(d.toISOString().split('T')[0]);
+        }
+
+        // Fetch day-buckets and collect matching events
+        for (const dateStr of dates) {
             const auditKey = `audit_${customerId}_${dateStr}`;
             const dayAudit = await env.OTP_AUTH_KV.get<DayAudit>(auditKey, { type: 'json' });
-            
-            if (dayAudit && dayAudit.events) {
-                const filteredEvents = eventType 
+
+            if (dayAudit?.events) {
+                const filtered = eventType
                     ? dayAudit.events.filter(e => e.eventType === eventType)
                     : dayAudit.events;
-                
-                events.push(...filteredEvents);
+                events.push(...filtered);
             }
         }
-        
-        // Sort by timestamp (newest first)
+
+        // Stable sort newest-first
         events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        
+
+        const total = events.length;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        const safePage = Math.min(page, totalPages);
+        const offset = (safePage - 1) * pageSize;
+        const pageEvents = events.slice(offset, offset + pageSize);
+
         return new Response(JSON.stringify({
             success: true,
             period: { start: startDate, end: endDate },
-            total: events.length,
-            events: events.slice(0, 1000) // Limit to 1000 most recent
+            total,
+            page: safePage,
+            pageSize,
+            totalPages,
+            events: pageEvents,
         }), {
             headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
         });

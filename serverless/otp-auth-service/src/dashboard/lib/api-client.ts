@@ -182,12 +182,14 @@ export class ApiClient {
 
   async getAuditLogs(
     _customerId: string | null,
-    params: { startDate?: string; endDate?: string; eventType?: string } = {}
+    params: { startDate?: string; endDate?: string; eventType?: string; page?: number; pageSize?: number } = {}
   ): Promise<AuditLogsResponse> {
     const queryParams = new URLSearchParams();
     if (params.startDate) queryParams.set('startDate', params.startDate);
     if (params.endDate) queryParams.set('endDate', params.endDate);
     if (params.eventType) queryParams.set('eventType', params.eventType);
+    if (params.page) queryParams.set('page', String(params.page));
+    if (params.pageSize) queryParams.set('pageSize', String(params.pageSize));
     
     const query = queryParams.toString();
     const response = await this.api.get<AuditLogsResponse>(`/admin/audit-logs${query ? `?${query}` : ''}`);

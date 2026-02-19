@@ -173,14 +173,12 @@ interface Customer {
 }
 
 /**
- * Extract customer from request (JWT token) using verified authentication.
- * Tries RS256 (OIDC/JWKS) first, falls back to HS256 (legacy).
+ * Extract customer from request (JWT token) using RS256 OIDC verification.
  */
 export async function extractCustomerFromRequest(request: Request, env: any): Promise<Customer | null> {
   try {
     const { extractAuth } = await import('./route-protection.js');
-    const { verifyJWT } = await import('./jwt.js');
-    const auth = await extractAuth(request, env, verifyJWT);
+    const auth = await extractAuth(request, env);
     if (!auth?.customerId) return null;
     return {
       id: auth.customerId,

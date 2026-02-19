@@ -2,22 +2,21 @@
  * Authentication utilities for Streamkit API
  * 
  * Provides JWT verification and customer extraction from request.
- * Supports RS256 (OIDC / JWKS) and HS256 (legacy shared secret).
+ * RS256 via JWKS only (OIDC).
  */
 
 import { extractAuth } from '@strixun/api-framework';
-import { verifyJWT } from '@strixun/api-framework/jwt';
 import type { Env } from '../src/env.d.js';
 
 /**
  * Extract and verify customer ID from JWT token in request.
  * Checks HttpOnly cookie (primary) and Authorization header (fallback).
- * Verifies RS256 via JWKS when JWT_ISSUER is configured, with HS256 fallback.
+ * Verifies RS256 via JWKS.
  *
  * @throws Error if authentication fails
  */
 export async function extractCustomerFromJWT(request: Request, env: Env): Promise<string> {
-  const auth = await extractAuth(request, env as any, verifyJWT);
+  const auth = await extractAuth(request, env as any);
 
   if (!auth) {
     throw new Error('Authentication required. Please provide auth_token cookie or Authorization header.');

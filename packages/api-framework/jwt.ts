@@ -83,12 +83,9 @@ export async function createJWT(payload: JWTPayload, secret: string): Promise<st
 }
 
 /**
- * Verify JWT token
- * Handles base64url decoding with proper padding
- * 
- * @param token - JWT token string
- * @param secret - Secret key for verification
- * @returns Decoded payload or null if invalid
+ * @deprecated HS256 verification is no longer used for authentication.
+ * All services verify JWTs via RS256 (OIDC/JWKS) using extractAuth().
+ * Kept only for backward compatibility in test utilities.
  */
 export async function verifyJWT(token: string, secret: string): Promise<JWTPayload | null> {
     try {

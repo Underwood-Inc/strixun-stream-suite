@@ -1,14 +1,13 @@
 /**
- * Unified JWT Verification (OIDC-aware)
+ * Unified JWT Verification (OIDC)
  *
- * Tries RS256 (OIDC) first, falls back to HS256 (legacy).
+ * RS256 only -- verifies via the local OIDC_SIGNING_KEY public key.
  * Every handler that reads `auth_token` should use this instead
  * of calling `verifyJWT` directly.
  *
  * @module utils/verify-token
  */
 
-import { verifyJWT, getJWTSecret } from './crypto.js';
 import {
     getSigningContext,
     verifyAsymmetricJWT,
@@ -16,39 +15,26 @@ import {
 } from './asymmetric-jwt.js';
 
 interface TokenEnv {
-    JWT_SECRET?: string;
     OIDC_SIGNING_KEY?: string;
     [key: string]: any;
 }
 
 /**
- * Verify a JWT token using RS256 (OIDC) first, then HS256 (legacy).
+ * Verify a JWT token using RS256 (OIDC).
  * @returns Decoded payload or null on any failure.
  */
 export async function verifyTokenOIDC(
     token: string,
     env: TokenEnv,
 ): Promise<Record<string, any> | null> {
-    // RS256 (OIDC) attempt
     try {
         const ctx = await getSigningContext(env);
         const pubKey = await importPublicKey(ctx.publicJwk);
         const payload = await verifyAsymmetricJWT(token, pubKey);
-        if (payload) return payload;
+        return payload ?? null;
     } catch {
-        // RS256 unavailable or verification failed -- fall through
+        return null;
     }
-
-    // HS256 (legacy) fallback
-    try {
-        const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-        if (payload) return payload as Record<string, any>;
-    } catch {
-        // HS256 also failed
-    }
-
-    return null;
 }
 
 /**

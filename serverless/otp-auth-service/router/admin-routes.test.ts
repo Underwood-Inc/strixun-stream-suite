@@ -28,6 +28,17 @@ vi.mock('../utils/crypto.js', () => ({
     hashApiKey: vi.fn().mockResolvedValue('hashed-api-key'),
 }));
 
+vi.mock('../utils/verify-token.js', () => ({
+    verifyTokenOIDC: vi.fn(),
+    extractAuthToken: vi.fn().mockImplementation((cookieHeader) => {
+        if (!cookieHeader) return null;
+        const cookies = cookieHeader.split(';').map((c) => c.trim());
+        const authCookie = cookies.find((c) => c.startsWith('auth_token='));
+        if (!authCookie) return null;
+        return authCookie.substring('auth_token='.length).trim();
+    }),
+}));
+
 vi.mock('../services/customer.js', () => ({
     getCustomer: vi.fn(),
     storeCustomer: vi.fn(),
@@ -182,13 +193,12 @@ describe('OTP Auth Service Admin Routes', () => {
 
 
         it('should match GET /admin/analytics route and invoke handler when authenticated', async () => {
-            const { verifyJWT } = await import('../utils/crypto.js');
+            const { verifyTokenOIDC } = await import('../utils/verify-token.js');
             const { handleGetAnalytics } = await import('../handlers/admin.js');
             
-            // Analytics endpoint only requires regular authentication (customer-scoped)
-            vi.mocked(verifyJWT).mockResolvedValue({ 
+            vi.mocked(verifyTokenOIDC).mockResolvedValue({ 
                 customerId: 'cust_123', 
-                email: 'admin@example.com' 
+                sub: 'cust_123',
             } as any);
 
             // Use HttpOnly cookie for authentication (dashboard routes use cookies, not Authorization header)
@@ -212,13 +222,13 @@ describe('OTP Auth Service Admin Routes', () => {
 
         it('should match GET /admin/config route and invoke handler when authenticated', async () => {
             const { requireSuperAdmin } = await import('../utils/super-admin.js');
-            const { verifyJWT } = await import('../utils/crypto.js');
+            const { verifyTokenOIDC } = await import('../utils/verify-token.js');
             const { handleGetConfig } = await import('../handlers/admin.js');
             
             vi.mocked(requireSuperAdmin).mockResolvedValue(null);
-            vi.mocked(verifyJWT).mockResolvedValue({ 
+            vi.mocked(verifyTokenOIDC).mockResolvedValue({ 
                 customerId: 'cust_123', 
-                email: 'admin@example.com' 
+                sub: 'cust_123',
             } as any);
 
             // Use HttpOnly cookie for authentication (dashboard routes use cookies, not Authorization header)
@@ -239,13 +249,13 @@ describe('OTP Auth Service Admin Routes', () => {
 
         it('should match dynamic route /admin/domains/:domain/status and invoke handler when authenticated', async () => {
             const { requireSuperAdmin } = await import('../utils/super-admin.js');
-            const { verifyJWT } = await import('../utils/crypto.js');
+            const { verifyTokenOIDC } = await import('../utils/verify-token.js');
             const { handleGetDomainStatus } = await import('../handlers/domain.js');
             
             vi.mocked(requireSuperAdmin).mockResolvedValue(null);
-            vi.mocked(verifyJWT).mockResolvedValue({ 
+            vi.mocked(verifyTokenOIDC).mockResolvedValue({ 
                 customerId: 'cust_123', 
-                email: 'admin@example.com' 
+                sub: 'cust_123',
             } as any);
 
             // Use HttpOnly cookie for authentication (dashboard routes use cookies, not Authorization header)
@@ -267,13 +277,13 @@ describe('OTP Auth Service Admin Routes', () => {
 
         it('should match dynamic route /admin/customers/:customerId/export and invoke handler when authenticated', async () => {
             const { requireSuperAdmin } = await import('../utils/super-admin.js');
-            const { verifyJWT } = await import('../utils/crypto.js');
+            const { verifyTokenOIDC } = await import('../utils/verify-token.js');
             const { handleExportCustomerData } = await import('../handlers/admin.js');
             
             vi.mocked(requireSuperAdmin).mockResolvedValue(null);
-            vi.mocked(verifyJWT).mockResolvedValue({ 
+            vi.mocked(verifyTokenOIDC).mockResolvedValue({ 
                 customerId: 'cust_123', 
-                email: 'admin@example.com' 
+                sub: 'cust_123',
             } as any);
 
             // Use HttpOnly cookie for authentication (dashboard routes use cookies, not Authorization header)

@@ -6,7 +6,7 @@
 import { entityKey } from '@strixun/kv-entities';
 import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { getAuthCacheHeaders } from '../../utils/cache-headers.js';
-import { createJWT, getJWTSecret, hashEmail, verifyJWT } from '../../utils/crypto.js';
+import { hashEmail } from '../../utils/crypto.js';
 import { getClientIP } from '../../utils/ip.js';
 import { createFingerprintHash } from '@strixun/api-framework';
 import { getCookieDomains } from '../../utils/cookie-domains.js';
@@ -82,7 +82,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
                 headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
-        // Verify token: try RS256 first (OIDC), then fall back to HS256
+        // Verify token via RS256 (OIDC)
         let payload: JWTPayload | null = null;
         try {
             const ctx = await getSigningContext(env);
@@ -92,15 +92,8 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
                 payload = rs256Result as JWTPayload;
                 console.log('[handleGetMe] Token verified via RS256');
             }
-        } catch {
-            // OIDC_SIGNING_KEY not set -- RS256 not available
-        }
-        if (!payload) {
-            const jwtSecret = getJWTSecret(env);
-            payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
-            if (payload) {
-                console.log('[handleGetMe] Token verified via HS256 (legacy)');
-            }
+        } catch (err) {
+            console.error('[handleGetMe] RS256 verification error:', err);
         }
         
         if (!payload) {
@@ -316,7 +309,7 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
                 clearCookieHeaders, env, request,
             );
         }
-        // Verify token: try RS256 first (OIDC), then fall back to HS256
+        // Verify token via RS256 (OIDC)
         let payload: JWTPayload | null = null;
         try {
             const ctx = await getSigningContext(env);
@@ -326,11 +319,7 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
                 payload = rs256Result as JWTPayload;
             }
         } catch {
-            // OIDC_SIGNING_KEY not set — RS256 not available
-        }
-        if (!payload) {
-            const jwtSecret = getJWTSecret(env);
-            payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
+            // RS256 verification failed
         }
 
         if (!payload) {

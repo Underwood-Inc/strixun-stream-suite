@@ -161,9 +161,11 @@ export type {
 } from './upload-limits';
 
 // Re-export JWT utilities (canonical implementation)
+// NOTE: verifyJWT (HS256) is deprecated and no longer exported.
+// All verification uses RS256 via extractAuth / authenticateJWT.
+// createJWT (HS256) kept for test utilities only.
 export {
   createJWT,
-  verifyJWT,
   getJWTSecret,
 } from './jwt';
 

@@ -628,16 +628,10 @@ sequenceDiagram
     FW->>FW: 1. Extract token from<br/>cookie or header
     FW->>FW: 2. Decode JWT header<br/>(check algorithm)
 
-    alt RS256 Token (OIDC)
-        FW->>JWKS: 3a. Fetch public keys<br/>(cached 10 minutes)
-        JWKS->>FW: Return JWK Set
-        FW->>FW: 4a. Find matching key by kid
-        FW->>FW: 5a. Verify RS256 signature
-    else HS256 Token (Legacy)
-        FW->>FW: 3b. Use shared JWT_SECRET
-        FW->>FW: 4b. Verify HS256 signature
-    end
-
+    FW->>JWKS: 3. Fetch public keys<br/>(cached 10 minutes)
+    JWKS->>FW: Return JWK Set
+    FW->>FW: 4. Find matching key by kid
+    FW->>FW: 5. Verify RS256 signature
     FW->>FW: 6. Check expiration
     FW->>API: Return auth result<br/>(customerId, jwtToken)
     API->>App: Respond with data
@@ -646,8 +640,8 @@ sequenceDiagram
 **The verification steps in detail:**
 
 1. **Extract the token:** Look for an `auth_token` cookie first, then fall back to the `Authorization: Bearer <token>` header.
-2. **Decode the header (not the signature):** Read the `alg` (algorithm) and `kid` (key ID) from the token header to determine which verification method to use.
-3. **For RS256 tokens:** Fetch the JWKS from `{JWT_ISSUER}/.well-known/jwks.json`. This response is cached for 10 minutes to avoid hitting the Auth Service on every single request.
+2. **Decode the header:** Read the `alg` (algorithm) and `kid` (key ID) from the token header. Only RS256 tokens are accepted.
+3. **Fetch the JWKS:** Retrieve the public keys from `{JWT_ISSUER}/.well-known/jwks.json`. This response is cached for 10 minutes to avoid hitting the Auth Service on every single request.
 4. **Match the key:** Find the public key in the JWKS whose `kid` matches the token's `kid` header. If no match, use the first key in the set.
 5. **Verify the signature:** Use the Web Crypto API to mathematically confirm the token was signed by the corresponding private key.
 6. **Check expiration:** Ensure the token's `exp` claim is in the future.
@@ -819,10 +813,7 @@ sequenceDiagram
     participant KV as Cloudflare KV
 
     Service->>Auth: POST /auth/introspect<br/>{token: "eyJ..."}
-    Auth->>Auth: 1. Try RS256 verification
-    alt RS256 fails
-        Auth->>Auth: 2. Try HS256 verification
-    end
+    Auth->>Auth: 1. Verify RS256 signature
     alt Token is invalid/expired
         Auth->>Service: {"active": false}
     else Token signature is valid
@@ -935,8 +926,8 @@ Each service in the monorepo requires certain environment variables for OIDC to 
 |----------|------------|-----------|-------------|
 | `OIDC_SIGNING_KEY` | OTP Auth Service only | **REQUIRED** | The RSA private key (JWK format) used for RS256 signing. Without this, the auth service will not issue tokens. |
 | `JWT_ISSUER` | All services | **REQUIRED** | The issuer URL (e.g., `https://auth.idling.app`). Resource servers use this to locate the JWKS endpoint for token verification. |
-| `AUTH_SERVICE_URL` | All services | Optional | Fallback for `JWT_ISSUER`. The base URL of the OTP Auth Service. |
-| `JWT_SECRET` | All services | Optional | Shared secret for HS256 verification. Only needed during migration to verify pre-existing HS256 tokens. |
+| `AUTH_SERVICE_URL` | All services | Optional | Fallback for `JWT_ISSUER`. Also used for service-to-service calls (e.g., `POST /auth/service/issue-token`). |
+| `JWT_SECRET` | OTP Auth Service | **REQUIRED** | Used **only** for AES-GCM encryption of API keys at rest (via `encryptData`/`decryptData`). **Not** used for JWT signing or verification. |
 | `ALLOWED_ORIGINS` | OTP Auth Service | **REQUIRED** (prod) | Comma-separated list of allowed CORS origins. Also used to derive cookie domains for SSO. |
 
 These are configured in each service's `wrangler.toml` (for non-secret values) and via Cloudflare's secret management (for `JWT_SECRET` and `OIDC_SIGNING_KEY`).
