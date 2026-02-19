@@ -37,26 +37,13 @@ interface AuthResult {
  * ONLY checks HttpOnly cookie - NO Authorization header fallback
  */
 async function authenticateRequest(request: Request, env: Env): Promise<AuthResult> {
-    // ONLY check HttpOnly cookie - NO Authorization header fallback
-    const cookieHeader = request.headers.get('Cookie');
-    if (!cookieHeader) {
+    const { extractAuthToken, verifyTokenOIDC } = await import('../../utils/verify-token.js');
+    const token = extractAuthToken(request.headers.get('Cookie'));
+    if (!token) {
         return { authenticated: false, status: 401, error: 'Authentication required. Please authenticate with HttpOnly cookie.' };
     }
 
-    const cookies = cookieHeader.split(';').map(c => c.trim());
-    const authCookie = cookies.find(c => c.startsWith('auth_token='));
-    if (!authCookie) {
-        return { authenticated: false, status: 401, error: 'Authentication required. Please authenticate with HttpOnly cookie.' };
-    }
-
-    // CRITICAL: Trim token to ensure it matches the token used for encryption
-    const token = authCookie.substring('auth_token='.length).trim();
-    
-    // Import JWT utilities from crypto.js
-    const { verifyJWT, getJWTSecret } = await import('../../utils/crypto.js');
-    const jwtSecret = getJWTSecret(env);
-    const payload = await verifyJWT(token, jwtSecret);
-
+    const payload = await verifyTokenOIDC(token, env);
     if (!payload) {
         return { authenticated: false, status: 401, error: 'Invalid or expired token' };
     }

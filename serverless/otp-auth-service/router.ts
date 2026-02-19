@@ -206,22 +206,18 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         
         // Try migration routes (requires super admin authentication)
         if (!response) {
-            // Extract isSuperAdmin from JWT payload if available
             let isSuperAdmin = false;
-            const cookieHeader = request.headers.get('Cookie');
-            if (cookieHeader) {
-                const cookies = cookieHeader.split(';').map(c => c.trim());
-                const authCookie = cookies.find(c => c.startsWith('auth_token='));
-                if (authCookie) {
-                    const token = authCookie.substring('auth_token='.length).trim();
+            const migCookieHeader = request.headers.get('Cookie');
+            if (migCookieHeader) {
+                const { extractAuthToken, verifyTokenOIDC } = await import('./utils/verify-token.js');
+                const token = extractAuthToken(migCookieHeader);
+                if (token) {
                     try {
-                        const { verifyJWT, getJWTSecret } = await import('./utils/crypto.js');
-                        const jwtSecret = getJWTSecret(env);
-                        const payload = await verifyJWT(token, jwtSecret);
+                        const payload = await verifyTokenOIDC(token, env);
                         if (payload && payload.isSuperAdmin === true) {
                             isSuperAdmin = true;
                         }
-                    } catch (error) {
+                    } catch {
                         // JWT verification failed - not super admin
                     }
                 }

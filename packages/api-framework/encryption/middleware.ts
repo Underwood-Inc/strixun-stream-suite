@@ -23,7 +23,6 @@ export interface RouteResult {
 export interface AuthResult {
   customerId: string;
   jwtToken?: string;
-  email?: string;
   [key: string]: any;
 }
 

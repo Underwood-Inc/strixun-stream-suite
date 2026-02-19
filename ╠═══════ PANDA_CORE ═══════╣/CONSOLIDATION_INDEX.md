@@ -239,6 +239,7 @@ All documentation is being consolidated into 12 main categories:
 | File | Location | Status |
 |------|----------|--------|
 | `OIDC_ARCHITECTURE.md` | `02_ARCHITECTURE/OIDC_ARCHITECTURE.md` | ✓ New (2026-02-19) |
+| `SERVICE_INTEGRATION_E2E.md` | `02_ARCHITECTURE/SERVICE_INTEGRATION_E2E.md` | ✓ New (2026-02-19) |
 
 ---
 

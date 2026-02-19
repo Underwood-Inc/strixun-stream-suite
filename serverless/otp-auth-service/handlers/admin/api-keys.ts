@@ -204,43 +204,18 @@ export async function handleCreateApiKey(
         const body = await request.json() as CreateApiKeyBody;
         const name = body.name || 'New API Key';
         
-        // SECURITY: Get JWT token from HttpOnly cookie and verify it
-        const cookieHeader = request.headers.get('Cookie');
-        if (!cookieHeader) {
+        const { extractAuthToken, verifyTokenOIDC } = await import('../../utils/verify-token.js');
+        const jwtToken = extractAuthToken(request.headers.get('Cookie'));
+        if (!jwtToken) {
             return new Response(JSON.stringify({ error: 'Authentication required. Please authenticate with HttpOnly cookie.' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
-        
-        const cookies = cookieHeader.split(';').map(c => c.trim());
-        const authCookie = cookies.find(c => c.startsWith('auth_token='));
-        if (!authCookie) {
-            return new Response(JSON.stringify({ error: 'Authentication required. Please authenticate with HttpOnly cookie.' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-        
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const jwtToken = authCookie.substring('auth_token='.length).trim();
-        
-        // SECURITY: Verify JWT token and extract customerId from it (defense-in-depth)
-        // Router already checks this, but we verify again at handler level for security
-        const { verifyJWT, getJWTSecret } = await import('../../utils/crypto.js');
-        const jwtSecret = getJWTSecret(env);
-        let jwtPayload: any;
-        try {
-            jwtPayload = await verifyJWT(jwtToken, jwtSecret);
-        } catch (error) {
-            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-        
+
+        const jwtPayload = await verifyTokenOIDC(jwtToken, env);
         if (!jwtPayload || !jwtPayload.customerId) {
-            return new Response(JSON.stringify({ error: 'Invalid token: missing customer ID' }), {
+            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });

@@ -6,7 +6,7 @@
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
+import { verifyTokenOIDC, extractAuthToken } from '../../utils/verify-token.js';
 import { hashEmail } from '../../utils/crypto.js';
 import { entityKey } from '@strixun/kv-entities';
 import {
@@ -36,23 +36,12 @@ async function authenticateCustomer(request: Request, env: Env): Promise<{
     email?: string;
     token?: string;
 }> {
-    // ONLY check HttpOnly cookie - NO Authorization header fallback
-    const cookieHeader = request.headers.get('Cookie');
-    if (!cookieHeader) {
+    const token = extractAuthToken(request.headers.get('Cookie'));
+    if (!token) {
         return { authenticated: false, status: 401, error: 'Authentication required. Please authenticate with HttpOnly cookie.' };
     }
 
-    const cookies = cookieHeader.split(';').map(c => c.trim());
-    const authCookie = cookies.find(c => c.startsWith('auth_token='));
-    if (!authCookie) {
-        return { authenticated: false, status: 401, error: 'Authentication required. Please authenticate with HttpOnly cookie.' };
-    }
-
-    // CRITICAL: Trim token to ensure it matches the token used for encryption
-    const token = authCookie.substring('auth_token='.length).trim();
-    const jwtSecret = getJWTSecret(env);
-    const payload = await verifyJWT(token, jwtSecret);
-
+    const payload = await verifyTokenOIDC(token, env);
     if (!payload) {
         return { authenticated: false, status: 401, error: 'Invalid or expired token' };
     }

@@ -152,7 +152,6 @@ export interface RequestContext {
   customer?: {
     id: string;
     customerId: string;
-    email: string;
   };
   env?: any; // Cloudflare Worker environment
 }

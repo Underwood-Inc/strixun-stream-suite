@@ -211,8 +211,17 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     padding: 1rem;
     margin: 1rem 0;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
-.mermaid { display: flex; justify-content: center; }
+.mermaid {
+    display: block;
+    min-width: min-content;
+    text-align: center;
+}
+.mermaid svg {
+    display: inline-block;
+    max-width: none;
+}
 .diagram-title {
     font-size: 0.9rem;
     font-weight: 600;

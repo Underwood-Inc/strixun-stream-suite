@@ -48,15 +48,20 @@ export async function handleAccessRoutes(
         // Service calls always bypass rate limits
         isSuperAdmin = true;
     } else if (auth?.type === 'jwt' && auth.customerId) {
-        // Check if customer has super-admin role
-        try {
-            const rolesKey = `customer:${auth.customerId}:roles`;
-            const roles = await env.ACCESS_KV.get(rolesKey, { type: 'json' }) as string[] | null;
-            if (roles && roles.includes('super-admin')) {
-                isSuperAdmin = true;
+        // JWT claim check (OTP_SUPER_ADMIN_IDS — RS256-verified, no KV round-trip needed)
+        if (auth.jwtPayload?.isSuperAdmin === true) {
+            isSuperAdmin = true;
+        } else {
+            // Fallback: KV-based role assignment
+            try {
+                const rolesKey = `customer:${auth.customerId}:roles`;
+                const roles = await env.ACCESS_KV.get(rolesKey, { type: 'json' }) as string[] | null;
+                if (roles && roles.includes('super-admin')) {
+                    isSuperAdmin = true;
+                }
+            } catch (error) {
+                console.error('[RateLimit] Error checking super-admin role:', error);
             }
-        } catch (error) {
-            console.error('[RateLimit] Error checking super-admin role:', error);
         }
     }
     

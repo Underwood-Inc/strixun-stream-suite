@@ -135,7 +135,6 @@ export function createAuthStore(config?: AuthStoreConfig) {
             if (customerInfo) {
                 const authenticatedCustomer: AuthenticatedCustomer = {
                     customerId: customerInfo.customerId,
-                    email: '',
                     displayName: customerInfo.displayName || undefined,
                     isSuperAdmin: customerInfo.isSuperAdmin,
                 };

@@ -128,18 +128,20 @@ sequenceDiagram
     participant B as Browser
     participant Y as Your Server
     participant O as OTP Auth API
-    
-    Note over Y: API Key in env vars only
-    
+
+    Note over Y: API key in env vars (secret)
+
     B->>Y: Request OTP
-    Y->>O: POST /auth/request-otp + API Key
-    O-->>Y: OTP sent to email
-    Y-->>B: Success response
-    
+    Y->>O: POST /auth/request-otp
+    Note over Y,O: X-OTP-API-Key header
+    O-->>Y: OTP sent to user email
+    Y-->>B: Success
+
     B->>Y: Submit OTP code
-    Y->>O: POST /auth/verify-otp + API Key
-    O-->>Y: JWT token
-    Y-->>B: Set HttpOnly cookie
+    Y->>O: POST /auth/verify-otp
+    Note over Y,O: X-OTP-API-Key header
+    O-->>Y: JWT access token
+    Y-->>B: Sets HttpOnly cookie
                 </div>
             </div>
             
@@ -176,15 +178,17 @@ app.post(<span class="string">'/api/auth/request-otp'</span>, <span class="keywo
 sequenceDiagram
     participant B as Browser
     participant O as OTP Auth API
-    participant H as Hacker
-    
-    Note over B,O: Key visible (configure origins for restrictions)
-    
-    B->>O: POST /auth/request-otp + API Key
+    participant H as Attacker
+
+    Note over B,O: Key visible in JS bundle
+    Note over B,O: Configure origins to restrict
+
+    B->>O: POST /auth/request-otp
+    Note over B,O: X-OTP-API-Key in header
     O-->>B: OTP sent to email
-    
-    H->>O: Tries to use stolen key
-    O-->>H: 403 if origin restricted
+
+    H->>O: Same key, wrong origin
+    O-->>H: 403 Forbidden
                 </div>
             </div>
             
@@ -216,19 +220,31 @@ sequenceDiagram
             </div>
             
             <div class="mermaid-container">
-                <div class="diagram-title">Service-to-Service Token Verification (RS256 via JWKS)</div>
+                <div class="diagram-title">Full Authentication + Service Verification Flow</div>
                 <div class="mermaid">
 sequenceDiagram
     participant B as Browser/App
-    participant A as Auth Server
-    participant S as Service B
-    
-    B->>A: POST /auth/verify-otp (email + OTP)
-    A-->>B: {access_token (RS256), id_token, ...}
-    B->>S: Request + Bearer access_token
-    S->>A: GET /.well-known/jwks.json (cached)
-    S->>S: Verify RS256 signature with public key
-    S-->>B: Protected resource
+    participant A as Auth Service
+    participant S as Resource Server
+
+    B->>A: POST /auth/verify-otp
+    Note over B,A: email + OTP code sent
+    A-->>B: access_token + refresh_token
+    Note over A,B: auth_token cookie (15m)<br/>refresh_token cookie (7d)
+
+    B->>S: Request with auth_token cookie
+    S->>A: GET /.well-known/jwks.json
+    Note over S,A: Cached for 10 minutes
+    S->>S: Verify RS256 signature
+    S->>S: Extract sub (customerId)
+    S-->>B: Protected resource returned
+
+    Note over B: Access token expires (15m)
+    B->>A: POST /auth/refresh
+    Note over B,A: Sends refresh_token cookie
+    A->>A: Rotate refresh token
+    A-->>B: New access_token + refresh_token
+    Note over A,B: Max 7 days from original login
                 </div>
             </div>
             
@@ -252,20 +268,57 @@ sequenceDiagram
             <ul style="font-size: 0.85rem;">
                 <li><code>GET /.well-known/openid-configuration</code> — Discovery document (issuer, endpoints, supported features)</li>
                 <li><code>GET /.well-known/jwks.json</code> — Public signing keys (RS256)</li>
-                <li><code>POST /auth/verify-otp</code> — Token endpoint (OTP exchange, returns access_token + id_token)</li>
-                <li><code>GET /auth/me</code> — UserInfo endpoint (scope-based claims)</li>
+                <li><code>POST /auth/verify-otp</code> — Token endpoint (OTP exchange → access_token + id_token + refresh_token, sets HttpOnly cookies)</li>
+                <li><code>POST /auth/refresh</code> — Refresh tokens (exchange opaque refresh_token cookie for new access + refresh tokens with rotation)</li>
+                <li><code>GET /auth/me</code> — UserInfo endpoint (scope-based claims, uses HttpOnly cookie)</li>
                 <li><code>POST /auth/introspect</code> — Token introspection (RFC 7662)</li>
-                <li><code>POST /auth/logout</code> — Token revocation / session end</li>
+                <li><code>POST /auth/logout</code> — Revoke tokens, delete session + refresh token from KV, clear cookies</li>
             </ul>
 
             <p style="font-size: 0.85rem; margin-top: 1rem;">
-                <strong>Grant Type:</strong> <code>urn:ietf:params:oauth:grant-type:otp</code>
+                <strong>Grant Types:</strong> <code>urn:ietf:params:oauth:grant-type:otp</code>, <code>refresh_token</code>
+            </p>
+
+            <p style="font-size: 0.85rem; margin-top: 1rem;">
+                <strong>Token Lifetimes:</strong>
+            </p>
+            <table class="security-table" style="font-size: 0.85rem;">
+                <thead><tr><th>Token</th><th>Lifetime</th><th>Delivery</th></tr></thead>
+                <tbody>
+                    <tr><td>Access token (JWT, RS256)</td><td>15 minutes</td><td>Response body + <code>auth_token</code> HttpOnly cookie</td></tr>
+                    <tr><td>ID token (JWT, RS256)</td><td>15 minutes (same as access)</td><td>Response body only</td></tr>
+                    <tr><td>Refresh token (opaque)</td><td>7-day absolute max from login</td><td>Response body + <code>refresh_token</code> HttpOnly cookie</td></tr>
+                </tbody>
+            </table>
+
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">
+                This service uses a custom OTP grant type instead of the standard authorization code flow.
+                Users authenticate by receiving a 9-digit one-time password via email and exchanging it at the token endpoint.
+                The response is fully OIDC-compliant: <code>access_token</code> (RS256, 15 min),
+                <code>id_token</code> (identity claims), <code>refresh_token</code> (opaque, single-use, 7-day max),
+                <code>token_type</code>, <code>expires_in</code>, <code>refresh_expires_in</code>, and <code>scope</code>.
+            </p>
+
+            <p style="font-size: 0.85rem; margin-top: 1rem;">
+                <strong>Refresh Behaviour (no heartbeat):</strong>
             </p>
             <p style="font-size: 0.8rem; color: var(--text-muted);">
-                This service uses a custom OTP grant type instead of the standard authorization code flow.
-                Users authenticate by receiving a one-time password via email and exchanging it at the token endpoint.
-                The response is fully OIDC-compliant: <code>access_token</code> (RS256),
-                <code>id_token</code> (identity claims), <code>token_type</code>, <code>expires_in</code>, and <code>scope</code>.
+                There is <strong>no polling or background heartbeat</strong>. Token refresh is entirely <strong>reactive</strong> --
+                it only fires when the user performs an action after the 15-minute access token has expired.
+                If the user is idle, zero network requests are made. The auth store catches the 401, calls
+                <code>POST /auth/refresh</code> (sending the <code>refresh_token</code> HttpOnly cookie),
+                receives new tokens, and retries the original request transparently.
+                This continues for up to 7 days from the original login.
+            </p>
+
+            <p style="font-size: 0.85rem; margin-top: 1rem;">
+                <strong>Privacy Model:</strong>
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">
+                Email addresses are <strong>never</strong> included in JWT payloads, token responses, or any API response.
+                The <code>customerId</code> (<code>sub</code> claim) is the sole external identifier.
+                Only <code>email_verified: true</code> is included to confirm OTP verification occurred.
+                Email exists only in server-side KV storage for internal operations (OTP delivery, session records).
             </p>
 
             <p style="font-size: 0.85rem; margin-top: 1rem;">

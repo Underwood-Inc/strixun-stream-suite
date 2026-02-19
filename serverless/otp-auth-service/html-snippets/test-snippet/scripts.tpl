@@ -149,6 +149,7 @@ async function verifyOTP() {
             authToken = data.access_token || data.token;
             idToken = data.id_token || null;
             document.getElementById('step2').classList.add('completed');
+            document.getElementById('refreshBtn').disabled = false;
             document.getElementById('getMeBtn').disabled = false;
             document.getElementById('logoutBtn').disabled = false;
 
@@ -177,6 +178,45 @@ async function verifyOTP() {
     }
 }
 
+async function refreshTokens() {
+    const btn = document.getElementById('refreshBtn');
+    const resultEl = document.getElementById('refreshResult');
+    btn.disabled = true;
+    btn.textContent = 'Refreshing...';
+    
+    try {
+        const response = await fetch(BASE_URL + '/auth/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        resultEl.style.display = 'block';
+        resultEl.className = response.ok ? 'result success' : 'result error';
+        resultEl.textContent = JSON.stringify(data, null, 2);
+        
+        if (response.ok) {
+            authToken = data.access_token || data.token;
+            idToken = data.id_token || null;
+            document.getElementById('step3').classList.add('completed');
+
+            // Update OIDC token card with refreshed tokens
+            document.getElementById('oidcAccessToken').value = authToken || '';
+            document.getElementById('oidcIdToken').value = idToken || '';
+            document.getElementById('oidcExpiresIn').textContent = data.expires_in || '—';
+            document.getElementById('introspectToken').value = authToken || '';
+        }
+    } catch (err) {
+        resultEl.style.display = 'block';
+        resultEl.className = 'result error';
+        resultEl.textContent = 'Error: ' + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Refresh Tokens';
+    }
+}
+
 async function getMe() {
     const btn = document.getElementById('getMeBtn');
     const resultEl = document.getElementById('meResult');
@@ -202,7 +242,7 @@ async function getMe() {
         resultEl.textContent = JSON.stringify(data, null, 2);
         
         if (response.ok) {
-            document.getElementById('step3').classList.add('completed');
+            document.getElementById('step4').classList.add('completed');
         }
     } catch (err) {
         resultEl.style.display = 'block';
@@ -240,7 +280,8 @@ async function logout() {
         
         if (response.ok) {
             authToken = null;
-            document.getElementById('step4').classList.add('completed');
+            idToken = null;
+            document.getElementById('step5').classList.add('completed');
         }
     } catch (err) {
         resultEl.style.display = 'block';

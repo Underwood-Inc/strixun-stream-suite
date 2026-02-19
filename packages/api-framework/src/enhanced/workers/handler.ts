@@ -171,34 +171,23 @@ function requestToAPIRequest(request: Request): APIRequest {
 }
 
 /**
- * Extract customer from request (JWT token)
+ * Extract customer from request using verified authentication.
+ * Tries RS256 (OIDC/JWKS) first, falls back to HS256 (legacy).
  */
 async function extractCustomerFromRequest(
   request: Request,
-  _env: any
-): Promise<{ id: string; customerId: string; email: string } | null> {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  // CRITICAL: Trim token to ensure it matches the token used for encryption
-  const token = authHeader.substring(7).trim();
-  
+  env: any
+): Promise<{ id: string; customerId: string } | null> {
   try {
-    // Decode JWT (simplified - in production, verify signature)
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      return null;
-    }
-
-    const payload = JSON.parse(atob(parts[1]));
-    
+    const { extractAuth } = await import('../../../route-protection.js');
+    const { verifyJWT } = await import('../../../jwt.js');
+    const auth = await extractAuth(request, env, verifyJWT);
+    if (!auth?.customerId) return null;
     return {
-      id: payload.sub || payload.customerId || '',
-      customerId: payload.customerId || payload.aud || '',
+      id: auth.customerId,
+      customerId: auth.customerId,
     };
-  } catch (error) {
+  } catch {
     return null;
   }
 }

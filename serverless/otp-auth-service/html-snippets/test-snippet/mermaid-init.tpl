@@ -31,15 +31,21 @@ mermaid.initialize({
         loopTextColor: '#f9f9f9'
     },
     sequence: {
-        actorMargin: 80,
-        width: 180,
+        actorMargin: 120,
+        width: 160,
         height: 50,
-        boxMargin: 10,
-        boxTextMargin: 5,
-        noteMargin: 10,
-        messageMargin: 35,
-        messageFontSize: 12,
+        boxMargin: 12,
+        boxTextMargin: 8,
+        noteMargin: 16,
+        messageMargin: 45,
+        messageFontSize: 13,
+        mirrorActors: false,
+        useMaxWidth: false,
         wrap: true,
-        wrapPadding: 10
+        wrapPadding: 16
+    },
+    flowchart: {
+        useMaxWidth: false,
+        htmlLabels: true
     }
 });

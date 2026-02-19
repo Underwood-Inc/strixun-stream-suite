@@ -18,7 +18,6 @@ export interface JWTPayload {
     exp?: number;
     iat?: number;
     jti?: string;
-    email?: string;
     email_verified?: boolean;
     customerId: string;
     scope?: string;

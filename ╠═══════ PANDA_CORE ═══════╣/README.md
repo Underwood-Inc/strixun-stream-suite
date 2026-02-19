@@ -125,6 +125,7 @@ graph TB
 - System overview
 - Technical architecture
 - **[OIDC Architecture](./02_ARCHITECTURE/OIDC_ARCHITECTURE.md)** - OpenID Connect identity system (industry concepts + Strixun implementation)
+- **[E2E Service Integration](./02_ARCHITECTURE/SERVICE_INTEGRATION_E2E.md)** - How all services authenticate, communicate, and trust each other
 - Component architecture
 - Data flow diagrams
 - Storage architecture

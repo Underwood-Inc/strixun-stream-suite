@@ -417,76 +417,53 @@ export async function handleVerifyOTP(request: Request, env: Env, tenantCustomer
         // Pass keyId for inter-tenant SSO scoping
         const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request, keyId);
         
-        // Set HttpOnly cookies for all root domains from ALLOWED_ORIGINS
-        // CRITICAL: Browser security - can only set cookies for domains matching response origin
-        // So we filter cookie domains to only those that match the current response origin
+        // Determine environment and cookie domains
+        // NOTE: wrangler dev with [[routes]] rewrites request.url hostname to the
+        // production domain even in dev, so we MUST check env.ENVIRONMENT explicitly.
         const isProduction = env.ENVIRONMENT === 'production';
+        const cookieDomainsToSet = isProduction ? getCookieDomains(env, null) : ['localhost'];
         
-        // Get all root domains from ALLOWED_ORIGINS
-        const allCookieDomains = getCookieDomains(env, null);
-        
-        // Extract current request's root domain to determine which cookies we can set
-        const url = new URL(request.url);
-        const hostname = url.hostname;
-        
-        // Determine current response's root domain
-        let currentRootDomain: string;
-        if (hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-            currentRootDomain = 'localhost';
-        } else {
-            const parts = hostname.split('.');
-            currentRootDomain = parts.slice(-2).join('.');
-        }
-        
-        // Filter cookie domains to only those matching current response origin (browser security)
-        // For same root domain, we can set the cookie (e.g., auth.idling.app can set .idling.app cookie)
-        const cookieDomainsToSet = allCookieDomains.filter(domain => {
-            if (domain === 'localhost') {
-                return currentRootDomain === 'localhost';
-            }
-            // Remove leading dot for comparison
-            const domainWithoutDot = domain.startsWith('.') ? domain.substring(1) : domain;
-            return domainWithoutDot === currentRootDomain;
-        });
-        
-        // If no matching domain found, fall back to current root domain
-        if (cookieDomainsToSet.length === 0) {
-            cookieDomainsToSet.push(currentRootDomain === 'localhost' ? 'localhost' : `.${currentRootDomain}`);
-        }
-        
-        // Create Set-Cookie headers for all matching domains (auth_token + refresh_token)
-        const setCookieHeaders: string[] = [];
-        for (const cookieDomain of cookieDomainsToSet) {
-            const baseParts = [
-                `Domain=${cookieDomain}`,
-                'Path=/',
-                'HttpOnly',
-                'SameSite=Lax',
-            ];
-            if (isProduction) baseParts.push('Secure');
+        // Build Set-Cookie header values (auth_token + refresh_token per domain)
+        const authTokenCookie = (domain: string) => {
+            const parts = [`auth_token=${tokenResponse.token}`, `Domain=${domain}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${tokenResponse.expires_in}`];
+            if (isProduction) parts.push('Secure');
+            return parts.join('; ');
+        };
+        const refreshTokenCookie = (domain: string) => {
+            const parts = [`refresh_token=${tokenResponse.refresh_token}`, `Domain=${domain}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${tokenResponse.refresh_expires_in}`];
+            if (isProduction) parts.push('Secure');
+            return parts.join('; ');
+        };
 
-            setCookieHeaders.push([`auth_token=${tokenResponse.token}`, ...baseParts, `Max-Age=${tokenResponse.expires_in}`].join('; '));
-            setCookieHeaders.push([`refresh_token=${tokenResponse.refresh_token}`, ...baseParts, `Max-Age=${tokenResponse.refresh_expires_in}`].join('; '));
-        }
-        
-        // Build response headers with all Set-Cookie headers
-        const responseHeaders: Record<string, string> = {
+        // Build all header entries as [name, value] tuples.
+        // Using raw tuples instead of Headers.append to avoid miniflare bug
+        // where append('Set-Cookie', ...) overwrites instead of adding.
+        const headerTuples: [string, string][] = [];
+        for (const [k, v] of Object.entries({
             ...getCorsHeadersRecord(env, request),
             ...getOtpCacheHeaders(),
             'Content-Type': 'application/json',
-        };
-        
-        // Add all Set-Cookie headers (Response constructor accepts array for Set-Cookie)
-        const response = new Response(JSON.stringify(tokenResponse), {
-            headers: responseHeaders,
-        });
-        
-        // Set multiple Set-Cookie headers
-        for (const cookieValue of setCookieHeaders) {
-            response.headers.append('Set-Cookie', cookieValue);
+        })) {
+            headerTuples.push([k, v]);
         }
-        
-        return response;
+        // IMPORTANT: auth_token MUST be last -- miniflare collapses multiple
+        // Set-Cookie headers, keeping only the final one. auth_token is the
+        // critical cookie for /auth/me. In production Workers this ordering
+        // doesn't matter because the real runtime handles multiple Set-Cookie
+        // correctly.
+        for (const domain of cookieDomainsToSet) {
+            headerTuples.push(['Set-Cookie', refreshTokenCookie(domain)]);
+            headerTuples.push(['Set-Cookie', authTokenCookie(domain)]);
+        }
+
+        console.log('[OTP Verify] Setting cookies:', {
+            cookieDomains: cookieDomainsToSet,
+            isProduction,
+            environment: env.ENVIRONMENT,
+            setCookieCount: cookieDomainsToSet.length * 2,
+        });
+
+        return new Response(JSON.stringify(tokenResponse), { headers: headerTuples });
     } catch (error: any) {
         console.error('[OTP Verify] Error:', error);
         console.error('[OTP Verify] Stack:', error?.stack);

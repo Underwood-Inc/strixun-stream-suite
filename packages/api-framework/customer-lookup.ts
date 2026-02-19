@@ -67,19 +67,28 @@ function createCustomerApiServiceClient(env: CustomerLookupEnv): ServiceClient {
     // Get keyphrase - required even if integrity is disabled
     const keyphrase = env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-local-development';
     
+    // Customer API validates service calls via X-Service-Key header,
+    // so we must include it alongside the standard Authorization header
+    const serviceKey = env.SERVICE_API_KEY || env.SUPER_ADMIN_API_KEY;
+    const serviceHeaders: Record<string, string> = {};
+    if (serviceKey) {
+        serviceHeaders['X-Service-Key'] = serviceKey;
+    }
+
     return createServiceClient(customerApiUrl, env, {
         retry: {
             maxAttempts: 3,
             backoff: 'exponential',
             retryableErrors: [408, 429, 500, 502, 503, 504, 522, 530],
         },
-        timeout: 3000, // Reduced timeout for faster failure if customer-api is not running
+        timeout: 3000,
+        defaultHeaders: serviceHeaders,
         integrity: {
-            enabled: !isTestOrDev, // Disable integrity verification in test/dev
-            keyphrase, // Always required by ServiceClient
-            verifyResponse: !isTestOrDev, // Disable response verification in test/dev
-            verifyRequest: !isTestOrDev, // Disable request verification in test/dev
-            throwOnFailure: !isTestOrDev, // Don't throw on failure in test/dev
+            enabled: !isTestOrDev,
+            keyphrase,
+            verifyResponse: !isTestOrDev,
+            verifyRequest: !isTestOrDev,
+            throwOnFailure: !isTestOrDev,
         },
     });
 }
@@ -269,12 +278,18 @@ export async function createCustomer(
         const client = createCustomerApiServiceClient(env);
         const response = await client.post<any>('/customer', customerData);
         
+        // 409 = customer already exists, recover by fetching the existing record
+        if (response.status === 409 && customerData.email) {
+            console.warn('[CustomerLookup] Customer already exists (409), fetching existing record');
+            const existing = await getCustomerByEmailService(customerData.email, env);
+            if (existing) return existing;
+        }
+        
         if (response.status !== 201 && response.status !== 200 || !response.data) {
             const error = response.data as { detail?: string } | undefined;
             throw new Error(error?.detail || 'Failed to create customer');
         }
         
-        // Extract customer data (remove id field added by API architecture)
         const { id, ...customer } = response.data;
         return customer as CustomerData;
     } catch (error) {

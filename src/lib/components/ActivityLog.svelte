@@ -11,6 +11,7 @@
     addLogEntry,
     clearLogEntries,
     logEntries,
+    logFilters,
     visibleLogEntries
   } from '../../stores/activity-log';
   import ActivityLogFilterAside from './ActivityLogFilterAside.svelte';
@@ -30,6 +31,7 @@
   $: visibleEntries = $visibleLogEntries;
   $: displayItems = visibleEntries.length > 0 ? visibleEntries : allEntries;
   $: hasEntries = displayItems.length > 0;
+  $: activeSearchQuery = $logFilters.searchQuery?.trim() || '';
 
   function toggleFilters(): void {
     filterExpanded = !filterExpanded;
@@ -389,6 +391,7 @@
                 selectionMode={selectionMode}
                 selected={selectedEntries.has(item.id)}
                 onToggleSelect={() => toggleEntrySelection(item.id)}
+                searchQuery={activeSearchQuery}
               />
             </svelte:fragment>
           </VirtualList>

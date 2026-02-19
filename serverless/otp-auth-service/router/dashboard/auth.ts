@@ -5,7 +5,8 @@
 
 import { getCorsHeaders, getCorsHeadersRecord } from '../../utils/cors.js';
 import { verifyApiKey } from '../../services/api-key.js';
-import { verifyJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
+import { hashEmail } from '../../utils/crypto.js';
+import { verifyTokenOIDC, extractAuthToken } from '../../utils/verify-token.js';
 import { getEntity } from '@strixun/kv-entities';
 // CRITICAL: wrapWithEncryption removed - main router handles ALL encryption (avoids double-encryption)
 
@@ -46,28 +47,13 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
         return await verifyApiKey(apiKey, env);
     }
     
-    // Then check HttpOnly cookie for JWT token (user auth)
-    let token: string | null = null;
-    const cookieHeader = request.headers.get('Cookie');
-    if (cookieHeader) {
-        const cookies = cookieHeader.split(';').map(c => c.trim());
-        const authCookie = cookies.find(c => c.startsWith('auth_token='));
-        if (authCookie) {
-            token = authCookie.substring('auth_token='.length).trim();
-        }
-    }
-    
+    const token = extractAuthToken(request.headers.get('Cookie'));
     if (!token) {
         return null;
     }
     
-    // Token is a JWT - verify it
-    
-    // If API key verification fails, try JWT token verification (for dashboard access)
     try {
-        const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-        
+        const payload = await verifyTokenOIDC(token, env);
         if (!payload) {
             return null;
         }

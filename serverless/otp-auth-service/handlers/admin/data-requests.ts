@@ -7,7 +7,7 @@
 
 import { getCorsHeaders } from '../../utils/cors.js';
 import { requireSuperAdmin } from '../../utils/super-admin.js';
-import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
+import { verifyTokenOIDC, extractAuthToken } from '../../utils/verify-token.js';
 import { getCustomer } from '../../services/customer.js';
 import {
     createDataRequest,
@@ -36,25 +36,15 @@ export async function handleCreateDataRequest(request: Request, env: Env): Promi
             return authError;
         }
 
-        // Get requester info from JWT token (from HttpOnly cookie)
         let requesterId: string | null = null;
         let requesterEmail: string | null = null;
 
-        // Try to get from HttpOnly cookie
-        const cookieHeader = request.headers.get('Cookie');
-        if (cookieHeader) {
-            const cookies = cookieHeader.split(';').map(c => c.trim());
-            const authCookie = cookies.find(c => c.startsWith('auth_token='));
-            if (authCookie) {
-                // CRITICAL: Trim token to ensure it matches the token used for encryption
-                const token = authCookie.substring('auth_token='.length).trim();
-                const jwtSecret = getJWTSecret(env);
-                const payload = await verifyJWT(token, jwtSecret);
-                
-                if (payload) {
-                    requesterId = payload.customerId || null;
-                    requesterEmail = payload.email || null;
-                }
+        const token = extractAuthToken(request.headers.get('Cookie'));
+        if (token) {
+            const payload = await verifyTokenOIDC(token, env);
+            if (payload) {
+                requesterId = payload.customerId || null;
+                requesterEmail = payload.email || null;
             }
         }
 
@@ -188,21 +178,13 @@ export async function handleGetDataRequest(request: Request, env: Env, requestId
         // Get request (try with null customerId first, then check if it's in a specific customer namespace)
         let dataRequest = await getDataRequest(requestId, null, env);
         
-        // If not found, try to find it by searching requester's requests
         if (!dataRequest) {
-            const cookieHeader = request.headers.get('Cookie');
-            if (cookieHeader) {
-                const cookies = cookieHeader.split(';').map(c => c.trim());
-                const authCookie = cookies.find(c => c.startsWith('auth_token='));
-                if (authCookie) {
-                    const token = authCookie.substring('auth_token='.length).trim();
-                    const jwtSecret = getJWTSecret(env);
-                    const payload = await verifyJWT(token, jwtSecret);
-                    
-                    if (payload && payload.customerId) {
-                        const requesterRequests = await getRequesterDataRequests(payload.customerId, null, env);
-                        dataRequest = requesterRequests.find(r => r.requestId === requestId) || null;
-                    }
+            const reqToken = extractAuthToken(request.headers.get('Cookie'));
+            if (reqToken) {
+                const payload = await verifyTokenOIDC(reqToken, env);
+                if (payload && payload.customerId) {
+                    const requesterRequests = await getRequesterDataRequests(payload.customerId, null, env);
+                    dataRequest = requesterRequests.find(r => r.requestId === requestId) || null;
                 }
             }
         }
@@ -261,9 +243,8 @@ export async function handleListDataRequests(request: Request, env: Env): Promis
             return authError;
         }
 
-        // Get requester info from HttpOnly cookie
-        const cookieHeader = request.headers.get('Cookie');
-        if (!cookieHeader) {
+        const listToken = extractAuthToken(request.headers.get('Cookie'));
+        if (!listToken) {
             return new Response(JSON.stringify({ 
                 error: 'Authentication required',
                 detail: 'Please authenticate with HttpOnly cookie'
@@ -273,23 +254,7 @@ export async function handleListDataRequests(request: Request, env: Env): Promis
             });
         }
 
-        const cookies = cookieHeader.split(';').map(c => c.trim());
-        const authCookie = cookies.find(c => c.startsWith('auth_token='));
-        if (!authCookie) {
-            return new Response(JSON.stringify({ 
-                error: 'Authentication required',
-                detail: 'Please authenticate with HttpOnly cookie'
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const token = authCookie.substring('auth_token='.length).trim();
-        const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-
+        const payload = await verifyTokenOIDC(listToken, env);
         if (!payload || !payload.customerId) {
             return new Response(JSON.stringify({ 
                 error: 'Invalid token',

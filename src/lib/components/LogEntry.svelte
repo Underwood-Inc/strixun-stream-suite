@@ -5,6 +5,7 @@
    * Renders a single log entry with timestamp, message, flair, and type styling
    */
   
+  import { parseSearchQuery } from '@strixun/search-query-parser';
   import type { LogEntry as LogEntryType } from '../../stores/activity-log';
   
   export let entry: LogEntryType;
@@ -12,6 +13,7 @@
   export let selectionMode = false;
   export let selected = false;
   export let onToggleSelect: () => void = () => {};
+  export let searchQuery: string = '';
   
   // Format timestamp
   $: timestamp = entry.timestamp instanceof Date 
@@ -30,7 +32,61 @@
   
   // Alternating background colors (dark blue and dark green)
   $: isEven = index % 2 === 0;
-  
+
+  interface HighlightSegment { text: string; highlight: boolean; }
+
+  function getHighlightSegments(message: string, query: string): HighlightSegment[] {
+    const fallback: HighlightSegment[] = [{ text: message, highlight: false }];
+
+    if (!query?.trim()) return fallback;
+
+    const parsed = parseSearchQuery(query);
+    if (!parsed.hasContent) return fallback;
+
+    const patterns: string[] = [];
+
+    for (const phrase of parsed.exactPhrases) {
+      patterns.push(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    }
+
+    for (const group of parsed.orGroups) {
+      for (const term of group) {
+        if (term.endsWith('*')) {
+          const prefix = term.slice(0, -1);
+          patterns.push(prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\w*');
+        } else {
+          patterns.push(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        }
+      }
+    }
+
+    if (patterns.length === 0) return fallback;
+
+    // Longest-first so greedy matches win over partial overlaps
+    patterns.sort((a, b) => b.length - a.length);
+    const regex = new RegExp(`(${patterns.join('|')})`, 'gi');
+
+    const segments: HighlightSegment[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(message)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push({ text: message.slice(lastIndex, match.index), highlight: false });
+      }
+      segments.push({ text: match[0], highlight: true });
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < message.length) {
+      segments.push({ text: message.slice(lastIndex), highlight: false });
+    }
+
+    return segments.length > 0 ? segments : fallback;
+  }
+
+  $: messageSegments = getHighlightSegments(entry.message, searchQuery);
+
   function handleClick(e: MouseEvent): void {
     if (selectionMode) {
       e.preventDefault();
@@ -69,7 +125,15 @@
   {#if entry.icon}
     <span class="log-entry__icon">{entry.icon}</span>
   {/if}
-  <span class="log-entry__text">{entry.message}</span>
+  <span class="log-entry__text">
+    {#each messageSegments as segment}
+      {#if segment.highlight}
+        <mark class="log-entry__highlight">{segment.text}</mark>
+      {:else}
+        {segment.text}
+      {/if}
+    {/each}
+  </span>
   {#if entry.flair}
     <span class="log-entry__flair">{entry.flair}</span>
   {/if}
@@ -148,6 +212,15 @@
       color: var(--muted);
       font-size: 0.8em;
       flex-shrink: 0;
+    }
+    
+    &__highlight {
+      background: rgba(237, 174, 73, 0.25);
+      color: var(--accent-light);
+      padding: 1px 2px;
+      border-radius: 2px;
+      font-weight: 500;
+      box-shadow: 0 0 0 1px rgba(237, 174, 73, 0.3);
     }
     
     // Alternating background colors

@@ -95,35 +95,17 @@ export function authenticateSuperAdmin(request: Request, env: Env): boolean {
  * @returns customerId if authenticated as super-admin, null otherwise
  */
 export async function authenticateSuperAdminJWT(request: Request, env: Env): Promise<string | null> {
-    // ONLY check HttpOnly cookie for JWT token - NO Authorization header fallback
-    const cookieHeader = request.headers.get('Cookie');
-    if (!cookieHeader) {
-        return null;
-    }
-    
-    const cookies = cookieHeader.split(';').map(c => c.trim());
-    const authCookie = cookies.find(c => c.startsWith('auth_token='));
-    if (!authCookie) {
-        return null;
-    }
-    
-    // CRITICAL: Trim token to ensure it matches the token used for encryption
-    const token = authCookie.substring('auth_token='.length).trim();
-    
     try {
-        // Import JWT verification utilities
-        const { verifyJWT, getJWTSecret } = await import('./crypto.js');
-        const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-        
-        if (!payload || !payload.customerId) {
-            return null;
-        }
-        
-        // Check if customer is a super admin via Authorization Service
+        const { extractAuthToken, verifyTokenOIDC } = await import('./verify-token.js');
+        const token = extractAuthToken(request.headers.get('Cookie'));
+        if (!token) return null;
+
+        const payload = await verifyTokenOIDC(token, env);
+        if (!payload || !payload.customerId) return null;
+
         const isSuper = await isSuperAdmin(payload.customerId, env);
         return isSuper ? payload.customerId : null;
-    } catch (e) {
+    } catch {
         return null;
     }
 }

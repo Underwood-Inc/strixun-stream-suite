@@ -61,21 +61,36 @@
     <div id="idTokenDecoded" class="result" style="margin-top: 1rem; display: none;"></div>
 </div>
 
-<!-- Step 3: Get User Info -->
+<!-- Step 3: Refresh Tokens -->
 <div class="card">
     <div class="step" id="step3">
         <div class="step-number">3</div>
+        <div><strong>Refresh Tokens</strong> - Exchange the refresh token for a new access token (simulates silent refresh)</div>
+    </div>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+        Sends <code>POST /auth/refresh</code> with the <code>refresh_token</code> HttpOnly cookie.
+        The old refresh token is invalidated (rotation) and a new access + refresh token pair is returned.
+        This works silently until the 7-day absolute max lifetime is reached.
+    </p>
+    <button id="refreshBtn" onclick="refreshTokens()" disabled>Refresh Tokens</button>
+    <div id="refreshResult" class="result" style="margin-top: 1rem; display: none;"></div>
+</div>
+
+<!-- Step 4: Get User Info -->
+<div class="card">
+    <div class="step" id="step4">
+        <div class="step-number">4</div>
         <div><strong>Get User Info</strong> - Verify the JWT works</div>
     </div>
     <button id="getMeBtn" onclick="getMe()" disabled>Get User Info</button>
     <div id="meResult" class="result" style="margin-top: 1rem; display: none;"></div>
 </div>
 
-<!-- Step 4: Logout -->
+<!-- Step 5: Logout -->
 <div class="card">
-    <div class="step" id="step4">
-        <div class="step-number">4</div>
-        <div><strong>Logout</strong> - End the session</div>
+    <div class="step" id="step5">
+        <div class="step-number">5</div>
+        <div><strong>Logout</strong> - End the session (clears both auth_token and refresh_token cookies, revokes tokens server-side)</div>
     </div>
     <button id="logoutBtn" onclick="logout()" disabled>Logout</button>
     <div id="logoutResult" class="result" style="margin-top: 1rem; display: none;"></div>

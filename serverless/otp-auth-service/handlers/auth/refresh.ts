@@ -77,33 +77,15 @@ function generateCSRFToken(): string {
 }
 
 /**
- * Resolve cookie domains to set based on the incoming request and ALLOWED_ORIGINS.
- * Returns an array of domain strings suitable for Set-Cookie headers.
+ * Resolve cookie domains to set.
+ * NOTE: wrangler dev with [[routes]] rewrites request.url hostname to the
+ * production domain even in dev, so we MUST check env.ENVIRONMENT explicitly.
  */
-function resolveCookieDomains(env: Env, request: Request): string[] {
-    const allCookieDomains = getCookieDomains(env, null);
-    const url = new URL(request.url);
-    const hostname = url.hostname;
-
-    let currentRootDomain: string;
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-        currentRootDomain = 'localhost';
-    } else {
-        const parts = hostname.split('.');
-        currentRootDomain = parts.slice(-2).join('.');
+function resolveCookieDomains(env: Env, _request: Request): string[] {
+    if (env.ENVIRONMENT !== 'production') {
+        return ['localhost'];
     }
-
-    const matched = allCookieDomains.filter(domain => {
-        if (domain === 'localhost') return currentRootDomain === 'localhost';
-        const d = domain.startsWith('.') ? domain.substring(1) : domain;
-        return d === currentRootDomain;
-    });
-
-    if (matched.length === 0) {
-        matched.push(currentRootDomain === 'localhost' ? 'localhost' : `.${currentRootDomain}`);
-    }
-
-    return matched;
+    return getCookieDomains(env, null);
 }
 
 export async function handleRefresh(request: Request, env: Env): Promise<Response> {
@@ -277,22 +259,24 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
             ];
             if (isProduction) base.push('Secure');
 
-            setCookieHeaders.push([`auth_token=${accessToken}`, ...base, `Max-Age=${ACCESS_TOKEN_TTL_SECONDS}`].join('; '));
+            // refresh_token FIRST, auth_token LAST -- miniflare keeps only the
+            // final Set-Cookie, and auth_token is the critical one for /auth/me
             setCookieHeaders.push([`refresh_token=${newRawRefreshToken}`, ...base, `Max-Age=${refreshTtlSeconds}`].join('; '));
+            setCookieHeaders.push([`auth_token=${accessToken}`, ...base, `Max-Age=${ACCESS_TOKEN_TTL_SECONDS}`].join('; '));
         }
 
-        const response = new Response(JSON.stringify(tokenResponse), {
-            headers: {
-                ...getCorsHeadersRecord(env, request),
-                'Content-Type': 'application/json',
-            },
-        });
-
+        const baseHeaders: Record<string, string> = {
+            ...getCorsHeadersRecord(env, request),
+            'Content-Type': 'application/json',
+        };
+        const headerEntries: [string, string][] = Object.entries(baseHeaders);
         for (const cookie of setCookieHeaders) {
-            response.headers.append('Set-Cookie', cookie);
+            headerEntries.push(['Set-Cookie', cookie]);
         }
 
-        return response;
+        return new Response(JSON.stringify(tokenResponse), {
+            headers: headerEntries,
+        });
     } catch (error: any) {
         console.error('[Refresh] Error:', error?.message, error?.stack);
         return new Response(JSON.stringify({ error: 'server_error', error_description: 'Refresh failed' }), {

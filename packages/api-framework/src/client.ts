@@ -857,7 +857,7 @@ export class APIClient {
   /**
    * Set customer context (for root config and encryption)
    */
-  setCustomer(customer: { id: string; customerId: string; email: string }): this {
+  setCustomer(customer: { id: string; customerId: string }): this {
     this.requestContext.customer = customer;
     return this;
   }

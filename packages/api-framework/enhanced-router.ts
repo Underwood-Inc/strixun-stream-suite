@@ -11,7 +11,6 @@ interface EnhancedContext {
   customer?: {
     id: string;
     customerId: string;
-    email?: string;
   };
 }
 

@@ -1062,6 +1062,7 @@ The OTP Auth Service's development environment includes a pre-generated `OIDC_SI
 ---
 
 **Related Documentation:**
+- [End-to-End Service Integration](./SERVICE_INTEGRATION_E2E.md) -- How all services connect, authenticate, and trust each other
 - [Authentication Methods](../╠═══ SECURITY  ═══════════╣/AUTHENTICATION_METHODS.md)
 - [OTP Auth Service README](../╠═══ SERVICES  ═══════════╣/OTP_AUTH_SERVICE_README.md)
 - [Multi-Stage Encryption Diagram](./MULTI_STAGE_ENCRYPTION_DIAGRAM.md)

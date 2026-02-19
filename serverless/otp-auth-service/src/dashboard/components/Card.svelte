@@ -13,5 +13,9 @@
     border-radius: var(--radius-md);
     padding: var(--spacing-lg);
   }
+
+  :global(.card + .card) {
+    margin-top: var(--spacing-lg);
+  }
 </style>
 

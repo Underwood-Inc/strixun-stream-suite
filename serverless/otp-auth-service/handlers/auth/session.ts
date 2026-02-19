@@ -246,44 +246,29 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
  * Logout endpoint
  * POST /auth/logout
  */
+function buildLogoutResponse(
+    body: Record<string, unknown>,
+    clearCookieHeaders: string[],
+    env: Env,
+    request: Request,
+): Response {
+    const tuples: [string, string][] = Object.entries({
+        ...getCorsHeadersRecord(env, request),
+        'Content-Type': 'application/json',
+    });
+    for (const cookie of clearCookieHeaders) {
+        tuples.push(['Set-Cookie', cookie]);
+    }
+    return new Response(JSON.stringify(body), { status: 200, headers: tuples });
+}
+
 export async function handleLogout(request: Request, env: Env): Promise<Response> {
     try {
-        // Clear HttpOnly cookies for all root domains from ALLOWED_ORIGINS
-        // CRITICAL: Browser security - can only clear cookies for domains matching response origin
+        // NOTE: wrangler dev with [[routes]] rewrites request.url hostname to the
+        // production domain even in dev, so we MUST check env.ENVIRONMENT explicitly.
         const isProduction = env.ENVIRONMENT === 'production';
+        const cookieDomainsToClear = isProduction ? getCookieDomains(env, null) : ['localhost'];
         
-        // Get all root domains from ALLOWED_ORIGINS
-        const allCookieDomains = getCookieDomains(env, null);
-        
-        // Extract current request's root domain to determine which cookies we can clear
-        const url = new URL(request.url);
-        const hostname = url.hostname;
-        
-        // Determine current response's root domain
-        let currentRootDomain: string;
-        if (hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-            currentRootDomain = 'localhost';
-        } else {
-            const parts = hostname.split('.');
-            currentRootDomain = parts.slice(-2).join('.');
-        }
-        
-        // Filter cookie domains to only those matching current response origin (browser security)
-        const cookieDomainsToClear = allCookieDomains.filter(domain => {
-            if (domain === 'localhost') {
-                return currentRootDomain === 'localhost';
-            }
-            // Remove leading dot for comparison
-            const domainWithoutDot = domain.startsWith('.') ? domain.substring(1) : domain;
-            return domainWithoutDot === currentRootDomain;
-        });
-        
-        // If no matching domain found, fall back to current root domain
-        if (cookieDomainsToClear.length === 0) {
-            cookieDomainsToClear.push(currentRootDomain === 'localhost' ? 'localhost' : `.${currentRootDomain}`);
-        }
-        
-        // Create Set-Cookie headers to clear cookies for all matching domains
         const clearCookieHeaders: string[] = [];
         for (const cookieDomain of cookieDomainsToClear) {
             const baseParts = [
@@ -326,20 +311,10 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
         }
         
         if (!token) {
-            const response = new Response(JSON.stringify({ success: true, message: 'Logged out (no active session)' }), {
-                status: 200,
-                headers: {
-                    ...getCorsHeadersRecord(env, request),
-                    'Content-Type': 'application/json',
-                },
-            });
-            
-            // Add all Set-Cookie headers to clear cookies
-            for (const clearCookie of clearCookieHeaders) {
-                response.headers.append('Set-Cookie', clearCookie);
-            }
-            
-            return response;
+            return buildLogoutResponse(
+                { success: true, message: 'Logged out (no active session)' },
+                clearCookieHeaders, env, request,
+            );
         }
         // Verify token: try RS256 first (OIDC), then fall back to HS256
         let payload: JWTPayload | null = null;
@@ -359,20 +334,10 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
         }
 
         if (!payload) {
-            const response = new Response(JSON.stringify({ success: true, message: 'Logged out (invalid/expired token)' }), {
-                status: 200,
-                headers: {
-                    ...getCorsHeadersRecord(env, request),
-                    'Content-Type': 'application/json',
-                },
-            });
-            
-            // Add all Set-Cookie headers to clear cookies
-            for (const clearCookie of clearCookieHeaders) {
-                response.headers.append('Set-Cookie', clearCookie);
-            }
-            
-            return response;
+            return buildLogoutResponse(
+                { success: true, message: 'Logged out (invalid/expired token)' },
+                clearCookieHeaders, env, request,
+            );
         }
         
         // Get customer ID from token - MANDATORY
@@ -413,23 +378,10 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             console.log(`[Logout] ✓ Deleted session + refresh token for customer: ${customerId}`);
         }
         
-        const response = new Response(JSON.stringify({
-            success: true,
-            message: 'Logged out successfully'
-        }), {
-            status: 200,
-            headers: {
-                ...getCorsHeadersRecord(env, request),
-                'Content-Type': 'application/json',
-            },
-        });
-        
-        // Add all Set-Cookie headers to clear cookies
-        for (const clearCookie of clearCookieHeaders) {
-            response.headers.append('Set-Cookie', clearCookie);
-        }
-        
-        return response;
+        return buildLogoutResponse(
+            { success: true, message: 'Logged out successfully' },
+            clearCookieHeaders, env, request,
+        );
     } catch (error: any) {
         return new Response(JSON.stringify({ 
             error: 'Failed to logout',

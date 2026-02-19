@@ -31,8 +31,6 @@ export interface OTPVerifyResponse {
   token_type: string;
   expires_in: number;
   customerId: string;
-  email: string;
-  customerId: string;
 }
 
 /**
@@ -41,7 +39,6 @@ export interface OTPVerifyResponse {
 export interface CustomerResponse {
   customerId: string;
   name: string;
-  email: string;
   companyName: string;
   plan: string;
   status: string;

@@ -14,7 +14,7 @@ export interface AuthenticatedCustomer {
     token?: string;
     expiresAt?: string;
     isSuperAdmin?: boolean;
-    /** OIDC scopes granted to the session (e.g. "openid email profile") */
+    /** OIDC scopes granted to the session (e.g. "openid profile") */
     scope?: string;
     /** OIDC ID Token (RS256-signed, present when OIDC is enabled) */
     idToken?: string;

@@ -12,8 +12,26 @@ import { createCORSHeaders } from './cors.js';
 export interface AuthResult {
     customerId: string | null;
     jwtToken?: string;
+    /** Decoded (already-verified) JWT payload — used to read claims like isSuperAdmin */
+    jwtPayload?: Record<string, any>;
     isServiceCall: boolean;
     type: 'jwt' | 'service';
+}
+
+/**
+ * Decode JWT payload without re-verifying the signature.
+ * Safe to call only AFTER the token has already been verified by extractAuth.
+ */
+function decodeJWTPayload(token: string): Record<string, any> | null {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        while (b64.length % 4) b64 += '=';
+        return JSON.parse(atob(b64));
+    } catch {
+        return null;
+    }
 }
 
 export function getJWTSecret(env: Env): string {
@@ -51,9 +69,11 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
         const auth = await extractAuth(request, env as any, verifyJWTShared);
         if (auth && auth.customerId) {
             console.log('[AccessAuth] JWT authentication successful:', auth.customerId);
+            const jwtPayload = auth.jwtToken ? decodeJWTPayload(auth.jwtToken) : undefined;
             return {
                 customerId: auth.customerId,
                 jwtToken: auth.jwtToken,
+                jwtPayload: jwtPayload ?? undefined,
                 isServiceCall: false,
                 type: 'jwt',
             };
@@ -105,12 +125,19 @@ export async function requireSuperAdmin(auth: AuthResult | null, request: Reques
     
     // For JWT auth, check if customer has super-admin role
     if (auth!.type === 'jwt' && auth!.customerId) {
+        // JWT claim takes priority — isSuperAdmin is baked in at issuance time by the
+        // OTP Auth Service (via OTP_SUPER_ADMIN_IDS env var) and the token is RS256-verified,
+        // so it is safe to trust without an additional KV round-trip.
+        if (auth!.jwtPayload?.isSuperAdmin === true) {
+            console.log('[Auth] Super-admin granted via JWT isSuperAdmin claim:', auth!.customerId);
+            return null;
+        }
+
         try {
-            // Get customer's roles from KV
+            // Fallback: KV-based role assignment (covers dynamically-assigned super-admin roles)
             const rolesKey = `customer:${auth!.customerId}:roles`;
             const roles = await env.ACCESS_KV.get(rolesKey, { type: 'json' }) as string[] | null;
             
-            // Check if customer has super-admin role
             if (roles && roles.includes('super-admin')) {
                 return null;
             }
