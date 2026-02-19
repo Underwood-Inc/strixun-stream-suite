@@ -454,26 +454,19 @@ export async function handleVerifyOTP(request: Request, env: Env, tenantCustomer
             cookieDomainsToSet.push(currentRootDomain === 'localhost' ? 'localhost' : `.${currentRootDomain}`);
         }
         
-        // Create Set-Cookie headers for all matching domains
+        // Create Set-Cookie headers for all matching domains (auth_token + refresh_token)
         const setCookieHeaders: string[] = [];
         for (const cookieDomain of cookieDomainsToSet) {
-            const cookieParts = isProduction ? [
-                `auth_token=${tokenResponse.token}`,
-                `Domain=${cookieDomain}`,
-                'Path=/',
-                'HttpOnly',
-                'Secure',
-                'SameSite=Lax',
-                `Max-Age=${tokenResponse.expires_in}`
-            ] : [
-                `auth_token=${tokenResponse.token}`,
+            const baseParts = [
                 `Domain=${cookieDomain}`,
                 'Path=/',
                 'HttpOnly',
                 'SameSite=Lax',
-                `Max-Age=${tokenResponse.expires_in}`
             ];
-            setCookieHeaders.push(cookieParts.join('; '));
+            if (isProduction) baseParts.push('Secure');
+
+            setCookieHeaders.push([`auth_token=${tokenResponse.token}`, ...baseParts, `Max-Age=${tokenResponse.expires_in}`].join('; '));
+            setCookieHeaders.push([`refresh_token=${tokenResponse.refresh_token}`, ...baseParts, `Max-Age=${tokenResponse.refresh_expires_in}`].join('; '));
         }
         
         // Build response headers with all Set-Cookie headers

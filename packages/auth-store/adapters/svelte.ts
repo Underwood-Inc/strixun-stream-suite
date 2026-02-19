@@ -8,8 +8,8 @@
 
 import { writable, derived, get, type Writable, type Readable } from 'svelte/store';
 import type { AuthenticatedCustomer, AuthStoreConfig } from '../core/types';
-import { fetchCustomerInfo, decodeJWTPayload } from '../core/api';
-import { getCookie, deleteCookie } from '../core/utils';
+import { fetchCustomerInfo, decodeJWTPayload, refreshAuth } from '../core/api';
+import { deleteCookie } from '../core/utils';
 
 /**
  * Create Svelte auth stores with HttpOnly cookie SSO
@@ -78,7 +78,6 @@ export function createAuthStore(config?: AuthStoreConfig) {
         
         const customerData: AuthenticatedCustomer = {
             customerId: payload.customerId as string || payload.sub as string,
-            email: payload.email as string,
             displayName: payload.displayName as string | undefined,
             token: jwtToken,
             expiresAt: payload.exp ? new Date(payload.exp as number * 1000).toISOString() : new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(),
@@ -117,53 +116,40 @@ export function createAuthStore(config?: AuthStoreConfig) {
     }
     
     /**
-     * Check authentication status from HttpOnly cookie
+     * Check authentication status via /auth/me (HttpOnly cookie sent automatically).
+     * Mirrors the Zustand adapter pattern -- never reads the cookie directly since
+     * HttpOnly cookies are inaccessible to JavaScript.
      */
     async function checkAuth(): Promise<boolean> {
         try {
-            const authToken = getCookie('auth_token');
-            if (!authToken) {
-                console.debug('[Auth] No auth token cookie found');
-                saveAuthState(null);
-                return false;
+            let customerInfo = await fetchCustomerInfo(null, config);
+
+            // Access token expired — attempt a silent refresh before giving up
+            if (!customerInfo) {
+                const refreshed = await refreshAuth(config);
+                if (refreshed) {
+                    customerInfo = await fetchCustomerInfo(null, config);
+                }
             }
-            
-            // Fetch customer info from /auth/me to validate token
-            const customerInfo = await fetchCustomerInfo(null, config);
-            
+
             if (customerInfo) {
-                const payload = decodeJWTPayload(authToken);
-                const customerId = customerInfo.customerId || payload?.customerId as string;
-                const email = payload?.email as string;
-                const expiresAt = payload?.exp ? new Date(payload.exp as number * 1000).toISOString() : new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString();
-                
                 const authenticatedCustomer: AuthenticatedCustomer = {
-                    customerId,
-                    email,
+                    customerId: customerInfo.customerId,
+                    email: '',
                     displayName: customerInfo.displayName || undefined,
-                    token: authToken,
-                    expiresAt,
                     isSuperAdmin: customerInfo.isSuperAdmin,
                 };
-                
+
                 saveAuthState(authenticatedCustomer);
-                console.log('[Auth] ✓ Session restored from HttpOnly cookie for customer:', email);
                 return true;
-            } else {
-                // Not authenticated (401/403) - this is expected, not an error
-                deleteCookie('auth_token', '.idling.app', '/');
-                saveAuthState(null);
-                console.debug('[Auth] Token in HttpOnly cookie invalid or expired');
-                return false;
             }
+
+            saveAuthState(null);
+            return false;
         } catch (error) {
-            // Network errors, 500s, etc. are critical - log and rethrow for caller to handle
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.error('[Auth] Check auth failed with critical error:', errorMessage);
-            deleteCookie('auth_token', '.idling.app', '/');
             saveAuthState(null);
-            
-            // Re-throw so caller can handle it (fail-fast)
             throw new Error(`Authentication check failed: ${errorMessage}. Check your connection and that the auth service is running.`);
         }
     }

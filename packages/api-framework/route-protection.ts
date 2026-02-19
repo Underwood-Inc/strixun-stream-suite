@@ -12,6 +12,8 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { decodeJWTHeader, verifyRS256JWT } from './jwt.js';
+import type { RSAPublicJWK } from './jwt.js';
 
 /**
  * Admin access level
@@ -23,7 +25,6 @@ export type AdminLevel = 'admin' | 'super-admin';
  */
 export interface AuthResult {
     customerId: string;
-    email?: string;
     jwtToken?: string;
 }
 
@@ -64,9 +65,29 @@ export function verifySuperAdminKey(apiKey: string, env: RouteProtectionEnv): bo
     return apiKey === superAdminKey;
 }
 
+let _jwksCache: { keys: RSAPublicJWK[]; fetchedAt: number } | null = null;
+const JWKS_CACHE_TTL_MS = 600_000; // 10 minutes
+
+async function fetchJWKS(env: RouteProtectionEnv): Promise<RSAPublicJWK[]> {
+    if (_jwksCache && Date.now() - _jwksCache.fetchedAt < JWKS_CACHE_TTL_MS) {
+        return _jwksCache.keys;
+    }
+    const issuer = (env as any).JWT_ISSUER || (env as any).AUTH_SERVICE_URL;
+    if (!issuer) return [];
+    try {
+        const res = await fetch(`${issuer}/.well-known/jwks.json`);
+        if (!res.ok) return _jwksCache?.keys ?? [];
+        const data = (await res.json()) as { keys: RSAPublicJWK[] };
+        _jwksCache = { keys: data.keys, fetchedAt: Date.now() };
+        return data.keys;
+    } catch {
+        return _jwksCache?.keys ?? [];
+    }
+}
+
 /**
- * Authenticate request using JWT token
- * This is a generic JWT verification that can be customized per service
+ * Authenticate request using JWT token.
+ * Supports RS256 (OIDC / JWKS) and HS256 (legacy shared secret).
  */
 export async function authenticateJWT(
     token: string,
@@ -74,21 +95,41 @@ export async function authenticateJWT(
     verifyJWT: (token: string, secret: string) => Promise<any>
 ): Promise<AuthResult | null> {
     try {
+        const header = decodeJWTHeader(token);
+
+        // RS256 path -- verify via JWKS
+        if (header?.alg === 'RS256') {
+            const keys = await fetchJWKS(env);
+            const matchingKey = header.kid
+                ? keys.find(k => k.kid === header.kid)
+                : keys[0];
+            if (matchingKey) {
+                const payload = await verifyRS256JWT(token, matchingKey);
+                if (payload && payload.sub) {
+                    return {
+                        customerId: (payload.customerId as string) || payload.sub,
+                        jwtToken: token,
+                    };
+                }
+            }
+            // If RS256 verification failed, don't fall through to HS256
+            return null;
+        }
+
+        // HS256 path -- legacy shared secret
         if (!env.JWT_SECRET) {
             return null;
         }
-        
         const payload = await verifyJWT(token, env.JWT_SECRET);
         if (!payload || !payload.sub) {
             return null;
         }
         
         return {
-            customerId: payload.customerId || payload.sub,  // Use sub as fallback if customerId not in payload
-            email: payload.email,
+            customerId: payload.customerId || payload.sub,
             jwtToken: token,
         };
-    } catch (error) {
+    } catch {
         return null;
     }
 }

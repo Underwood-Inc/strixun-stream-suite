@@ -17,8 +17,22 @@ interface Env {
     CUSTOMER_KV: KVNamespace;
     JWT_SECRET?: string;
     ALLOWED_ORIGINS?: string;
+    SERVICE_API_KEY?: string;
     NETWORK_INTEGRITY_KEYPHRASE?: string;
     [key: string]: any;
+}
+
+function getAllowedOrigins(env: Env): string[] {
+    return env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [];
+}
+
+/**
+ * Check if request carries a valid service API key (for service-to-service calls)
+ */
+function isValidServiceCall(request: Request, env: Env): boolean {
+    const serviceKey = request.headers.get('X-Service-Key');
+    if (!env.SERVICE_API_KEY || !serviceKey) return false;
+    return serviceKey === env.SERVICE_API_KEY;
 }
 
 interface RouteResult {
@@ -86,7 +100,8 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
         
         if (!auth || !auth.customerId) {
             const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+                credentials: true,
+                allowedOrigins: getAllowedOrigins(env),
             });
             return {
                 response: new Response(JSON.stringify({
@@ -121,7 +136,8 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
         
         if (!isSuperAdmin) {
             const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+                credentials: true,
+                allowedOrigins: getAllowedOrigins(env),
             });
             return {
                 response: new Response(JSON.stringify({
@@ -211,9 +227,25 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
             return await handleCustomerRoute(handleUpdateCustomer, request, env, auth);
         }
 
-        // Get customer by email
+        // Get customer by email - requires JWT auth or service key
         const emailMatch = normalizedPath.match(/^\/customer\/by-email\/(.+)$/);
         if (emailMatch && request.method === 'GET') {
+            if (!auth.customerId && !isValidServiceCall(request, env)) {
+                const corsHeaders = createCORSHeaders(request, {
+                    credentials: true,
+                    allowedOrigins: getAllowedOrigins(env),
+                });
+                return {
+                    response: new Response(JSON.stringify({
+                        error: 'Unauthorized',
+                        detail: 'Authentication or service key required',
+                    }), {
+                        status: 401,
+                        headers: { 'Content-Type': 'application/json', ...Object.fromEntries(corsHeaders.entries()) },
+                    }),
+                    customerId: null,
+                };
+            }
             const email = decodeURIComponent(emailMatch[1]);
             return await handleCustomerRoute(
                 (req, e, a) => handleGetCustomerByEmail(req, e, a, email),
@@ -223,10 +255,30 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
             );
         }
 
-        // Update customer by ID (for service calls)
+        // GET/PUT customer by ID - requires JWT (matching ID) or service key
         const customerIdMatch = normalizedPath.match(/^\/customer\/([^\/]+)$/);
         if (customerIdMatch) {
             const customerId = customerIdMatch[1];
+            const callerOwnsResource = auth.customerId && auth.customerId === customerId;
+            const hasServiceKey = isValidServiceCall(request, env);
+
+            if (!callerOwnsResource && !hasServiceKey) {
+                const corsHeaders = createCORSHeaders(request, {
+                    credentials: true,
+                    allowedOrigins: getAllowedOrigins(env),
+                });
+                return {
+                    response: new Response(JSON.stringify({
+                        error: 'Unauthorized',
+                        detail: 'Authentication or service key required',
+                    }), {
+                        status: 401,
+                        headers: { 'Content-Type': 'application/json', ...Object.fromEntries(corsHeaders.entries()) },
+                    }),
+                    customerId: null,
+                };
+            }
+
             if (request.method === 'GET') {
                 return await handleCustomerRoute(
                     (req, e, a) => handleGetCustomer(req, e, a, customerId),
@@ -236,7 +288,6 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
                 );
             }
             if (request.method === 'PUT') {
-                // For service calls, allow updating by ID
                 const { handleUpdateCustomerById } = await import('../handlers/customer.js');
                 return await handleCustomerRoute(
                     (req, e, a) => handleUpdateCustomerById(req, e, a, customerId),
@@ -292,7 +343,8 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
             env.ENVIRONMENT === 'development' ? error.message : 'An internal server error occurred'
         );
         const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+            credentials: true,
+            allowedOrigins: getAllowedOrigins(env),
         });
         const errorResponse = new Response(JSON.stringify(rfcError), {
             status: 500,

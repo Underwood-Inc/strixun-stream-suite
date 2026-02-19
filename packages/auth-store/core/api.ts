@@ -224,6 +224,27 @@ export async function fetchCustomerInfo(
 }
 
 /**
+ * Attempt to refresh the current session by exchanging the HttpOnly
+ * refresh_token cookie for a new access + refresh token pair.
+ *
+ * @returns `true` when the server set new cookies (session extended),
+ *          `false` when the refresh token is invalid/expired (must re-login).
+ */
+export async function refreshAuth(config?: AuthStoreConfig): Promise<boolean> {
+    const apiUrl = getAuthApiUrl(config);
+
+    try {
+        const res = await fetch(`${apiUrl}/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+        });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Decode JWT payload (without verification - for extracting CSRF token and other claims)
  * NOTE: With HttpOnly cookies, we can't access the token directly
  * This function is kept for backward compatibility but will return null

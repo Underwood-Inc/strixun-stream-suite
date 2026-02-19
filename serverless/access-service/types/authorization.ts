@@ -160,6 +160,8 @@ export interface Env {
     CUSTOMER_API_URL: string;             // REQUIRED: URL of Customer API (for customer lookup in bootstrap)
     SERVICE_API_KEY: string;              // REQUIRED: Service-to-service authentication key
     JWT_SECRET?: string;
+    JWT_ISSUER?: string;                  // OIDC issuer URL for JWKS discovery (e.g. https://auth.idling.app)
+    AUTH_SERVICE_URL?: string;            // Alternative to JWT_ISSUER for JWKS discovery
     SUPER_ADMIN_API_KEY?: string;
     SUPER_ADMIN_EMAILS?: string;          // Comma-separated list of emails to grant super-admin on startup
     MIGRATION_SECRET_KEY?: string;        // Secret key for running migrations (deployment only)

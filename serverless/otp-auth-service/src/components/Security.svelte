@@ -84,17 +84,17 @@
       <div class="security-item">
         <Tooltip
           text="<strong>JWT Structure (<a href='https://datatracker.ietf.org/doc/html/rfc7519' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 7519</a>):</strong><br><br>
-          <strong>Algorithm:</strong> HMAC-SHA256 (HS256)<br>
+          <strong>Algorithm:</strong> RS256 (RSA + SHA-256) via JWKS &mdash; HS256 fallback for backward compat<br>
           <strong>Expiration:</strong> 7 hours from issuance<br>
           (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/master/serverless/otp-auth-service/handlers/auth/jwt-creation.ts#L148-L169' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br><br>
           <strong>Standard Claims Included:</strong><br>
           • sub (subject) - Customer ID<br>
           • iss (issuer) - auth.idling.app<br>
-          • aud (audience) - Customer ID<br>
+          • aud (audience) - API key (client_id) or Customer ID<br>
           • exp (expiration) - Unix timestamp<br>
           • iat (issued at) - Unix timestamp<br>
           • jti (JWT ID) - Unique token ID<br>
-          • email, email_verified, csrf<br><br>
+          • email_verified, scope, client_id, csrf (email intentionally omitted)<br><br>
           <strong>✓ Blacklisting System:</strong><br>
           Tokens stored in KV on logout. All requests check blacklist before accepting token, ensuring immediate invalidation."
           position="top"
@@ -105,7 +105,7 @@
         >
           <h3 style="cursor: help; text-decoration: underline dotted;">◉ JWT Tokens</h3>
         </Tooltip>
-        <p>HMAC-SHA256 signed tokens with 7-hour expiration. Token blacklisting for secure logout.</p>
+        <p>RS256-signed tokens with 15-minute access token and 7-day refresh token. Token deny-list for secure logout.</p>
       </div>
       <div class="security-item">
         <Tooltip
@@ -269,28 +269,29 @@
           text="<strong>Current Implementation:</strong><br><br>
           <strong>✓ JWT with OIDC-Compatible Claims:</strong><br>
           • Standard claims: sub, iss, aud, exp, iat, jti (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/master/serverless/otp-auth-service/handlers/auth/jwt-creation.ts#L148-L169' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br>
-          • email, email_verified claims<br>
+          • email_verified claim (raw email never included in tokens)<br>
           • <a href='https://datatracker.ietf.org/doc/html/rfc6749#section-5.1' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>OAuth 2.0 token response format</a><br>
-          • scope: 'openid email profile'<br>
+          • scope: 'openid profile'<br>
           • CSRF token in JWT payload<br><br>
-          <strong>⚠ Not Yet Implemented:</strong><br>
-          • <strong>Authorization Code Flow</strong> - Standard OAuth flow for web apps (<a href='https://datatracker.ietf.org/doc/html/rfc6749#section-4.1' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 6749</a>)<br>
-          • <strong>PKCE Support</strong> - Proof Key for Code Exchange, security for mobile apps (<a href='https://datatracker.ietf.org/doc/html/rfc7636' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 7636</a>)<br>
-          • <strong>Customer Info Endpoint</strong> - OIDC /userinfo endpoint for profile data (<a href='https://openid.net/specs/openid-connect-core-1_0.html#UserInfo' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>OIDC Spec</a>)<br>
-          • <strong>Token Introspection</strong> - Validate and inspect tokens (<a href='https://datatracker.ietf.org/doc/html/rfc7662' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 7662</a>)<br>
-          • <strong>Refresh Tokens</strong> - Long-lived tokens to renew access (<a href='https://datatracker.ietf.org/doc/html/rfc6749#section-6' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 6749</a>)<br><br>
-          <strong>Note:</strong> We issue JWTs with OIDC-compatible claims and OAuth-style responses, but do not yet implement full OAuth 2.0/OIDC flows. Planned for future release."
+          <strong>✓ OIDC-Compliant Token Issuance:</strong><br>
+          • <strong>RS256 Signed Tokens</strong> - Asymmetric signing, verified via JWKS (<a href='https://datatracker.ietf.org/doc/html/rfc7515' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 7515</a>)<br>
+          • <strong>ID Token</strong> - OIDC Core 1.0 Section 2 compliant (<a href='https://openid.net/specs/openid-connect-core-1_0.html#IDToken' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>OIDC Spec</a>)<br>
+          • <strong>UserInfo Endpoint</strong> - /auth/me with scope-based claims (<a href='https://openid.net/specs/openid-connect-core-1_0.html#UserInfo' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>OIDC Spec</a>)<br>
+          • <strong>Token Introspection</strong> - /auth/introspect (RFC 7662) (<a href='https://datatracker.ietf.org/doc/html/rfc7662' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 7662</a>)<br>
+          • <strong>Discovery</strong> - /.well-known/openid-configuration auto-discovery<br>
+          • <strong>JWKS</strong> - /.well-known/jwks.json public key distribution<br>
+          • <strong>API Keys as Clients</strong> - keyId maps to OIDC client_id"
           position="top"
-          level="warning"
+          level="success"
           interactive={true}
           maxWidth="450px"
           maxHeight="400px"
         >
-          <StatusFlair status="wip">
-            <h3 style="cursor: help; text-decoration: underline dotted;">🌐 JWT with OIDC Claims</h3>
+          <StatusFlair status="done">
+            <h3 style="cursor: help; text-decoration: underline dotted;">🌐 OIDC-Compliant Token Issuance</h3>
           </StatusFlair>
         </Tooltip>
-        <p><strong>Partial:</strong> JWT tokens with OIDC-compatible claims (sub, iss, aud, exp, iat, jti, email) and OAuth 2.0 response format. Full OAuth 2.0/OIDC flows planned.</p>
+        <p><strong>Complete:</strong> OIDC-compliant RS256-signed access tokens and ID tokens, JWKS-based verification, Discovery endpoint, scope-based UserInfo, and token introspection. API keys serve as OIDC clients (no redirect-based authorization code flow needed — OTP is the auth method).</p>
       </div>
     </div>
   </div>

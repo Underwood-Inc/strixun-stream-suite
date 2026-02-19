@@ -124,6 +124,7 @@ graph TB
 
 - System overview
 - Technical architecture
+- **[OIDC Architecture](./02_ARCHITECTURE/OIDC_ARCHITECTURE.md)** - OpenID Connect identity system (industry concepts + Strixun implementation)
 - Component architecture
 - Data flow diagrams
 - Storage architecture

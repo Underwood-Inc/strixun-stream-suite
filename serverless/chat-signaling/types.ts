@@ -16,6 +16,12 @@ export interface Env {
   /** JWT Secret (shared with OTP auth service) */
   JWT_SECRET: string;
   
+  /** OIDC issuer URL for JWKS discovery (e.g. https://auth.idling.app) */
+  JWT_ISSUER?: string;
+
+  /** Alternative to JWT_ISSUER for JWKS discovery */
+  AUTH_SERVICE_URL?: string;
+  
   /** Allowed CORS origins (comma-separated) */
   ALLOWED_ORIGINS?: string;
   

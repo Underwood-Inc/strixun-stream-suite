@@ -74,13 +74,21 @@ export const RateLimitDataSchema = v.object({
 
 /**
  * JWT payload (for token generation/verification)
+ * Includes standard JWT (RFC 7519), OAuth 2.0, and OIDC claims
  */
 export const JWTPayloadSchema = v.object({
-  sub: v.string(), // userId (deprecated) or customerId
-  customerId: v.string(), // REQUIRED - primary identifier
+  sub: v.string(),
+  customerId: v.string(),
   email: v.optional(v.pipe(v.string(), v.email())),
-  iat: v.optional(v.number()), // Issued at
-  exp: v.optional(v.number()), // Expires at
+  iat: v.optional(v.number()),
+  exp: v.optional(v.number()),
+  iss: v.optional(v.string()),
+  aud: v.optional(v.union([v.string(), v.array(v.string())])),
+  jti: v.optional(v.string()),
+  scope: v.optional(v.string()),
+  client_id: v.optional(v.nullable(v.string())),
+  at_hash: v.optional(v.string()),
+  email_verified: v.optional(v.boolean()),
   isSuperAdmin: v.optional(v.boolean()),
 });
 

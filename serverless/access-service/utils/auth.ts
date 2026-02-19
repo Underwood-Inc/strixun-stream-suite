@@ -1,8 +1,10 @@
 /**
  * Authentication utilities for Authorization Service
- * Validates service-to-service calls using JWT or X-Service-Key
+ * Validates service-to-service calls using JWT or X-Service-Key.
+ * Supports RS256 (OIDC / JWKS) and HS256 (legacy shared secret).
  */
 
+import { extractAuth } from '@strixun/api-framework';
 import { verifyJWT as verifyJWTShared, getJWTSecret as getJWTSecretShared } from '@strixun/api-framework/jwt';
 import type { Env } from '../types/authorization.js';
 import { createCORSHeaders } from './cors.js';
@@ -14,45 +16,28 @@ export interface AuthResult {
     type: 'jwt' | 'service';
 }
 
-/**
- * Get JWT secret from environment
- */
 export function getJWTSecret(env: Env): string {
     return getJWTSecretShared(env);
 }
 
-/**
- * Verify JWT token
- */
 export async function verifyJWT(token: string, secret: string): Promise<any | null> {
     return await verifyJWTShared(token, secret);
 }
 
-/**
- * Authenticate service-to-service request
- * Validates X-Service-Key header for internal service calls
- */
 function authenticateServiceKey(request: Request, env: Env): boolean {
     const serviceKey = request.headers.get('X-Service-Key');
-    if (!serviceKey) {
-        return false;
-    }
-    
-    // Validate against SERVICE_API_KEY secret
+    if (!serviceKey) return false;
     if (!env.SERVICE_API_KEY) {
         console.error('[AccessAuth] SERVICE_API_KEY not configured');
         return false;
     }
-    
     return serviceKey === env.SERVICE_API_KEY;
 }
 
 /**
- * Authenticate request using JWT or service key
- * Returns auth object with customerId or service indicator
+ * Authenticate request using service key or JWT (RS256 via JWKS, then HS256 fallback).
  */
 export async function authenticateRequest(request: Request, env: Env): Promise<AuthResult | null> {
-    // Option 1: Service-to-service authentication (X-Service-Key)
     if (authenticateServiceKey(request, env)) {
         console.log('[AccessAuth] Service key authentication successful');
         return {
@@ -61,48 +46,22 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
             type: 'service',
         };
     }
-    
-    // Option 2: JWT authentication from HttpOnly cookie OR Authorization header
-    let token: string | null = null;
-    
-    // PRIORITY 1: Check HttpOnly cookie (browser requests)
-    const cookieHeader = request.headers.get('Cookie');
-    if (cookieHeader) {
-        const cookies = cookieHeader.split(';').map(c => c.trim());
-        const authCookie = cookies.find(c => c.startsWith('auth_token='));
-        if (authCookie) {
-            token = authCookie.substring('auth_token='.length).trim();
+
+    try {
+        const auth = await extractAuth(request, env as any, verifyJWTShared);
+        if (auth && auth.customerId) {
+            console.log('[AccessAuth] JWT authentication successful:', auth.customerId);
+            return {
+                customerId: auth.customerId,
+                jwtToken: auth.jwtToken,
+                isServiceCall: false,
+                type: 'jwt',
+            };
         }
+    } catch (error) {
+        console.error('[AccessAuth] JWT verification failed:', error);
     }
-    
-    // PRIORITY 2: Check Authorization header (service-to-service calls with JWT)
-    if (!token) {
-        const authHeader = request.headers.get('Authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            token = authHeader.substring('Bearer '.length).trim();
-        }
-    }
-    
-    if (token) {
-        
-        try {
-            const jwtSecret = getJWTSecret(env);
-            const payload = await verifyJWT(token, jwtSecret);
-            
-            if (payload && payload.sub) {
-                console.log('[AccessAuth] JWT authentication successful:', payload.sub);
-                return {
-                    customerId: payload.sub,
-                    jwtToken: token,
-                    isServiceCall: false,
-                    type: 'jwt',
-                };
-            }
-        } catch (error) {
-            console.error('[AccessAuth] JWT verification failed:', error);
-        }
-    }
-    
+
     return null;
 }
 

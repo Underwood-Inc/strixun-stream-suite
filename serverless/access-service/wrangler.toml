@@ -17,6 +17,7 @@ compatibility_flags = ["nodejs_compat"]
 # Production environment (default)
 [vars]
 ENVIRONMENT = "production"
+JWT_ISSUER = "https://auth.idling.app"
 
 # Production KV Namespace for access control data
 [[kv_namespaces]]
@@ -38,6 +39,7 @@ zone_name = "idling.app"
 
 [env.development.vars]
 ENVIRONMENT = "development"
+JWT_ISSUER = "http://localhost:8787"
 ACCESS_SERVICE_URL = "http://localhost:8795"
 JWT_SECRET = "dev-jwt-secret-do-not-use-in-production-abc123"
 SERVICE_API_KEY = "dev-service-api-key-for-local-testing"

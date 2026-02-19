@@ -109,6 +109,7 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="showTab('backend')">✅ Backend-Only (Recommended)</button>
             <button class="tab-btn" onclick="showTab('frontend')">⚡ Direct Frontend</button>
+            <button class="tab-btn" onclick="showTab('oidc')">🌐 OIDC Token Verification</button>
         </div>
         
         <!-- Backend Tab -->
@@ -203,6 +204,96 @@ sequenceDiagram
     <span class="keyword">return</span> response.json();
 }
             </div>
+        </div>
+        
+        <!-- OIDC Tab -->
+        <div id="tab-oidc" class="tab-content">
+            <div class="method-box recommended">
+                <h4>🌐 OIDC-Compliant Token Issuance</h4>
+                <p style="font-size: 0.8rem; color: var(--success); margin-bottom: 0.5rem;">
+                    <strong>RS256 SIGNED</strong> — Tokens verified via JWKS, no shared secret required
+                </p>
+            </div>
+            
+            <div class="mermaid-container">
+                <div class="diagram-title">Service-to-Service Token Verification (RS256 via JWKS)</div>
+                <div class="mermaid">
+sequenceDiagram
+    participant B as Browser/App
+    participant A as Auth Server
+    participant S as Service B
+    
+    B->>A: POST /auth/verify-otp (email + OTP)
+    A-->>B: {access_token (RS256), id_token, ...}
+    B->>S: Request + Bearer access_token
+    S->>A: GET /.well-known/jwks.json (cached)
+    S->>S: Verify RS256 signature with public key
+    S-->>B: Protected resource
+                </div>
+            </div>
+            
+            <div class="code-example">
+<span class="comment">// Service-to-service verification (any service)</span>
+<span class="keyword">import</span> { decodeJWTHeader, verifyRS256JWT } <span class="keyword">from</span> <span class="string">'@strixun/api-framework/jwt'</span>;
+
+<span class="comment">// Fetch JWKS once and cache</span>
+<span class="keyword">const</span> jwksResp = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'{{BASE_URL}}/.well-known/jwks.json'</span>);
+<span class="keyword">const</span> { keys } = <span class="keyword">await</span> jwksResp.json();
+
+<span class="comment">// Verify incoming token</span>
+<span class="keyword">const</span> header = decodeJWTHeader(token);
+<span class="keyword">const</span> key = keys.find(k => k.kid === header?.kid);
+<span class="keyword">const</span> payload = <span class="keyword">await</span> verifyRS256JWT(token, key);
+            </div>
+            
+            <p style="font-size: 0.85rem; margin-top: 1rem;">
+                <strong>OIDC Endpoints:</strong>
+            </p>
+            <ul style="font-size: 0.85rem;">
+                <li><code>GET /.well-known/openid-configuration</code> — Discovery document (issuer, endpoints, supported features)</li>
+                <li><code>GET /.well-known/jwks.json</code> — Public signing keys (RS256)</li>
+                <li><code>POST /auth/verify-otp</code> — Token endpoint (OTP exchange, returns access_token + id_token)</li>
+                <li><code>GET /auth/me</code> — UserInfo endpoint (scope-based claims)</li>
+                <li><code>POST /auth/introspect</code> — Token introspection (RFC 7662)</li>
+                <li><code>POST /auth/logout</code> — Token revocation / session end</li>
+            </ul>
+
+            <p style="font-size: 0.85rem; margin-top: 1rem;">
+                <strong>Grant Type:</strong> <code>urn:ietf:params:oauth:grant-type:otp</code>
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">
+                This service uses a custom OTP grant type instead of the standard authorization code flow.
+                Users authenticate by receiving a one-time password via email and exchanging it at the token endpoint.
+                The response is fully OIDC-compliant: <code>access_token</code> (RS256),
+                <code>id_token</code> (identity claims), <code>token_type</code>, <code>expires_in</code>, and <code>scope</code>.
+            </p>
+
+            <p style="font-size: 0.85rem; margin-top: 1rem;">
+                <strong>Supported Scopes:</strong>
+            </p>
+            <table class="security-table" style="font-size: 0.85rem;">
+                <thead><tr><th>Scope</th><th>Claims Returned</th></tr></thead>
+                <tbody>
+                    <tr><td><code>openid</code></td><td><code>sub</code>, <code>iss</code>, <code>aud</code>, <code>exp</code>, <code>iat</code>, <code>at_hash</code>, <code>email_verified</code></td></tr>
+                    <tr><td><code>profile</code></td><td><code>name</code>, <code>preferred_username</code></td></tr>
+                </tbody>
+            </table>
+
+            <p style="font-size: 0.85rem; margin-top: 1rem;">
+                <strong>ID Token Claims (RS256-signed):</strong>
+            </p>
+            <table class="security-table" style="font-size: 0.85rem;">
+                <thead><tr><th>Claim</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td><code>iss</code></td><td>Issuer URL (must match Discovery <code>issuer</code> exactly)</td></tr>
+                    <tr><td><code>sub</code></td><td>Subject identifier (customerId)</td></tr>
+                    <tr><td><code>aud</code></td><td>Audience (API key ID / <code>client_id</code>)</td></tr>
+                    <tr><td><code>exp</code></td><td>Expiration time (Unix timestamp)</td></tr>
+                    <tr><td><code>iat</code></td><td>Issued-at time (Unix timestamp)</td></tr>
+                    <tr><td><code>at_hash</code></td><td>Access token hash (SHA-256, left half, base64url)</td></tr>
+                    <tr><td><code>email_verified</code></td><td>Always <code>true</code> (verified by OTP). Raw email is never included.</td></tr>
+                </tbody>
+            </table>
         </div>
         
         <!-- CORS Setup -->

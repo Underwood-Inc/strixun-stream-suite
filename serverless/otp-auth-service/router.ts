@@ -15,6 +15,8 @@ import { handleCustomerRoutes } from './router/customer-routes.js';
 import { handleGameRoutes } from './router/game-routes.js';
 import { handleSSOConfigRoutes } from './router/sso-config-routes.js';
 import { handleMigrationRoutes } from './router/migration-routes.js';
+import { handleDiscovery } from './handlers/oidc/discovery.js';
+import { handleJWKS } from './handlers/oidc/jwks.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 import type { ExecutionContext } from '@strixun/types';
 
@@ -34,6 +36,8 @@ const NO_JWT_REQUIRED_PATHS = [
     '/openapi.json',         // OpenAPI spec for Swagger UI - must be public
     '/health',               // Health check endpoints - must be public
     '/ads.txt',              // Google AdSense verification - must be public
+    '/.well-known/',         // OIDC discovery + JWKS - must be public
+    '/auth/introspect',      // Token introspection - API key authenticated
     '/',                     // Landing page for first-time visitors
     ''
 ];
@@ -103,7 +107,8 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             '/auth/request-otp', 
             '/auth/verify-otp',
             '/auth/me',
-            '/auth/logout'
+            '/auth/logout',
+            '/auth/introspect'
         ];
         
         const isApiKeyEndpoint = apiKeyEndpoints.some(ep => path === ep || path.startsWith(ep));
@@ -129,6 +134,14 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         const publicResponse = await handlePublicRoutes(request, path, env);
         if (publicResponse) {
             response = publicResponse;
+        }
+        
+        // OIDC discovery / JWKS (public, no auth required)
+        if (!response && path === '/.well-known/openid-configuration') {
+            response = await handleDiscovery(request, env);
+        }
+        if (!response && path === '/.well-known/jwks.json') {
+            response = await handleJWKS(request, env);
         }
         
         // Try dev routes (ONLY in test mode - COMPLETELY ABSENT in production)

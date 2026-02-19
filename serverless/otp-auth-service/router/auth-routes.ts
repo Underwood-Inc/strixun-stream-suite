@@ -12,6 +12,7 @@ import { checkIPAllowlist, logSecurityEvent } from '../services/security.js';
 import * as authHandlers from '../handlers/auth.js';
 import { handleRequestOTP } from '../handlers/auth/request-otp.js';
 import { handleVerifyOTP } from '../handlers/auth/verify-otp.js';
+import { handleRefresh } from '../handlers/auth/refresh.js';
 // CRITICAL: user-lookup removed - we ONLY use customerId, NO userId
 // CRITICAL: wrapWithEncryption removed - main router handles ALL encryption (avoids double-encryption)
 
@@ -121,9 +122,28 @@ async function authenticateJWT(
     }
     
     try {
-        const { verifyJWT, getJWTSecret } = await import('../utils/crypto.js');
-        const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
+        // Try RS256 first (OIDC), then fall back to HS256 (legacy)
+        let payload: any = null;
+        try {
+            const { getSigningContext, verifyAsymmetricJWT, importPublicKey } = await import('../utils/asymmetric-jwt.js');
+            const ctx = await getSigningContext(env);
+            const pubKey = await importPublicKey(ctx.publicJwk);
+            const rs256Result = await verifyAsymmetricJWT(token, pubKey);
+            if (rs256Result) {
+                payload = rs256Result;
+                console.log('[AuthRoutes] authenticateJWT - Token verified via RS256');
+            }
+        } catch {
+            // OIDC_SIGNING_KEY not set — RS256 not available
+        }
+        if (!payload) {
+            const { verifyJWT, getJWTSecret } = await import('../utils/crypto.js');
+            const jwtSecret = getJWTSecret(env);
+            payload = await verifyJWT(token, jwtSecret);
+            if (payload) {
+                console.log('[AuthRoutes] authenticateJWT - Token verified via HS256 (legacy)');
+            }
+        }
         
         if (!payload || !payload.customerId) {
             return null;
@@ -190,7 +210,7 @@ export async function handleAuthRoutes(
     
     // Step 1: ALWAYS validate API key if provided
     // SECURITY: If an API key is provided, it MUST be valid - we never ignore invalid keys
-    const AUTH_ENDPOINTS_NO_JWT = ['/auth/request-otp', '/auth/verify-otp'];
+    const AUTH_ENDPOINTS_NO_JWT = ['/auth/request-otp', '/auth/verify-otp', '/auth/refresh'];
     const isAuthEndpointNoJWT = AUTH_ENDPOINTS_NO_JWT.includes(path);
     
     // Always attempt to validate API key if the header is present
@@ -512,6 +532,42 @@ export async function handleAuthRoutes(
         const handlerResponse = await authHandlers.handleGetQuota(request, env, customerIdToPass);
         // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
         return { response: handlerResponse, customerId: customerIdToPass };
+    }
+    if (path === '/auth/introspect' && request.method === 'POST') {
+        const handlerResponse = await authHandlers.handleIntrospect(request, env);
+        
+        const corsCustomer = apiKeyAuth 
+            ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }
+            : customer;
+        const corsHeaders = getCorsHeaders(env, request, corsCustomer);
+        const responseWithCors = new Response(handlerResponse.body, {
+            status: handlerResponse.status,
+            statusText: handlerResponse.statusText,
+            headers: {
+                ...Object.fromEntries(handlerResponse.headers.entries()),
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+        
+        return { response: responseWithCors, customerId };
+    }
+    if (path === '/auth/refresh' && request.method === 'POST') {
+        const handlerResponse = await handleRefresh(request, env);
+
+        const corsCustomer = apiKeyAuth 
+            ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }
+            : customer;
+        const corsHeaders = getCorsHeaders(env, request, corsCustomer);
+        const responseWithCors = new Response(handlerResponse.body, {
+            status: handlerResponse.status,
+            statusText: handlerResponse.statusText,
+            headers: {
+                ...Object.fromEntries(handlerResponse.headers.entries()),
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+
+        return { response: responseWithCors, customerId };
     }
     if (path === '/auth/logout' && request.method === 'POST') {
         const handlerResponse = await authHandlers.handleLogout(request, env);

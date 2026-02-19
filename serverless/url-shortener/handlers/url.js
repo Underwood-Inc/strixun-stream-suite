@@ -90,7 +90,6 @@ export async function handleCreateShortUrl(request, env) {
       url,
       shortCode,
       userId: auth.userId,
-      email: auth.email,
       createdAt: new Date().toISOString(),
       clickCount: 0,
       expiresAt: new Date(Date.now() + expirationTtl * 1000).toISOString(),

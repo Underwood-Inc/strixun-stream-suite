@@ -81,11 +81,11 @@ function handleSyncError(errorKey: string, userMessage: string, error?: unknown)
 }
 
 /**
- * Sync status
+ * Sync status - tracked per config type so parallel syncs don't block each other
  */
-let isSyncing = false;
+const syncingTypes: Set<string> = new Set();
 let lastSyncTime: Record<string, number> = {};
-const SYNC_DEBOUNCE_MS = 2000; // Wait 2s after last write before syncing to cloud
+const SYNC_DEBOUNCE_MS = 2000;
 
 /**
  * Check if cloud sync should be attempted
@@ -191,54 +191,47 @@ function scheduleCloudSync(type: string, data: any[]): void {
  * Only syncs if authenticated
  */
 async function syncToCloud(type: string, data: any[]): Promise<void> {
-  // Skip if not authenticated
   if (!shouldSyncToCloud()) {
     return;
   }
   
-  if (isSyncing) {
+  if (syncingTypes.has(type)) {
     console.log(`[Cloud Storage] Sync already in progress for ${type}, skipping`);
     return;
   }
   
-  isSyncing = true;
+  syncingTypes.add(type);
   
   try {
     console.log(`[Cloud Storage] Syncing ${data.length} ${type} to cloud...`);
     
-    // Get existing cloud configs
     const apiType = type as 'text-cyclers' | 'swaps' | 'layouts';
     const cloudConfigs = await API.listConfigs(apiType);
     
-    // Create a map of cloud configs by ID
     const cloudMap = new Map(cloudConfigs.map((c: any) => [c.id, c]));
     
-    // Sync each local config to cloud
     for (const item of data) {
       const id = item.id;
-      if (!id) continue; // Skip items without IDs
+      if (!id) continue;
       
       if (cloudMap.has(id)) {
-        // Update existing cloud config
         await API.updateConfig(apiType, id, item);
       } else {
-        // Create new cloud config
         await API.createConfig(apiType, item);
       }
     }
     
-    // Delete cloud configs that don't exist locally
     const localIds = new Set(data.map((item: any) => item.id).filter(Boolean));
-    for (const [cloudId, cloudConfig] of cloudMap.entries()) {
+    for (const [cloudId] of cloudMap.entries()) {
       if (!localIds.has(cloudId)) {
         await API.deleteConfig(apiType, cloudId);
       }
     }
     
-    console.log(`[Cloud Storage] ✓ Synced ${data.length} ${type} to cloud`);
+    console.log(`[Cloud Storage] Synced ${data.length} ${type} to cloud`);
     logToActivity(`Saved ${data.length} ${type} to cloud`, 'success');
   } finally {
-    isSyncing = false;
+    syncingTypes.delete(type);
   }
 }
 

@@ -198,7 +198,6 @@ export async function extractCustomerFromRequest(request: Request, env: any): Pr
     return {
       id: payload.sub || payload.customerId || '',
       customerId: payload.customerId || payload.aud || '',
-      email: payload.email || '',
     };
   } catch (error) {
     return null;

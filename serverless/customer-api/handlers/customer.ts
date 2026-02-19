@@ -36,11 +36,23 @@ export async function handleUpdateCustomerById(
     auth: AuthResult,
     customerId: string
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
     });
 
     try {
-        // Get existing customer
+        // Verify ownership - authenticated callers can only update their own account
+        // Service calls (auth.customerId === null) are already validated at the router level
+        if (auth.customerId && auth.customerId !== customerId) {
+            const rfcError = createError(request, 403, 'Forbidden', 'Access denied');
+            return new Response(JSON.stringify(rfcError), {
+                status: 403,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
+                },
+            });
+        }
+
         const customer = await getCustomer(env.CUSTOMER_KV, customerId);
         if (!customer) {
             const rfcError = createError(request, 404, 'Not Found', 'Customer not found');
@@ -53,7 +65,6 @@ export async function handleUpdateCustomerById(
             });
         }
 
-        // Parse update data
         const body = await request.json() as Partial<CustomerData>;
         
         // Update allowed fields
@@ -114,7 +125,7 @@ export async function handleGetCustomer(
     auth: AuthResult,
     customerId?: string
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
     });
 
     try {
@@ -153,8 +164,9 @@ export async function handleGetCustomer(
             });
         }
 
-        // Verify access (users can only access their own customer account)
-        if (!customerId && customer.customerId !== auth.customerId) {
+        // Verify ownership - authenticated callers can only access their own account
+        // Service calls (auth.customerId === null) are already validated at the router level
+        if (auth.customerId && customer.customerId !== auth.customerId) {
             const rfcError = createError(request, 403, 'Forbidden', 'Access denied');
             return new Response(JSON.stringify(rfcError), {
                 status: 403,
@@ -249,7 +261,7 @@ export async function handleCreateCustomer(
     env: Env,
     auth: AuthResult
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
     });
 
     try {
@@ -374,7 +386,7 @@ export async function handleGetCustomerByEmail(
     auth: AuthResult,
     email: string
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
     });
 
     try {
@@ -434,7 +446,7 @@ export async function handleUpdateCustomer(
     env: Env,
     auth: AuthResult
 ): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
     });
 
     try {

@@ -18,7 +18,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # Development environment (only used with --env development)
 [env.development]
-vars = { ENVIRONMENT = "development", NETWORK_INTEGRITY_KEYPHRASE = "test-integrity-keyphrase-for-local-development", JWT_SECRET = "dev-jwt-secret-do-not-use-in-production-abc123", SERVICE_API_KEY = "dev-service-api-key-for-local-testing", ALLOWED_ORIGINS = "http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5178,http://localhost:5180,http://localhost:8787,http://localhost:3000" }
+vars = { ENVIRONMENT = "development", JWT_ISSUER = "http://localhost:8787", NETWORK_INTEGRITY_KEYPHRASE = "test-integrity-keyphrase-for-local-development", JWT_SECRET = "dev-jwt-secret-do-not-use-in-production-abc123", SERVICE_API_KEY = "dev-service-api-key-for-local-testing", ALLOWED_ORIGINS = "http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5178,http://localhost:5180,http://localhost:8787,http://localhost:3000" }
 
 # Development KV Namespace
 [[env.development.kv_namespaces]]
@@ -29,6 +29,7 @@ id = "a70d6c00bcc44a9ba9310c4590f228a8"
 # We use default deployment (wrangler deploy) NOT --env production
 [vars]
 ENVIRONMENT = "production"
+JWT_ISSUER = "https://auth.idling.app"
 
 # Default KV Namespace
 [[kv_namespaces]]

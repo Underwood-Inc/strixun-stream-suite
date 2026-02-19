@@ -41,7 +41,8 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
             instance: request.url
         };
         const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+            credentials: true,
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
         });
         return new Response(JSON.stringify(errorResponse), {
             status: 401,
@@ -63,7 +64,8 @@ async function handleHealth(env: Env, request: Request): Promise<Response> {
             instance: request.url
         };
         const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+            credentials: true,
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
         });
         return new Response(JSON.stringify(errorResponse), {
             status: 401,
@@ -106,7 +108,7 @@ export default {
         if (request.method === 'OPTIONS') {
             const corsHeaders = createCORSHeaders(request, {
                 credentials: true,
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
             });
             return new Response(null, { headers: Object.fromEntries(corsHeaders.entries()) });
         }
@@ -135,7 +137,8 @@ export default {
             
             const rfcError = createError(request, 404, 'Not Found', 'The requested endpoint was not found');
             const corsHeaders404 = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+                credentials: true,
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
             });
             const errorResponse = new Response(JSON.stringify(rfcError), {
                 status: 404,
@@ -175,7 +178,8 @@ export default {
                     'JWT_SECRET environment variable is required. Please contact the administrator.'
                 );
                 const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+                    credentials: true,
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
                 });
                 const errorResponse = new Response(JSON.stringify(rfcError), {
                     status: 500,
@@ -198,7 +202,8 @@ export default {
                 env.ENVIRONMENT === 'development' ? error.message : 'An internal server error occurred'
             );
             const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+                credentials: true,
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
             });
             const errorResponse = new Response(JSON.stringify(rfcError), {
                 status: 500,

@@ -106,6 +106,8 @@ export {
   protectAdminRoute,
   withAdminProtection,
   verifySuperAdminKey,
+  extractAuth,
+  authenticateJWT,
   createUnauthorizedResponse,
   createForbiddenResponse,
 } from './route-protection';
@@ -114,6 +116,7 @@ export type {
   AdminLevel,
   RouteProtectionEnv,
   RouteProtectionResult,
+  AuthResult as RouteProtectionAuthResult,
 } from './route-protection';
 
 // Re-export customer lookup utilities (customer-lookup is part of api-framework)

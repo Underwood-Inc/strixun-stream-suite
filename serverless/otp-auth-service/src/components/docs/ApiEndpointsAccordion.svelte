@@ -52,6 +52,21 @@
   <li><code>complete</code> - Complete isolation - sessions not shared with any other keys</li>
 </ul>
 
+<h5>OIDC Infrastructure Endpoints</h5>
+<p>
+  OIDC-compliant infrastructure for RS256 token verification and service-to-service trust:
+</p>
+<ul>
+  <li><strong>GET /.well-known/openid-configuration</strong> - Discovery document (provider metadata)</li>
+  <li><strong>GET /.well-known/jwks.json</strong> - JSON Web Key Set (RS256 public signing keys)</li>
+  <li><strong>POST /auth/introspect</strong> - Token introspection (RFC 7662, validate tokens via API key auth)</li>
+</ul>
+<p>
+  Tokens issued by <code>/auth/verify-otp</code> are RS256-signed with <code>id_token</code> included.
+  Services verify tokens via JWKS without needing a shared secret.
+  API keys (<code>keyId</code>) map to OIDC <code>client_id</code>.
+</p>
+
 <h5>Public Endpoints</h5>
 <ul>
   <li><strong>POST /signup</strong> - Public customer signup</li>

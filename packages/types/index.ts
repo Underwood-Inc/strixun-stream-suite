@@ -72,7 +72,7 @@ export function initializeServiceTypes(): TypeRegistry {
 
   registry.register('otp-verify', {
     typeName: 'OTPVerifyResponse',
-    required: ['id', 'customerId', 'success', 'access_token', 'userId', 'email'],
+    required: ['id', 'customerId', 'success', 'access_token', 'userId'],
     optional: ['token_type', 'expires_in', 'refresh_token'],
     metrics: {
       tokenExpiryDate: {
@@ -113,7 +113,7 @@ export function initializeServiceTypes(): TypeRegistry {
   registry.register('signup', {
     typeName: 'SignupResponse',
     required: ['id', 'customerId', 'success', 'message'],
-    optional: ['apiKey', 'keyId', 'access_token', 'userId', 'email', 'customer'],
+    optional: ['apiKey', 'keyId', 'access_token', 'userId', 'customer'],
     metrics: {},
   });
 

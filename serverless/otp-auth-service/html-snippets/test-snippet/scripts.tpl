@@ -8,6 +8,7 @@
 const API_KEY = '{{API_KEY}}';
 const BASE_URL = '{{BASE_URL}}';
 let authToken = null;
+let idToken = null;
 
 // Toggle security documentation
 function toggleSecurityDocs() {
@@ -146,9 +147,25 @@ async function verifyOTP() {
         
         if (response.ok) {
             authToken = data.access_token || data.token;
+            idToken = data.id_token || null;
             document.getElementById('step2').classList.add('completed');
             document.getElementById('getMeBtn').disabled = false;
             document.getElementById('logoutBtn').disabled = false;
+
+            // Populate OIDC token details card
+            const card = document.getElementById('oidcTokenCard');
+            card.style.display = 'block';
+            document.getElementById('oidcTokenType').textContent = data.token_type || 'Bearer';
+            document.getElementById('oidcExpiresIn').textContent = data.expires_in || '—';
+            document.getElementById('oidcScope').textContent = data.scope || 'openid profile';
+            document.getElementById('oidcAccessToken').value = authToken || '';
+            document.getElementById('oidcIdToken').value = idToken || '';
+            document.getElementById('idTokenStatus').textContent = idToken
+                ? '(RS256-signed)'
+                : '(not issued — OIDC_SIGNING_KEY may not be configured)';
+
+            // Pre-fill introspect fields
+            document.getElementById('introspectToken').value = authToken || '';
         }
     } catch (err) {
         resultEl.style.display = 'block';
@@ -232,6 +249,96 @@ async function logout() {
     } finally {
         btn.disabled = false;
         btn.textContent = 'Logout';
+    }
+}
+
+// --- OIDC Token Decode ---
+
+function decodeIdToken() {
+    const resultEl = document.getElementById('idTokenDecoded');
+    resultEl.style.display = 'block';
+    const token = idToken || document.getElementById('oidcIdToken').value.trim();
+    if (!token) {
+        resultEl.className = 'result error';
+        resultEl.textContent = 'No ID token available. Complete Step 2 first, and ensure OIDC_SIGNING_KEY is configured on the server.';
+        return;
+    }
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) throw new Error('Not a valid JWT (expected 3 parts)');
+        const header = JSON.parse(atob(parts[0].replace(/-/g,'+').replace(/_/g,'/')));
+        const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+        resultEl.className = 'result success';
+        resultEl.textContent = 'HEADER:\n' + JSON.stringify(header, null, 2) +
+            '\n\nCLAIMS:\n' + JSON.stringify(payload, null, 2);
+    } catch (err) {
+        resultEl.className = 'result error';
+        resultEl.textContent = 'Decode error: ' + err.message;
+    }
+}
+
+// --- OIDC Infrastructure Testing ---
+
+async function testDiscovery() {
+    const resultEl = document.getElementById('discoveryResult');
+    resultEl.style.display = 'block';
+    resultEl.className = 'result';
+    resultEl.textContent = 'Fetching...';
+    try {
+        const response = await fetch(BASE_URL + '/.well-known/openid-configuration');
+        const data = await response.json();
+        resultEl.className = response.ok ? 'result success' : 'result error';
+        resultEl.textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+        resultEl.className = 'result error';
+        resultEl.textContent = 'Error: ' + err.message;
+    }
+}
+
+async function testJWKS() {
+    const resultEl = document.getElementById('jwksResult');
+    resultEl.style.display = 'block';
+    resultEl.className = 'result';
+    resultEl.textContent = 'Fetching...';
+    try {
+        const response = await fetch(BASE_URL + '/.well-known/jwks.json');
+        const data = await response.json();
+        resultEl.className = response.ok ? 'result success' : 'result error';
+        resultEl.textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+        resultEl.className = 'result error';
+        resultEl.textContent = 'Error: ' + err.message;
+    }
+}
+
+async function testIntrospect() {
+    const token = document.getElementById('introspectToken').value.trim();
+    const clientId = document.getElementById('introspectClientId').value.trim();
+    const resultEl = document.getElementById('introspectResult');
+
+    if (!token || !clientId) {
+        resultEl.style.display = 'block';
+        resultEl.className = 'result error';
+        resultEl.textContent = 'Both Access Token and Client ID are required.';
+        return;
+    }
+
+    resultEl.style.display = 'block';
+    resultEl.className = 'result';
+    resultEl.textContent = 'Introspecting...';
+
+    try {
+        const response = await fetch(BASE_URL + '/auth/introspect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, client_id: clientId })
+        });
+        const data = await response.json();
+        resultEl.className = response.ok ? 'result success' : 'result error';
+        resultEl.textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+        resultEl.className = 'result error';
+        resultEl.textContent = 'Error: ' + err.message;
     }
 }
 

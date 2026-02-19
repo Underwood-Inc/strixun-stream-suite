@@ -4,10 +4,11 @@
  * Handles JWT token generation and session management for authenticated customers
  */
 
-import { createJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
+import { hashEmail } from '../../utils/crypto.js';
 import { entityKey } from '@strixun/kv-entities';
 import { getClientIP } from '../../utils/ip.js';
 import { createFingerprintHash } from '@strixun/api-framework';
+import { getSigningContext, signJWT, computeHashClaim } from '../../utils/asymmetric-jwt.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -30,8 +31,11 @@ interface Customer {
 
 interface TokenResponse {
     access_token: string;
+    id_token: string; // RS256-signed OIDC ID Token
+    refresh_token: string; // Opaque refresh token (stored hashed in KV)
     token_type: string;
     expires_in: number;
+    refresh_expires_in: number; // Seconds until absolute refresh expiry (7 days from login)
     scope: string;
     displayName: string; // MANDATORY - globally unique display name
     sub: string; // customerId - the ONLY identifier
@@ -54,6 +58,20 @@ interface SessionData {
     fingerprint?: string; // SHA-256 hash of device fingerprint
 }
 
+interface RefreshTokenData {
+    customerId: string;
+    email: string; // plaintext lowercase -- server-side only, carried to session KV on refresh
+    absoluteExpiresAt: string; // login time + 7 days -- immutable across rotations
+    createdAt: string;
+    ipAddress: string;
+    keyId: string | null;
+    ssoScope: string[];
+}
+
+export const ACCESS_TOKEN_TTL_SECONDS = 900; // 15 minutes
+export const SESSION_TTL_SECONDS = 25200; // 7 hours (inactive cleanup)
+export const REFRESH_TOKEN_MAX_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 /**
  * Generate CSRF token
  */
@@ -74,6 +92,19 @@ function generateJWTId(): string {
     }
     return Array.from(crypto.getRandomValues(new Uint8Array(16)))
         .map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Generate a cryptographically secure opaque refresh token.
+ * 64 random bytes, base64url-encoded.
+ */
+function generateRefreshToken(): string {
+    const bytes = new Uint8Array(64);
+    crypto.getRandomValues(bytes);
+    return btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
 }
 
 /**
@@ -104,9 +135,10 @@ export async function createAuthToken(
     }
     
     const emailLower = customer.email.toLowerCase().trim();
-    const expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000); // 7 hours
-    const expiresIn = 7 * 60 * 60; // 7 hours in seconds
-    const now = Math.floor(Date.now() / 1000);
+    const nowMs = Date.now();
+    const expiresAt = new Date(nowMs + ACCESS_TOKEN_TTL_SECONDS * 1000); // 15 minutes
+    const now = Math.floor(nowMs / 1000);
+    const absoluteRefreshExpiresAt = new Date(nowMs + REFRESH_TOKEN_MAX_LIFETIME_MS); // 7 days from login
     
     // Extract IP address and metadata from request
     const clientIP = getClientIP(request);
@@ -180,41 +212,54 @@ export async function createAuthToken(
     }
     
     // JWT Standard Claims (RFC 7519) + OAuth 2.0 + Custom
-    // NOTE: Email is included in JWT payload for internal use, but NOT returned in response body
-    // CRITICAL: sub (subject) is customerId - NO userId
-    // Get issuer from environment (JWT_ISSUER or AUTH_SERVICE_URL), fallback to default
-    const issuer = env.JWT_ISSUER || env.AUTH_SERVICE_URL || (env.ENVIRONMENT === 'production' ? 'auth.idling.app' : 'localhost');
+    // PRIVACY: email is NEVER included in JWT payloads -- customerId is the sole identifier
+    const issuer = env.JWT_ISSUER || env.AUTH_SERVICE_URL || (env.ENVIRONMENT === 'production' ? 'https://auth.idling.app' : 'http://localhost:8787');
     const tokenPayload = {
         // Standard JWT Claims
-        sub: customerId, // Subject (customer ID - the ONLY identifier)
-        iss: issuer, // Issuer (from env var, no hardcoded domain)
-        aud: customerId, // Audience (customer/tenant) - REQUIRED
-        exp: Math.floor(expiresAt.getTime() / 1000), // Expiration time
-        iat: now, // Issued at
-        jti: generateJWTId(), // JWT ID (unique token identifier)
+        sub: customerId,
+        iss: issuer,
+        aud: keyId || customerId,
+        exp: Math.floor(expiresAt.getTime() / 1000),
+        iat: now,
+        jti: generateJWTId(),
         
-        // OAuth 2.0 / OpenID Connect Claims
-        // CRITICAL: Email is in JWT payload for internal use, but NOT exposed in response body
-        email: emailLower,
-        email_verified: true, // OTP verification confirms email
+        // OIDC Claims (email intentionally omitted -- customerId is the identifier)
+        email_verified: true,
         
         // Custom Claims
-        customerId: customerId, // MANDATORY - the ONLY identifier
-        csrf: csrfToken, // CSRF token included in JWT
-        isSuperAdmin: isSuperAdmin, // Super admin status
+        scope: 'openid profile',
+        customerId: customerId,
+        client_id: keyId || null,
+        csrf: csrfToken,
+        isSuperAdmin: isSuperAdmin,
         
         // Inter-Tenant SSO Claims (Multi-Tenant Architecture)
-        keyId: keyId || null, // API key ID (for tenant identification)
-        ssoScope: ssoScope, // Keys that can use this session (for SSO validation)
+        keyId: keyId || null,
+        ssoScope: ssoScope,
     };
     
     // Log JWT creation for debugging
     // CRITICAL: Do NOT log OTP email - it's sensitive data
     console.log(`[JWT Creation] Creating JWT with customerId: ${customerId} from IP: ${clientIP}`);
     
-    const jwtSecret = getJWTSecret(env);
-    const accessToken = await createJWT(tokenPayload, jwtSecret);
+    // RS256 signing (OIDC-compliant) -- OIDC_SIGNING_KEY is REQUIRED
+    const signingContext = await getSigningContext(env);
+
+    const accessToken = await signJWT(tokenPayload as Record<string, unknown>, signingContext);
     
+    // Generate OIDC ID Token (RS256-signed, separate from access_token)
+    const atHash = await computeHashClaim(accessToken);
+    const idTokenPayload: Record<string, unknown> = {
+        iss: issuer,
+        sub: customerId,
+        aud: keyId || customerId,
+        exp: Math.floor(expiresAt.getTime() / 1000),
+        iat: now,
+        at_hash: atHash,
+        email_verified: true,
+    };
+    const idToken = await signJWT(idTokenPayload, signingContext);
+
     // Store session with customer isolation (including IP address and fingerprint)
     const sessionKey = entityKey('otp-auth', 'session', customerId).key;
     const sessionData: SessionData = {
@@ -229,22 +274,42 @@ export async function createAuthToken(
         fingerprint, // Device fingerprint for enhanced security
     };
     
-    await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(sessionData), { expirationTtl: 25200 }); // 7 hours (matches token expiration)
+    await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(sessionData), { expirationTtl: SESSION_TTL_SECONDS });
+    
+    // Generate and store opaque refresh token (single-use, rotated on each refresh)
+    const rawRefreshToken = generateRefreshToken();
+    const refreshTokenHash = await hashEmail(rawRefreshToken);
+    const refreshTokenKey = entityKey('otp-auth', 'refresh-token', refreshTokenHash).key;
+    const refreshTtlSeconds = Math.floor((absoluteRefreshExpiresAt.getTime() - nowMs) / 1000);
+
+    const refreshTokenData: RefreshTokenData = {
+        customerId,
+        email: emailLower, // plaintext -- carried to session KV on refresh, never placed in JWTs
+        absoluteExpiresAt: absoluteRefreshExpiresAt.toISOString(),
+        createdAt: new Date().toISOString(),
+        ipAddress: clientIP,
+        keyId: keyId || null,
+        ssoScope,
+    };
+
+    await env.OTP_AUTH_KV.put(refreshTokenKey, JSON.stringify(refreshTokenData), { expirationTtl: refreshTtlSeconds });
     
     // CRITICAL: Do NOT log OTP email - it's sensitive data
-    console.log(`[JWT Creation] ✓ Created session for customer: ${customerId} from IP: ${clientIP}`);
+    console.log(`[JWT Creation] ✓ Created session + refresh token for customer: ${customerId} from IP: ${clientIP}`);
     
     // OAuth 2.0 Token Response (RFC 6749 Section 5.1)
-    // CRITICAL: DO NOT return OTP email in response - it's sensitive data
-    // Email is only in the JWT payload for internal use
-    return {
+    // PRIVACY: email is NEVER included in any response -- customerId is the sole identifier
+    const tokenResponse: TokenResponse = {
         // OAuth 2.0 Standard Fields
         access_token: accessToken,
+        id_token: idToken,
+        refresh_token: rawRefreshToken,
         token_type: 'Bearer',
-        expires_in: expiresIn,
+        expires_in: ACCESS_TOKEN_TTL_SECONDS,
+        refresh_expires_in: refreshTtlSeconds,
         
         // Additional Standard Fields
-        scope: 'openid email profile', // OIDC scopes
+        scope: 'openid profile',
         
         // Customer Information (NOT User - we only use Customer)
         displayName: customer.displayName, // MANDATORY - globally unique display name
@@ -259,5 +324,7 @@ export async function createAuthToken(
         customerId: customerId, // MANDATORY - the ONLY identifier
         expiresAt: expiresAt.toISOString(),
     };
+
+    return tokenResponse;
 }
 

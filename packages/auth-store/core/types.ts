@@ -9,20 +9,22 @@
  */
 
 export interface AuthenticatedCustomer {
-    customerId: string; // PRIMARY IDENTITY - REQUIRED
-    email: string;
+    customerId: string;
     displayName?: string | null;
-    token?: string; // Optional - only for backward compat, not used with cookies
+    token?: string;
     expiresAt?: string;
     isSuperAdmin?: boolean;
-    // Optional extensions for specific projects
+    /** OIDC scopes granted to the session (e.g. "openid email profile") */
+    scope?: string;
+    /** OIDC ID Token (RS256-signed, present when OIDC is enabled) */
+    idToken?: string;
     twitchAccount?: {
         twitchUserId: string;
         twitchUsername: string;
         displayName?: string;
         attachedAt: string;
     };
-    [key: string]: unknown; // Allow additional properties
+    [key: string]: unknown;
 }
 
 export interface AuthState {

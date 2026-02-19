@@ -10,7 +10,7 @@
 
 import { create, type StateCreator } from 'zustand';
 import type { AuthenticatedCustomer, AuthState, AuthStoreMethods, AuthStoreConfig } from '../core/types';
-import { fetchCustomerInfo, getAuthApiUrl } from '../core/api';
+import { fetchCustomerInfo, getAuthApiUrl, refreshAuth } from '../core/api';
 
 interface ZustandAuthState extends AuthState, AuthStoreMethods {}
 
@@ -67,11 +67,19 @@ export function createAuthStore(config?: AuthStoreConfig) {
         
         checkAuth: async () => {
             try {
-                const customerInfo = await fetchCustomerInfo(null, config);
+                let customerInfo = await fetchCustomerInfo(null, config);
+
+                // If the access token expired (returned null), attempt a silent refresh
+                if (!customerInfo) {
+                    const refreshed = await refreshAuth(config);
+                    if (refreshed) {
+                        customerInfo = await fetchCustomerInfo(null, config);
+                    }
+                }
+
                 if (customerInfo) {
                     const customer: AuthenticatedCustomer = {
                         customerId: customerInfo.customerId,
-                        email: '', // Not returned by /auth/me
                         displayName: customerInfo.displayName,
                         isSuperAdmin: customerInfo.isSuperAdmin,
                     };
@@ -83,7 +91,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
                     return true;
                 }
                 
-                // Not authenticated (401/403) - this is expected, not an error
+                // Not authenticated and refresh failed — session is truly over
                 set({ 
                     customer: null, 
                     isAuthenticated: false,
@@ -91,18 +99,15 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 });
                 return false;
             } catch (error) {
-                // Network errors, 500s, etc. are critical - log and rethrow for caller to handle
                 const errorMessage = error instanceof Error ? error.message : String(error);
                 console.error('[Auth] Check auth failed with critical error:', errorMessage);
                 
-                // Set auth state to false but don't swallow the error
                 set({ 
                     customer: null, 
                     isAuthenticated: false,
                     isSuperAdmin: false,
                 });
                 
-                // Re-throw so caller can handle it (fail-fast)
                 throw new Error(`Authentication check failed: ${errorMessage}. Check your connection and that the auth service is running.`);
             }
         },
@@ -129,6 +134,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 console.warn('[Auth] Failed to fetch customer info:', error);
             }
         },
+
     });
 
     return create<ZustandAuthState>()(authStoreCreator);

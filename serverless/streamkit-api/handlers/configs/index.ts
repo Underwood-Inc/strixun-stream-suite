@@ -3,9 +3,14 @@
  * 
  * ONE API for ALL config types: text-cyclers, swaps, layouts, notes, etc.
  * Pattern: /configs/{type} and /configs/{type}/:id
+ * 
+ * These are plain async handlers (NOT wrapped by createEnhancedHandler).
+ * createEnhancedHandler expects handlers to return plain data objects, but these
+ * handlers need to return full Response objects with proper status codes (201, 400, 404).
+ * CORS headers are applied by withCORSHeaders in worker.ts.
  */
 
-import { createEnhancedHandler } from '@strixun/api-framework';
+import type { ExecutionContext } from '@cloudflare/workers-types';
 import type { Env } from '../../src/env.d.js';
 import { extractCustomerFromJWT } from '../../utils/auth.js';
 import { getEntity, putEntity, deleteEntity } from '@strixun/kv-entities';
@@ -19,24 +24,45 @@ interface ConfigData {
   [key: string]: any;
 }
 
+function jsonResponse(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function authErrorResponse(error: unknown): Response {
+  const message = error instanceof Error ? error.message : 'Authentication failed';
+  return jsonResponse({
+    type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+    title: 'Unauthorized',
+    status: 401,
+    detail: message,
+  }, 401);
+}
+
 /**
  * Create a new config
  * POST /configs/:type
  */
-export const createConfig = createEnhancedHandler<Env>(async (request, context) => {
-  const env = context.env as Env;
-  const customerId = await extractCustomerFromJWT(request, env);
+export async function createConfig(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+  let customerId: string;
+  try {
+    customerId = await extractCustomerFromJWT(request, env);
+  } catch (err) {
+    return authErrorResponse(err);
+  }
+
   const url = new URL(request.url);
   const configType = url.pathname.split('/')[2];
   
-  const body = await request.json();
+  const body = await request.json() as Record<string, any>;
   const { id, ...config } = body;
   
   if (!id) {
-    return Response.json({ detail: 'Config ID is required' }, { status: 400 });
+    return jsonResponse({ detail: 'Config ID is required' }, 400);
   }
   
-  // Entity ID combines customer, type, and config ID for unique lookup
   const entityId = `${customerId}:${configType}:${id}`;
   const data: ConfigData = {
     ...config,
@@ -49,24 +75,24 @@ export const createConfig = createEnhancedHandler<Env>(async (request, context) 
   
   await putEntity(env.STREAMKIT_KV, 'streamkit', 'config', entityId, data);
   
-  return Response.json({ 
-    message: 'Config created',
-    configId: id,
-    type: configType 
-  }, { status: 201 });
-});
+  return jsonResponse({ message: 'Config created', configId: id, type: configType }, 201);
+}
 
 /**
  * List all configs of a type
  * GET /configs/:type
  */
-export const listConfigs = createEnhancedHandler<Env>(async (request, context) => {
-  const env = context.env as Env;
-  const customerId = await extractCustomerFromJWT(request, env);
+export async function listConfigs(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+  let customerId: string;
+  try {
+    customerId = await extractCustomerFromJWT(request, env);
+  } catch (err) {
+    return authErrorResponse(err);
+  }
+
   const url = new URL(request.url);
   const configType = url.pathname.split('/')[2];
   
-  // Use entity key prefix pattern from kv-entities
   const prefix = `streamkit:config:${customerId}:${configType}:`;
   const list = await env.STREAMKIT_KV.list({ prefix });
   
@@ -77,63 +103,70 @@ export const listConfigs = createEnhancedHandler<Env>(async (request, context) =
     })
   );
   
-  return Response.json({ 
-    configs: configs.filter(Boolean),
-    type: configType,
-    count: configs.length 
-  });
-});
+  const filtered = configs.filter(Boolean);
+  return jsonResponse({ configs: filtered, type: configType, count: filtered.length });
+}
 
 /**
  * Get a specific config
  * GET /configs/:type/:id
  */
-export const getConfig = createEnhancedHandler<Env>(async (request, context) => {
-  const env = context.env as Env;
-  const customerId = await extractCustomerFromJWT(request, env);
+export async function getConfig(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+  let customerId: string;
+  try {
+    customerId = await extractCustomerFromJWT(request, env);
+  } catch (err) {
+    return authErrorResponse(err);
+  }
+
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/');
   const configType = pathParts[2];
   const configId = decodeURIComponent(pathParts[3]);
   
   if (!configId) {
-    return Response.json({ detail: 'Config ID is required' }, { status: 400 });
+    return jsonResponse({ detail: 'Config ID is required' }, 400);
   }
   
   const entityId = `${customerId}:${configType}:${configId}`;
   const config = await getEntity<ConfigData>(env.STREAMKIT_KV, 'streamkit', 'config', entityId);
   
   if (!config) {
-    return Response.json({ detail: 'Config not found' }, { status: 404 });
+    return jsonResponse({ detail: 'Config not found' }, 404);
   }
   
-  return Response.json({ config, type: configType });
-});
+  return jsonResponse({ config, type: configType });
+}
 
 /**
  * Update a config
  * PUT /configs/:type/:id
  */
-export const updateConfig = createEnhancedHandler<Env>(async (request, context) => {
-  const env = context.env as Env;
-  const customerId = await extractCustomerFromJWT(request, env);
+export async function updateConfig(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+  let customerId: string;
+  try {
+    customerId = await extractCustomerFromJWT(request, env);
+  } catch (err) {
+    return authErrorResponse(err);
+  }
+
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/');
   const configType = pathParts[2];
   const configId = decodeURIComponent(pathParts[3]);
   
   if (!configId) {
-    return Response.json({ detail: 'Config ID is required' }, { status: 400 });
+    return jsonResponse({ detail: 'Config ID is required' }, 400);
   }
   
   const entityId = `${customerId}:${configType}:${configId}`;
   const existing = await getEntity<ConfigData>(env.STREAMKIT_KV, 'streamkit', 'config', entityId);
   
   if (!existing) {
-    return Response.json({ detail: 'Config not found' }, { status: 404 });
+    return jsonResponse({ detail: 'Config not found' }, 404);
   }
   
-  const body = await request.json();
+  const body = await request.json() as Record<string, any>;
   const updated: ConfigData = {
     ...existing,
     ...body,
@@ -145,35 +178,32 @@ export const updateConfig = createEnhancedHandler<Env>(async (request, context) 
   
   await putEntity(env.STREAMKIT_KV, 'streamkit', 'config', entityId, updated);
   
-  return Response.json({ 
-    message: 'Config updated',
-    configId,
-    type: configType 
-  });
-});
+  return jsonResponse({ message: 'Config updated', configId, type: configType });
+}
 
 /**
  * Delete a config
  * DELETE /configs/:type/:id
  */
-export const deleteConfig = createEnhancedHandler<Env>(async (request, context) => {
-  const env = context.env as Env;
-  const customerId = await extractCustomerFromJWT(request, env);
+export async function deleteConfig(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+  let customerId: string;
+  try {
+    customerId = await extractCustomerFromJWT(request, env);
+  } catch (err) {
+    return authErrorResponse(err);
+  }
+
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/');
   const configType = pathParts[2];
   const configId = decodeURIComponent(pathParts[3]);
   
   if (!configId) {
-    return Response.json({ detail: 'Config ID is required' }, { status: 400 });
+    return jsonResponse({ detail: 'Config ID is required' }, 400);
   }
   
   const entityId = `${customerId}:${configType}:${configId}`;
   await deleteEntity(env.STREAMKIT_KV, 'streamkit', 'config', entityId);
   
-  return Response.json({ 
-    message: 'Config deleted',
-    configId,
-    type: configType 
-  });
-});
+  return jsonResponse({ message: 'Config deleted', configId, type: configType });
+}

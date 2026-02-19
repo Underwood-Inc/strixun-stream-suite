@@ -274,7 +274,6 @@ export async function login(jwtToken: string): Promise<void> {
   // Immediately set basic auth state from JWT
   const basicCustomerData: AuthenticatedCustomer = {
     customerId: payload.customerId as string || payload.sub as string,
-    email: payload.email as string,
     displayName: payload.displayName as string | undefined,
     token: '', // Token is in HttpOnly cookie
     expiresAt: payload.exp ? new Date(payload.exp as number * 1000).toISOString() : new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(),

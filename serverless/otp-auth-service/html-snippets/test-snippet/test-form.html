@@ -37,6 +37,30 @@
     <div id="verifyResult" class="result" style="margin-top: 1rem; display: none;"></div>
 </div>
 
+<!-- OIDC Token Details (populated after verify-otp) -->
+<div class="card" id="oidcTokenCard" style="display: none;">
+    <h2>🎫 OIDC Token Details</h2>
+    <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Tokens returned by <code>/auth/verify-otp</code>. The <code>access_token</code> is RS256-signed
+        when <code>OIDC_SIGNING_KEY</code> is configured. The <code>id_token</code> contains identity claims.
+    </p>
+    <div style="margin-bottom: 0.75rem;">
+        <strong>token_type:</strong> <span id="oidcTokenType">—</span>&nbsp;&nbsp;
+        <strong>expires_in:</strong> <span id="oidcExpiresIn">—</span>s&nbsp;&nbsp;
+        <strong>scope:</strong> <code id="oidcScope">—</code>
+    </div>
+    <div class="form-group">
+        <label>access_token</label>
+        <textarea id="oidcAccessToken" rows="2" readonly style="width:100%;font-family:monospace;font-size:0.75rem;resize:vertical;"></textarea>
+    </div>
+    <div class="form-group">
+        <label>id_token <span id="idTokenStatus" style="font-size:0.75rem;color:var(--text-muted);">(not issued — OIDC_SIGNING_KEY may not be configured)</span></label>
+        <textarea id="oidcIdToken" rows="2" readonly style="width:100%;font-family:monospace;font-size:0.75rem;resize:vertical;"></textarea>
+    </div>
+    <button onclick="decodeIdToken()">Decode ID Token Claims</button>
+    <div id="idTokenDecoded" class="result" style="margin-top: 1rem; display: none;"></div>
+</div>
+
 <!-- Step 3: Get User Info -->
 <div class="card">
     <div class="step" id="step3">
@@ -55,4 +79,42 @@
     </div>
     <button id="logoutBtn" onclick="logout()" disabled>Logout</button>
     <div id="logoutResult" class="result" style="margin-top: 1rem; display: none;"></div>
+</div>
+
+<!-- OIDC-Compliant Infrastructure -->
+<div class="card">
+    <h2>🌐 OIDC Infrastructure</h2>
+    <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Tokens issued by /auth/verify-otp are RS256-signed and OIDC-compliant.
+        Services verify tokens via the JWKS endpoint instead of shared secrets.
+    </p>
+
+    <div class="step">
+        <div class="step-number">&#x2139;</div>
+        <div><strong>Discovery</strong> - OpenID Provider metadata</div>
+    </div>
+    <button onclick="testDiscovery()">Fetch Discovery Document</button>
+    <div id="discoveryResult" class="result" style="margin-top: 1rem; display: none;"></div>
+
+    <div class="step" style="margin-top: 1.5rem;">
+        <div class="step-number">&#x1F511;</div>
+        <div><strong>JWKS</strong> - Public signing keys for token verification</div>
+    </div>
+    <button onclick="testJWKS()">Fetch JWKS</button>
+    <div id="jwksResult" class="result" style="margin-top: 1rem; display: none;"></div>
+
+    <div class="step" style="margin-top: 1.5rem;">
+        <div class="step-number">&#x1F50D;</div>
+        <div><strong>Token Introspection</strong> - Validate an access token (API key required)</div>
+    </div>
+    <div class="form-group">
+        <label for="introspectToken">Access Token</label>
+        <input type="text" id="introspectToken" placeholder="Paste an access token" />
+    </div>
+    <div class="form-group">
+        <label for="introspectClientId">API Key ID (client_id)</label>
+        <input type="text" id="introspectClientId" placeholder="key_..." />
+    </div>
+    <button onclick="testIntrospect()">Introspect Token</button>
+    <div id="introspectResult" class="result" style="margin-top: 1rem; display: none;"></div>
 </div>

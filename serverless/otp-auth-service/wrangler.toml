@@ -15,6 +15,14 @@ compatibility_flags = ["nodejs_compat"]
 #   wrangler secret put RESEND_API_KEY       # REQUIRED: Resend API key from https://resend.com/api-keys
 #   wrangler secret put RESEND_FROM_EMAIL    # REQUIRED: Verified email address (e.g., noreply@yourdomain.com)
 #   wrangler secret put ALLOWED_ORIGINS      # OPTIONAL: Comma-separated CORS origins (recommended for production)
+#   wrangler secret put OIDC_SIGNING_KEY     # REQUIRED for OIDC: RSA private JWK (JSON string) for ID Token signing
+#                                            # Generate with:
+#                                            #   node -e "crypto.subtle.generateKey(
+#                                            #     {name:'RSASSA-PKCS1-v1_5',modulusLength:2048,
+#                                            #      publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},
+#                                            #     true,['sign','verify'])
+#                                            #     .then(k=>crypto.subtle.exportKey('jwk',k.privateKey))
+#                                            #     .then(j=>console.log(JSON.stringify(j)))"
 #
 # IMPORTANT: The service will fail health checks if required secrets are missing.
 # Check secrets: wrangler secret list
@@ -43,6 +51,7 @@ zone_name = "idling.app"
 
 [env.development.vars]
 ENVIRONMENT = "development"
+JWT_ISSUER = "http://localhost:8787"
 CUSTOMER_API_URL = "http://localhost:8790"
 ACCESS_SERVICE_URL = "http://localhost:8791"
 ALLOWED_ORIGINS = "http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5178,http://localhost:5180,http://localhost:8787,http://localhost:3000"
@@ -50,6 +59,7 @@ NETWORK_INTEGRITY_KEYPHRASE = "test-integrity-keyphrase-for-local-development"
 JWT_SECRET = "dev-jwt-secret-do-not-use-in-production-abc123"
 SERVICE_API_KEY = "dev-service-api-key-for-local-testing"
 RESEND_FROM_EMAIL = "noreply@localhost"
+OIDC_SIGNING_KEY = '{"key_ops":["sign"],"ext":true,"alg":"RS256","kty":"RSA","n":"rJ-IH_GcsLHy1nKWHxE7OSo9NRZDM-FqMETOLgwcsZwS930pXzBxO65fjN9N6nJa0S6ggZYt9VeTd6kxHrkS_B2q1_GMIwAMFQPRi-ql3WnrJQV1lS4XEpSGGQ_CmWrNoffstYqTWNWPQZTfKqP0eRYh45Y_y2ceRPmcUA57TEIXcBPJBGREqOeSEGdISIbRTWfTZcMVO8xXQTdyNdkg9fhdACHcYhpcEZE_4fx5aVZLeUi7rSJx6I7H7KkHH7794X_cJNqnqSyDYQ7RdIqLLdVffBDXZ2XJZIcGaJSt7NIK-mloBFIrw6Rg5B8dX5xrGGrMQKJ5MreEAkrwdUqBOQ","e":"AQAB","d":"DV9qdzcLcXDHpC9KS-vUz6_i__rSh_FdfZHG-zA7BNNXcM7EZrhk_T-b7VjbO19Sg8P98SwGMWxwYyO7R2sE-nz94C65MXjudq5ODG3IHaf37G1I156zcOAKp2ReKe5pMbP4JXQvyAD7URRMWYxMAxlg1LWuCX7ajHNd1aHZkWWowE_gTQ5gEanP5cXWHbECf7dCI47hkCe562dfKjJnFiQD_ahrztp8Fgkt_BN4-YxgbUl9oAwo9gTz-AQ0ZYOpZPe8fKCIIbyAaOIyXf-VwiqEuC7JDvdqTeKEXFC-RZ3xXkbzRL4cZu6hGRNjK_3ffmg2kvJhIzZoEjolnWkYBQ","p":"17Ekb4jLoTXbiuKxWaG2z9Q_neY9sJu6ePpImSPzrQCRWmdIicT--bH9H5ycAnXrG2bLwPID8tO2tmuWgANy0QVKCBr1ybrGpGMDjGrX8GKJvedfQuzh0hBQcnVs4VrHHVA343Ub4RMzmV6bc0PK1WfCtiUVHWFFp3GvFYC6cC8","q":"zOHymJ3MuDjQWUn2E5XdKByKl66QrotUxsXvX7jrsPGQpz8GIC0m7y4Moxtmw9h5j0noYscheJFYCzPqa5fu2JIhr7cl7OS8ME5Wig7K-LH4COniRuOsy6Wn98v4n5__yRjBjNgn3QQXbW3-FIiUcm4P29xF54MCQpcNUOsMIxc","dp":"ivFAoFyFmBaikygOyMdkhSKbzHJpoN_gUlgf9g5zxSkNeSf5UU5GVcDzZq6yzN77EY65iFQeeQkqtP4_V71g9AatNuVvGYEovvJNceHNsrs3Mc7ezbTcjz4VJHZCKjUY-OgY6Hwi9m0xGwYXqzuraKdLhZwDqwZjIUcZWweukd8","dq":"x21n5oYzL16d70u-63GEw_aEMQEKc9vLuXARgOtO__0jAKioHcnVjBsW0e1qKlgcew1F1mBehC11tfHizLgnFUeo4pEzqVM8mwil09xyVYFmHccLKlWTbObiiKFScI4dPHGMdLwykT_aTfoyx2nqlTfs1-WhZahwGsFNhOZF-iE","qi":"xEqy7oq-JmnlLd5LYlPs4VFHw8pnGt55i1aCKVq2R57pQXzDyeAAtUsfy4jf5obhJLe4ypxuY2pj_vjiKCQDBfyjN4x3mQJigNumDgvPc7aPAwfeZSggYsuUmUt6y_9KYjnP7X0v9U4ZH4WZtM_u0fkAr3DRUzmA6iv4fLMJaw8"}'
 
 # Development KV Namespace (using same namespace for testing)
 [[env.development.kv_namespaces]]
@@ -59,6 +69,7 @@ id = "680c9dbe86854c369dd23e278abb41f9"
 # Default to production for backward compatibility
 [vars]
 ENVIRONMENT = "production"
+JWT_ISSUER = "https://auth.idling.app"
 CUSTOMER_API_URL = "https://customer-api.idling.app"
 ACCESS_SERVICE_URL = "https://access-api.idling.app"
 

@@ -10,6 +10,7 @@ import { createJWT, getJWTSecret, hashEmail, verifyJWT } from '../../utils/crypt
 import { getClientIP } from '../../utils/ip.js';
 import { createFingerprintHash } from '@strixun/api-framework';
 import { getCookieDomains } from '../../utils/cookie-domains.js';
+import { getSigningContext, verifyAsymmetricJWT, importPublicKey } from '../../utils/asymmetric-jwt.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -81,8 +82,26 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
                 headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
             });
         }
-        const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
+        // Verify token: try RS256 first (OIDC), then fall back to HS256
+        let payload: JWTPayload | null = null;
+        try {
+            const ctx = await getSigningContext(env);
+            const pubKey = await importPublicKey(ctx.publicJwk);
+            const rs256Result = await verifyAsymmetricJWT(token, pubKey);
+            if (rs256Result) {
+                payload = rs256Result as JWTPayload;
+                console.log('[handleGetMe] Token verified via RS256');
+            }
+        } catch {
+            // OIDC_SIGNING_KEY not set -- RS256 not available
+        }
+        if (!payload) {
+            const jwtSecret = getJWTSecret(env);
+            payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
+            if (payload) {
+                console.log('[handleGetMe] Token verified via HS256 (legacy)');
+            }
+        }
         
         if (!payload) {
             console.log('[handleGetMe] Returning 401 - invalid or expired token');
@@ -163,26 +182,34 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             });
         }
         
-        // Build response with ONLY JWT payload data
-        // DO NOT include email - it's sensitive OTP email data
-        // CRITICAL: Use customerId as the ONLY identifier - NO customerId
-        const responseData: any = {
-            id: customerId, // customerId is the ONLY identifier
-            customerId: customerId, // MANDATORY
-            // Standard OIDC Claims (from JWT only - all required, no fallbacks)
-            sub: customerId, // customerId is the subject
-            // DO NOT return email - it's the OTP email and should not be exposed
-            email_verified: payload.email_verified ?? false, // Explicit false if missing, not true fallback
-            // Additional Standard Claims (from JWT only - all required)
-            iss: payload.iss,
-            aud: payload.aud,
-            // Custom Claims (from JWT only)
-            isSuperAdmin: payload.isSuperAdmin ?? false, // Explicit false if missing
-            // CSRF token for state-changing operations (POST, PUT, DELETE)
-            csrf: payload.csrf || null, // Extract from JWT payload for HttpOnly cookie compatibility
+        // Parse scopes from token to control which claims are returned
+        const scopeStr: string = (payload.scope as string) || 'openid';
+        const scopes = new Set(scopeStr.split(' '));
+
+        // OIDC UserInfo response (RFC 7662) with scope-based claim filtering
+        const responseData: Record<string, unknown> = {
+            sub: customerId,
         };
-        
-        // OpenID Connect UserInfo Response (RFC 7662)
+
+        // 'openid' scope -- always present
+        responseData.id = customerId;
+        responseData.customerId = customerId;
+        responseData.iss = payload.iss;
+        responseData.aud = payload.aud;
+        responseData.isSuperAdmin = payload.isSuperAdmin ?? false;
+        responseData.csrf = payload.csrf || null;
+
+        // 'email' scope -- include email claims
+        if (scopes.has('email')) {
+            responseData.email_verified = payload.email_verified ?? false;
+        }
+
+        // 'profile' scope -- include profile claims
+        if (scopes.has('profile') && payload.displayName) {
+            responseData.name = payload.displayName;
+            responseData.preferred_username = payload.displayName;
+        }
+
         console.log('[handleGetMe] Returning SUCCESS 200 with customer data:', {
             customerId: responseData.customerId,
             isSuperAdmin: responseData.isSuperAdmin
@@ -259,28 +286,23 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
         // Create Set-Cookie headers to clear cookies for all matching domains
         const clearCookieHeaders: string[] = [];
         for (const cookieDomain of cookieDomainsToClear) {
-            const clearCookieParts = isProduction ? [
-                'auth_token=',
-                `Domain=${cookieDomain}`,
-                'Path=/',
-                'HttpOnly',
-                'Secure',
-                'SameSite=Lax',
-                'Max-Age=0'
-            ] : [
-                'auth_token=',
+            const baseParts = [
                 `Domain=${cookieDomain}`,
                 'Path=/',
                 'HttpOnly',
                 'SameSite=Lax',
-                'Max-Age=0'
+                'Max-Age=0',
             ];
-            clearCookieHeaders.push(clearCookieParts.join('; '));
+            if (isProduction) baseParts.push('Secure');
+
+            clearCookieHeaders.push(['auth_token=', ...baseParts].join('; '));
+            clearCookieHeaders.push(['refresh_token=', ...baseParts].join('; '));
         }
 
         // PRIORITY 1: Check HttpOnly cookie (browser requests)
         // PRIORITY 2: Check Authorization header (service-to-service calls)
         let token: string | null = null;
+        let rawRefreshToken: string | null = null;
         
         const cookieHeader = request.headers.get('Cookie');
         if (cookieHeader) {
@@ -288,6 +310,10 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             const authCookie = cookies.find(c => c.startsWith('auth_token='));
             if (authCookie) {
                 token = authCookie.substring('auth_token='.length).trim();
+            }
+            const rtCookie = cookies.find(c => c.startsWith('refresh_token='));
+            if (rtCookie) {
+                rawRefreshToken = rtCookie.substring('refresh_token='.length).trim();
             }
         }
         
@@ -315,8 +341,22 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             
             return response;
         }
-        const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
+        // Verify token: try RS256 first (OIDC), then fall back to HS256
+        let payload: JWTPayload | null = null;
+        try {
+            const ctx = await getSigningContext(env);
+            const pubKey = await importPublicKey(ctx.publicJwk);
+            const rs256Result = await verifyAsymmetricJWT(token, pubKey);
+            if (rs256Result) {
+                payload = rs256Result as JWTPayload;
+            }
+        } catch {
+            // OIDC_SIGNING_KEY not set — RS256 not available
+        }
+        if (!payload) {
+            const jwtSecret = getJWTSecret(env);
+            payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
+        }
 
         if (!payload) {
             const response = new Response(JSON.stringify({ success: true, message: 'Logged out (invalid/expired token)' }), {
@@ -363,8 +403,14 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             // CRITICAL: Delete the session itself - this prevents /auth/me from working with this session
             await env.OTP_AUTH_KV.delete(sessionKey);
             
-            // CRITICAL: Do NOT log OTP email - it's sensitive data
-            console.log(`[Logout] ✓ Deleted session for customer: ${customerId}`);
+            // Delete refresh token from KV (if present)
+            if (rawRefreshToken) {
+                const rtHash = await hashEmail(rawRefreshToken);
+                const rtKey = entityKey('otp-auth', 'refresh-token', rtHash).key;
+                await env.OTP_AUTH_KV.delete(rtKey);
+            }
+            
+            console.log(`[Logout] ✓ Deleted session + refresh token for customer: ${customerId}`);
         }
         
         const response = new Response(JSON.stringify({

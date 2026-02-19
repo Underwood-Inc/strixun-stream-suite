@@ -32,6 +32,10 @@
       "description": "Administrative endpoints (requires authentication)"
     },
     {
+      "name": "OIDC",
+      "description": "OpenID Connect discovery, JWKS, and token introspection"
+    },
+    {
       "name": "Health",
       "description": "Health check endpoints"
     }
@@ -421,6 +425,110 @@
         }
       }
     },
+    "/.well-known/openid-configuration": {
+      "get": {
+        "tags": ["OIDC"],
+        "summary": "OpenID Connect Discovery",
+        "description": "Returns the OpenID Provider metadata document describing endpoints, supported scopes, signing algorithms, and grant types.",
+        "operationId": "getDiscovery",
+        "responses": {
+          "200": {
+            "description": "Provider configuration document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OIDCDiscovery"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/.well-known/jwks.json": {
+      "get": {
+        "tags": ["OIDC"],
+        "summary": "JSON Web Key Set",
+        "description": "Returns the public RSA signing keys used to verify RS256-signed access tokens and ID tokens.",
+        "operationId": "getJWKS",
+        "responses": {
+          "200": {
+            "description": "JWK Set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JWKSet"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Refresh tokens",
+        "description": "Exchange an opaque refresh token (sent as HttpOnly cookie) for a new access token and rotated refresh token. No JWT required — the refresh_token cookie is the credential. The refresh token is single-use (rotation); the absolute max lifetime is 7 days from the original login.",
+        "operationId": "refreshTokens",
+        "responses": {
+          "200": {
+            "description": "Tokens refreshed successfully. New auth_token and refresh_token cookies are set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Refresh token missing, invalid, already used (rotation), or max lifetime exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { "type": "string", "example": "invalid_grant" },
+                    "error_description": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/introspect": {
+      "post": {
+        "tags": ["OIDC"],
+        "summary": "Token Introspection (RFC 7662)",
+        "description": "Validate an access token and retrieve its associated metadata. Supports both RS256 (OIDC) and HS256 (legacy) tokens. Revoked tokens return active: false.",
+        "operationId": "introspectToken",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntrospectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Introspection result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntrospectionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": ["Health"],
@@ -516,8 +624,15 @@
         "properties": {
           "access_token": {
             "type": "string",
-            "description": "JWT access token",
-            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            "description": "RS256-signed JWT access token (15-minute lifetime)"
+          },
+          "id_token": {
+            "type": "string",
+            "description": "RS256-signed OIDC ID Token containing identity claims"
+          },
+          "refresh_token": {
+            "type": "string",
+            "description": "Opaque refresh token (single-use, 7-day absolute max lifetime). Delivered as HttpOnly cookie."
           },
           "token_type": {
             "type": "string",
@@ -525,26 +640,33 @@
           },
           "expires_in": {
             "type": "integer",
-            "description": "Token expiration in seconds",
-            "example": 25200
+            "description": "Access token expiration in seconds",
+            "example": 900
+          },
+          "refresh_expires_in": {
+            "type": "integer",
+            "description": "Seconds until refresh token absolute expiry (max 604800 = 7 days)",
+            "example": 604800
           },
           "scope": {
             "type": "string",
-            "example": "openid email profile"
+            "example": "openid profile"
           },
           "sub": {
             "type": "string",
-            "description": "Subject (customer ID)",
-            "example": "cust_abc123"
-          },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "example": "customer@example.com"
+            "description": "Subject (customer ID)"
           },
           "email_verified": {
             "type": "boolean",
             "example": true
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Customer display name"
+          },
+          "customerId": {
+            "type": "string",
+            "description": "Customer ID (primary identifier)"
           }
         }
       },
@@ -566,10 +688,6 @@
         "properties": {
           "customerId": {
             "type": "string"
-          },
-          "email": {
-            "type": "string",
-            "format": "email"
           },
           "name": {
             "type": "string"
@@ -755,6 +873,134 @@
           "instance": {
             "type": "string",
             "format": "uri"
+          }
+        }
+      },
+      "OIDCDiscovery": {
+        "type": "object",
+        "properties": {
+          "issuer": {
+            "type": "string",
+            "example": "https://auth.idling.app"
+          },
+          "token_endpoint": {
+            "type": "string"
+          },
+          "userinfo_endpoint": {
+            "type": "string"
+          },
+          "jwks_uri": {
+            "type": "string"
+          },
+          "introspection_endpoint": {
+            "type": "string"
+          },
+          "revocation_endpoint": {
+            "type": "string"
+          },
+          "grant_types_supported": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "scopes_supported": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "claims_supported": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "id_token_signing_alg_values_supported": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "subject_types_supported": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "token_endpoint_auth_methods_supported": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "JWKSet": {
+        "type": "object",
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kty": { "type": "string", "example": "RSA" },
+                "kid": { "type": "string" },
+                "use": { "type": "string", "example": "sig" },
+                "alg": { "type": "string", "example": "RS256" },
+                "n": { "type": "string" },
+                "e": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "IntrospectionRequest": {
+        "type": "object",
+        "required": ["token"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "The access token to introspect"
+          },
+          "client_id": {
+            "type": "string",
+            "description": "API key ID (OIDC client identifier)"
+          }
+        }
+      },
+      "IntrospectionResponse": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "description": "Whether the token is currently active"
+          },
+          "sub": {
+            "type": "string",
+            "description": "Subject (customer ID)"
+          },
+          "client_id": {
+            "type": "string",
+            "description": "API key ID that issued the token"
+          },
+          "scope": {
+            "type": "string",
+            "example": "openid profile"
+          },
+          "token_type": {
+            "type": "string",
+            "example": "Bearer"
+          },
+          "exp": {
+            "type": "integer",
+            "description": "Expiration time (Unix timestamp)"
+          },
+          "iat": {
+            "type": "integer",
+            "description": "Issued-at time (Unix timestamp)"
+          },
+          "iss": {
+            "type": "string",
+            "description": "Issuer URL"
+          },
+          "aud": {
+            "type": "string",
+            "description": "Audience"
+          },
+          "email_verified": {
+            "type": "boolean"
+          },
+          "customerId": {
+            "type": "string"
           }
         }
       }

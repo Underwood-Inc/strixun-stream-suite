@@ -24,6 +24,10 @@ export interface Env {
   // Environment variables
   ENVIRONMENT?: string;
   
+  // OIDC issuer URL for JWKS discovery (e.g. https://auth.idling.app)
+  JWT_ISSUER?: string;
+  AUTH_SERVICE_URL?: string;
+  
   // Service URLs (for service-to-service communication)
   CUSTOMER_API_URL?: string;
   ACCESS_API_URL?: string;

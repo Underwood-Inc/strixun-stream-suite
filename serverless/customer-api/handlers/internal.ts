@@ -58,7 +58,7 @@ export async function handleSyncLastLogin(
     env: Env
 ): Promise<Response> {
     const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
     });
 
     try {

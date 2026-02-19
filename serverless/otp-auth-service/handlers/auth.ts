@@ -27,6 +27,11 @@ export {
     handleGetQuota
 } from './auth/quota.js';
 
+// Token introspection (RFC 7662)
+export {
+    handleIntrospect
+} from './auth/introspect.js';
+
 // Debug handlers
 export {
     handleClearRateLimit

@@ -234,10 +234,18 @@ All documentation is being consolidated into 12 main categories:
 
 ---
 
+### New Documentation (Original to PANDA_CORE)
+
+| File | Location | Status |
+|------|----------|--------|
+| `OIDC_ARCHITECTURE.md` | `02_ARCHITECTURE/OIDC_ARCHITECTURE.md` | ✓ New (2026-02-19) |
+
+---
+
 ## Consolidation Progress
 
 - **Total Files**: 300+
-- **Consolidated**: ~216
+- **Consolidated**: ~217
 - **Pending**: ~84
 - **Progress**: ~72%
 

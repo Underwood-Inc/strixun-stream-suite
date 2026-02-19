@@ -37,7 +37,7 @@ export async function handleGetPreferences(
   auth: AuthResult,
   customerId: string
 ): Promise<Response> {
-  const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+  const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
   });
 
   try {
@@ -92,7 +92,7 @@ export async function handleUpdatePreferences(
   auth: AuthResult,
   customerId: string
 ): Promise<Response> {
-  const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+  const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
   });
 
   try {
@@ -149,7 +149,7 @@ export async function handleUpdateDisplayName(
   auth: AuthResult,
   customerId: string
 ): Promise<Response> {
-  const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+  const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
   });
 
   try {
