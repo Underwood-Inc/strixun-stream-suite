@@ -787,11 +787,16 @@ flowchart TD
                 </tr>
                 <tr>
                     <td><strong>This test page (opened from file)</strong></td>
-                    <td>None (leave empty) <em>or</em> serve via localhost</td>
-                    <td>Files opened directly in the browser (<code>file://</code>) send a <code>null</code> origin. Either leave origins unconfigured, or serve the file with <code>python -m http.server 8080</code> and add <code>http://localhost:8080</code>.</td>
+                    <td>Option A: Serve the file (e.g. <code>python -m http.server 8080</code>) and add <code>http://localhost:8080</code>.<br>Option B: Add the literal <code>null</code> to allowed origins.</td>
+                    <td>Pages opened as <code>file://</code> send <code>Origin: null</code>. The server does not auto-allow null. Use Option A (recommended) so the page has a real origin, or Option B to allow null explicitly for this key (all endpoints, including token responses).</td>
                 </tr>
             </tbody>
         </table>
+
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">
+            <strong>Null origin (file://):</strong> There is no server-side fallback that allows <code>null</code> automatically.
+            You must either serve this test page from a local web server (so the browser sends a real origin like <code>http://localhost:8080</code>) and add that origin to the key, or add the literal <code>null</code> to the key's allowed origins. Both are explicit choices.
+        </p>
 
         <h4 style="margin-top: 1rem;">What happens at runtime</h4>
         <div class="code-example"><span class="comment">// Request from https://myapp.com (origin IS in the allowed list)</span>
@@ -868,9 +873,9 @@ flowchart LR
         <h3 id="sec-test-page">📋 This Test Page</h3>
         <ul>
             <li><strong>API Base URL:</strong> <code>{{BASE_URL}}</code></li>
-            <li><strong>No origin config?</strong> This page works immediately from any origin</li>
-            <li><strong>Origin config?</strong> Add this page's origin via Dashboard → API Keys → 🌐 button</li>
-            <li><strong>Serving locally:</strong> Run <code>python -m http.server 8080</code> (add <code>http://localhost:8080</code> if using origin restrictions)</li>
+            <li><strong>No origin config?</strong> This page works from any <em>real</em> origin (e.g. <code>https://…</code>, <code>http://localhost:…</code>). Opened as <code>file://</code> it sends <code>Origin: null</code>, which is not allowed unless you add <code>null</code> or serve the page.</li>
+            <li><strong>Origin config?</strong> Add this page's origin via Dashboard → API Keys → 🌐 button (e.g. <code>http://localhost:8080</code> if you serve the file locally).</li>
+            <li><strong>Opened from file (file://)?</strong> Either serve the file (e.g. <code>python -m http.server 8080</code>) and add that origin, or add the literal <code>null</code> to this key's allowed origins. No automatic allowance for null.</li>
         </ul>
     </div>
 </div>

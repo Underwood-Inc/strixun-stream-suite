@@ -5,8 +5,7 @@
  * Re-exports standardized CORS from API framework
  */
 
-// CRITICAL: Use the localhost-aware version that handles 'null' origins (file:// URLs)
-// and localhost origins in development mode
+// Use the framework's CORS helper: localhost in dev, and honors explicit "null" in allowed origins (file://)
 import { getCorsHeadersWithLocalhost as frameworkGetCorsHeaders } from '@strixun/api-framework/enhanced';
 
 interface Customer {

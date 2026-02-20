@@ -935,7 +935,7 @@ function toggleTocSidebar() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Show banner when opened from file:// - browsers block fetch to https:// from file origin
+    // Show banner when opened from file:// — Origin is null; server does not auto-allow null (user must serve page or add "null" to key origins)
     var isFileOrigin = !window.location.origin || window.location.protocol === 'file:';
     var banner = document.getElementById('fileOriginBanner');
     if (banner && isFileOrigin) {

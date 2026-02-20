@@ -1,8 +1,14 @@
 /**
  * Standardized CORS with Localhost Support
- * 
- * Wrapper around API framework CORS that automatically allows localhost in development
- * This is the source of truth for CORS across all services
+ *
+ * Wrapper around API framework CORS that automatically allows localhost in development.
+ * This is the source of truth for CORS across all services.
+ *
+ * **Null origin (file://):** There is no server-side automatic allowance for `Origin: null`.
+ * Pages opened from the filesystem (file://) or sandboxed iframes send `Origin: null` and
+ * will be blocked unless (1) the page is served from a real origin (e.g. http://localhost:8080)
+ * and that origin is in the key's allowed list, or (2) the key's allowed origins explicitly
+ * include the literal string `"null"`. Both are user-controlled; we do not auto-add null.
  */
 
 import { createCORSHeaders as frameworkCreateCORSHeaders, handleCORSPreflight as frameworkHandleCORSPreflight, type CORSOptions } from './cors';
@@ -166,7 +172,7 @@ export function getCorsHeaders(
             allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(o => o.length > 0);
         }
     }
-    
+
     // Debug logging for CORS issues
     if (env.ENVIRONMENT === 'production' && allowedOrigins.length === 0 && !usingCustomerOrigins) {
         console.error('[CORS] CRITICAL: No origins configured!', {

@@ -82,8 +82,8 @@ ${mermaidInit}
 
         <main id="main-content" class="container">
             <div id="fileOriginBanner" class="file-origin-banner" style="display:none;">
-                <strong>⚠️ This page was opened from a local file (file://).</strong> Browsers block API calls from file:// to https://. 
-                <strong>To fix:</strong> Serve this file from a local web server, e.g. <code>npx serve .</code> in the folder containing this file, then open <code>http://localhost:3000/otp-auth-test.html</code>.
+                <strong>⚠️ This page was opened from a local file (file://).</strong> The browser sends <code>Origin: null</code>; the auth server does not auto-allow null, so CORS will block requests (discovery, refresh, etc.).
+                <strong>To fix:</strong> (1) Serve this file from a local web server (e.g. <code>python -m http.server 8080</code> or <code>npx serve .</code>) and open the served URL, then add that origin (e.g. <code>http://localhost:8080</code>) to this key's allowed origins; or (2) Add the literal <code>null</code> to this key's allowed origins in the dashboard.
             </div>
             <h1>🔐 OTP Auth API - Integration Test</h1>
             <p class="subtitle">Test your API key with a complete end-to-end OTP flow</p>
@@ -97,7 +97,7 @@ ${mermaidInit}
                 </span>
             </div>
             <p class="subtitle" style="margin-top: 0.5rem; font-size: 0.8rem;">
-                After downloading: serve from a web server (e.g. <code>npx serve .</code>) — opening file:// directly causes "Failed to fetch".
+                After downloading: either serve from a local web server (e.g. <code>python -m http.server 8080</code> or <code>npx serve .</code>) and add that origin to the key, or add the literal <code>null</code> to the key's allowed origins. Opening file:// directly sends <code>Origin: null</code>; the server does not auto-allow null, so CORS will block requests until you do one of the above.
             </p>
             
             ${interpolatedSecurityDocs}
