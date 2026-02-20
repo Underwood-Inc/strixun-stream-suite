@@ -9,41 +9,12 @@
  * - Moderators: Have 'access:admin-panel' permission (for mod review)
  * - Other customers: No admin access
  * 
- * This hook calls the backend endpoint GET /mods/permissions/me to check the customer's permission status.
+ * Uses the same modPermissionsApi as useUploadPermission - the shared client that works for regular customers.
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/auth';
-import { createAPIClient } from '@strixun/api-framework/client';
-import { sharedClientConfig } from '../services/authConfig';
-
-// Use the same API base URL as mods API
-const API_BASE_URL = import.meta.env.VITE_MODS_API_URL 
-    ? import.meta.env.VITE_MODS_API_URL
-    : (import.meta.env.DEV 
-        ? '/mods-api'
-        : 'https://mods-api.idling.app');
-
-const api = createAPIClient({
-    ...sharedClientConfig,
-    baseURL: API_BASE_URL,
-});
-
-interface PermissionsResponse {
-    hasUploadPermission: boolean;
-    isAdmin: boolean;
-    isSuperAdmin: boolean;
-    roles: string[];
-    permissions: string[];
-}
-
-/**
- * Fetch customer permissions from backend
- */
-async function fetchPermissions(): Promise<PermissionsResponse> {
-    const response = await api.get<PermissionsResponse>('/mods/permissions/me');
-    return response.data;
-}
+import { getPermissions } from '../services/mods/modPermissionsApi';
 
 /**
  * Check if user has a specific permission
@@ -65,7 +36,7 @@ export function useAdminAccess() {
     
     const { data, isLoading, error } = useQuery({
         queryKey: ['permissions', customer?.customerId],
-        queryFn: fetchPermissions,
+        queryFn: getPermissions,
         enabled: canMakeRequest,
         staleTime: 5 * 60 * 1000, // Cache for 5 minutes
         retry: (failureCount, error) => {

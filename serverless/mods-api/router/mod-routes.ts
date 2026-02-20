@@ -138,6 +138,13 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // Route: GET /mods/permissions/me or GET /permissions/me - Get current user's upload permissions
         if (pathSegments.length === 2 && pathSegments[0] === 'permissions' && pathSegments[1] === 'me' && request.method === 'GET') {
             if (!auth) {
+                const cookieHeader = request.headers.get('Cookie');
+                const hasAuthToken = !!(cookieHeader && cookieHeader.includes('auth_token='));
+                console.warn('[ModsAPI] 401 /mods/permissions/me:', {
+                    hasCookie: !!cookieHeader,
+                    hasAuthToken,
+                    origin: request.headers.get('Origin'),
+                });
                 return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required');
             }
             const { handleGetCustomerPermissions } = await import('../handlers/mods/permissions.js');

@@ -13,18 +13,32 @@ const api = createAPIClient({
 });
 
 /**
+ * Permissions response shape from GET /mods/permissions/me
+ */
+export interface PermissionsResponse {
+    hasUploadPermission: boolean;
+    isAdmin: boolean;
+    isSuperAdmin: boolean;
+    roles: string[];
+    permissions: string[];
+}
+
+/**
+ * Get full permissions (authenticated customers)
+ * Same endpoint as checkUploadPermission - used by useAdminAccess and useUploadPermission
+ */
+export async function getPermissions(): Promise<PermissionsResponse> {
+    const response = await api.get<PermissionsResponse>('/mods/permissions/me');
+    return response.data;
+}
+
+/**
  * Check upload permission (authenticated customers)
  */
 export async function checkUploadPermission(): Promise<{ hasPermission: boolean }> {
     try {
-        const response = await api.get<{ 
-            hasUploadPermission: boolean;
-            isAdmin: boolean;
-            isSuperAdmin: boolean;
-            roles: string[];
-            permissions: string[];
-        }>('/mods/permissions/me');
-        return { hasPermission: response.data.hasUploadPermission };
+        const data = await getPermissions();
+        return { hasPermission: data.hasUploadPermission };
     } catch (error) {
         const status = error && typeof error === 'object' && 'status' in error ? (error as { status?: number }).status : undefined;
         if (status !== 401) {
