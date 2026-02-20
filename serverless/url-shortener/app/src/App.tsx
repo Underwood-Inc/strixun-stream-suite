@@ -11,7 +11,8 @@ import { useState, useEffect } from 'react';
 import UrlManager from './pages/UrlManager';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
-import { getAuthApiUrl, checkAuth as checkAuthShared, getAuthErrorMessage } from '@strixun/otp-auth-service/shared';
+import { getAuthApiUrl } from '@strixun/auth-store/core';
+import { checkAuth as checkAuthShared, getAuthErrorMessage } from '@strixun/otp-auth-service/shared';
 import '@strixun/otp-login/dist/react/otp-login.css';
 import './app.scss';
 

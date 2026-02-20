@@ -175,17 +175,11 @@ export async function fetchCustomerInfo(
         // Prefer displayName from /auth/me (JWT payload) - avoids Customer API call
         let displayName: string | null = authResponse.data.displayName || null;
         
-        // Fallback: Fetch displayName from Customer API only when not in JWT
+        // Fallback: Fetch displayName via auth service /customer/me (proxied to customer-api).
+        // CRITICAL: Use auth API URL so cookies are sent (auth set the cookie; cross-origin to customer-api may not send it).
         if (!displayName) {
-            const customerApiUrl = getCustomerApiUrl(config);
             try {
-                const customerClient = createAPIClient({
-                    baseURL: customerApiUrl,
-                    timeout: 10000,
-                    credentials: 'include' as RequestCredentials,
-                    cache: { enabled: false },
-                });
-                const customerResponse = await customerClient.get<{
+                const customerResponse = await authClient.get<{
                     displayName?: string | null;
                     [key: string]: any;
                 }>('/customer/me', undefined, {
@@ -195,7 +189,7 @@ export async function fetchCustomerInfo(
                     displayName = customerResponse.data.displayName || null;
                 }
             } catch (customerError) {
-                console.warn('[Auth] Failed to fetch displayName from Customer API:', 
+                console.warn('[Auth] Failed to fetch displayName from /customer/me:', 
                     customerError instanceof Error ? customerError.message : String(customerError));
             }
         }

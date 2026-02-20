@@ -38,7 +38,7 @@
     }
   },
   "scripts": {
-    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/kv-entities build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build",
+    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/kv-entities build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build && pnpm --filter @strixun/auth-store build",
     "predev": "pnpm run build:deps && pnpm run build:worker",
     "dev": "concurrently -n worker,app -c yellow,cyan --kill-others-on-fail --success first \"pnpm dev:worker\" \"pnpm dev:app\"",
     "dev:worker": "wrangler dev --port 8787 --local --env development",
@@ -74,6 +74,7 @@
   "dependencies": {
     "@strixun/access-service": "workspace:*",
     "@strixun/ad-carousel": "workspace:*",
+    "@strixun/auth-store": "workspace:*",
     "@strixun/api-framework": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/error-utils": "workspace:*",

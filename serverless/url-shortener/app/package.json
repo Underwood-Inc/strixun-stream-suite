@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage --passWithNoTests"
   },
   "dependencies": {
+    "@strixun/auth-store": "workspace:*",
     "@strixun/otp-auth-service": "workspace:*",
     "@strixun/otp-login": "workspace:*",
     "react": "^19.0.0",
