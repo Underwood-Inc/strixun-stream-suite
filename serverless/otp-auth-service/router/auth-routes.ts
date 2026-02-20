@@ -26,8 +26,11 @@ import { trackApiKeyRequest } from '../services/api-key-usage.js';
 function wrapWithCors(handlerResponse: Response, corsHeaders: Headers): Response {
     const tuples: [string, string][] = [];
 
+    // Copy handler headers EXCEPT set-cookie and access-control-* (we add canonical CORS below)
+    // Duplicate CORS headers (e.g. "Origin: X, X") cause browser to reject response = opaque = "Network error"
     handlerResponse.headers.forEach((value, name) => {
-        if (name.toLowerCase() !== 'set-cookie') {
+        const lower = name.toLowerCase();
+        if (lower !== 'set-cookie' && !lower.startsWith('access-control-')) {
             tuples.push([name, value]);
         }
     });
@@ -49,10 +52,22 @@ function wrapWithCors(handlerResponse: Response, corsHeaders: Headers): Response
         tuples.push([name, value]);
     });
 
+    // Deduplicate single-valued headers (Access-Control-*, etc). Set-Cookie MUST keep all entries.
+    const seen = new Set<string>();
+    const deduped: [string, string][] = [];
+    for (let i = tuples.length - 1; i >= 0; i--) {
+        const [name] = tuples[i];
+        const key = name.toLowerCase();
+        if (key === 'set-cookie' || !seen.has(key)) {
+            if (key !== 'set-cookie') seen.add(key);
+            deduped.unshift(tuples[i]);
+        }
+    }
+
     return new Response(handlerResponse.body, {
         status: handlerResponse.status,
         statusText: handlerResponse.statusText,
-        headers: tuples,
+        headers: deduped,
     });
 }
 
