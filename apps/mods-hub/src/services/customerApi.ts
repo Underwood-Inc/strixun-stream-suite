@@ -23,7 +23,7 @@ import { sharedClientConfig } from './authConfig';
  */
 export const MODS_API_BASE_URL = import.meta.env.DEV
   ? '/mods-api'  // Vite proxy in development
-  : (import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idling.app');
+  : (import.meta.env.VITE_MODS_API_URL || '/api/mods');
 
 /**
  * API client for customer management

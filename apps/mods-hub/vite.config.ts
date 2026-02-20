@@ -13,8 +13,32 @@ const scssConfig: Record<string, unknown> = {
 };
 
 /**
+ * Recursively copy a directory, skipping test files
+ */
+function copyDirRecursive(src: string, dest: string, baseSrc: string = src): void {
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    const relativePath = path.relative(baseSrc, srcPath);
+
+    if (entry.isDirectory()) {
+      fs.mkdirSync(destPath, { recursive: true });
+      copyDirRecursive(srcPath, destPath, baseSrc);
+    } else if (entry.isFile()) {
+      if (!entry.name.endsWith('.ts') || entry.name.includes('.test.') || entry.name.includes('.spec.')) {
+        console.log(`  Skipping ${relativePath} (not a deployable function)`);
+        return;
+      }
+      fs.copyFileSync(srcPath, destPath);
+      console.log(`  Copied ${relativePath}`);
+    }
+  }
+}
+
+/**
  * Plugin to copy Cloudflare Pages Functions to build output
- * This ensures the functions directory is included in the deployment
+ * Recursively copies functions/ including api/mods/[[path]].ts (same-origin proxy)
  */
 function copyFunctionsPlugin() {
   return {
@@ -22,37 +46,15 @@ function copyFunctionsPlugin() {
     closeBundle: () => {
       const functionsSource = path.resolve(__dirname, 'functions');
       const functionsTarget = path.resolve(__dirname, '../../dist/mods-hub/functions');
-      
-      // Check if functions directory exists
+
       if (!fs.existsSync(functionsSource)) {
         console.log('No functions directory found, skipping copy');
         return;
       }
-      
-      // Copy functions directory to build output
+
       console.log('Copying Cloudflare Pages Functions to build output...');
-      
-      // Create target directory if it doesn't exist
-      if (!fs.existsSync(functionsTarget)) {
-        fs.mkdirSync(functionsTarget, { recursive: true });
-      }
-      
-      // Copy all files from functions directory
-      const files = fs.readdirSync(functionsSource);
-      files.forEach((file) => {
-        const sourcePath = path.join(functionsSource, file);
-        const targetPath = path.join(functionsTarget, file);
-        
-        // Skip non-TypeScript files (like README.md, test files, etc.)
-        if (!file.endsWith('.ts') || file.includes('.test.') || file.includes('.spec.')) {
-          console.log(`  Skipping ${file} (not a deployable function)`);
-          return;
-        }
-        
-        fs.copyFileSync(sourcePath, targetPath);
-        console.log(`  Copied ${file} to ${functionsTarget}`);
-      });
-      
+      fs.mkdirSync(functionsTarget, { recursive: true });
+      copyDirRecursive(functionsSource, functionsTarget, functionsSource);
       console.log('* Cloudflare Pages Functions copied successfully!');
     },
   };

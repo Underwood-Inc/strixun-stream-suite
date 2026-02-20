@@ -1,18 +1,37 @@
 # Mods Hub SSO Troubleshooting: 401 on Authenticated Endpoints
 
-**Symptom:** Mods Hub (mods.idling.app) returns 401 on authenticated endpoints such as `/mods/permissions/me` and `/admin/mods`. The admin panel cannot load because the auth cookie is not sent to mods-api.idling.app.
+**Symptom:** Mods Hub (mods.idling.app) returns 401 on authenticated endpoints such as `/mods/permissions/me` and `/admin/mods`. The admin panel cannot load.
 
 ---
 
-## Root Cause
+## Same-Origin Proxy (Primary Fix)
 
-The auth service sets the `auth_token` cookie. For the browser to send it to `mods-api.idling.app`, the cookie **must** use `Domain=.idling.app`. That domain is derived from `ALLOWED_ORIGINS` in the auth service.
+Mods Hub now uses a **same-origin proxy** at `/api/mods/*` that forwards to mods-api.idling.app. Requests go to `mods.idling.app/api/mods/...` (same origin), so the browser sends the `auth_token` cookie reliably.
 
-If `ALLOWED_ORIGINS` is wrong or missing, the cookie is scoped to `auth.idling.app` only and is **never** sent to `mods-api.idling.app`. Result: 401.
+**Requirements:**
+1. Cookie must have `Domain=.idling.app` (set by auth service at login)
+2. Redeploy mods-hub so the proxy function is live (deploy workflow now defaults `VITE_MODS_API_URL` to `/api/mods`)
+3. Clear cookies and re-login if you have an old cookie from before the fix
+
+**If `VITE_MODS_API_URL` is set in GitHub Secrets** to `https://mods-api.idling.app`, remove it or change to `/api/mods` so the app uses the proxy instead of direct cross-origin calls.
+
+---
+
+## Root Cause (When Proxy Doesn't Help)
+
+The auth service sets the `auth_token` cookie. For the browser to send it to `mods.idling.app` (including the proxy), the cookie **must** use `Domain=.idling.app`. That domain is derived from `ALLOWED_ORIGINS` in the auth service.
+
+If `ALLOWED_ORIGINS` is wrong or missing, the cookie is scoped to `auth.idling.app` only. Result: 401.
 
 ---
 
 ## Fix Checklist
+
+### 0. Deploy Order (for proxy fix)
+
+1. **Auth service** – Must be deployed with cookie domain fix (`getCookieDomains` using `ALLOWED_ORIGINS` → `.idling.app`)
+2. **Mods Hub** – Must be deployed so the proxy at `/api/mods/*` is live
+3. **Re-login** – Clear cookies and log in again so a new cookie is set with `Domain=.idling.app`
 
 ### 1. Verify GitHub Secret `ALLOWED_ORIGINS`
 
@@ -71,18 +90,20 @@ sequenceDiagram
     Auth->>User: Set-Cookie: auth_token; Domain=.idling.app
     Note over User: Cookie stored for *.idling.app
 
-    Note over User,ModsAPI: API call from Mods Hub
+    Note over User,ModsAPI: API call via same-origin proxy
     User->>ModsHub: Visit mods.idling.app
-    ModsHub->>ModsAPI: fetch /mods/permissions/me (credentials: include)
-    Note over User: Browser sends auth_token (Domain=.idling.app matches)
+    User->>ModsHub: fetch /api/mods/permissions/me (same origin, credentials: include)
+    Note over User: Browser sends auth_token (Domain=.idling.app matches mods.idling.app)
+    ModsHub->>ModsAPI: Proxy forwards request with Cookie header
     ModsAPI->>Auth: Verify token via /auth/me
     Auth->>ModsAPI: customerId
     ModsAPI->>ModsHub: 200 OK
+    ModsHub->>User: 200 OK
 ```
 
 **If `Domain` is wrong** (e.g. `auth.idling.app` only):
 
-- Cookie is not sent to `mods-api.idling.app`
+- Cookie is not sent to `mods.idling.app` (or proxy)
 - Mods API receives no token → 401
 
 ---
@@ -93,9 +114,10 @@ sequenceDiagram
    - DevTools → Application → Cookies → `https://mods.idling.app`
    - Look for `auth_token`; its Domain should be `.idling.app`
 
-2. **Check network request:**
-   - DevTools → Network → select a request to `mods-api.idling.app`
+2. **Check network request (proxy flow):**
+   - DevTools → Network → select a request to `mods.idling.app/api/mods/...`
    - Request Headers should include `Cookie: auth_token=...`
+   - If you still see requests to `mods-api.idling.app` directly, the app may not be using the proxy (check `API_BASE_URL` in modsApi.ts)
 
 3. **Check CORS (if 401 persists):**
    - Response headers should include `Access-Control-Allow-Origin: https://mods.idling.app`
@@ -107,6 +129,8 @@ sequenceDiagram
 
 | File | Purpose |
 |------|---------|
+| `apps/mods-hub/functions/api/mods/[[path]].ts` | Same-origin proxy: `/api/mods/*` → mods-api.idling.app |
+| `apps/mods-hub/src/services/mods/modsApi.ts` | `API_BASE_URL` (uses `/api/mods` in prod) |
 | `serverless/otp-auth-service/wrangler.toml` | `ALLOWED_ORIGINS` in `[vars]` and `[env.production.vars]` |
 | `serverless/otp-auth-service/utils/cookie-domains.ts` | Derives cookie domain from `ALLOWED_ORIGINS` |
 | `serverless/otp-auth-service/handlers/auth/verify-otp.ts` | Sets cookie with domain from `getCookieDomains()` |

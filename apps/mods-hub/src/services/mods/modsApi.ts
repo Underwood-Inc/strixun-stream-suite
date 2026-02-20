@@ -17,10 +17,12 @@ import { sharedClientConfig } from '../authConfig';
 
 /**
  * Mods API base URL
+ * Production: /api/mods (same-origin proxy) so auth cookie is sent reliably
+ * Dev: /mods-api (Vite proxy)
  */
-export const API_BASE_URL = import.meta.env.DEV 
+export const API_BASE_URL = import.meta.env.DEV
   ? '/mods-api'
-  : (import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idling.app');
+  : (import.meta.env.VITE_MODS_API_URL || '/api/mods');
 
 /**
  * Singleton mods API client instance
