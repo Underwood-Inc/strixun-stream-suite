@@ -36,9 +36,9 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
             headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) return null;
-        const data = (await res.json()) as { customerId?: string };
+        const data = (await res.json()) as { customerId?: string; isSuperAdmin?: boolean };
         if (!data?.customerId) return null;
-        return { customerId: data.customerId, jwtToken: token };
+        return { customerId: data.customerId, jwtToken: token, isSuperAdmin: data.isSuperAdmin ?? false };
     } catch (error) {
         console.error('[ModsAPI Auth] Verification failed:', error);
         return null;
@@ -50,6 +50,7 @@ export type { JWTPayload } from '@strixun/api-framework/jwt';
 export interface AuthResult {
     customerId: string;
     jwtToken: string;
+    isSuperAdmin: boolean;
 }
 
 interface Env {

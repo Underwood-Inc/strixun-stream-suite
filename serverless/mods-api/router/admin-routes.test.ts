@@ -87,24 +87,25 @@ vi.mock('@strixun/api-framework', async (importOriginal) => {
                 customerId: auth?.customerId || null
             };
         }),
-        protectAdminRoute: vi.fn().mockImplementation(async (request: Request) => {
-            const authHeader = request.headers.get('Authorization');
-            const cookieHeader = request.headers.get('Cookie');
-            const token = authHeader?.startsWith('Bearer ')
-                ? authHeader.substring(7)
-                : cookieHeader?.includes('auth_token=')
-                    ? cookieHeader.split(';').find((c: string) => c.trim().startsWith('auth_token='))?.split('=')[1]?.trim()
-                    : null;
-            if (!token) {
-                return { allowed: false, error: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }) };
-            }
-            if (token === 'regular-token') {
-                return { allowed: false, error: new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 }) };
-            }
-            return { allowed: true, auth: { customerId: 'cust_123', jwtToken: token } };
-        }),
     };
 });
+
+vi.mock('../utils/auth.js', () => ({
+    authenticateRequest: vi.fn().mockImplementation(async (request: Request) => {
+        const authHeader = request.headers.get('Authorization');
+        const cookieHeader = request.headers.get('Cookie');
+        const token = authHeader?.startsWith('Bearer ')
+            ? authHeader.substring(7)
+            : cookieHeader?.includes('auth_token=')
+                ? cookieHeader.split(';').find((c: string) => c.trim().startsWith('auth_token='))?.split('=')[1]?.trim()
+                : null;
+        if (!token) return null;
+        if (token === 'regular-token') {
+            return { customerId: 'cust_456', jwtToken: token, isSuperAdmin: false };
+        }
+        return { customerId: 'cust_123', jwtToken: token, isSuperAdmin: true };
+    }),
+}));
 
 describe('Mods API Admin Routes', () => {
     const mockEnv = {

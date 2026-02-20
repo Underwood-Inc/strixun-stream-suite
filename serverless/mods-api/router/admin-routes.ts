@@ -3,47 +3,41 @@
  * Handles admin endpoints for mod triage and management
  * All admin routes require super-admin authentication
  * 
- * Uses shared route protection system for consistent, secure access control
+ * Auth delegates to auth service /auth/me (same path as mod routes).
  */
 
 import { wrapWithEncryption } from '@strixun/api-framework';
 import { getCorsHeaders } from '../utils/cors.js';
-import { protectAdminRoute, type RouteProtectionEnv } from '@strixun/api-framework';
 import { createError } from '../utils/errors.js';
+import { authenticateRequest } from '../utils/auth.js';
 
 /**
  * Handle admin routes
- * All routes are protected at the API level using shared protection system
+ * Protected via auth service delegation (same as /mods/* routes).
  */
 export async function handleAdminRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
     try {
-        // Protect route with admin-level requirement
-        // This ensures API-level protection - no data is returned if unauthorized
-        // Admin-level allows both 'admin' and 'super-admin' roles
-        const protection = await protectAdminRoute(
-            request,
-            env,
-            'admin',
-        );
+        const auth = await authenticateRequest(request, env);
 
-        // If not allowed, return error immediately (prevents any data download)
-        if (!protection.allowed || !protection.auth) {
-            // protectAdminRoute always returns an error when allowed is false
-            // Use the error response from protection (which has correct status: 401 for auth, 403 for permission)
-            if (protection.error) {
-                return {
-                    response: protection.error,
-                    customerId: null
-                };
-            }
-            // Fallback (should never happen, but handle gracefully)
+        if (!auth) {
             return {
-                response: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
-                customerId: null
+                response: new Response(JSON.stringify({ error: 'Authentication required', code: 'UNAUTHORIZED' }), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+                customerId: null,
             };
         }
 
-        const auth = protection.auth;
+        if (!auth.isSuperAdmin) {
+            return {
+                response: new Response(JSON.stringify({ error: 'Admin access required', code: 'ADMIN_REQUIRED' }), {
+                    status: 403,
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+                customerId: auth.customerId,
+            };
+        }
         
         // CRITICAL: Detect if request is using HttpOnly cookie (browser request)
         // If yes, we must disable response encryption because JavaScript can't access HttpOnly cookies to decrypt
@@ -325,13 +319,15 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
     }
 }
 
-interface Env extends RouteProtectionEnv {
+interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
     SUPER_ADMIN_EMAILS?: string;
     ADMIN_EMAILS?: string;
     JWT_SECRET?: string;
     ALLOWED_ORIGINS?: string;
+    JWT_ISSUER?: string;
+    AUTH_SERVICE_URL?: string;
     [key: string]: any;
 }
 
