@@ -5,7 +5,7 @@
  * Service-agnostic: works for ANY resource type, not just mods.
  */
 
-import type { KVNamespace } from '@cloudflare/workers-types';
+import type { Fetcher, KVNamespace } from '@cloudflare/workers-types';
 
 /**
  * Customer authorization data
@@ -157,6 +157,8 @@ export interface CheckQuotaResponse {
 export interface Env {
     ACCESS_KV: KVNamespace;
     OTP_AUTH_KV: KVNamespace;             // Used by migration scripts only
+    /** Service binding to otp-auth-service (for JWKS fetch; avoids same-zone 522) */
+    AUTH_SERVICE?: Fetcher;
     CUSTOMER_API_URL: string;             // REQUIRED: URL of Customer API (for customer lookup in bootstrap)
     SERVICE_API_KEY: string;              // REQUIRED: Service-to-service authentication key
     JWT_SECRET?: string;

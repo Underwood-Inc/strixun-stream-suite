@@ -225,9 +225,14 @@ export default {
             });
         }
 
+        // Use service binding for JWKS fetch when available (avoids same-zone 522 to auth.idling.app)
+        const envForRequest = env.AUTH_SERVICE
+            ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE.fetch(url) }
+            : env;
+
         // Route to access control handlers
         try {
-            const result = await handleAccessRoutes(request, path, env);
+            const result = await handleAccessRoutes(request, path, envForRequest);
             
             if (result) {
                 return result.response;

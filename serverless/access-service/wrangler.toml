@@ -28,6 +28,12 @@ id = "ee3fee37d3d74ffdb7ebeeae4b0d86ff"
 binding = "OTP_AUTH_KV"
 id = "680c9dbe86854c369dd23e278abb41f9"
 
+# Service binding to auth Worker so JWKS fetch uses internal routing (avoids same-zone 522).
+# If you deploy otp-auth-service with --env production, set service = "otp-auth-service-production".
+[[services]]
+binding = "AUTH_SERVICE"
+service = "otp-auth-service"
+
 # Production routes - API backend at access-api.idling.app
 # Frontend UI will be at access.idling.app (Cloudflare Pages)
 [[routes]]
