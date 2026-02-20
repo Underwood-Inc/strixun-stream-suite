@@ -181,6 +181,7 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
             client_id: stored.keyId || null,
             csrf: csrfToken,
             isSuperAdmin,
+            displayName,
             keyId: stored.keyId || null,
             ssoScope: stored.ssoScope,
         };

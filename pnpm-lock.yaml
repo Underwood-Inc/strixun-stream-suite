@@ -1340,6 +1340,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../../packages/api-framework
+      '@strixun/auth-store':
+        specifier: workspace:*
+        version: link:../../packages/auth-store
       '@strixun/e2e-helpers':
         specifier: workspace:*
         version: link:../../packages/e2e-helpers
@@ -1542,6 +1545,9 @@ importers:
 
   serverless/url-shortener/app:
     dependencies:
+      '@strixun/auth-store':
+        specifier: workspace:*
+        version: link:../../../packages/auth-store
       '@strixun/otp-auth-service':
         specifier: workspace:*
         version: link:../../otp-auth-service
@@ -1557,6 +1563,9 @@ importers:
       styled-components:
         specifier: ^6.1.17
         version: 6.1.19(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      zustand:
+        specifier: ^4.5.2
+        version: 4.5.7(@types/react@19.2.7)(react@19.2.3)
     devDependencies:
       '@types/react':
         specifier: ^19.0.1

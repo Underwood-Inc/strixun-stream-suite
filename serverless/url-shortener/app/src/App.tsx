@@ -1,94 +1,65 @@
 /**
  * URL Shortener App
  * Main application component with React OTP login
- * 
- * SIMPLIFIED: HttpOnly cookie-based authentication
- * - No localStorage token storage
- * - Cookies handle everything
+ *
+ * Uses auth-store (same as mods-hub, chat-hub) - single source of truth for auth
  */
 
 import { useState, useEffect } from 'react';
 import UrlManager from './pages/UrlManager';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
+import { useAuthStore } from './stores/auth';
 import { getAuthApiUrl } from '@strixun/auth-store/core';
-import { checkAuth as checkAuthShared, getAuthErrorMessage } from '@strixun/otp-auth-service/shared';
+import { getAuthErrorMessage } from '@strixun/otp-auth-service/shared';
 import '@strixun/otp-login/dist/react/otp-login.css';
 import './app.scss';
 
-/**
- * Logout by calling /auth/logout
- * This clears the HttpOnly cookie
- */
-async function logout(): Promise<void> {
-  try {
-    const apiUrl = getAuthApiUrl();
-    await fetch(`${apiUrl}/auth/logout`, {
-      method: 'POST',
-      credentials: 'include', // Send cookies
-    });
-  } catch (error) {
-    // Logout errors are non-critical - we clear local state anyway
-    console.warn('[URL Shortener] Logout API call failed (non-critical):', getAuthErrorMessage(error));
-  }
-}
-
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
+  const { isAuthenticated, customer, checkAuth, logout } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function init() {
       try {
-        const authData = await checkAuthShared();
-        
-        if (authData) {
-          setIsAuthenticated(true);
-          setUserDisplayName(authData.displayName || null);
-        } else {
-          // Not authenticated - this is expected, show login screen
-          setIsAuthenticated(false);
-        }
-      } catch (error) {
-        // Critical error - show error message to user
-        const errorMessage = getAuthErrorMessage(error);
+        await checkAuth();
+      } catch (err) {
+        const errorMessage = getAuthErrorMessage(err);
         console.error('[URL Shortener] Critical auth error:', errorMessage);
         setError(errorMessage);
-        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }
     }
-    
     init();
-  }, []);
+  }, [checkAuth]);
 
-  async function handleLoginSuccess(data: LoginSuccessData): Promise<void> {
-    // Cookie is set by server, just update UI
+  async function handleLoginSuccess(_data: LoginSuccessData): Promise<void> {
     try {
-      const authData = await checkAuthShared();
-      if (authData) {
-        setIsAuthenticated(true);
-        setUserDisplayName(authData.displayName || null);
-        setError(null); // Clear any previous errors
+      const authSuccess = await checkAuth();
+      if (!authSuccess) {
+        setError('Session validation failed. Please try again.');
+      } else {
+        setError(null);
       }
-    } catch (error) {
-      const errorMessage = getAuthErrorMessage(error);
+    } catch (err) {
+      const errorMessage = getAuthErrorMessage(err);
       console.error('[URL Shortener] Auth check after login failed:', errorMessage);
       setError(errorMessage);
     }
   }
 
-  function handleLoginError(error: string): void {
-    console.error('[URL Shortener] Login error:', error);
+  function handleLoginError(err: string): void {
+    console.error('[URL Shortener] Login error:', err);
   }
 
   async function handleLogout(): Promise<void> {
-    await logout();
-    setIsAuthenticated(false);
-    setUserDisplayName(null);
+    try {
+      await logout();
+    } catch (err) {
+      console.warn('[URL Shortener] Logout failed (non-critical):', getAuthErrorMessage(err));
+    }
   }
 
   if (loading) {
@@ -116,25 +87,25 @@ export default function App() {
     );
   }
 
-  if (!isAuthenticated) {
-      return (
-        <div className="app-container">
-          <OtpLogin
-            apiUrl={getAuthApiUrl()}
-            onSuccess={handleLoginSuccess}
-            onError={handleLoginError}
-            title="Sign In"
-            subtitle="Enter your email to receive a verification code"
-            showAsModal={true}
-            fancy={true}
-          />
-        </div>
-      );
+  if (!isAuthenticated || !customer) {
+    return (
+      <div className="app-container">
+        <OtpLogin
+          apiUrl={getAuthApiUrl()}
+          onSuccess={handleLoginSuccess}
+          onError={handleLoginError}
+          title="Sign In"
+          subtitle="Enter your email to receive a verification code"
+          showAsModal={true}
+          fancy={true}
+        />
+      </div>
+    );
   }
 
   return (
     <div className="app-container">
-      <UrlManager userDisplayName={userDisplayName} onLogout={handleLogout} />
+      <UrlManager userDisplayName={customer.displayName || null} onLogout={handleLogout} />
     </div>
   );
 }

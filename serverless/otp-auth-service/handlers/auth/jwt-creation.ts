@@ -230,6 +230,7 @@ export async function createAuthToken(
         client_id: keyId || null,
         csrf: csrfToken,
         isSuperAdmin: isSuperAdmin,
+        displayName: customer.displayName, // Auth store uses this; avoids /customer/me fallback
         
         // Inter-Tenant SSO Claims (Multi-Tenant Architecture)
         keyId: keyId || null,

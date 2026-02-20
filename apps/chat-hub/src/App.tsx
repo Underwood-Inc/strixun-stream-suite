@@ -10,15 +10,9 @@ import { ChatClient } from '@strixun/chat/react';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
 import { LandingPage } from './pages/LandingPage';
+import { getAuthApiUrl } from '@strixun/auth-store/core';
 import '@strixun/otp-login/dist/react/otp-login.css';
 import '@strixun/chat/react/chat.css';
-
-// Use proxy in development (via Vite), direct URL in production
-const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL 
-  ? import.meta.env.VITE_AUTH_API_URL
-  : (import.meta.env.DEV 
-    ? '/auth-api'
-    : 'https://auth.idling.app');
 
 // Simple hash-based router
 function useHashRouter() {
@@ -126,7 +120,7 @@ function ChatApp() {
         )}
         
         <OtpLogin
-          apiUrl={AUTH_API_URL}
+          apiUrl={getAuthApiUrl()}
           onSuccess={handleLoginSuccess}
           onError={handleLoginError}
           title="Sign In"

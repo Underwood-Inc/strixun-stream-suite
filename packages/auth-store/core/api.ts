@@ -111,11 +111,8 @@ export function getCustomerApiUrl(config?: AuthStoreConfig): string {
 // This function is kept for reference but not called
 
 /**
- * Fetch customer info from /auth/me and /customer/me to get admin status, displayName, and customerId
+ * Fetch customer info from /auth/me (JWT payload: customerId, displayName, isSuperAdmin)
  * CRITICAL: Cookie is sent automatically with request
- * 
- * NOTE: /auth/me returns JWT payload data only (no displayName)
- * We need to call /customer/me to get displayName from Customer API
  */
 export async function fetchCustomerInfo(
     _token: string | null, // Ignored - cookie is used instead
@@ -172,28 +169,8 @@ export async function fetchCustomerInfo(
         
         const customerId = authResponse.data.customerId;
         const isSuperAdmin = authResponse.data.isSuperAdmin || false;
-        // Prefer displayName from /auth/me (JWT payload) - avoids Customer API call
-        let displayName: string | null = authResponse.data.displayName || null;
-        
-        // Fallback: Fetch displayName via auth service /customer/me (proxied to customer-api).
-        // CRITICAL: Use auth API URL so cookies are sent (auth set the cookie; cross-origin to customer-api may not send it).
-        if (!displayName) {
-            try {
-                const customerResponse = await authClient.get<{
-                    displayName?: string | null;
-                    [key: string]: any;
-                }>('/customer/me', undefined, {
-                    metadata: { cache: false },
-                });
-                if (customerResponse.status === 200 && customerResponse.data) {
-                    displayName = customerResponse.data.displayName || null;
-                }
-            } catch (customerError) {
-                console.warn('[Auth] Failed to fetch displayName from /customer/me:', 
-                    customerError instanceof Error ? customerError.message : String(customerError));
-            }
-        }
-        
+        const displayName: string | null = authResponse.data.displayName || null;
+
         return {
             isSuperAdmin,
             displayName,

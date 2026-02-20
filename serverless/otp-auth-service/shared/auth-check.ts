@@ -40,7 +40,7 @@ function toAuthStoreConfig(config?: AuthUrlConfig): { authApiUrl?: string; custo
 
 /**
  * Check authentication status.
- * REUSABLE: Delegates to auth-store's fetchCustomerInfo (auth API for /auth/me and /customer/me).
+ * REUSABLE: Delegates to auth-store's fetchCustomerInfo (auth API /auth/me only).
  *
  * @param config Optional URL configuration
  * @returns AuthCheckResult if authenticated, null if not, throws on critical errors

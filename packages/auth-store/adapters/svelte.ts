@@ -40,7 +40,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
             // Extract CSRF token and isSuperAdmin from JWT payload
             const payload = decodeJWTPayload(customerData.token || '');
             const csrf = payload?.csrf as string | undefined;
-            // Prioritize customerData.isSuperAdmin (from API), fallback to JWT if not explicitly set
+            // Use customerData.isSuperAdmin from API; JWT only when API omits it
             const isSuperAdminValue = customerData.isSuperAdmin ?? (payload?.isSuperAdmin === true);
             
             // Update customerData with isSuperAdmin
