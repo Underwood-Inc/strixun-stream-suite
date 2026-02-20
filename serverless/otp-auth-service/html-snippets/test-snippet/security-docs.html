@@ -1,10 +1,10 @@
 <!-- Security Documentation Section -->
 <div class="card security-docs">
-    <div class="collapsible-header" onclick="toggleSecurityDocs()">
+    <div class="collapsible-header" role="button" tabindex="0" aria-expanded="true" aria-controls="securityContent" onclick="toggleSecurityDocs()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSecurityDocs()}">
         <h2>⚠️ Security & Integration Guide</h2>
-        <span class="toggle-icon" id="toggleIcon">▼</span>
+        <span class="toggle-icon" id="toggleIcon" aria-hidden="true">▼</span>
     </div>
-    <div class="collapsible-content expanded" id="securityContent">
+    <div class="collapsible-content expanded" id="securityContent" role="region" aria-label="Security and integration documentation">
         <p style="margin: 1rem 0; color: var(--text-muted); font-size: 0.875rem;">
             <strong>IMPORTANT:</strong> Read this before integrating into your production application.
         </p>
@@ -468,13 +468,13 @@ sequenceDiagram
             and whether your server proxies the calls.
         </p>
         
-        <div class="tabs">
-            <button class="tab-btn active" onclick="showTab('backend')">✅ Backend Proxy (Recommended)</button>
-            <button class="tab-btn" onclick="showTab('frontend')">⚡ Direct Frontend</button>
+        <div class="tabs" role="tablist" aria-label="Integration method">
+            <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-backend" id="tabBtn-backend" onclick="showTab('backend',this)">✅ Backend Proxy (Recommended)</button>
+            <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-frontend" id="tabBtn-frontend" onclick="showTab('frontend',this)">⚡ Direct Frontend</button>
         </div>
         
         <!-- Backend Tab -->
-        <div id="tab-backend" class="tab-content active">
+        <div id="tab-backend" class="tab-content active" role="tabpanel" aria-labelledby="tabBtn-backend">
             <div class="method-box recommended">
                 <h4>✅ Method 1: Backend Proxy</h4>
                 <p style="font-size: 0.8rem; color: var(--success); margin-bottom: 0.5rem;">
@@ -629,7 +629,7 @@ app.use(<span class="keyword">async</span> (req, res, next) => {
         </div>
         
         <!-- Frontend Tab -->
-        <div id="tab-frontend" class="tab-content">
+        <div id="tab-frontend" class="tab-content" role="tabpanel" aria-labelledby="tabBtn-frontend">
             <div class="method-box alternative">
                 <h4>⚡ Method 2: Direct Frontend</h4>
                 <p style="font-size: 0.8rem; color: var(--warning); margin-bottom: 0.5rem;">

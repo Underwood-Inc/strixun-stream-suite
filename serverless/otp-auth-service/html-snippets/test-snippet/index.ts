@@ -59,7 +59,8 @@ ${mermaidInit}
     </script>
 </head>
 <body>
-    <div class="container">
+    <a href="#main-content" class="skip-link">Skip to content</a>
+    <main id="main-content" class="container">
         <h1>🔐 OTP Auth API - Integration Test</h1>
         <p class="subtitle">Test your API key with a complete end-to-end OTP flow</p>
         
@@ -75,18 +76,21 @@ ${mermaidInit}
         ${interpolatedSecurityDocs}
         
         ${interpolatedTestForm}
-    </div>
+    </main>
     
     <!-- Search overlay -->
-    <div class="search-overlay" id="searchOverlay" onclick="if(event.target===this)closeSearch()">
+    <div class="search-overlay" id="searchOverlay" role="dialog" aria-modal="true" aria-label="Search the guide" onclick="if(event.target===this)closeSearch()">
         <div class="search-box">
-            <input type="text" placeholder="Search the guide... (claims, endpoints, scopes, errors...)"
+            <label for="searchInput" class="sr-only">Search the guide</label>
+            <input id="searchInput" type="text"
+                   placeholder="Search... &quot;exact phrase&quot;, term1 | term2, prefix*"
+                   autocomplete="off"
                    oninput="renderSearchResults(this.value)"
                    onkeydown="handleSearchKeydown(event)" />
-            <div class="search-results" id="searchResults">
-                <div class="sr-empty">Start typing to search the guide...</div>
+            <div class="search-results" id="searchResults" role="listbox" aria-label="Search results">
+                <div class="sr-empty" role="status">Type to search — supports &quot;exact phrases&quot;, OR with |, prefix*</div>
             </div>
-            <div class="search-hint">
+            <div class="search-hint" aria-hidden="true">
                 <span><kbd>↑</kbd> <kbd>↓</kbd> navigate &nbsp; <kbd>Enter</kbd> jump &nbsp; <kbd>Esc</kbd> close</span>
                 <span><kbd>Ctrl</kbd>+<kbd>F</kbd> or <kbd>Ctrl</kbd>+<kbd>K</kbd></span>
             </div>
@@ -94,7 +98,7 @@ ${mermaidInit}
     </div>
 
     <!-- Floating search trigger -->
-    <button class="search-trigger" onclick="openSearch()" title="Search guide (Ctrl+F / Ctrl+K)">&#x1F50D;</button>
+    <button class="search-trigger" onclick="openSearch()" aria-label="Search guide (Ctrl+F or Ctrl+K)">&#x1F50D;</button>
 
     <script>
 ${interpolatedScripts}

@@ -20,11 +20,20 @@
     --info: #6495ed;
     --text: #f9f9f9;
     --text-secondary: #b8b8b8;
-    --text-muted: #888888;
+    --text-muted: #9a9a9a;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: 0.01ms;
+        animation-iteration-count: 1;
+        transition-duration: 0.01ms;
+        scroll-behavior: auto;
+    }
+}
 
 /* Text selection — mirrors @strixun/shared-styles text-selection mixin */
 ::selection { background: var(--accent); color: #000000; }
@@ -115,7 +124,10 @@ input {
     color: var(--text);
     font-size: 1rem;
 }
-input:focus { outline: none; border-color: var(--accent); }
+input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+*:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+*:focus:not(:focus-visible) { outline: none; }
 
 button {
     background: var(--accent);
@@ -388,7 +400,8 @@ a.gref code {
     background: var(--bg-dark);
     color: var(--text);
 }
-.search-box input:focus { outline: none; }
+.search-box input:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+.search-box input:focus:not(:focus-visible) { outline: none; }
 .search-box input::placeholder { color: var(--text-muted); }
 .search-results {
     overflow-y: auto;
@@ -468,3 +481,46 @@ a.gref code {
     transform: scale(1.1);
     box-shadow: 0 6px 24px rgba(237, 174, 73, 0.6);
 }
+
+/* Skip-to-content link (WCAG 2.4.1) */
+.skip-link {
+    position: absolute;
+    top: -100%;
+    left: 1rem;
+    background: var(--accent);
+    color: #000;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0 0 8px 8px;
+    font-weight: 600;
+    z-index: 10000;
+    text-decoration: none;
+}
+.skip-link:focus { top: 0; }
+
+/* Screen-reader only text */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Search result type badges */
+.sr-type {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+}
+.sr-type-anchor { background: var(--accent); color: #000; }
+.sr-type-content { background: var(--border); color: var(--text); }

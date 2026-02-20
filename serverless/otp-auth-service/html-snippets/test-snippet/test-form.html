@@ -2,8 +2,8 @@
 <div class="card">
     <h2>🔑 API Key Status</h2>
     <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-        <span class="status-indicator" id="keyStatus"></span>
-        <span id="keyStatusText">Checking...</span>
+        <span class="status-indicator" id="keyStatus" role="status" aria-hidden="true"></span>
+        <span id="keyStatusText" role="status" aria-live="polite">Checking...</span>
     </div>
     <div class="api-key-display">{{API_KEY}}</div>
     <div id="keyDetails" style="margin-top: 1rem; font-size: 0.875rem; color: var(--text-muted);"></div>
@@ -50,11 +50,11 @@
         <strong>scope:</strong> <code id="oidcScope">—</code>
     </div>
     <div class="form-group">
-        <label>access_token</label>
+        <label for="oidcAccessToken">access_token</label>
         <textarea id="oidcAccessToken" rows="2" readonly style="width:100%;font-family:monospace;font-size:0.75rem;resize:vertical;"></textarea>
     </div>
     <div class="form-group">
-        <label>id_token <span id="idTokenStatus" style="font-size:0.75rem;color:var(--text-muted);">(not issued — OIDC_SIGNING_KEY may not be configured)</span></label>
+        <label for="oidcIdToken">id_token <span id="idTokenStatus" style="font-size:0.75rem;color:var(--text-muted);">(not issued — OIDC_SIGNING_KEY may not be configured)</span></label>
         <textarea id="oidcIdToken" rows="2" readonly style="width:100%;font-family:monospace;font-size:0.75rem;resize:vertical;"></textarea>
     </div>
     <button onclick="decodeIdToken()">Decode ID Token Claims</button>
