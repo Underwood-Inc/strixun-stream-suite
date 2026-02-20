@@ -6,7 +6,7 @@
   "type": "module",
   "packageManager": "pnpm@9.15.1",
   "scripts": {
-    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build && pnpm --filter @strixun/auth-store build",
+    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/oidc-jwt build && pnpm --filter @strixun/api-framework build && pnpm --filter @strixun/auth-store build",
     "build:otp-auth-shared": "pnpm --filter @strixun/otp-auth-service build:shared",
     "build:otp-login": "pnpm --filter @strixun/otp-login build:react",
     "build:decrypt": "node scripts/bundle-decrypt.js",
