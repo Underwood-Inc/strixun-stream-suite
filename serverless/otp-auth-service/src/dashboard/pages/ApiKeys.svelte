@@ -199,40 +199,40 @@
           <p class="api-keys__empty-hint">Create your first API key above to get started</p>
         </div>
       {:else}
-        <div class="api-keys__table-container">
+        <div class="api-keys__list">
           <table class="api-keys__table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>API Key</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Last Used</th>
-                <th>Actions</th>
+                <th class="api-keys__th-name">Name</th>
+                <th class="api-keys__th-key">API Key</th>
+                <th class="api-keys__th-status">Status</th>
+                <th class="api-keys__th-created">Created</th>
+                <th class="api-keys__th-used">Last Used</th>
+                <th class="api-keys__th-actions">Actions</th>
               </tr>
             </thead>
             <tbody>
               {#each apiKeys as key}
-                <tr>
-                  <td>{key.name || 'Unnamed'}</td>
-                  <td class="api-keys__key-cell">
-                    <code class="api-keys__key-code">sk_<ObfuscatedText text="****" length={12} charset="hex" color="warning" revealOnHover ariaLabel={`API Key ending in ${key.keyId.substring(key.keyId.length - 8)}`} />{key.keyId.substring(key.keyId.length - 8)}</code>
+                <tr class="api-keys__row">
+                  <td class="api-keys__td-name" data-label="Name">{key.name || 'Unnamed'}</td>
+                  <td class="api-keys__key-cell api-keys__td-key" data-label="API Key">
+                    <code class="api-keys__key-code" title="Reveal on hover">sk_<ObfuscatedText text="****" length={12} charset="hex" color="warning" revealOnHover ariaLabel={`API Key ending in ${key.keyId.substring(key.keyId.length - 8)}`} />{key.keyId.substring(key.keyId.length - 8)}</code>
                   </td>
-                  <td>
+                  <td class="api-keys__td-status" data-label="Status">
                     <span class="api-keys__status" class:status-active={key.status === 'active'} class:status-revoked={key.status === 'revoked'}>
                       {key.status || 'unknown'}
                     </span>
                   </td>
-                  <td class="api-keys__date">{key.createdAt ? new Date(key.createdAt).toLocaleDateString() : 'N/A'}</td>
-                  <td class="api-keys__date">{key.lastUsed ? new Date(key.lastUsed).toLocaleDateString() : 'Never'}</td>
-                  <td>
+                  <td class="api-keys__date api-keys__td-created" data-label="Created">{key.createdAt ? new Date(key.createdAt).toLocaleDateString() : 'N/A'}</td>
+                  <td class="api-keys__date api-keys__td-used" data-label="Last Used">{key.lastUsed ? new Date(key.lastUsed).toLocaleDateString() : 'Never'}</td>
+                  <td class="api-keys__td-actions" data-label="Actions">
                     {#if key.status === 'active'}
                       <div class="api-keys__actions">
                         <button class="api-keys__btn api-keys__btn--test" onclick={() => handleTest(key.keyId)} disabled={testingKeyId === key.keyId}>
                           {testingKeyId === key.keyId ? '...' : 'Test'}
                         </button>
-                        <button class="api-keys__btn api-keys__btn--code" onclick={() => handleShowSnippet(key.keyId)} title="Get HTML+JS code for end-to-end testing">{'</>'}</button>
-                        <button class="api-keys__btn api-keys__btn--origins" onclick={() => openOrigins(key)} title="Configure allowed origins">🌐 {key.allowedOrigins?.length || 0}</button>
+                        <button class="api-keys__btn api-keys__btn--code" onclick={() => handleShowSnippet(key.keyId)} title="Get HTML+JS code for end-to-end testing">Snippet</button>
+                        <button class="api-keys__btn api-keys__btn--origins" onclick={() => openOrigins(key)} title="Configure allowed origins (CORS)">Origins ({key.allowedOrigins?.length || 0})</button>
                         <button class="api-keys__btn api-keys__btn--warning" onclick={() => handleRotate(key.keyId)}>Rotate</button>
                         <button class="api-keys__btn api-keys__btn--danger" onclick={() => handleRevoke(key.keyId)}>Revoke</button>
                       </div>
@@ -303,8 +303,8 @@
     margin-top: var(--spacing-sm); font-size: 0.875rem; color: var(--muted);
   }
 
-  .api-keys__table-container { overflow-x: auto; }
-  .api-keys__table { width: 100%; border-collapse: collapse; }
+  .api-keys__list { overflow-x: auto; }
+  .api-keys__table { width: 100%; border-collapse: collapse; min-width: 640px; }
   .api-keys__table th {
     text-align: left; padding: var(--spacing-md);
     color: var(--text-secondary); font-weight: 600;
@@ -312,7 +312,12 @@
   }
   .api-keys__table td {
     padding: var(--spacing-md); border-bottom: 1px solid var(--border);
+    vertical-align: middle;
   }
+
+  .api-keys__th-name { min-width: 6rem; }
+  .api-keys__th-key { min-width: 11rem; }
+  .api-keys__th-actions { min-width: 18rem; white-space: nowrap; }
 
   .api-keys__key-cell {
     display: flex; align-items: center; gap: var(--spacing-sm); font-family: monospace;
@@ -321,7 +326,7 @@
     font-family: monospace; font-size: 0.875rem; color: var(--accent);
     background: var(--bg-dark); padding: var(--spacing-xs) var(--spacing-sm);
     display: inline-flex; align-items: center; border-radius: var(--radius-sm);
-    word-break: break-all; flex: 1;
+    word-break: break-all; min-width: 0;
   }
 
   .api-keys__status {
@@ -333,25 +338,66 @@
 
   .api-keys__date { color: var(--text-secondary); font-size: 0.875rem; }
 
-  .api-keys__actions { display: flex; gap: var(--spacing-sm); justify-content: flex-end; }
+  .api-keys__actions {
+    display: flex; flex-wrap: wrap; gap: var(--spacing-sm);
+    justify-content: flex-end; align-items: center;
+  }
 
   .api-keys__btn {
-    padding: var(--spacing-xs) var(--spacing-md); border-radius: var(--radius-sm);
-    font-weight: 600; font-size: 0.875rem; cursor: pointer; white-space: nowrap;
+    padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-sm);
+    font-weight: 600; font-size: 0.8125rem; cursor: pointer; white-space: nowrap;
   }
   .api-keys__btn--test { background: var(--info); border: 2px solid var(--info); color: #000; }
   .api-keys__btn--test:disabled { opacity: 0.6; cursor: wait; }
   .api-keys__btn--code {
     background: var(--bg-dark); border: 2px solid var(--accent); color: var(--accent);
-    font-size: 0.75rem; font-family: monospace; font-weight: 700;
-    padding: var(--spacing-xs) var(--spacing-sm);
   }
   .api-keys__btn--code:hover { background: var(--accent); color: #000; }
   .api-keys__btn--origins {
     background: var(--bg-dark); border: 2px solid var(--info); color: var(--info);
-    font-size: 0.75rem; padding: var(--spacing-xs) var(--spacing-sm);
   }
   .api-keys__btn--origins:hover { background: var(--info); color: #000; }
   .api-keys__btn--warning { background: var(--warning); border: 2px solid var(--warning); color: #000; }
   .api-keys__btn--danger { background: transparent; border: 2px solid var(--danger); color: var(--danger); }
+
+  /* Breakpoint: card layout on narrow viewports to avoid squishing */
+  @media (max-width: 900px) {
+    .api-keys__table { min-width: 0; display: block; }
+    .api-keys__table thead { display: none; }
+    .api-keys__table tbody { display: block; }
+    .api-keys__row {
+      display: block;
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-md);
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+    .api-keys__row td {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--spacing-md);
+      padding: var(--spacing-sm) 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .api-keys__row td:last-child { border-bottom: none; padding-bottom: 0; }
+    .api-keys__row td::before {
+      content: attr(data-label);
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+      flex-shrink: 0;
+    }
+    .api-keys__key-cell::before { content: attr(data-label); }
+    .api-keys__td-actions { flex-wrap: wrap; align-items: flex-start; }
+    .api-keys__td-actions::before { width: 100%; margin-bottom: var(--spacing-xs); }
+    .api-keys__td-actions .api-keys__actions { width: 100%; justify-content: flex-start; }
+  }
+
+  @media (max-width: 480px) {
+    .api-keys__row td { flex-direction: column; align-items: flex-start; gap: var(--spacing-xs); }
+    .api-keys__row td::before { margin-bottom: 0; }
+    .api-keys__actions { width: 100%; }
+  }
 </style>

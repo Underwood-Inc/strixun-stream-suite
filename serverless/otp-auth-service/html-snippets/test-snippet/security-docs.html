@@ -746,7 +746,7 @@ flowchart TD
         <h4 style="margin-top: 1rem;">How to configure origins</h4>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
             In the OTP Auth dashboard, go to <strong>API Keys</strong>, find the key you want to restrict,
-            and click the <strong>🌐 button</strong>. Add the origins (websites) that should be allowed to
+            and click the <strong>Origins</strong> button (e.g. <strong>Origins (0)</strong>). Add the origins (websites) that should be allowed to
             use this key. An origin is the protocol + domain + port of a URL — nothing after the port.
         </p>
 
@@ -857,7 +857,7 @@ flowchart LR
                 If using a backend proxy, update your server's <code>.env</code> file and redeploy. If using
                 a frontend key, push a new build with the updated key.</li>
             <li style="margin-bottom: 0.5rem;"><strong>Configure origin restrictions</strong> (if frontend)
-                — On the new key, click the <strong>🌐 button</strong> and add your allowed origins to
+                — On the new key, click the <strong>Origins</strong> button and add your allowed origins to
                 prevent the same exposure from being exploitable again.</li>
             <li><strong>Audit your logs</strong> — Check the <strong>Audit Logs</strong> page in the
                 dashboard to see if the compromised key was used for any unauthorized requests.</li>
@@ -874,7 +874,7 @@ flowchart LR
         <ul>
             <li><strong>API Base URL:</strong> <code>{{BASE_URL}}</code></li>
             <li><strong>No origin config?</strong> This page works from any <em>real</em> origin (e.g. <code>https://…</code>, <code>http://localhost:…</code>). Opened as <code>file://</code> it sends <code>Origin: null</code>, which is not allowed unless you add <code>null</code> or serve the page.</li>
-            <li><strong>Origin config?</strong> Add this page's origin via Dashboard → API Keys → 🌐 button (e.g. <code>http://localhost:8080</code> if you serve the file locally).</li>
+            <li><strong>Origin config?</strong> Add this page's origin via Dashboard → API Keys → <strong>Origins</strong> button (e.g. <code>http://localhost:8080</code> if you serve the file locally).</li>
             <li><strong>Opened from file (file://)?</strong> Either serve the file (e.g. <code>python -m http.server 8080</code>) and add that origin, or add the literal <code>null</code> to this key's allowed origins. No automatic allowance for null.</li>
         </ul>
     </div>

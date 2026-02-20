@@ -29,7 +29,7 @@
     onkeydown={(e) => e.key === 'Escape' && close()}>
     <div class="modal__content">
       <div class="modal__header">
-        <h2 id="snippet-modal-title" class="modal__title">{'</>'} End-to-End Test Page</h2>
+        <h2 id="snippet-modal-title" class="modal__title">End-to-End Test Page</h2>
         <button class="modal__close" onclick={close} aria-label="Close modal">x</button>
       </div>
 

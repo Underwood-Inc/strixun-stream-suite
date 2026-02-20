@@ -219,7 +219,7 @@ async function requestOTP(email) {
 By default, API keys work from ANY origin. For extra security, you can restrict to specific origins:
 
 1. Go to **Dashboard → API Keys**
-2. Click the **🌐** button next to your API key
+2. Click the **Origins** button (e.g. **Origins (0)**) next to your API key
 3. Add your domains:
    - `https://myapp.com`
    - `https://www.myapp.com`
@@ -272,7 +272,7 @@ Depends on your configuration:
 
 ## Setting Up Allowed Origins (Per-Key)
 
-Each API key has its own origin configuration. Navigate to **Dashboard → API Keys**, then click the **🌐** button next to the key you want to configure.
+Each API key has its own origin configuration. Navigate to **Dashboard → API Keys**, then click the **Origins** button next to the key you want to configure.
 
 **Default Behavior (No Origins):** Key works from any origin - the API key itself is the authentication.
 
