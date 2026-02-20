@@ -77,6 +77,25 @@ ${mermaidInit}
         ${interpolatedTestForm}
     </div>
     
+    <!-- Search overlay -->
+    <div class="search-overlay" id="searchOverlay" onclick="if(event.target===this)closeSearch()">
+        <div class="search-box">
+            <input type="text" placeholder="Search the guide... (claims, endpoints, scopes, errors...)"
+                   oninput="renderSearchResults(this.value)"
+                   onkeydown="handleSearchKeydown(event)" />
+            <div class="search-results" id="searchResults">
+                <div class="sr-empty">Start typing to search the guide...</div>
+            </div>
+            <div class="search-hint">
+                <span><kbd>↑</kbd> <kbd>↓</kbd> navigate &nbsp; <kbd>Enter</kbd> jump &nbsp; <kbd>Esc</kbd> close</span>
+                <span><kbd>Ctrl</kbd>+<kbd>F</kbd> or <kbd>Ctrl</kbd>+<kbd>K</kbd></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating search trigger -->
+    <button class="search-trigger" onclick="openSearch()" title="Search guide (Ctrl+F / Ctrl+K)">&#x1F50D;</button>
+
     <script>
 ${interpolatedScripts}
     </script>

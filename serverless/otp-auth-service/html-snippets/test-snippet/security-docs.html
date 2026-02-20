@@ -10,7 +10,7 @@
         </p>
         
         <!-- API Key Purpose -->
-        <h3>🔑 What This API Key Does vs. Doesn't Do</h3>
+        <h3 id="sec-api-key">🔑 What This API Key Does vs. Doesn't Do</h3>
         <table class="security-table">
             <thead>
                 <tr>
@@ -58,7 +58,7 @@
         
         <!-- Security Model -->
         <div style="background: var(--bg-light); border: 2px solid var(--accent); border-radius: 8px; padding: 1rem; margin: 1.5rem 0;">
-            <h3 style="margin: 0 0 0.75rem 0; color: var(--accent);">🔐 Security Model - How It Actually Works</h3>
+            <h3 id="sec-security-model" style="margin: 0 0 0.75rem 0; color: var(--accent);">🔐 Security Model - How It Actually Works</h3>
             
             <p style="font-size: 0.9rem; margin-bottom: 1rem; font-weight: bold;">
                 The API key itself IS the security. No valid key = no access. Period.
@@ -106,7 +106,7 @@
         <!-- ========================================================= -->
         <!-- OIDC Architecture (foundational — applies to ALL methods)  -->
         <!-- ========================================================= -->
-        <h3>🌐 OIDC Architecture (All Integrations Use This)</h3>
+        <h3 id="sec-oidc-arch">🌐 OIDC Architecture (All Integrations Use This)</h3>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
             Every token issued by this service — regardless of whether you use a backend proxy or a direct
             frontend call — is an <strong>RS256-signed OIDC-compliant JWT</strong>. There is no alternative
@@ -144,7 +144,7 @@ sequenceDiagram
         </div>
 
         <!-- ===== OIDC Infrastructure Endpoints ===== -->
-        <h3 style="margin-top: 1.5rem;">🏗️ OIDC Infrastructure — What Each Endpoint Does &amp; Why</h3>
+        <h3 id="sec-oidc-endpoints" style="margin-top: 1.5rem;">🏗️ OIDC Infrastructure — What Each Endpoint Does &amp; Why</h3>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
             OIDC (OpenID Connect) is an industry-standard identity protocol built on top of OAuth 2.0.
             It defines a set of well-known endpoints that let any application — yours or third-party —
@@ -154,7 +154,7 @@ sequenceDiagram
 
         <!-- Discovery -->
         <div class="method-box recommended" style="margin-bottom: 1rem;">
-            <h4>📖 Discovery — <code>GET /.well-known/openid-configuration</code></h4>
+            <h4 id="ep-discovery">📖 Discovery — <code>GET /.well-known/openid-configuration</code></h4>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
                 <strong>What it is:</strong> A single JSON document that acts as a "phone book" for the entire
                 authentication system. Any application that wants to integrate with this auth service can
@@ -175,7 +175,7 @@ sequenceDiagram
 
         <!-- JWKS -->
         <div class="method-box recommended" style="margin-bottom: 1rem;">
-            <h4>🔑 JSON Web Key Set (JWKS) — <code>GET /.well-known/jwks.json</code></h4>
+            <h4 id="ep-jwks">🔑 JSON Web Key Set (JWKS) — <code>GET /.well-known/jwks.json</code></h4>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
                 <strong>What it is:</strong> A list of the <em>public</em> cryptographic keys that this service
                 uses to sign every token it issues. Think of it like a public notary stamp — anyone can look at
@@ -198,7 +198,7 @@ sequenceDiagram
 
         <!-- Request OTP Endpoint -->
         <div class="method-box recommended" style="margin-bottom: 1rem;">
-            <h4>📧 Request OTP — <code>POST /auth/request-otp</code></h4>
+            <h4 id="ep-request-otp">📧 Request OTP — <code>POST /auth/request-otp</code></h4>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
                 <strong>What it is:</strong> The first step of the login flow. You send the user's email address
                 to this endpoint, and the auth service sends a 9-digit one-time password to that email. The OTP
@@ -221,7 +221,7 @@ sequenceDiagram
 
         <!-- Token Endpoint -->
         <div class="method-box recommended" style="margin-bottom: 1rem;">
-            <h4>🎫 Token Endpoint (Verify OTP) — <code>POST /auth/verify-otp</code></h4>
+            <h4 id="ep-verify-otp">🎫 Token Endpoint (Verify OTP) — <code>POST /auth/verify-otp</code></h4>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
                 <strong>What it is:</strong> The second step of the login flow. After the user receives their
                 9-digit OTP code via email, your app submits it here. If the code is correct, the service
@@ -246,7 +246,7 @@ sequenceDiagram
 
         <!-- Refresh -->
         <div class="method-box recommended" style="margin-bottom: 1rem;">
-            <h4>🔄 Token Refresh — <code>POST /auth/refresh</code></h4>
+            <h4 id="ep-refresh">🔄 Token Refresh — <code>POST /auth/refresh</code></h4>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
                 <strong>What it is:</strong> When an access token expires (every 15 minutes), this endpoint
                 lets the app silently get a new one without forcing the user to re-enter an OTP code. The
@@ -267,7 +267,7 @@ sequenceDiagram
 
         <!-- UserInfo -->
         <div class="method-box recommended" style="margin-bottom: 1rem;">
-            <h4>👤 User Info — <code>GET /auth/me</code></h4>
+            <h4 id="ep-userinfo">👤 User Info — <code>GET /auth/me</code></h4>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
                 <strong>What it is:</strong> Returns profile information about the currently logged-in user
                 based on the scopes granted during authentication. Uses the HttpOnly cookie automatically
@@ -282,7 +282,7 @@ sequenceDiagram
 
         <!-- Introspection -->
         <div class="method-box recommended" style="margin-bottom: 1rem;">
-            <h4>🔍 Token Introspection — <code>POST /auth/introspect</code></h4>
+            <h4 id="ep-introspect">🔍 Token Introspection — <code>POST /auth/introspect</code></h4>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
                 <strong>What it is:</strong> A way for your server to ask "is this token still valid?" by
                 sending a token to this endpoint and getting back a definitive yes/no answer along with
@@ -303,7 +303,7 @@ sequenceDiagram
 
         <!-- Logout -->
         <div class="method-box recommended" style="margin-bottom: 1rem;">
-            <h4>🚪 Logout — <code>POST /auth/logout</code></h4>
+            <h4 id="ep-logout">🚪 Logout — <code>POST /auth/logout</code></h4>
             <p style="font-size: 0.8rem; color: var(--text-muted);">
                 <strong>What it is:</strong> Ends the user's session completely. It revokes the access and
                 refresh tokens on the server side (so they can never be reused even if intercepted),
@@ -313,7 +313,7 @@ sequenceDiagram
         </div>
 
         <!-- ===== How Authentication Works (Grant Type) ===== -->
-        <h3 style="margin-top: 1.5rem;">⚙️ How Authentication Works (Grant Type)</h3>
+        <h3 id="sec-grant-type" style="margin-top: 1.5rem;">⚙️ How Authentication Works (Grant Type)</h3>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
             Most OIDC providers use a flow where the user is redirected to a login page and back (called the
             "authorization code" flow). This service uses a different approach — a <strong>custom OTP grant type</strong>
@@ -329,7 +329,7 @@ sequenceDiagram
         </p>
 
         <!-- ===== Token Lifetimes ===== -->
-        <h3 style="margin-top: 1.5rem;">⏱️ Token Lifetimes</h3>
+        <h3 id="sec-token-lifetimes" style="margin-top: 1.5rem;">⏱️ Token Lifetimes</h3>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
             Each token type has a specific lifespan. Short-lived access tokens limit the damage window if a
             token is ever intercepted. The refresh token allows seamless re-authentication up to a hard limit.
@@ -337,17 +337,17 @@ sequenceDiagram
         <table class="security-table" style="font-size: 0.85rem;">
             <thead><tr><th>Token</th><th>Lifetime</th><th>How It's Delivered</th></tr></thead>
             <tbody>
-                <tr>
+                <tr id="token-access">
                     <td><strong>Access token</strong> (RS256 JWT)</td>
                     <td>15 minutes</td>
                     <td>JSON response body + <code>auth_token</code> HttpOnly cookie</td>
                 </tr>
-                <tr>
+                <tr id="token-id">
                     <td><strong>ID token</strong> (RS256 JWT)</td>
                     <td>15 minutes (same as access)</td>
                     <td>JSON response body only (not stored in cookies)</td>
                 </tr>
-                <tr>
+                <tr id="token-refresh">
                     <td><strong>Refresh token</strong> (opaque string)</td>
                     <td>7-day absolute max from original login</td>
                     <td>JSON response body + <code>refresh_token</code> HttpOnly cookie</td>
@@ -356,7 +356,7 @@ sequenceDiagram
         </table>
 
         <!-- ===== ID Token Claims ===== -->
-        <h3 style="margin-top: 1.5rem;">📋 What's Inside an ID Token (Claims)</h3>
+        <h3 id="sec-claims" style="margin-top: 1.5rem;">📋 What's Inside an ID Token (Claims)</h3>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
             A "claim" is a piece of information embedded in the token. When your server verifies a token,
             it can read these claims to learn who the user is and whether the token is still valid —
@@ -365,18 +365,18 @@ sequenceDiagram
         <table class="security-table" style="font-size: 0.85rem;">
             <thead><tr><th>Claim</th><th>Full Name</th><th>What It Tells You</th></tr></thead>
             <tbody>
-                <tr><td><code>iss</code></td><td>Issuer</td><td>The URL of this auth service. Your server should verify this matches exactly — it proves the token came from the right place.</td></tr>
-                <tr><td><code>sub</code></td><td>Subject</td><td>The unique customer ID. This is <strong>the</strong> identifier you use to look up the user in your own systems.</td></tr>
-                <tr><td><code>aud</code></td><td>Audience</td><td>Your API key ID. Confirms this token was issued <em>for your application</em> specifically, not a different tenant.</td></tr>
-                <tr><td><code>exp</code></td><td>Expiration</td><td>Unix timestamp when the token stops being valid. Always check this — reject expired tokens.</td></tr>
-                <tr><td><code>iat</code></td><td>Issued At</td><td>Unix timestamp when the token was created. Useful for calculating token age.</td></tr>
-                <tr><td><code>at_hash</code></td><td>Access Token Hash</td><td>A cryptographic fingerprint of the access token. Lets you verify that the ID token and access token were issued together as a pair.</td></tr>
-                <tr><td><code>email_verified</code></td><td>Email Verified</td><td>Always <code>true</code> — confirms the user proved ownership of their email via OTP. The actual email address is <strong>never</strong> included (see Privacy Model below).</td></tr>
+                <tr id="claim-iss"><td><code>iss</code></td><td>Issuer</td><td>The URL of this auth service. Your server should verify this matches exactly — it proves the token came from the right place.</td></tr>
+                <tr id="claim-sub"><td><code>sub</code></td><td>Subject</td><td>The unique customer ID. This is <strong>the</strong> identifier you use to look up the user in your own systems.</td></tr>
+                <tr id="claim-aud"><td><code>aud</code></td><td>Audience</td><td>Your API key ID. Confirms this token was issued <em>for your application</em> specifically, not a different tenant.</td></tr>
+                <tr id="claim-exp"><td><code>exp</code></td><td>Expiration</td><td>Unix timestamp when the token stops being valid. Always check this — reject expired tokens.</td></tr>
+                <tr id="claim-iat"><td><code>iat</code></td><td>Issued At</td><td>Unix timestamp when the token was created. Useful for calculating token age.</td></tr>
+                <tr id="claim-at-hash"><td><code>at_hash</code></td><td>Access Token Hash</td><td>A cryptographic fingerprint of the access token. Lets you verify that the ID token and access token were issued together as a pair.</td></tr>
+                <tr id="claim-email-verified"><td><code>email_verified</code></td><td>Email Verified</td><td>Always <code>true</code> — confirms the user proved ownership of their email via OTP. The actual email address is <strong>never</strong> included (see Privacy Model below).</td></tr>
             </tbody>
         </table>
 
         <!-- ===== Scopes ===== -->
-        <h3 style="margin-top: 1.5rem;">🎯 Scopes — Controlling What Information You Receive</h3>
+        <h3 id="sec-scopes" style="margin-top: 1.5rem;">🎯 Scopes — Controlling What Information You Receive</h3>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
             Scopes act as permissions that control which claims are included in the tokens and what the
             <code>/auth/me</code> endpoint returns. You request scopes during authentication, and the
@@ -385,8 +385,8 @@ sequenceDiagram
         <table class="security-table" style="font-size: 0.85rem;">
             <thead><tr><th>Scope</th><th>What It Unlocks</th></tr></thead>
             <tbody>
-                <tr><td><code>openid</code></td><td>Core identity claims: <code>sub</code> (customer ID), <code>iss</code>, <code>aud</code>, <code>exp</code>, <code>iat</code>, <code>at_hash</code>, <code>email_verified</code></td></tr>
-                <tr><td><code>profile</code></td><td>Display name and preferred username: <code>name</code>, <code>preferred_username</code></td></tr>
+                <tr id="scope-openid"><td><code>openid</code></td><td>Core identity claims: <code>sub</code> (customer ID), <code>iss</code>, <code>aud</code>, <code>exp</code>, <code>iat</code>, <code>at_hash</code>, <code>email_verified</code></td></tr>
+                <tr id="scope-profile"><td><code>profile</code></td><td>Display name and preferred username: <code>name</code>, <code>preferred_username</code></td></tr>
             </tbody>
         </table>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">
@@ -398,7 +398,7 @@ sequenceDiagram
         </p>
 
         <!-- ===== Privacy Model ===== -->
-        <h3 style="margin-top: 1.5rem;">🔒 Privacy Model — How We Protect User Data</h3>
+        <h3 id="sec-privacy" style="margin-top: 1.5rem;">🔒 Privacy Model — How We Protect User Data</h3>
         <p style="font-size: 0.8rem; color: var(--text-muted);">
             Email addresses are <strong>never</strong> included in JWT payloads, token responses, or any API response.
             The <code>customerId</code> (the <code>sub</code> claim in tokens) is the sole external identifier
@@ -409,7 +409,7 @@ sequenceDiagram
         </p>
 
         <!-- ===== Error Responses ===== -->
-        <h3 style="margin-top: 1.5rem;">❌ Error Responses — What to Expect When Things Go Wrong</h3>
+        <h3 id="sec-errors" style="margin-top: 1.5rem;">❌ Error Responses — What to Expect When Things Go Wrong</h3>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
             All error responses follow the <strong>RFC 7807 Problem Details</strong> format — a standard
             JSON structure that makes errors machine-readable and human-understandable. Your error-handling
@@ -426,27 +426,27 @@ sequenceDiagram
         <table class="security-table" style="font-size: 0.85rem;">
             <thead><tr><th>Status Code</th><th>When It Happens</th><th>The <code>detail</code> Field Tells You</th></tr></thead>
             <tbody>
-                <tr>
+                <tr id="error-400">
                     <td><span class="badge badge-warning">400</span></td>
                     <td>Invalid email format, missing OTP, malformed request body</td>
                     <td>Exactly what's wrong with the input (e.g., <code>"Valid 9-digit OTP required"</code>)</td>
                 </tr>
-                <tr>
+                <tr id="error-401">
                     <td><span class="badge badge-danger">401</span></td>
                     <td>Wrong OTP code, no API key, invalid API key, expired token</td>
                     <td>Why authentication failed. For OTP errors, also includes <code>remaining_attempts</code></td>
                 </tr>
-                <tr>
+                <tr id="error-403">
                     <td><span class="badge badge-danger">403</span></td>
                     <td>Valid API key but request origin not in the allowed list</td>
                     <td>Origin restriction violated</td>
                 </tr>
-                <tr>
+                <tr id="error-429">
                     <td><span class="badge badge-warning">429</span></td>
                     <td>Too many OTP requests or too many failed verification attempts</td>
                     <td>Rate limit or quota exceeded. Includes <code>retry_after</code> (seconds) and <code>remaining</code> count</td>
                 </tr>
-                <tr>
+                <tr id="error-500">
                     <td><span class="badge badge-danger">500</span></td>
                     <td>Server-side failure (email delivery, database, etc.)</td>
                     <td>Generic message — retry the request or contact support</td>
@@ -462,7 +462,7 @@ sequenceDiagram
         <!-- ========================================================= -->
         <!-- Integration Methods (HOW the developer calls the service)  -->
         <!-- ========================================================= -->
-        <h3>🛡️ Integration Methods</h3>
+        <h3 id="sec-integration">🛡️ Integration Methods</h3>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
             Both methods produce the same OIDC tokens. The difference is where the API key lives
             and whether your server proxies the calls.
@@ -715,7 +715,7 @@ sequenceDiagram
         </div>
         
         <!-- CORS / Origin Restrictions -->
-        <h3>🌐 Origin Restrictions — Controlling Where Your Key Can Be Used</h3>
+        <h3 id="sec-origins">🌐 Origin Restrictions — Controlling Where Your Key Can Be Used</h3>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
             Every API key can optionally be locked to specific web origins. This controls which websites
             are allowed to make requests using that key. If someone copies your key and tries to use it
@@ -818,7 +818,7 @@ flowchart TD
         </p>
         
         <!-- Key Compromise -->
-        <h3>🚨 If Your API Key Is Compromised</h3>
+        <h3 id="sec-key-compromise">🚨 If Your API Key Is Compromised</h3>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
             If you suspect your API key has been leaked, exposed in a public repository, or used by an
             unauthorized party — act immediately. Revoking a key is instant and irreversible; all
@@ -865,7 +865,7 @@ flowchart LR
         </p>
         
         <!-- Environment Info -->
-        <h3>📋 This Test Page</h3>
+        <h3 id="sec-test-page">📋 This Test Page</h3>
         <ul>
             <li><strong>API Base URL:</strong> <code>{{BASE_URL}}</code></li>
             <li><strong>No origin config?</strong> This page works immediately from any origin</li>

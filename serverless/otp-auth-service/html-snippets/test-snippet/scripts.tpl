@@ -392,5 +392,248 @@ async function testIntrospect() {
     }
 }
 
+// --- Glossary auto-linkifier ---
+
+const GLOSSARY_MAP = {
+    'iss': '#claim-iss',
+    'sub': '#claim-sub',
+    'aud': '#claim-aud',
+    'exp': '#claim-exp',
+    'iat': '#claim-iat',
+    'at_hash': '#claim-at-hash',
+    'email_verified': '#claim-email-verified',
+    'access_token': '#token-access',
+    'auth_token': '#token-access',
+    'id_token': '#token-id',
+    'refresh_token': '#token-refresh',
+    'openid': '#scope-openid',
+    'profile': '#scope-profile',
+    'openid profile': '#sec-scopes',
+    '/auth/request-otp': '#ep-request-otp',
+    '/auth/verify-otp': '#ep-verify-otp',
+    '/auth/refresh': '#ep-refresh',
+    '/auth/me': '#ep-userinfo',
+    '/auth/introspect': '#ep-introspect',
+    '/auth/logout': '#ep-logout',
+    '/.well-known/openid-configuration': '#ep-discovery',
+    '/.well-known/jwks.json': '#ep-jwks',
+    'kid': '#ep-jwks',
+    'customerId': '#claim-sub',
+    'X-OTP-API-Key': '#sec-api-key',
+    'RS256': '#sec-oidc-arch',
+    'RFC 7662': '#ep-introspect',
+    'RFC 7807': '#sec-errors',
+};
+
+function buildGlossaryLinks() {
+    const secDocs = document.querySelector('.security-docs');
+    if (!secDocs) return;
+
+    const codeEls = secDocs.querySelectorAll('code');
+    codeEls.forEach(function(el) {
+        if (el.closest('.code-example') || el.closest('.mermaid') || el.closest('a')) return;
+
+        const text = el.textContent.trim();
+        const href = GLOSSARY_MAP[text];
+        if (!href) return;
+
+        if (el.closest(href.replace('#', '[id="') + '"]')) return;
+
+        const link = document.createElement('a');
+        link.href = href;
+        link.className = 'gref';
+        link.title = 'Jump to: ' + text;
+        el.parentNode.insertBefore(link, el);
+        link.appendChild(el);
+    });
+}
+
+// --- Page search system ---
+
+let searchIndex = [];
+let searchActiveIdx = -1;
+
+function buildSearchIndex() {
+    searchIndex = [];
+    const container = document.querySelector('.container');
+    if (!container) return;
+
+    const headings = container.querySelectorAll('h2[id], h3[id], h4[id]');
+    headings.forEach(function(h) {
+        const parent = h.closest('h3[id], h2[id]');
+        const section = (parent && parent !== h) ? parent.textContent.trim() : '';
+        searchIndex.push({
+            id: h.id,
+            title: h.textContent.trim(),
+            section: section,
+            type: 'heading',
+            el: h,
+        });
+    });
+
+    const rows = container.querySelectorAll('tr[id]');
+    rows.forEach(function(r) {
+        const cells = r.querySelectorAll('td');
+        const heading = r.closest('.security-docs')
+            ? r.closest('table').previousElementSibling
+            : null;
+        let sectionTitle = '';
+        let node = r.closest('table');
+        while (node && !sectionTitle) {
+            node = node.previousElementSibling;
+            if (node && (node.tagName === 'H3' || node.tagName === 'H4')) {
+                sectionTitle = node.textContent.trim();
+            }
+        }
+        searchIndex.push({
+            id: r.id,
+            title: Array.from(cells).map(function(c) { return c.textContent.trim(); }).join(' — '),
+            section: sectionTitle,
+            type: 'term',
+            el: r,
+        });
+    });
+
+    const methodBoxes = container.querySelectorAll('.method-box h4[id]');
+    methodBoxes.forEach(function(h4) {
+        const box = h4.closest('.method-box');
+        if (!box) return;
+        const desc = box.querySelector('p');
+        if (desc) {
+            searchIndex.push({
+                id: h4.id,
+                title: h4.textContent.trim(),
+                section: desc.textContent.trim().substring(0, 120),
+                type: 'endpoint',
+                el: h4,
+            });
+        }
+    });
+}
+
+function openSearch() {
+    const overlay = document.getElementById('searchOverlay');
+    if (!overlay) return;
+    overlay.classList.add('open');
+    const input = overlay.querySelector('input');
+    input.value = '';
+    input.focus();
+    searchActiveIdx = -1;
+    renderSearchResults('');
+}
+
+function closeSearch() {
+    const overlay = document.getElementById('searchOverlay');
+    if (!overlay) overlay.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+}
+
+function renderSearchResults(query) {
+    const resultsEl = document.getElementById('searchResults');
+    if (!resultsEl) return;
+
+    if (!query || query.length < 2) {
+        resultsEl.innerHTML = '<div class="sr-empty">Start typing to search the guide...</div>';
+        searchActiveIdx = -1;
+        return;
+    }
+
+    const q = query.toLowerCase();
+    const matches = searchIndex.filter(function(item) {
+        return item.title.toLowerCase().includes(q) ||
+               item.section.toLowerCase().includes(q) ||
+               item.id.toLowerCase().includes(q);
+    });
+
+    if (matches.length === 0) {
+        resultsEl.innerHTML = '<div class="sr-empty">No results for "' + query + '"</div>';
+        searchActiveIdx = -1;
+        return;
+    }
+
+    searchActiveIdx = 0;
+    resultsEl.innerHTML = matches.map(function(m, i) {
+        const hl = highlightMatch(m.title, q);
+        const cls = i === 0 ? 'sr-item active' : 'sr-item';
+        return '<div class="' + cls + '" data-href="#' + m.id + '">' +
+            '<div class="sr-title">' + hl + '</div>' +
+            (m.section ? '<div class="sr-section">' + m.section + '</div>' : '') +
+            '</div>';
+    }).join('');
+
+    resultsEl.querySelectorAll('.sr-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+            navigateToResult(item.dataset.href);
+        });
+    });
+}
+
+function highlightMatch(text, query) {
+    const idx = text.toLowerCase().indexOf(query);
+    if (idx === -1) return text;
+    return text.substring(0, idx) +
+        '<mark>' + text.substring(idx, idx + query.length) + '</mark>' +
+        text.substring(idx + query.length);
+}
+
+function navigateToResult(href) {
+    closeSearch();
+    const target = document.querySelector(href);
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    target.style.transition = 'background 0.3s';
+    target.style.background = 'rgba(237, 174, 73, 0.25)';
+    setTimeout(function() {
+        target.style.background = '';
+        setTimeout(function() { target.style.transition = ''; }, 300);
+    }, 1500);
+}
+
+function handleSearchKeydown(e) {
+    const resultsEl = document.getElementById('searchResults');
+    if (!resultsEl) return;
+    const items = resultsEl.querySelectorAll('.sr-item');
+    if (items.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        searchActiveIdx = Math.min(searchActiveIdx + 1, items.length - 1);
+        updateActiveItem(items);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        searchActiveIdx = Math.max(searchActiveIdx - 1, 0);
+        updateActiveItem(items);
+    } else if (e.key === 'Enter' && searchActiveIdx >= 0 && items[searchActiveIdx]) {
+        e.preventDefault();
+        navigateToResult(items[searchActiveIdx].dataset.href);
+    }
+}
+
+function updateActiveItem(items) {
+    items.forEach(function(item, i) {
+        item.classList.toggle('active', i === searchActiveIdx);
+    });
+    if (items[searchActiveIdx]) {
+        items[searchActiveIdx].scrollIntoView({ block: 'nearest' });
+    }
+}
+
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'f')) {
+        e.preventDefault();
+        openSearch();
+    }
+    if (e.key === 'Escape') {
+        closeSearch();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    buildGlossaryLinks();
+    buildSearchIndex();
+});
+
 // Verify API key on page load
 verifyApiKey();
