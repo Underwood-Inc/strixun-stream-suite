@@ -50,6 +50,11 @@ ENVIRONMENT = "production"
 binding = "TWITCH_CACHE"
 id = "66b9a4425cb7492fbae8f690780cd0ae"
 
+# Service binding to auth Worker so JWKS fetch uses internal routing (avoids same-zone 522).
+[[services]]
+binding = "AUTH_SERVICE"
+service = "otp-auth-service"
+
 # Default routes (production)
 [[routes]]
 pattern = "api.idling.app/*"

@@ -16,6 +16,7 @@ import { route } from './router';
  */
 interface Env {
   TWITCH_CACHE: KVNamespace;
+  AUTH_SERVICE?: Fetcher;
   TWITCH_CLIENT_ID?: string;
   TWITCH_CLIENT_SECRET?: string;
   JWT_SECRET?: string;
@@ -58,8 +59,11 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
 
-    // Route to appropriate handler and ensure CORS headers
-    const response = await route(request, env);
+    // Use service binding for JWKS fetch when available (avoids same-zone 522 to auth.idling.app)
+    const envForRequest = env.AUTH_SERVICE
+      ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE!.fetch(url) }
+      : env;
+    const response = await route(request, envForRequest);
     return ensureCORSHeaders(response, corsHeaders);
   },
 };

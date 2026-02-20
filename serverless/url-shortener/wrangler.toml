@@ -54,6 +54,11 @@ id = "aed413a5133e445fbe4d91c1a080369e"
 binding = "ANALYTICS_KV"
 id = "486b241817f34f76b0cbb44d81205ce3"
 
+# Service binding to auth Worker so JWKS fetch uses internal routing (avoids same-zone 522).
+[[services]]
+binding = "AUTH_SERVICE"
+service = "otp-auth-service"
+
 # Note: Create KV namespaces with:
 # wrangler kv namespace create "URL_SHORTENER_KV"
 # wrangler kv namespace create "URL_SHORTENER_ANALYTICS"

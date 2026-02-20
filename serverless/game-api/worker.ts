@@ -107,6 +107,11 @@ export default {
             return new Response(null, { status: 204, headers: corsHeaders });
         }
 
+        // Use service binding for JWKS fetch when available (avoids same-zone 522 to auth.idling.app)
+        const envForRequest = env.AUTH_SERVICE
+            ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE.fetch(url) }
+            : env;
+
         const url = new URL(request.url);
         // Dev-proxy normalization: allow apps to call through /game-api/* without 404s
         let path = url.pathname;
@@ -121,7 +126,7 @@ export default {
             }
 
             // Handle game routes
-            const gameResult = await handleGameRoutes(request, path, env);
+            const gameResult = await handleGameRoutes(request, path, envForRequest);
             if (gameResult) {
                 return gameResult.response;
             }

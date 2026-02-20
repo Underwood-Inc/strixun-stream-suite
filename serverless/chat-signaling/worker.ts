@@ -33,9 +33,13 @@ export default {
     if (request.method === 'OPTIONS') {
       return corsMiddleware(request, async () => new Response(null, { status: 204 }));
     }
-    
+
+    // Use service binding for JWKS fetch when available (avoids same-zone 522 to auth.idling.app)
+    const envForRequest = env.AUTH_SERVICE
+      ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE.fetch(url) }
+      : env;
     // Handle request with CORS
-    return corsMiddleware(request, async (req) => handleRequest(req, env, ctx));
+    return corsMiddleware(request, async (req) => handleRequest(req, envForRequest, ctx));
   },
 };
 

@@ -36,6 +36,11 @@ JWT_ISSUER = "https://auth.idling.app"
 binding = "STREAMKIT_KV"
 id = "193c308cee734e1bb08bba03ae2d65b0"
 
+# Service binding to auth Worker so JWKS fetch uses internal routing (avoids same-zone 522).
+[[services]]
+binding = "AUTH_SERVICE"
+service = "otp-auth-service"
+
 # Default routes (production)
 [[routes]]
 pattern = "streamkit-api.idling.app/*"

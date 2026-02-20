@@ -180,8 +180,12 @@ export default {
       });
     }
     
+    // Use service binding for JWKS fetch when available (avoids same-zone 522 to auth.idling.app)
+    const envForRequest = env.AUTH_SERVICE
+      ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE.fetch(url) }
+      : env;
     try {
-      return await handleRequest(request, env, ctx);
+      return await handleRequest(request, envForRequest, ctx);
     } catch (error) {
       console.error('[StreamkitAPI] Unhandled error:', error);
       

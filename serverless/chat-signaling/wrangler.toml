@@ -32,6 +32,11 @@ JWT_ISSUER = "https://auth.idling.app"
 binding = "CHAT_KV"
 id = "78a1bd4cd5dc468780de442aacc9d1ee"
 
+# Service binding to auth Worker so JWKS fetch uses internal routing (avoids same-zone 522).
+[[services]]
+binding = "AUTH_SERVICE"
+service = "otp-auth-service"
+
 # Note: Create KV namespace with:
 # wrangler kv namespace create "CHAT_KV"
 # Then update the IDs above

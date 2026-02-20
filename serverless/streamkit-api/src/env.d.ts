@@ -14,7 +14,8 @@ declare module '*.html' {
 export interface Env {
   // KV Namespaces
   STREAMKIT_KV: KVNamespace;
-  
+  /** Service binding to otp-auth-service (for JWKS fetch; avoids same-zone 522) */
+  AUTH_SERVICE?: Fetcher;
   // Secrets (set via wrangler secret put)
   JWT_SECRET: string;
   ALLOWED_ORIGINS?: string;

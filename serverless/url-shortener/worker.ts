@@ -34,7 +34,10 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
     
-    // Handle request
-    return handleRequest(request, env, ctx);
+    // Use service binding for JWKS fetch when available (avoids same-zone 522 to auth.idling.app)
+    const envForRequest = env.AUTH_SERVICE
+      ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE.fetch(url) }
+      : env;
+    return handleRequest(request, envForRequest, ctx);
   },
 };
