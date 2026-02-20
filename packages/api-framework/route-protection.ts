@@ -118,7 +118,7 @@ export function createUnauthorizedResponse(
     message: string = 'Authentication required',
     code: string = 'UNAUTHORIZED'
 ): Response {
-    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || ['*'],
     });
     
     return new Response(JSON.stringify({
@@ -142,7 +142,7 @@ export function createForbiddenResponse(
     message: string = 'Admin access required',
     code: string = 'FORBIDDEN'
 ): Response {
-    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    const corsHeaders = createCORSHeaders(request, { credentials: true, allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || ['*'],
     });
     
     return new Response(JSON.stringify({

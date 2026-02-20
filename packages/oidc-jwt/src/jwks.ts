@@ -36,8 +36,9 @@ async function fetchJWKS(env: JWKSEnv): Promise<RSAPublicJWK[]> {
     if (_jwksCache && Date.now() - _jwksCache.fetchedAt < JWKS_CACHE_TTL_MS) {
         return _jwksCache.keys;
     }
-    const issuer = env.JWT_ISSUER || env.AUTH_SERVICE_URL;
-    if (!issuer) return [];
+    const raw = env.JWT_ISSUER || env.AUTH_SERVICE_URL;
+    if (!raw) return [];
+    const issuer = raw.replace(/\/+$/, '');
     try {
         const res = await fetch(`${issuer}/.well-known/jwks.json`);
         if (!res.ok) return _jwksCache?.keys ?? [];

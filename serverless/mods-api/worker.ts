@@ -293,6 +293,7 @@ export interface Env {
     MODS_R2: R2Bucket;
     
     // Environment variables
+    JWT_ISSUER?: string; // REQUIRED for auth: JWKS URL base (e.g. https://auth.idling.app), from wrangler [vars]
     JWT_SECRET?: string; // REQUIRED: JWT signing secret (must match OTP auth service)
     FILE_INTEGRITY_KEYPHRASE?: string; // OPTIONAL: Keyphrase for file integrity hashing
     ALLOWED_ORIGINS?: string; // OPTIONAL: Comma-separated CORS origins (recommended for production)
