@@ -48,7 +48,7 @@ ACCESS_SERVICE_URL = "https://access-api.idling.app"
 # CRITICAL: Cookie domain for SSO - extractRootDomain yields .idling.app so auth_token
 # is sent to mods.idling.app, mods-api.idling.app, auth.idling.app, etc.
 # Secret overrides this if set; vars ensure correct default for idling.app deployment.
-ALLOWED_ORIGINS = "https://mods.idling.app,https://www.idling.app,https://idling.app,https://auth.idling.app"
+ALLOWED_ORIGINS = "https://mods.idling.app,https://www.idling.app,https://idling.app,https://auth.idling.app,https://short.idling.app,https://s.idling.app,https://shorten.idling.app"
 
 # Production KV Namespace
 [[env.production.kv_namespaces]]
@@ -87,7 +87,7 @@ JWT_ISSUER = "https://auth.idling.app"
 CUSTOMER_API_URL = "https://customer-api.idling.app"
 ACCESS_SERVICE_URL = "https://access-api.idling.app"
 # CRITICAL: Cookie domain for SSO - wrangler deploy (no --env) uses [vars]
-ALLOWED_ORIGINS = "https://mods.idling.app,https://www.idling.app,https://idling.app,https://auth.idling.app"
+ALLOWED_ORIGINS = "https://mods.idling.app,https://www.idling.app,https://idling.app,https://auth.idling.app,https://short.idling.app,https://s.idling.app,https://shorten.idling.app"
 
 # Default KV Namespace (required for routes configured in dashboard or when no environment is specified)
 [[kv_namespaces]]

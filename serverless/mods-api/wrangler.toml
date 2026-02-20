@@ -3,7 +3,7 @@
 
 name = "strixun-mods-api"
 main = "dist/worker.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
 # KV Namespaces and R2 buckets are defined in default [vars] section (production)

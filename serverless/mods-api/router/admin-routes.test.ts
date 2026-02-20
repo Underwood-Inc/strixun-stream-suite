@@ -61,7 +61,7 @@ vi.mock('../../shared/access-client.js', () => ({
     createAccessClient: vi.fn(() => ({
         isSuperAdmin: vi.fn(async (customerId: string) => customerId === 'cust_123'),
         isAdmin: vi.fn(async (customerId: string) => customerId === 'cust_123'),
-        checkPermission: vi.fn(async () => true),
+        checkPermission: vi.fn(async (customerId: string) => customerId === 'cust_123'),
         getCustomerAuthorization: vi.fn(async (customerId: string) => {
             if (customerId === 'cust_123') {
                 return {

@@ -1,6 +1,6 @@
 name = "strixun-url-shortener"
 main = "dist/worker.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-12-01"
 
 # Build is handled by predeploy script in package.json
 # The predeploy script runs: pnpm build:all (which includes build:worker)

@@ -1,19 +1,20 @@
 /**
  * Admin Routes
  * Handles admin endpoints for mod triage and management
- * All admin routes require super-admin authentication
- * 
- * Auth delegates to auth service /auth/me (same path as mod routes).
+ * Requires isSuperAdmin (JWT claim) OR access:admin-panel permission (Access Service).
+ *
+ * Auth: RS256 JWKS verification via @strixun/api-framework extractAuth.
  */
 
 import { wrapWithEncryption } from '@strixun/api-framework';
 import { getCorsHeaders } from '../utils/cors.js';
 import { createError } from '../utils/errors.js';
 import { authenticateRequest } from '../utils/auth.js';
+import { hasAdminDashboardAccess } from '../utils/admin.js';
 
 /**
  * Handle admin routes
- * Protected via auth service delegation (same as /mods/* routes).
+ * Gate: isSuperAdmin (fast path from JWT) OR access:admin-panel (Access Service).
  */
 export async function handleAdminRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
     try {
@@ -30,13 +31,16 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         }
 
         if (!auth.isSuperAdmin) {
-            return {
-                response: new Response(JSON.stringify({ error: 'Admin access required', code: 'ADMIN_REQUIRED' }), {
-                    status: 403,
-                    headers: { 'Content-Type': 'application/json' },
-                }),
-                customerId: auth.customerId,
-            };
+            const hasDashboardAccess = await hasAdminDashboardAccess(auth.customerId, auth.jwtToken, env);
+            if (!hasDashboardAccess) {
+                return {
+                    response: new Response(JSON.stringify({ error: 'Admin access required', code: 'ADMIN_REQUIRED' }), {
+                        status: 403,
+                        headers: { 'Content-Type': 'application/json' },
+                    }),
+                    customerId: auth.customerId,
+                };
+            }
         }
         
         // CRITICAL: Detect if request is using HttpOnly cookie (browser request)
