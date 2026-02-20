@@ -51,8 +51,10 @@ function extractRootDomain(hostname: string): string {
  * @returns Array of root domains (e.g., ['.idling.app', '.short.army'])
  */
 export function getCookieDomains(env: Env, customer: Customer | null = null): string[] {
-    // Development: always return localhost
-    if (env.ENVIRONMENT !== 'production') {
+    // Development: return localhost only when explicitly development
+    // CRITICAL: env.ENVIRONMENT undefined (e.g. default wrangler deploy) must NOT yield localhost,
+    // or cookie Domain=localhost breaks mods-api SSO (cookie never sent to mods-api.idling.app)
+    if (env.ENVIRONMENT === 'development') {
         return ['localhost'];
     }
     
