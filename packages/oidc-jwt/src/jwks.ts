@@ -37,15 +37,23 @@ async function fetchJWKS(env: JWKSEnv): Promise<RSAPublicJWK[]> {
         return _jwksCache.keys;
     }
     const raw = env.JWT_ISSUER || env.AUTH_SERVICE_URL;
-    if (!raw) return [];
+    if (!raw) {
+        console.warn('[JWKS] No JWT_ISSUER or AUTH_SERVICE_URL in env');
+        return [];
+    }
     const issuer = raw.replace(/\/+$/, '');
+    const jwksUrl = `${issuer}/.well-known/jwks.json`;
     try {
-        const res = await fetch(`${issuer}/.well-known/jwks.json`);
-        if (!res.ok) return _jwksCache?.keys ?? [];
+        const res = await fetch(jwksUrl);
+        if (!res.ok) {
+            console.warn('[JWKS] Fetch failed:', { url: jwksUrl, status: res.status });
+            return _jwksCache?.keys ?? [];
+        }
         const data = (await res.json()) as { keys: RSAPublicJWK[] };
         _jwksCache = { keys: data.keys, fetchedAt: Date.now() };
         return data.keys;
-    } catch {
+    } catch (err) {
+        console.warn('[JWKS] Fetch error:', { url: jwksUrl, err: String(err) });
         return _jwksCache?.keys ?? [];
     }
 }
