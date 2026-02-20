@@ -1712,9 +1712,9 @@ jobs:
       - name: Build Mods Hub
         working-directory: apps/mods-hub
         env:
-          # CRITICAL: Default to /api (same-origin proxy) so auth cookie is sent. Direct mods-api.idling.app = cross-origin = 401.
+          # CRITICAL: Default to /api and /auth-api (same-origin proxies) so auth cookie is sent. Cross-origin = 401.
           VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || '/api' }}
-          VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
+          VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || '/auth-api' }}
           VITE_CUSTOMER_API_URL: ${{ secrets.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app' }}
           VITE_MODS_ENCRYPTION_KEY: ${{ secrets.MODS_ENCRYPTION_KEY }}
         run: |

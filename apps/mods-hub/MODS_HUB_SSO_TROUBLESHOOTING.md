@@ -4,16 +4,23 @@
 
 ---
 
-## Same-Origin Proxy (Primary Fix)
+## Same-Origin Proxies (Primary Fix)
 
-Mods Hub now uses a **same-origin proxy** at `/api/*` that forwards to mods-api.idling.app. Requests go to `mods.idling.app/api/...` (same origin), so the browser sends the `auth_token` cookie reliably.
+Mods Hub uses **same-origin proxies** so the browser sends the `auth_token` cookie reliably:
+
+| Path | Proxies to | Purpose |
+|------|------------|---------|
+| `/api/*` | mods-api.idling.app | Mods API, permissions, admin |
+| `/auth-api/*` | auth.idling.app | Auth, login, /auth/me, refresh |
+
+Both proxies use shared `proxyRequestWithCredentials` from `@strixun/api-framework`. Deploy workflow defaults `VITE_MODS_API_URL=/api` and `VITE_AUTH_API_URL=/auth-api`.
 
 **Requirements:**
 1. Cookie must have `Domain=.idling.app` (set by auth service at login)
-2. Redeploy mods-hub so the proxy function is live (deploy workflow now defaults `VITE_MODS_API_URL` to `/api`)
+2. Redeploy mods-hub so both proxy functions are live
 3. Clear cookies and re-login if you have an old cookie from before the fix
 
-**If `VITE_MODS_API_URL` is set in GitHub Secrets** to `https://mods-api.idling.app`, remove it or change to `/api` so the app uses the proxy instead of direct cross-origin calls.
+**If GitHub Secrets override** `VITE_MODS_API_URL` or `VITE_AUTH_API_URL` to direct URLs, remove them or use `/api` and `/auth-api` so the app uses the proxies.
 
 ---
 
@@ -32,7 +39,7 @@ If `ALLOWED_ORIGINS` is wrong or missing, the cookie is scoped to `auth.idling.a
 1. **Auth service** – Must be deployed with cookie domain fix (`getCookieDomains` using `ALLOWED_ORIGINS` → `.idling.app`)
 2. **Mods Hub** – Must be deployed so the proxy at `/api/*` is live
 3. **Re-login** – Clear cookies and log in again so a new cookie is set with `Domain=.idling.app`
-4. **Service worker** – SW v3+ skips `/api/*` so cookies are sent. Unregister old SW (DevTools → Application → Service Workers → Unregister) or hard refresh (Ctrl+Shift+R)
+4. **Service worker** – SW skips `/api/*` and `/auth-api/*` (network-only) so cookies are sent. Unregister old SW (DevTools → Application → Service Workers → Unregister) or hard refresh (Ctrl+Shift+R)
 
 ### 1. Verify GitHub Secret `ALLOWED_ORIGINS`
 
@@ -131,6 +138,7 @@ sequenceDiagram
 | File | Purpose |
 |------|---------|
 | `apps/mods-hub/functions/api/[[path]].ts` | Same-origin proxy: `/api/*` → mods-api.idling.app |
+| `apps/mods-hub/functions/auth-api/[[path]].ts` | Same-origin proxy: `/auth-api/*` → auth.idling.app |
 | `apps/mods-hub/src/services/mods/modsApi.ts` | `API_BASE_URL` (uses `/api` in prod) |
 | `serverless/otp-auth-service/wrangler.toml` | `ALLOWED_ORIGINS` in `[vars]` and `[env.production.vars]` |
 | `serverless/otp-auth-service/utils/cookie-domains.ts` | Derives cookie domain from `ALLOWED_ORIGINS` |

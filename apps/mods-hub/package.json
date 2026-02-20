@@ -6,7 +6,7 @@
     "setup:env": "node setup-env.js",
     "predev": "pnpm setup:env && pnpm --filter @strixun/otp-login build:react",
     "predev:all": "pnpm setup:env",
-    "prebuild": "pnpm --filter @strixun/otp-login build:react && pnpm --filter @strixun/p2p-storage build && pnpm --filter @strixun/chat build",
+    "prebuild": "pnpm --filter @strixun/api-framework build && pnpm --filter @strixun/otp-login build:react && pnpm --filter @strixun/p2p-storage build && pnpm --filter @strixun/chat build",
     "build": "tsc -b && vite build",
     "dev": "vite",
     "dev:all": "concurrently -n frontend,api,auth,customer -c cyan,yellow,magenta,green --raw --no-kill-others \"pnpm dev\" \"pnpm --filter strixun-mods-api dev\" \"pnpm --filter @strixun/otp-auth-service dev\" \"pnpm --filter strixun-customer-api dev\"",

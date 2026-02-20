@@ -151,12 +151,17 @@ export async function fetchCustomerInfo(
                 },
             });
         } catch (networkError) {
-            // Network errors are critical - fail fast
+            // 401/403 = not authenticated (expected on login page, no cookie, etc.) - return null
+            const err = networkError as { status?: number };
+            if (err?.status === 401 || err?.status === 403) {
+                return null;
+            }
+            // Actual network/server errors - fail fast
             const errorMessage = networkError instanceof Error ? networkError.message : String(networkError);
             throw new Error(`Network error checking authentication: ${errorMessage}. Check your connection and that the auth service is running at ${apiUrl}.`);
         }
         
-        // 401/403 means not authenticated - this is expected, return null
+        // 401/403 means not authenticated - this is expected, return null (defensive; API client throws so we rarely reach here)
         if (authResponse.status === 401 || authResponse.status === 403) {
             return null;
         }

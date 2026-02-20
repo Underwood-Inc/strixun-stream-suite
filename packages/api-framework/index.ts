@@ -142,6 +142,13 @@ export type {
   CustomerLookupEnv,
 } from './customer-lookup';
 
+// Re-export credential proxy (same-origin proxy for cookie-based auth)
+export {
+  proxyRequestWithCredentials,
+} from './credential-proxy';
+
+export type { CredentialProxyOptions } from './credential-proxy';
+
 // Re-export upload limits utilities
 export {
   BASE_UPLOAD_LIMIT,

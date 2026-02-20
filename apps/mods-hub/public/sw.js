@@ -94,7 +94,7 @@ function getCacheStrategy(url, request) {
   if (url.origin !== self.location.origin) {
     return 'network-only';
   }
-  if (pathname.startsWith('/api/')) {
+  if (pathname.startsWith('/api/') || pathname.startsWith('/auth-api/')) {
     return 'network-only';
   }
   
