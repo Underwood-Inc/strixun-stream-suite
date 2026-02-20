@@ -10,11 +10,18 @@
  * This prevents stale JS/CSS from breaking the app after deployments.
  */
 
-// IMPORTANT: Increment this version on each deployment to force cache invalidation
-// Build tools should inject this, or manually update on deploy
-const SW_VERSION = '2';
+// IMPORTANT: Injected at build time by deploy workflow (github.run_id) to force cache invalidation per deploy
+const SW_VERSION = '__SW_VERSION__';
+console.log('[Mods Hub] Service Worker v' + SW_VERSION + ' active');
 const CACHE_NAME = `mods-hub-cache-v${SW_VERSION}`;
 const RUNTIME_CACHE = `mods-hub-runtime-v${SW_VERSION}`;
+
+// Respond to version queries from the page (for console visibility on any load)
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'getVersion' && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ type: 'version', version: SW_VERSION });
+  }
+});
 
 // Only cache truly static assets on install (not hashed JS/CSS)
 const PRECACHE_ASSETS = [
@@ -83,8 +90,11 @@ self.addEventListener('activate', (event) => {
 function getCacheStrategy(url, request) {
   const pathname = url.pathname.toLowerCase();
   
-  // Network-only: API requests, external resources
+  // Network-only: API requests - NEVER intercept; browser must handle to preserve cookies
   if (url.origin !== self.location.origin) {
+    return 'network-only';
+  }
+  if (pathname.startsWith('/api/')) {
     return 'network-only';
   }
   

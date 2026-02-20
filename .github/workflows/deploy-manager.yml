@@ -1702,6 +1702,13 @@ jobs:
           pnpm --filter "@strixun/otp-login" run build:react
           pnpm --filter "@strixun/dice-board-game" run build
       
+      - name: Inject Service Worker version
+        working-directory: apps/mods-hub
+        run: |
+          # Inject unique version per deploy so SW updates and caches invalidate
+          sed -i "s/__SW_VERSION__/${{ github.run_id }}/g" public/sw.js
+          echo "✓ Injected SW_VERSION=${{ github.run_id }} into sw.js"
+
       - name: Build Mods Hub
         working-directory: apps/mods-hub
         env:

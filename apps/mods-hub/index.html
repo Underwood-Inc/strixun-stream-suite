@@ -29,7 +29,27 @@
           navigator.serviceWorker.register('/sw.js')
             .then((registration) => {
               console.log('[PWA] Service Worker registered:', registration.scope);
-              
+              // Log SW version (visible when opening console)
+              const logVersion = (sw) => {
+                if (!sw) return;
+                const channel = new MessageChannel();
+                channel.port1.onmessage = (e) => {
+                  if (e.data && e.data.type === 'version') {
+                    console.log('[PWA] Service Worker version:', e.data.version);
+                  }
+                };
+                sw.postMessage({ type: 'getVersion' }, [channel.port2]);
+              };
+              if (registration.active) {
+                logVersion(registration.active);
+              } else {
+                let attempts = 0;
+                const retry = () => {
+                  if (registration.active) logVersion(registration.active);
+                  else if (attempts++ < 10) setTimeout(retry, 200);
+                };
+                setTimeout(retry, 100);
+              }
               // Check for updates on page load
               registration.update();
               

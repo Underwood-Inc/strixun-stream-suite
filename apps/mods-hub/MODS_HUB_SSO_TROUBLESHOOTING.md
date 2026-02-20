@@ -30,8 +30,9 @@ If `ALLOWED_ORIGINS` is wrong or missing, the cookie is scoped to `auth.idling.a
 ### 0. Deploy Order (for proxy fix)
 
 1. **Auth service** – Must be deployed with cookie domain fix (`getCookieDomains` using `ALLOWED_ORIGINS` → `.idling.app`)
-2. **Mods Hub** – Must be deployed so the proxy at `/api/mods/*` is live
+2. **Mods Hub** – Must be deployed so the proxy at `/api/*` is live
 3. **Re-login** – Clear cookies and log in again so a new cookie is set with `Domain=.idling.app`
+4. **Service worker** – SW v3+ skips `/api/*` so cookies are sent. Unregister old SW (DevTools → Application → Service Workers → Unregister) or hard refresh (Ctrl+Shift+R)
 
 ### 1. Verify GitHub Secret `ALLOWED_ORIGINS`
 
