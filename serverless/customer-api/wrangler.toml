@@ -49,6 +49,12 @@ JWT_ISSUER = "https://auth.idling.app"
 binding = "CUSTOMER_KV"
 id = "86ef5ab4419b40eab3fe65b75f052789"
 
+# Service binding to auth Worker so JWKS fetch uses internal routing (avoids same-zone 522).
+# If you deploy otp-auth-service with --env production, set service = "otp-auth-service-production".
+[[services]]
+binding = "AUTH_SERVICE"
+service = "otp-auth-service"
+
 # Default routes (production)
 [[routes]]
 pattern = "customer-api.idling.app/*"

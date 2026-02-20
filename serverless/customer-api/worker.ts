@@ -17,6 +17,8 @@ import { authenticateRequest } from './utils/auth.js';
 interface Env {
     CUSTOMER_KV: KVNamespace;
     OTP_AUTH_KV?: KVNamespace;
+    /** Service binding to otp-auth-service (for JWKS fetch; avoids same-zone 522) */
+    AUTH_SERVICE?: Fetcher;
     JWT_SECRET?: string;
     ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
@@ -120,6 +122,11 @@ export default {
             path = path.substring('/customer-api'.length);
         }
 
+        // Use service binding for JWKS fetch when available (avoids same-zone 522 to auth.idling.app)
+        const envForRequest = env.AUTH_SERVICE
+            ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE!.fetch(url) }
+            : env;
+
         try {
             // Health check
             if (path === '/health' || path === '/') {
@@ -127,7 +134,7 @@ export default {
             }
 
             // Handle customer routes (they authenticate internally)
-            const customerResult = await handleCustomerRoutes(request, path, env);
+            const customerResult = await handleCustomerRoutes(request, path, envForRequest);
             if (customerResult) {
                 return customerResult.response;
             }
