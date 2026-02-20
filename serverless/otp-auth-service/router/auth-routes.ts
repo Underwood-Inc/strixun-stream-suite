@@ -32,7 +32,15 @@ function wrapWithCors(handlerResponse: Response, corsHeaders: Headers): Response
         }
     });
 
-    const setCookies = handlerResponse.headers.getSetCookie();
+    // getSetCookie() may not exist in older runtimes; fallback to manual collection
+    let setCookies: string[] = [];
+    if (typeof handlerResponse.headers.getSetCookie === 'function') {
+        setCookies = handlerResponse.headers.getSetCookie();
+    } else {
+        handlerResponse.headers.forEach((value, name) => {
+            if (name.toLowerCase() === 'set-cookie') setCookies.push(value);
+        });
+    }
     for (const cookie of setCookies) {
         tuples.push(['Set-Cookie', cookie]);
     }

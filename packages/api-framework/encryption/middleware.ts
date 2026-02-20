@@ -28,7 +28,15 @@ function cloneResponsePreservingCookies(
         }
     });
 
-    const setCookies = original.headers.getSetCookie?.() ?? [];
+    // getSetCookie() may not exist in older runtimes; fallback to manual collection
+    let setCookies: string[] = [];
+    if (typeof original.headers.getSetCookie === 'function') {
+        setCookies = original.headers.getSetCookie();
+    } else {
+        original.headers.forEach((value, name) => {
+            if (name.toLowerCase() === 'set-cookie') setCookies.push(value);
+        });
+    }
     for (const cookie of setCookies) {
         tuples.push(['Set-Cookie', cookie]);
     }
