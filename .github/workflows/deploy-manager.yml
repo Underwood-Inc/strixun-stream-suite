@@ -16,8 +16,8 @@
 #   - SERVICE_API_KEY: Required for Access Service admin endpoints - Service-to-service authentication
 #   - NETWORK_INTEGRITY_KEYPHRASE: Optional - Network security keyphrase for all services
 #   - MODS_PUBLIC_URL: Optional - Mods public URL
-#   - VITE_MODS_API_URL: Optional - Mods API URL for frontend (defaults to /api for same-origin proxy)
-#   - VITE_AUTH_API_URL: Optional - Auth API URL for frontend (defaults to https://auth.idling.app)
+#   - VITE_MODS_API_URL: Not used for mods-hub (hardcoded /api). Other apps may use.
+#   - VITE_AUTH_API_URL: Not used for mods-hub (hardcoded /auth-api). Other apps may use.
 
 name: Deploy Service(s)
 
@@ -1712,9 +1712,9 @@ jobs:
       - name: Build Mods Hub
         working-directory: apps/mods-hub
         env:
-          # CRITICAL: Default to /api and /auth-api (same-origin proxies) so auth cookie is sent. Cross-origin = 401.
-          VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || '/api' }}
-          VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || '/auth-api' }}
+          # CRITICAL: Same-origin proxies only - no secret override. Direct URLs = cross-origin = 401.
+          VITE_MODS_API_URL: '/api'
+          VITE_AUTH_API_URL: '/auth-api'
           VITE_CUSTOMER_API_URL: ${{ secrets.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app' }}
           VITE_MODS_ENCRYPTION_KEY: ${{ secrets.MODS_ENCRYPTION_KEY }}
         run: |

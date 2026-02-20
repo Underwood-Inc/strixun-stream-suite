@@ -13,14 +13,12 @@ Mods Hub uses **same-origin proxies** so the browser sends the `auth_token` cook
 | `/api/*` | mods-api.idling.app | Mods API, permissions, admin |
 | `/auth-api/*` | auth.idling.app | Auth, login, /auth/me, refresh |
 
-Both proxies use shared `proxyRequestWithCredentials` from `@strixun/api-framework`. Deploy workflow defaults `VITE_MODS_API_URL=/api` and `VITE_AUTH_API_URL=/auth-api`.
+Both proxies use shared `proxyRequestWithCredentials` from `@strixun/api-framework`. The deploy workflow hardcodes `VITE_MODS_API_URL=/api` and `VITE_AUTH_API_URL=/auth-api` (no secrets—direct URLs cause 401).
 
 **Requirements:**
 1. Cookie must have `Domain=.idling.app` (set by auth service at login)
 2. Redeploy mods-hub so both proxy functions are live
 3. Clear cookies and re-login if you have an old cookie from before the fix
-
-**If GitHub Secrets override** `VITE_MODS_API_URL` or `VITE_AUTH_API_URL` to direct URLs, remove them or use `/api` and `/auth-api` so the app uses the proxies.
 
 ---
 

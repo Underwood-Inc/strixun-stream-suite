@@ -31,9 +31,11 @@ export async function proxyRequestWithCredentials(
   const { forwardSetCookie = false } = options;
 
   const headers = new Headers();
+  let hasCookie = false;
   request.headers.forEach((value, key) => {
     if (CREDENTIAL_HEADERS.has(key.toLowerCase())) {
       headers.set(key, value);
+      if (key.toLowerCase() === 'cookie') hasCookie = true;
     }
   });
 
@@ -51,6 +53,8 @@ export async function proxyRequestWithCredentials(
   });
   responseHeaders.set('Access-Control-Allow-Origin', request.headers.get('Origin') || '*');
   responseHeaders.set('Access-Control-Allow-Credentials', 'true');
+  // Diagnostic: helps debug 401s - remove after fixing cookie flow
+  responseHeaders.set('X-Proxy-Cookie-Received', hasCookie ? 'yes' : 'no');
 
   if (forwardSetCookie) {
     if (typeof response.headers.getSetCookie === 'function') {
