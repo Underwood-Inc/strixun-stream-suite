@@ -45,6 +45,8 @@ bucket_name = "mods-storage"
 ENVIRONMENT = "production"
 JWT_ISSUER = "https://auth.idling.app"
 ACCESS_SERVICE_URL = "https://access-api.idling.app"
+# CRITICAL: Required for credentials (cookie) from mods.idling.app - cannot use * with credentials
+ALLOWED_ORIGINS = "https://mods.idling.app,https://www.idling.app,https://idling.app,https://auth.idling.app"
 ROUTES = '[{"pattern":"mods-api.idling.app/mods/*","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/health","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/api/*","zone_name":"idling.app"}]'
 
 # Default KV Namespaces
