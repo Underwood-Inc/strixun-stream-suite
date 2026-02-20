@@ -11,6 +11,14 @@ let authToken = null;
 let idToken = null;
 let refreshToken = null;
 
+/** Focus and smooth-scroll to the next input/button to guide the user through the test flow. */
+function focusAndScrollTo(el) {
+    if (!el || typeof el.scrollIntoView !== 'function') return;
+    var reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+    setTimeout(function() { el.focus(); }, reduceMotion ? 0 : 100);
+}
+
 // Toggle security documentation
 function toggleSecurityDocs() {
     const content = document.getElementById('securityContent');
@@ -116,6 +124,7 @@ async function requestOTP() {
         if (response.ok) {
             document.getElementById('step1').classList.add('completed');
             document.getElementById('verifyOtpBtn').disabled = false;
+            focusAndScrollTo(document.getElementById('otp'));
         }
     } catch (err) {
         resultEl.style.display = 'block';
@@ -176,6 +185,7 @@ async function verifyOTP() {
 
             // Pre-fill introspect fields
             document.getElementById('introspectToken').value = authToken || '';
+            focusAndScrollTo(document.getElementById('refreshBtn'));
         }
     } catch (err) {
         resultEl.style.display = 'block';
@@ -220,6 +230,7 @@ async function refreshTokens() {
             document.getElementById('oidcIdToken').value = idToken || '';
             document.getElementById('oidcExpiresIn').textContent = data.expires_in || '—';
             document.getElementById('introspectToken').value = authToken || '';
+            focusAndScrollTo(document.getElementById('getMeBtn'));
         }
     } catch (err) {
         resultEl.style.display = 'block';
@@ -257,6 +268,7 @@ async function getMe() {
         
         if (response.ok) {
             document.getElementById('step4').classList.add('completed');
+            focusAndScrollTo(document.getElementById('logoutBtn'));
         }
     } catch (err) {
         resultEl.style.display = 'block';
@@ -574,6 +586,8 @@ function openSearch() {
     var overlay = document.getElementById('searchOverlay');
     if (!overlay) return;
     overlay.classList.add('open');
+    var box = document.querySelector('.search-box');
+    if (box) box.classList.remove('has-results');
     var input = document.getElementById('searchInput');
     if (input) { input.value = ''; input.focus(); }
     searchActiveIdx = -1;
@@ -588,9 +602,11 @@ function closeSearch() {
 function renderSearchResults(query) {
     var resultsEl = document.getElementById('searchResults');
     if (!resultsEl) return;
+    var box = resultsEl.closest('.search-box');
 
     if (!query || query.trim().length < 2) {
         resultsEl.innerHTML = '<div class="sr-empty" role="status">Type to search — supports "exact phrases", OR with |, prefix*</div>';
+        if (box) box.classList.remove('has-results');
         searchActiveIdx = -1;
         return;
     }
@@ -598,6 +614,7 @@ function renderSearchResults(query) {
     var parsed = parseSearchQuery(query);
     if (!parsed.hasContent) {
         resultsEl.innerHTML = '<div class="sr-empty" role="status">Type to search — supports "exact phrases", OR with |, prefix*</div>';
+        if (box) box.classList.remove('has-results');
         searchActiveIdx = -1;
         return;
     }
@@ -618,9 +635,11 @@ function renderSearchResults(query) {
 
     if (allMatches.length === 0) {
         resultsEl.innerHTML = '<div class="sr-empty" role="status">No results for "' + escHtml(query) + '"</div>';
+        if (box) box.classList.remove('has-results');
         searchActiveIdx = -1;
         return;
     }
+    if (box) box.classList.add('has-results');
 
     // Cap results
     var capped = allMatches.slice(0, 50);

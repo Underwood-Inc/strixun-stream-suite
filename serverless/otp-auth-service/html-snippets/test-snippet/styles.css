@@ -538,12 +538,16 @@ a.gref code {
     background: var(--card);
     border: 2px solid var(--accent);
     border-radius: 12px;
-    width: min(600px, 90vw);
-    max-height: 70vh;
+    width: min(520px, 90vw);
+    max-height: fit-content;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    transition: max-height 0.2s ease-out;
+}
+.search-box.has-results {
+    max-height: 70vh;
 }
 .search-box input {
     border: none;
@@ -559,8 +563,12 @@ a.gref code {
 .search-box input::placeholder { color: var(--text-muted); }
 .search-results {
     overflow-y: auto;
-    flex: 1;
+    max-height: 0;
+    transition: max-height 0.2s ease-out;
+}
+.search-box.has-results .search-results {
     max-height: 55vh;
+    flex: 1;
 }
 .search-results .sr-item {
     padding: 0.75rem 1.25rem;
@@ -589,10 +597,13 @@ a.gref code {
     padding: 0 2px;
 }
 .search-results .sr-empty {
-    padding: 2rem;
+    padding: 0.5rem 1.25rem;
     text-align: center;
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .search-hint {
     padding: 0.5rem 1.25rem;
