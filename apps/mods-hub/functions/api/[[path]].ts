@@ -18,11 +18,13 @@ const MODS_API_BASE = 'https://mods-api.idling.app';
 export async function onRequest(context: {
   request: Request;
   env: Env;
-  params: Promise<{ path?: string }>;
+  params: Promise<{ path?: string | string[] }>;
 }): Promise<Response> {
   const { request, env } = context;
   const params = await context.params;
-  const path = params.path ?? '';
+  // Cloudflare [[path]] returns an array for multi-segment routes (e.g. ["mods","permissions","me"])
+  const pathRaw = params.path;
+  const path = Array.isArray(pathRaw) ? pathRaw.join('/') : (pathRaw ?? '');
   const apiBase = env.MODS_API_URL || env.VITE_MODS_API_URL || MODS_API_BASE;
   const targetUrl = `${apiBase.replace(/\/+$/, '')}/${path}${new URL(request.url).search}`;
 
