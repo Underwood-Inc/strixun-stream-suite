@@ -537,7 +537,10 @@ export async function handleAuthRoutes(
         return { response: handlerResponse, customerId: customerIdToPass };
     }
     if (path === '/auth/introspect' && request.method === 'POST') {
-        const handlerResponse = await authHandlers.handleIntrospect(request, env);
+        const callerAuth = apiKeyAuth
+            ? { keyId: apiKeyAuth.keyId, customerId: apiKeyAuth.customerId }
+            : null;
+        const handlerResponse = await authHandlers.handleIntrospect(request, env, callerAuth);
         
         const corsCustomer = apiKeyAuth 
             ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }

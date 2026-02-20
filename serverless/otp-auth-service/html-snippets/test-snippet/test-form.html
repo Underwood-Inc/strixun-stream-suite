@@ -126,10 +126,9 @@
         <label for="introspectToken">Access Token</label>
         <input type="text" id="introspectToken" placeholder="Paste an access token" />
     </div>
-    <div class="form-group">
-        <label for="introspectClientId">API Key ID (client_id)</label>
-        <input type="text" id="introspectClientId" placeholder="key_..." />
-    </div>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+        The embedded API key is sent automatically via <code>X-OTP-API-Key</code> header for caller authentication (RFC 7662 §2.1).
+    </p>
     <button onclick="testIntrospect()">Introspect Token</button>
     <div id="introspectResult" class="result" style="margin-top: 1rem; display: none;"></div>
 </div>

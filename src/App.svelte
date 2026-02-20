@@ -123,7 +123,7 @@
     
     <TwitchAdCarousel
       position="bottom-right"
-      supportUrl="https://www.twitch.tv/strixun"
+      supportUrl="https://sponsor.idling.app"
       storageKey="ui_main_ad_carousel_state"
     />
     

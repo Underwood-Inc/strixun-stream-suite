@@ -25,6 +25,33 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Text selection — mirrors @strixun/shared-styles text-selection mixin */
+::selection { background: var(--accent); color: #000000; }
+::-moz-selection { background: var(--accent); color: #000000; }
+
+/* Scrollbar — mirrors @strixun/shared-styles scrollbar mixin */
+*::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+*::-webkit-scrollbar-track {
+    background: var(--card);
+}
+*::-webkit-scrollbar-thumb { 
+    background: var(--border);
+    border-radius: 6px;
+}
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--border-light);
+}
+*::-webkit-scrollbar-corner {
+    background: transparent;
+}
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) var(--card);
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg);
@@ -199,28 +226,31 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     align-items: center;
     cursor: pointer;
 }
+.collapsible-header h2 { margin-bottom: 0; }
 .collapsible-header:hover h2 { opacity: 0.8; }
 .toggle-icon { font-size: 1.5rem; color: var(--warning); }
-.collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
-.collapsible-content.expanded { max-height: 5000px; }
+.collapsible-content { max-height: 0; overflow: hidden; }
+.collapsible-content.expanded { max-height: 700px; overflow: auto; }
 
 /* Mermaid diagrams */
 .mermaid-container {
     background: var(--bg);
     border-radius: 8px;
-    padding: 1rem;
+    padding: 1rem 1rem 1.5rem;
     margin: 1rem 0;
-    overflow-x: auto;
+    overflow: auto;
     -webkit-overflow-scrolling: touch;
 }
 .mermaid {
     display: block;
-    min-width: min-content;
     text-align: center;
 }
 .mermaid svg {
-    display: inline-block;
-    max-width: none;
+    display: block;
+    max-width: 100%;
+    height: auto;
+    overflow: visible;
+    margin: 0 auto;
 }
 .diagram-title {
     font-size: 0.9rem;
@@ -290,6 +320,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     font-family: 'Monaco', 'Menlo', monospace;
     font-size: 0.75rem;
     line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
 }
 .code-example .comment { color: #6a737d; }
 .code-example .keyword { color: #ff7b72; }

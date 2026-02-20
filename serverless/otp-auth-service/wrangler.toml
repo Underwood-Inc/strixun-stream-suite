@@ -6,6 +6,15 @@ main = "dist/worker.js"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Auto-rebuild the worker bundle when source files change during `wrangler dev`.
+# Without this, edits to .tpl / .html / .css / .ts handler files only land in
+# dist/worker.js when build:worker is manually re-run.
+# IMPORTANT: watch_dir must NOT include "dist/" or the output triggers an
+# infinite rebuild loop.
+[build]
+command = "pnpm run build:worker"
+watch_dir = ["handlers", "html-snippets", "router", "services", "utils", "shared"]
+
 # KV Namespace is now defined per environment below
 # Default binding (for backward compatibility) is in [env.production] section
 

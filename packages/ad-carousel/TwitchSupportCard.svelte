@@ -14,7 +14,7 @@
 
   import OtpAuthLink from './OtpAuthLink.svelte';
 
-  export let supportUrl: string = 'https://www.twitch.tv/strixun';
+  export let supportUrl: string = 'https://sponsor.idling.app';
   export let className: string = '';
 </script>
 

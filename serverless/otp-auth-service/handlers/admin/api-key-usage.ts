@@ -58,8 +58,15 @@ export async function handleGetKeyUsage(
 export async function handleGetUsageSummary(
     request: Request,
     env: Env,
-    customerId: string,
+    customerId: string | null,
 ): Promise<Response> {
+    if (!customerId) {
+        return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            status: 401,
+            headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+
     try {
         const keys = await getApiKeysForCustomer(customerId, env);
         const activeKeys = keys.filter(k => k.status === 'active');

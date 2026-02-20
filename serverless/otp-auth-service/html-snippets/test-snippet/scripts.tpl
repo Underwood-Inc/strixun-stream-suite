@@ -361,13 +361,12 @@ async function testJWKS() {
 
 async function testIntrospect() {
     const token = document.getElementById('introspectToken').value.trim();
-    const clientId = document.getElementById('introspectClientId').value.trim();
     const resultEl = document.getElementById('introspectResult');
 
-    if (!token || !clientId) {
+    if (!token) {
         resultEl.style.display = 'block';
         resultEl.className = 'result error';
-        resultEl.textContent = 'Both Access Token and Client ID are required.';
+        resultEl.textContent = 'Access Token is required.';
         return;
     }
 
@@ -378,8 +377,11 @@ async function testIntrospect() {
     try {
         const response = await fetch(BASE_URL + '/auth/introspect', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, client_id: clientId })
+            headers: {
+                'Content-Type': 'application/json',
+                'X-OTP-API-Key': API_KEY
+            },
+            body: JSON.stringify({ token })
         });
         const data = await response.json();
         resultEl.className = response.ok ? 'result success' : 'result error';

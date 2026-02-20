@@ -56,7 +56,7 @@
             * Backend = keep secret. Frontend = visible (optionally restrict via per-key origins).
         </p>
         
-        <!-- Security Model - PLAIN AS MUD -->
+        <!-- Security Model -->
         <div style="background: var(--bg-light); border: 2px solid var(--accent); border-radius: 8px; padding: 1rem; margin: 1.5rem 0;">
             <h3 style="margin: 0 0 0.75rem 0; color: var(--accent);">🔐 Security Model - How It Actually Works</h3>
             
@@ -102,20 +102,383 @@
                 </p>
             </div>
         </div>
-        
-        <!-- Integration Methods -->
+
+        <!-- ========================================================= -->
+        <!-- OIDC Architecture (foundational — applies to ALL methods)  -->
+        <!-- ========================================================= -->
+        <h3>🌐 OIDC Architecture (All Integrations Use This)</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Every token issued by this service — regardless of whether you use a backend proxy or a direct
+            frontend call — is an <strong>RS256-signed OIDC-compliant JWT</strong>. There is no alternative
+            signing mechanism. The flow below shows the complete lifecycle.
+        </p>
+
+        <div class="mermaid-container">
+            <div class="diagram-title">Full Authentication + Token Lifecycle</div>
+            <div class="mermaid">
+sequenceDiagram
+    participant B as Browser/App
+    participant A as Auth Service
+    participant S as Resource Server
+
+    B->>A: POST /auth/verify-otp
+    Note over B,A: email + OTP code
+    A-->>B: access_token + id_token + refresh_token
+    Note over A: Sets auth_token cookie (15 min)
+    Note over A: Sets refresh_token cookie (7 day max)
+
+    B->>S: Request with auth_token cookie
+    S->>A: GET /.well-known/jwks.json
+    Note over S: Cached for 10 minutes
+    S->>S: Verify RS256 signature
+    S->>S: Extract sub (customerId)
+    S-->>B: Protected resource returned
+
+    Note over B: Access token expires (15 min)
+    B->>A: POST /auth/refresh
+    Note over B,A: refresh_token cookie
+    A->>A: Rotate refresh token
+    A-->>B: New access + refresh tokens
+    Note over A: Max 7 days from original login
+            </div>
+        </div>
+
+        <!-- ===== OIDC Infrastructure Endpoints ===== -->
+        <h3 style="margin-top: 1.5rem;">🏗️ OIDC Infrastructure — What Each Endpoint Does &amp; Why</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            OIDC (OpenID Connect) is an industry-standard identity protocol built on top of OAuth 2.0.
+            It defines a set of well-known endpoints that let any application — yours or third-party —
+            verify identities without sharing passwords or secrets. Below is every endpoint this service
+            exposes, explained in plain language.
+        </p>
+
+        <!-- Discovery -->
+        <div class="method-box recommended" style="margin-bottom: 1rem;">
+            <h4>📖 Discovery — <code>GET /.well-known/openid-configuration</code></h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>What it is:</strong> A single JSON document that acts as a "phone book" for the entire
+                authentication system. Any application that wants to integrate with this auth service can
+                fetch this one URL and learn <em>everything</em> it needs — where to send login requests,
+                where to find public keys, what signing algorithms are used, what token types are supported, etc.
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>Why it matters:</strong> Without Discovery, every developer would need to manually
+                hard-code endpoint URLs. With it, your app can auto-configure itself by reading this one document.
+                Many OAuth/OIDC libraries (like <code>openid-client</code> in Node.js or Spring Security in Java)
+                will accept <em>just</em> the Discovery URL and handle everything else automatically.
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-secondary);">
+                <strong>Try it:</strong> Visit <code>{{BASE_URL}}/.well-known/openid-configuration</code> in
+                your browser — you'll see a JSON response listing every supported endpoint and capability.
+            </p>
+        </div>
+
+        <!-- JWKS -->
+        <div class="method-box recommended" style="margin-bottom: 1rem;">
+            <h4>🔑 JSON Web Key Set (JWKS) — <code>GET /.well-known/jwks.json</code></h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>What it is:</strong> A list of the <em>public</em> cryptographic keys that this service
+                uses to sign every token it issues. Think of it like a public notary stamp — anyone can look at
+                the stamp (public key) to verify a document is authentic, but only the notary (our server) holds
+                the private key that creates the stamp.
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>Why it matters:</strong> When your backend server receives a token (JWT) from a user,
+                it needs to verify that the token was genuinely issued by this auth service and hasn't been
+                tampered with. It does this by fetching the public keys from JWKS, matching the key ID
+                (<code>kid</code>) in the token header, and verifying the RS256 digital signature.
+                This process is completely offline after the initial key fetch (keys are cached for 10 minutes).
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-secondary);">
+                <strong>Usage:</strong> Most JWT libraries handle this automatically — you point them at
+                the JWKS URL and they fetch, cache, and rotate keys for you. You never need to manually
+                download or manage these keys.
+            </p>
+        </div>
+
+        <!-- Request OTP Endpoint -->
+        <div class="method-box recommended" style="margin-bottom: 1rem;">
+            <h4>📧 Request OTP — <code>POST /auth/request-otp</code></h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>What it is:</strong> The first step of the login flow. You send the user's email address
+                to this endpoint, and the auth service sends a 9-digit one-time password to that email. The OTP
+                is valid for <strong>10 minutes</strong>.
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>Required headers:</strong> <code>Content-Type: application/json</code> and
+                <code>X-OTP-API-Key: &lt;your_api_key&gt;</code>.
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>Request body:</strong> <code>{ "email": "user@example.com" }</code>
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">
+                <strong>Success response (200):</strong>
+                <code>{ "success": true, "message": "OTP sent to email", "expiresIn": 600, "remaining": 4 }</code>
+                — <code>expiresIn</code> is the OTP validity in seconds (600 = 10 minutes),
+                <code>remaining</code> is how many more OTP requests are allowed before rate limiting kicks in.
+            </p>
+        </div>
+
+        <!-- Token Endpoint -->
+        <div class="method-box recommended" style="margin-bottom: 1rem;">
+            <h4>🎫 Token Endpoint (Verify OTP) — <code>POST /auth/verify-otp</code></h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>What it is:</strong> The second step of the login flow. After the user receives their
+                9-digit OTP code via email, your app submits it here. If the code is correct, the service
+                issues a full set of tokens: an <strong>access token</strong> (proves who the user is for 15 minutes),
+                an <strong>ID token</strong> (contains identity claims like customer ID), and a
+                <strong>refresh token</strong> (allows getting new tokens without re-entering an OTP).
+                It also sets <code>auth_token</code> and <code>refresh_token</code> as HttpOnly cookies.
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>Required headers:</strong> <code>Content-Type: application/json</code> and
+                <code>X-OTP-API-Key: &lt;your_api_key&gt;</code>.
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>Request body:</strong> <code>{ "email": "user@example.com", "otp": "123456789" }</code>
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">
+                <strong>Why it matters:</strong> This replaces traditional username/password login. Instead of
+                storing and managing passwords, the user proves their identity by accessing their email —
+                a much simpler and often more secure flow.
+            </p>
+        </div>
+
+        <!-- Refresh -->
+        <div class="method-box recommended" style="margin-bottom: 1rem;">
+            <h4>🔄 Token Refresh — <code>POST /auth/refresh</code></h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>What it is:</strong> When an access token expires (every 15 minutes), this endpoint
+                lets the app silently get a new one without forcing the user to re-enter an OTP code. The
+                app sends its refresh token (stored as an HttpOnly cookie), and receives a fresh access token
+                plus a <strong>new</strong> refresh token (the old one is immediately invalidated — this is
+                called <em>token rotation</em> and prevents stolen refresh tokens from being reused).
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>How the user experiences it:</strong> There is <strong>no background polling or
+                heartbeat</strong>. Refresh only happens when the user performs an action after their
+                15-minute access token has expired. If the user walks away from their computer, zero
+                network requests are made. When they return and click something, the app automatically
+                detects the expired token, refreshes it behind the scenes, and retries the action.
+                This "reactive refresh" pattern continues for up to <strong>7 days</strong> from the original
+                login, after which the user must enter a new OTP.
+            </p>
+        </div>
+
+        <!-- UserInfo -->
+        <div class="method-box recommended" style="margin-bottom: 1rem;">
+            <h4>👤 User Info — <code>GET /auth/me</code></h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>What it is:</strong> Returns profile information about the currently logged-in user
+                based on the scopes granted during authentication. Uses the HttpOnly cookie automatically
+                — no manual token passing required.
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">
+                <strong>Why it matters:</strong> Your frontend can call this to display the user's name or
+                preferred username without needing to decode the JWT yourself. The response only includes
+                claims allowed by the scopes that were originally requested.
+            </p>
+        </div>
+
+        <!-- Introspection -->
+        <div class="method-box recommended" style="margin-bottom: 1rem;">
+            <h4>🔍 Token Introspection — <code>POST /auth/introspect</code></h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>What it is:</strong> A way for your server to ask "is this token still valid?" by
+                sending a token to this endpoint and getting back a definitive yes/no answer along with
+                the token's claims (who it belongs to, when it expires, etc.). This follows the
+                <strong>RFC 7662</strong> standard.
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <strong>When to use it:</strong> Most of the time you don't need this — verifying the JWT
+                signature locally using JWKS is faster and doesn't require a network call. Introspection is
+                useful when you need to check if a token has been <em>explicitly revoked</em> (e.g., the user
+                logged out) or when you want a single source of truth from the auth server itself.
+            </p>
+            <p style="font-size: 0.8rem; color: var(--text-secondary);">
+                <strong>Security:</strong> This endpoint requires a valid API key via the
+                <code>X-OTP-API-Key</code> header to prevent unauthorized token scanning.
+            </p>
+        </div>
+
+        <!-- Logout -->
+        <div class="method-box recommended" style="margin-bottom: 1rem;">
+            <h4>🚪 Logout — <code>POST /auth/logout</code></h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">
+                <strong>What it is:</strong> Ends the user's session completely. It revokes the access and
+                refresh tokens on the server side (so they can never be reused even if intercepted),
+                deletes the session data from server storage, and clears the HttpOnly cookies from the
+                browser. After calling this, the user must authenticate again with a new OTP.
+            </p>
+        </div>
+
+        <!-- ===== How Authentication Works (Grant Type) ===== -->
+        <h3 style="margin-top: 1.5rem;">⚙️ How Authentication Works (Grant Type)</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            Most OIDC providers use a flow where the user is redirected to a login page and back (called the
+            "authorization code" flow). This service uses a different approach — a <strong>custom OTP grant type</strong>
+            (<code>urn:ietf:params:oauth:grant-type:otp</code>) — where the user receives a 9-digit one-time
+            password via email and submits it directly. No browser redirects, no third-party login pages.
+            There is also a standard <code>refresh_token</code> grant type for silently renewing expired tokens.
+        </p>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">
+            The response from a successful OTP verification is fully OIDC-compliant and includes:
+            <code>access_token</code> (RS256 JWT, 15 min), <code>id_token</code> (identity claims),
+            <code>refresh_token</code> (opaque, single-use, 7-day max), <code>token_type</code>,
+            <code>expires_in</code>, <code>refresh_expires_in</code>, and <code>scope</code>.
+        </p>
+
+        <!-- ===== Token Lifetimes ===== -->
+        <h3 style="margin-top: 1.5rem;">⏱️ Token Lifetimes</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            Each token type has a specific lifespan. Short-lived access tokens limit the damage window if a
+            token is ever intercepted. The refresh token allows seamless re-authentication up to a hard limit.
+        </p>
+        <table class="security-table" style="font-size: 0.85rem;">
+            <thead><tr><th>Token</th><th>Lifetime</th><th>How It's Delivered</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>Access token</strong> (RS256 JWT)</td>
+                    <td>15 minutes</td>
+                    <td>JSON response body + <code>auth_token</code> HttpOnly cookie</td>
+                </tr>
+                <tr>
+                    <td><strong>ID token</strong> (RS256 JWT)</td>
+                    <td>15 minutes (same as access)</td>
+                    <td>JSON response body only (not stored in cookies)</td>
+                </tr>
+                <tr>
+                    <td><strong>Refresh token</strong> (opaque string)</td>
+                    <td>7-day absolute max from original login</td>
+                    <td>JSON response body + <code>refresh_token</code> HttpOnly cookie</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- ===== ID Token Claims ===== -->
+        <h3 style="margin-top: 1.5rem;">📋 What's Inside an ID Token (Claims)</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            A "claim" is a piece of information embedded in the token. When your server verifies a token,
+            it can read these claims to learn who the user is and whether the token is still valid —
+            all without making any additional API calls.
+        </p>
+        <table class="security-table" style="font-size: 0.85rem;">
+            <thead><tr><th>Claim</th><th>Full Name</th><th>What It Tells You</th></tr></thead>
+            <tbody>
+                <tr><td><code>iss</code></td><td>Issuer</td><td>The URL of this auth service. Your server should verify this matches exactly — it proves the token came from the right place.</td></tr>
+                <tr><td><code>sub</code></td><td>Subject</td><td>The unique customer ID. This is <strong>the</strong> identifier you use to look up the user in your own systems.</td></tr>
+                <tr><td><code>aud</code></td><td>Audience</td><td>Your API key ID. Confirms this token was issued <em>for your application</em> specifically, not a different tenant.</td></tr>
+                <tr><td><code>exp</code></td><td>Expiration</td><td>Unix timestamp when the token stops being valid. Always check this — reject expired tokens.</td></tr>
+                <tr><td><code>iat</code></td><td>Issued At</td><td>Unix timestamp when the token was created. Useful for calculating token age.</td></tr>
+                <tr><td><code>at_hash</code></td><td>Access Token Hash</td><td>A cryptographic fingerprint of the access token. Lets you verify that the ID token and access token were issued together as a pair.</td></tr>
+                <tr><td><code>email_verified</code></td><td>Email Verified</td><td>Always <code>true</code> — confirms the user proved ownership of their email via OTP. The actual email address is <strong>never</strong> included (see Privacy Model below).</td></tr>
+            </tbody>
+        </table>
+
+        <!-- ===== Scopes ===== -->
+        <h3 style="margin-top: 1.5rem;">🎯 Scopes — Controlling What Information You Receive</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            Scopes act as permissions that control which claims are included in the tokens and what the
+            <code>/auth/me</code> endpoint returns. You request scopes during authentication, and the
+            service only returns the claims those scopes allow.
+        </p>
+        <table class="security-table" style="font-size: 0.85rem;">
+            <thead><tr><th>Scope</th><th>What It Unlocks</th></tr></thead>
+            <tbody>
+                <tr><td><code>openid</code></td><td>Core identity claims: <code>sub</code> (customer ID), <code>iss</code>, <code>aud</code>, <code>exp</code>, <code>iat</code>, <code>at_hash</code>, <code>email_verified</code></td></tr>
+                <tr><td><code>profile</code></td><td>Display name and preferred username: <code>name</code>, <code>preferred_username</code></td></tr>
+            </tbody>
+        </table>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">
+            <strong>How to request scopes:</strong> Currently, <code>openid profile</code> is automatically
+            granted on every successful OTP verification — you don't need to pass a <code>scope</code>
+            parameter. All tokens include both sets of claims by default. If additional scopes are added
+            in the future, you will be able to request specific scopes by including a <code>scope</code>
+            field in the <code>verify-otp</code> request body (e.g., <code>{ "email": "...", "otp": "...", "scope": "openid" }</code>).
+        </p>
+
+        <!-- ===== Privacy Model ===== -->
+        <h3 style="margin-top: 1.5rem;">🔒 Privacy Model — How We Protect User Data</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">
+            Email addresses are <strong>never</strong> included in JWT payloads, token responses, or any API response.
+            The <code>customerId</code> (the <code>sub</code> claim in tokens) is the sole external identifier
+            used to represent a user across all services. Only <code>email_verified: true</code> is included
+            to confirm that the user proved ownership of their email via OTP. The actual email address exists
+            only in encrypted server-side storage, used exclusively for delivering OTP codes and maintaining
+            session records — it is never transmitted to your application or any third party.
+        </p>
+
+        <!-- ===== Error Responses ===== -->
+        <h3 style="margin-top: 1.5rem;">❌ Error Responses — What to Expect When Things Go Wrong</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            All error responses follow the <strong>RFC 7807 Problem Details</strong> format — a standard
+            JSON structure that makes errors machine-readable and human-understandable. Your error-handling
+            code can always rely on the same shape:
+        </p>
+        <div class="code-example" style="margin-bottom: 0.75rem;">
+<span class="comment">// Every error response has this shape (Content-Type: application/problem+json)</span>
+{
+    <span class="string">"type"</span>:     <span class="string">"https://tools.ietf.org/html/rfc7231#section-6.5.1"</span>,  <span class="comment">// RFC reference</span>
+    <span class="string">"title"</span>:    <span class="string">"Bad Request"</span>,                                      <span class="comment">// Human-readable category</span>
+    <span class="string">"status"</span>:   400,                                                  <span class="comment">// HTTP status code</span>
+    <span class="string">"detail"</span>:   <span class="string">"Valid email address required"</span>,                       <span class="comment">// Specific error message</span>
+    <span class="string">"instance"</span>: <span class="string">"https://auth.idling.app/auth/request-otp"</span>            <span class="comment">// URL that was called</span>
+}
+        </div>
+        <table class="security-table" style="font-size: 0.85rem;">
+            <thead><tr><th>Status Code</th><th>When It Happens</th><th>The <code>detail</code> Field Tells You</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-warning">400</span></td>
+                    <td>Invalid email format, missing OTP, malformed request body</td>
+                    <td>Exactly what's wrong with the input (e.g., <code>"Valid 9-digit OTP required"</code>)</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-danger">401</span></td>
+                    <td>Wrong OTP code, no API key, invalid API key, expired token</td>
+                    <td>Why authentication failed. For OTP errors, also includes <code>remaining_attempts</code></td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-danger">403</span></td>
+                    <td>Valid API key but request origin not in the allowed list</td>
+                    <td>Origin restriction violated</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-warning">429</span></td>
+                    <td>Too many OTP requests or too many failed verification attempts</td>
+                    <td>Rate limit or quota exceeded. Includes <code>retry_after</code> (seconds) and <code>remaining</code> count</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-danger">500</span></td>
+                    <td>Server-side failure (email delivery, database, etc.)</td>
+                    <td>Generic message — retry the request or contact support</td>
+                </tr>
+            </tbody>
+        </table>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+            <strong>Tip:</strong> Always read the <code>detail</code> field for the specific message, and
+            check for <code>remaining_attempts</code> on 401s (OTP failures) and <code>retry_after</code>
+            on 429s (rate limits) to give your users actionable feedback.
+        </p>
+
+        <!-- ========================================================= -->
+        <!-- Integration Methods (HOW the developer calls the service)  -->
+        <!-- ========================================================= -->
         <h3>🛡️ Integration Methods</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Both methods produce the same OIDC tokens. The difference is where the API key lives
+            and whether your server proxies the calls.
+        </p>
         
         <div class="tabs">
-            <button class="tab-btn active" onclick="showTab('backend')">✅ Backend-Only (Recommended)</button>
+            <button class="tab-btn active" onclick="showTab('backend')">✅ Backend Proxy (Recommended)</button>
             <button class="tab-btn" onclick="showTab('frontend')">⚡ Direct Frontend</button>
-            <button class="tab-btn" onclick="showTab('oidc')">🌐 OIDC Token Verification</button>
         </div>
         
         <!-- Backend Tab -->
         <div id="tab-backend" class="tab-content active">
             <div class="method-box recommended">
-                <h4>✅ Method 1: Backend-Only Integration</h4>
+                <h4>✅ Method 1: Backend Proxy</h4>
                 <p style="font-size: 0.8rem; color: var(--success); margin-bottom: 0.5rem;">
                     <strong>HIGHEST SECURITY</strong> — API key never reaches the browser
                 </p>
@@ -140,17 +503,19 @@ sequenceDiagram
     B->>Y: Submit OTP code
     Y->>O: POST /auth/verify-otp
     Note over Y,O: X-OTP-API-Key header
-    O-->>Y: JWT access token
+    O-->>Y: RS256 JWT (access + id + refresh)
     Y-->>B: Sets HttpOnly cookie
                 </div>
             </div>
             
             <div class="code-example">
-<span class="comment">// YOUR BACKEND SERVER (Node.js example)</span>
-<span class="keyword">const</span> OTP_API_KEY = process.env.OTP_AUTH_API_KEY; <span class="comment">// Secret!</span>
+<span class="comment">// YOUR BACKEND SERVER (Node.js / Express example)</span>
+<span class="keyword">const</span> OTP_API_KEY = process.env.OTP_AUTH_API_KEY; <span class="comment">// Secret — never expose to browser</span>
+<span class="keyword">const</span> AUTH_BASE  = <span class="string">'{{BASE_URL}}'</span>;
 
+<span class="comment">// Step 1: User submits their email → send OTP</span>
 app.post(<span class="string">'/api/auth/request-otp'</span>, <span class="keyword">async</span> (req, res) => {
-    <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'{{BASE_URL}}/auth/request-otp'</span>, {
+    <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(`${AUTH_BASE}/auth/request-otp`, {
         method: <span class="string">'POST'</span>,
         headers: {
             <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>,
@@ -158,15 +523,123 @@ app.post(<span class="string">'/api/auth/request-otp'</span>, <span class="keywo
         },
         body: JSON.stringify({ email: req.body.email })
     });
-    res.json(<span class="keyword">await</span> response.json());
+    <span class="comment">// → { success: true, message: "OTP sent to email", expiresIn: 600, remaining: 4 }</span>
+    res.status(response.status).json(<span class="keyword">await</span> response.json());
+});
+
+<span class="comment">// Step 2: User enters the 9-digit OTP code → exchange for tokens</span>
+app.post(<span class="string">'/api/auth/verify-otp'</span>, <span class="keyword">async</span> (req, res) => {
+    <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(`${AUTH_BASE}/auth/verify-otp`, {
+        method: <span class="string">'POST'</span>,
+        headers: {
+            <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>,
+            <span class="string">'X-OTP-API-Key'</span>: OTP_API_KEY
+        },
+        body: JSON.stringify({ email: req.body.email, otp: req.body.otp })
+    });
+
+    <span class="keyword">const</span> data = <span class="keyword">await</span> response.json();
+    <span class="keyword">if</span> (!response.ok) <span class="keyword">return</span> res.status(response.status).json(data);
+
+    <span class="comment">// The auth service also sets HttpOnly cookies on its domain.</span>
+    <span class="comment">// For YOUR domain, forward the auth_token as an HttpOnly cookie:</span>
+    res.cookie(<span class="string">'auth_token'</span>, data.access_token, {
+        httpOnly: <span class="keyword">true</span>,
+        secure: process.env.NODE_ENV === <span class="string">'production'</span>,
+        sameSite: <span class="string">'lax'</span>,
+        maxAge: data.expires_in * 1000,       <span class="comment">// 15 min in ms</span>
+    });
+    res.cookie(<span class="string">'refresh_token'</span>, data.refresh_token, {
+        httpOnly: <span class="keyword">true</span>,
+        secure: process.env.NODE_ENV === <span class="string">'production'</span>,
+        sameSite: <span class="string">'lax'</span>,
+        maxAge: data.refresh_expires_in * 1000, <span class="comment">// up to 7 days in ms</span>
+    });
+
+    <span class="comment">// Return only safe, non-secret data to the browser</span>
+    res.json({
+        displayName: data.displayName,
+        customerId: data.sub,
+        expiresIn: data.expires_in,
+    });
 });
             </div>
+
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">
+                <strong>Successful verify-otp response shape:</strong>
+            </p>
+            <div class="code-example" style="margin-top: 0.5rem;">
+<span class="comment">// 200 OK — Content-Type: application/json</span>
+<span class="comment">// Also sets auth_token + refresh_token as HttpOnly cookies on the auth domain</span>
+{
+    <span class="string">"access_token"</span>: <span class="string">"eyJhbGciOiJSUzI1NiIs..."</span>,  <span class="comment">// RS256 JWT (15 min)</span>
+    <span class="string">"id_token"</span>:     <span class="string">"eyJhbGciOiJSUzI1NiIs..."</span>,  <span class="comment">// RS256 JWT (identity claims)</span>
+    <span class="string">"refresh_token"</span>: <span class="string">"opaque_random_string"</span>,       <span class="comment">// Single-use, 7-day max</span>
+    <span class="string">"token_type"</span>:    <span class="string">"Bearer"</span>,
+    <span class="string">"expires_in"</span>:    900,                            <span class="comment">// Seconds until access_token expires</span>
+    <span class="string">"refresh_expires_in"</span>: 604800,                    <span class="comment">// Seconds until refresh token expires</span>
+    <span class="string">"scope"</span>:         <span class="string">"openid profile"</span>,
+    <span class="string">"displayName"</span>:   <span class="string">"username"</span>,                    <span class="comment">// User's display name</span>
+    <span class="string">"sub"</span>:           <span class="string">"cust_abc123"</span>                   <span class="comment">// customerId — your primary user ID</span>
+}
+            </div>
+            
+            <p style="font-size: 0.85rem; margin-top: 1rem; color: var(--text-secondary);">
+                <strong>Verifying tokens in your resource server</strong> — use the
+                <a href="https://github.com/panva/jose" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">jose</a>
+                library (works in Node.js, Deno, Bun, Cloudflare Workers, and browsers):
+            </p>
+            <div class="code-example" style="margin-top: 0.5rem;">
+<span class="comment">// npm install jose</span>
+<span class="keyword">import</span> { createRemoteJWKSet, jwtVerify } <span class="keyword">from</span> <span class="string">'jose'</span>;
+
+<span class="comment">// Create a JWKS fetcher (caches keys automatically)</span>
+<span class="keyword">const</span> JWKS = <span class="function">createRemoteJWKSet</span>(
+    <span class="keyword">new</span> <span class="function">URL</span>(<span class="string">'{{BASE_URL}}/.well-known/jwks.json'</span>)
+);
+
+<span class="comment">// In your route handler / middleware:</span>
+<span class="keyword">async function</span> <span class="function">verifyAccessToken</span>(token) {
+    <span class="keyword">const</span> { payload } = <span class="keyword">await</span> <span class="function">jwtVerify</span>(token, JWKS, {
+        issuer: <span class="string">'{{BASE_URL}}'</span>,    <span class="comment">// must match the iss claim exactly</span>
+        audience: OTP_API_KEY,           <span class="comment">// your API key ID (the aud claim)</span>
+    });
+
+    <span class="comment">// payload.sub = customerId (use this to identify the user)</span>
+    <span class="comment">// payload.exp = expiration (already verified by jwtVerify)</span>
+    <span class="comment">// payload.email_verified = true (user proved email ownership)</span>
+    <span class="keyword">return</span> payload;
+}
+
+<span class="comment">// Example: Express.js middleware</span>
+app.use(<span class="keyword">async</span> (req, res, next) => {
+    <span class="keyword">const</span> token = req.cookies.auth_token
+        || req.headers.authorization?.replace(<span class="string">'Bearer '</span>, <span class="string">''</span>);
+
+    <span class="keyword">if</span> (!token) <span class="keyword">return</span> res.status(401).json({ error: <span class="string">'No token'</span> });
+
+    <span class="keyword">try</span> {
+        req.user = <span class="keyword">await</span> <span class="function">verifyAccessToken</span>(token);
+        <span class="function">next</span>();
+    } <span class="keyword">catch</span> (err) {
+        res.status(401).json({ error: <span class="string">'Invalid or expired token'</span> });
+    }
+});
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                <strong>Other languages:</strong>
+                Python → <code>PyJWKClient</code> from <code>PyJWT</code> &nbsp;|&nbsp;
+                Go → <code>go-jose/v4</code> &nbsp;|&nbsp;
+                Java → <code>nimbus-jose-jwt</code> &nbsp;|&nbsp;
+                .NET → <code>Microsoft.IdentityModel.Tokens</code>
+                — all support JWKS auto-discovery from the <code>/.well-known/jwks.json</code> URL.
+            </p>
         </div>
         
         <!-- Frontend Tab -->
         <div id="tab-frontend" class="tab-content">
             <div class="method-box alternative">
-                <h4>⚡ Method 2: Direct Frontend Integration</h4>
+                <h4>⚡ Method 2: Direct Frontend</h4>
                 <p style="font-size: 0.8rem; color: var(--warning); margin-bottom: 0.5rem;">
                     <strong>MODERATE SECURITY</strong> — API key visible (optionally add origin restrictions)
                 </p>
@@ -193,11 +666,13 @@ sequenceDiagram
             </div>
             
             <div class="code-example">
-<span class="comment">// YOUR FRONTEND (React/Vue/Vanilla JS)</span>
-<span class="keyword">const</span> OTP_API_KEY = <span class="string">'otp_live_sk_xxx'</span>; <span class="comment">// Visible (restrict with per-key origins)</span>
+<span class="comment">// YOUR FRONTEND (React / Vue / Vanilla JS)</span>
+<span class="keyword">const</span> OTP_API_KEY = <span class="string">'otp_live_sk_xxx'</span>; <span class="comment">// Visible — restrict with per-key origins</span>
+<span class="keyword">const</span> AUTH_BASE  = <span class="string">'{{BASE_URL}}'</span>;
 
+<span class="comment">// Step 1: Send OTP to the user's email</span>
 <span class="keyword">async function</span> <span class="function">requestOTP</span>(email) {
-    <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'{{BASE_URL}}/auth/request-otp'</span>, {
+    <span class="keyword">const</span> res = <span class="keyword">await</span> <span class="function">fetch</span>(`${AUTH_BASE}/auth/request-otp`, {
         method: <span class="string">'POST'</span>,
         headers: {
             <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>,
@@ -205,153 +680,60 @@ sequenceDiagram
         },
         body: JSON.stringify({ email })
     });
-    <span class="keyword">return</span> response.json();
+    <span class="keyword">if</span> (!res.ok) <span class="keyword">throw new</span> Error((<span class="keyword">await</span> res.json()).detail);
+    <span class="keyword">return</span> res.json(); <span class="comment">// { success: true, expiresIn: 600, remaining: 4 }</span>
+}
+
+<span class="comment">// Step 2: User enters the 9-digit code → exchange for tokens</span>
+<span class="keyword">async function</span> <span class="function">verifyOTP</span>(email, otp) {
+    <span class="keyword">const</span> res = <span class="keyword">await</span> <span class="function">fetch</span>(`${AUTH_BASE}/auth/verify-otp`, {
+        method: <span class="string">'POST'</span>,
+        credentials: <span class="string">'include'</span>,  <span class="comment">// IMPORTANT: sends/receives HttpOnly cookies</span>
+        headers: {
+            <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>,
+            <span class="string">'X-OTP-API-Key'</span>: OTP_API_KEY
+        },
+        body: JSON.stringify({ email, otp })
+    });
+    <span class="keyword">if</span> (!res.ok) <span class="keyword">throw new</span> Error((<span class="keyword">await</span> res.json()).detail);
+
+    <span class="keyword">const</span> data = <span class="keyword">await</span> res.json();
+    <span class="comment">// Cookies (auth_token, refresh_token) are set automatically by the browser.</span>
+    <span class="comment">// data.sub = customerId, data.displayName = user's name</span>
+    <span class="keyword">return</span> data;
+}
+
+<span class="comment">// Step 3: Make authenticated requests (cookie is sent automatically)</span>
+<span class="keyword">async function</span> <span class="function">fetchProtectedResource</span>(url) {
+    <span class="keyword">const</span> res = <span class="keyword">await</span> <span class="function">fetch</span>(url, { credentials: <span class="string">'include'</span> });
+
+    <span class="keyword">if</span> (res.status === 401) {
+        <span class="comment">// Token expired — try refreshing</span>
+        <span class="keyword">const</span> refreshRes = <span class="keyword">await</span> <span class="function">fetch</span>(`${AUTH_BASE}/auth/refresh`, {
+            method: <span class="string">'POST'</span>,
+            credentials: <span class="string">'include'</span>,  <span class="comment">// sends refresh_token cookie</span>
+        });
+        <span class="keyword">if</span> (!refreshRes.ok) <span class="keyword">throw new</span> Error(<span class="string">'Session expired — please log in again'</span>);
+
+        <span class="comment">// New cookies set automatically — retry original request</span>
+        <span class="keyword">return</span> <span class="function">fetch</span>(url, { credentials: <span class="string">'include'</span> });
+    }
+
+    <span class="keyword">return</span> res;
 }
             </div>
         </div>
         
-        <!-- OIDC Tab -->
-        <div id="tab-oidc" class="tab-content">
-            <div class="method-box recommended">
-                <h4>🌐 OIDC-Compliant Token Issuance</h4>
-                <p style="font-size: 0.8rem; color: var(--success); margin-bottom: 0.5rem;">
-                    <strong>RS256 SIGNED</strong> — Tokens verified via JWKS, no shared secret required
-                </p>
-            </div>
-            
-            <div class="mermaid-container">
-                <div class="diagram-title">Full Authentication + Service Verification Flow</div>
-                <div class="mermaid">
-sequenceDiagram
-    participant B as Browser/App
-    participant A as Auth Service
-    participant S as Resource Server
+        <!-- CORS / Origin Restrictions -->
+        <h3>🌐 Origin Restrictions — Controlling Where Your Key Can Be Used</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Every API key can optionally be locked to specific web origins. This controls which websites
+            are allowed to make requests using that key. If someone copies your key and tries to use it
+            from a different website, the request is rejected.
+        </p>
 
-    B->>A: POST /auth/verify-otp
-    Note over B,A: email + OTP code sent
-    A-->>B: access_token + refresh_token
-    Note over A,B: auth_token cookie (15m)<br/>refresh_token cookie (7d)
-
-    B->>S: Request with auth_token cookie
-    S->>A: GET /.well-known/jwks.json
-    Note over S,A: Cached for 10 minutes
-    S->>S: Verify RS256 signature
-    S->>S: Extract sub (customerId)
-    S-->>B: Protected resource returned
-
-    Note over B: Access token expires (15m)
-    B->>A: POST /auth/refresh
-    Note over B,A: Sends refresh_token cookie
-    A->>A: Rotate refresh token
-    A-->>B: New access_token + refresh_token
-    Note over A,B: Max 7 days from original login
-                </div>
-            </div>
-            
-            <div class="code-example">
-<span class="comment">// Service-to-service verification (any service)</span>
-<span class="keyword">import</span> { decodeJWTHeader, verifyRS256JWT } <span class="keyword">from</span> <span class="string">'@strixun/api-framework/jwt'</span>;
-
-<span class="comment">// Fetch JWKS once and cache</span>
-<span class="keyword">const</span> jwksResp = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'{{BASE_URL}}/.well-known/jwks.json'</span>);
-<span class="keyword">const</span> { keys } = <span class="keyword">await</span> jwksResp.json();
-
-<span class="comment">// Verify incoming token</span>
-<span class="keyword">const</span> header = decodeJWTHeader(token);
-<span class="keyword">const</span> key = keys.find(k => k.kid === header?.kid);
-<span class="keyword">const</span> payload = <span class="keyword">await</span> verifyRS256JWT(token, key);
-            </div>
-            
-            <p style="font-size: 0.85rem; margin-top: 1rem;">
-                <strong>OIDC Endpoints:</strong>
-            </p>
-            <ul style="font-size: 0.85rem;">
-                <li><code>GET /.well-known/openid-configuration</code> — Discovery document (issuer, endpoints, supported features)</li>
-                <li><code>GET /.well-known/jwks.json</code> — Public signing keys (RS256)</li>
-                <li><code>POST /auth/verify-otp</code> — Token endpoint (OTP exchange → access_token + id_token + refresh_token, sets HttpOnly cookies)</li>
-                <li><code>POST /auth/refresh</code> — Refresh tokens (exchange opaque refresh_token cookie for new access + refresh tokens with rotation)</li>
-                <li><code>GET /auth/me</code> — UserInfo endpoint (scope-based claims, uses HttpOnly cookie)</li>
-                <li><code>POST /auth/introspect</code> — Token introspection (RFC 7662)</li>
-                <li><code>POST /auth/logout</code> — Revoke tokens, delete session + refresh token from KV, clear cookies</li>
-            </ul>
-
-            <p style="font-size: 0.85rem; margin-top: 1rem;">
-                <strong>Grant Types:</strong> <code>urn:ietf:params:oauth:grant-type:otp</code>, <code>refresh_token</code>
-            </p>
-
-            <p style="font-size: 0.85rem; margin-top: 1rem;">
-                <strong>Token Lifetimes:</strong>
-            </p>
-            <table class="security-table" style="font-size: 0.85rem;">
-                <thead><tr><th>Token</th><th>Lifetime</th><th>Delivery</th></tr></thead>
-                <tbody>
-                    <tr><td>Access token (JWT, RS256)</td><td>15 minutes</td><td>Response body + <code>auth_token</code> HttpOnly cookie</td></tr>
-                    <tr><td>ID token (JWT, RS256)</td><td>15 minutes (same as access)</td><td>Response body only</td></tr>
-                    <tr><td>Refresh token (opaque)</td><td>7-day absolute max from login</td><td>Response body + <code>refresh_token</code> HttpOnly cookie</td></tr>
-                </tbody>
-            </table>
-
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">
-                This service uses a custom OTP grant type instead of the standard authorization code flow.
-                Users authenticate by receiving a 9-digit one-time password via email and exchanging it at the token endpoint.
-                The response is fully OIDC-compliant: <code>access_token</code> (RS256, 15 min),
-                <code>id_token</code> (identity claims), <code>refresh_token</code> (opaque, single-use, 7-day max),
-                <code>token_type</code>, <code>expires_in</code>, <code>refresh_expires_in</code>, and <code>scope</code>.
-            </p>
-
-            <p style="font-size: 0.85rem; margin-top: 1rem;">
-                <strong>Refresh Behaviour (no heartbeat):</strong>
-            </p>
-            <p style="font-size: 0.8rem; color: var(--text-muted);">
-                There is <strong>no polling or background heartbeat</strong>. Token refresh is entirely <strong>reactive</strong> --
-                it only fires when the user performs an action after the 15-minute access token has expired.
-                If the user is idle, zero network requests are made. The auth store catches the 401, calls
-                <code>POST /auth/refresh</code> (sending the <code>refresh_token</code> HttpOnly cookie),
-                receives new tokens, and retries the original request transparently.
-                This continues for up to 7 days from the original login.
-            </p>
-
-            <p style="font-size: 0.85rem; margin-top: 1rem;">
-                <strong>Privacy Model:</strong>
-            </p>
-            <p style="font-size: 0.8rem; color: var(--text-muted);">
-                Email addresses are <strong>never</strong> included in JWT payloads, token responses, or any API response.
-                The <code>customerId</code> (<code>sub</code> claim) is the sole external identifier.
-                Only <code>email_verified: true</code> is included to confirm OTP verification occurred.
-                Email exists only in server-side KV storage for internal operations (OTP delivery, session records).
-            </p>
-
-            <p style="font-size: 0.85rem; margin-top: 1rem;">
-                <strong>Supported Scopes:</strong>
-            </p>
-            <table class="security-table" style="font-size: 0.85rem;">
-                <thead><tr><th>Scope</th><th>Claims Returned</th></tr></thead>
-                <tbody>
-                    <tr><td><code>openid</code></td><td><code>sub</code>, <code>iss</code>, <code>aud</code>, <code>exp</code>, <code>iat</code>, <code>at_hash</code>, <code>email_verified</code></td></tr>
-                    <tr><td><code>profile</code></td><td><code>name</code>, <code>preferred_username</code></td></tr>
-                </tbody>
-            </table>
-
-            <p style="font-size: 0.85rem; margin-top: 1rem;">
-                <strong>ID Token Claims (RS256-signed):</strong>
-            </p>
-            <table class="security-table" style="font-size: 0.85rem;">
-                <thead><tr><th>Claim</th><th>Description</th></tr></thead>
-                <tbody>
-                    <tr><td><code>iss</code></td><td>Issuer URL (must match Discovery <code>issuer</code> exactly)</td></tr>
-                    <tr><td><code>sub</code></td><td>Subject identifier (customerId)</td></tr>
-                    <tr><td><code>aud</code></td><td>Audience (API key ID / <code>client_id</code>)</td></tr>
-                    <tr><td><code>exp</code></td><td>Expiration time (Unix timestamp)</td></tr>
-                    <tr><td><code>iat</code></td><td>Issued-at time (Unix timestamp)</td></tr>
-                    <tr><td><code>at_hash</code></td><td>Access token hash (SHA-256, left half, base64url)</td></tr>
-                    <tr><td><code>email_verified</code></td><td>Always <code>true</code> (verified by OTP). Raw email is never included.</td></tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- CORS Setup -->
-        <h3>🌐 CORS Configuration (Per-Key)</h3>
         <div class="mermaid-container">
+            <div class="diagram-title">How Origin Checking Works</div>
             <div class="mermaid">
 flowchart TD
     A[Request arrives] --> B{Has API Key?}
@@ -359,10 +741,10 @@ flowchart TD
     B -->|Yes| C{Key Valid?}
     C -->|No| Z
     C -->|Yes| D{Key has origins?}
-    D -->|No| E["✓ Allow ANY origin"]
+    D -->|No| E["Allow ANY origin"]
     D -->|Yes| F{Origin in list?}
-    F -->|Yes| G["✓ Allow request"]
-    F -->|No| H["✗ 403 Forbidden"]
+    F -->|Yes| G["Allow request"]
+    F -->|No| H["403 Forbidden"]
     
     style E fill:#28a745,color:#fff
     style G fill:#28a745,color:#fff
@@ -370,20 +752,92 @@ flowchart TD
     style Z fill:#ea2b1f,color:#fff
             </div>
         </div>
-        
-        <ul>
-            <li><strong>No origins = ANY origin allowed</strong> (key is the auth)</li>
-            <li><strong>With origins = ONLY those origins</strong> (extra security)</li>
-            <li>Configure in <strong>Dashboard → API Keys → 🌐 button</strong> per key</li>
-            <li>Server-to-server calls work regardless (no Origin header)</li>
-        </ul>
-        <p style="background: var(--bg); padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.8rem; color: var(--warning); margin-top: 0.5rem;">
-            <strong>Remember:</strong> "Any origin" ≠ "anyone can access". It means anyone <em>with the valid key</em> can access from any origin. No key = no access.
+
+        <h4 style="margin-top: 1rem;">How to configure origins</h4>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            In the OTP Auth dashboard, go to <strong>API Keys</strong>, find the key you want to restrict,
+            and click the <strong>🌐 button</strong>. Add the origins (websites) that should be allowed to
+            use this key. An origin is the protocol + domain + port of a URL — nothing after the port.
+        </p>
+
+        <h4>Origin format examples</h4>
+        <table class="security-table" style="font-size: 0.85rem;">
+            <thead><tr><th>URL</th><th>Origin Value to Add</th></tr></thead>
+            <tbody>
+                <tr><td><code>https://myapp.com/login</code></td><td><code>https://myapp.com</code></td></tr>
+                <tr><td><code>https://app.mycompany.io:8443/dashboard</code></td><td><code>https://app.mycompany.io:8443</code></td></tr>
+                <tr><td><code>http://localhost:3000/auth</code></td><td><code>http://localhost:3000</code></td></tr>
+                <tr><td><code>http://localhost:5173</code> (Vite default)</td><td><code>http://localhost:5173</code></td></tr>
+            </tbody>
+        </table>
+
+        <h4 style="margin-top: 1rem;">Common scenarios</h4>
+        <table class="security-table" style="font-size: 0.85rem;">
+            <thead><tr><th>Scenario</th><th>Origins to Configure</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>Backend-only key</strong></td>
+                    <td>None (leave empty)</td>
+                    <td>Server-to-server calls don't send an <code>Origin</code> header, so origin restrictions don't apply. The key is already protected by being in your server's environment variables.</td>
+                </tr>
+                <tr>
+                    <td><strong>Frontend key — production</strong></td>
+                    <td><code>https://myapp.com</code></td>
+                    <td>Only your production website can use this key. Anyone who copies it and tries it from a different site gets <code>403 Forbidden</code>.</td>
+                </tr>
+                <tr>
+                    <td><strong>Frontend key — production + staging</strong></td>
+                    <td><code>https://myapp.com</code><br><code>https://staging.myapp.com</code></td>
+                    <td>Same key works for both environments. Add each origin separately.</td>
+                </tr>
+                <tr>
+                    <td><strong>Frontend key — local development</strong></td>
+                    <td><code>http://localhost:3000</code><br><code>http://localhost:5173</code></td>
+                    <td>Add every local port your dev server uses. You can add production origins to the same key too.</td>
+                </tr>
+                <tr>
+                    <td><strong>This test page (opened from file)</strong></td>
+                    <td>None (leave empty) <em>or</em> serve via localhost</td>
+                    <td>Files opened directly in the browser (<code>file://</code>) send a <code>null</code> origin. Either leave origins unconfigured, or serve the file with <code>python -m http.server 8080</code> and add <code>http://localhost:8080</code>.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4 style="margin-top: 1rem;">What happens at runtime</h4>
+        <div class="code-example">
+<span class="comment">// Request from https://myapp.com (origin IS in the allowed list)</span>
+<span class="function">fetch</span>(<span class="string">'{{BASE_URL}}/auth/request-otp'</span>, {
+    method: <span class="string">'POST'</span>,
+    headers: {
+        <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>,
+        <span class="string">'X-OTP-API-Key'</span>: <span class="string">'otp_live_sk_xxx'</span>
+    },
+    body: JSON.stringify({ email: <span class="string">'user@example.com'</span> })
+});
+<span class="comment">// → 200 OK — origin matches, request proceeds</span>
+
+<span class="comment">// Same request from https://evil-site.com (origin NOT in the allowed list)</span>
+<span class="comment">// → 403 Forbidden — origin rejected, no OTP is ever sent</span>
+
+<span class="comment">// Same key used from your Node.js server (no Origin header at all)</span>
+<span class="comment">// → 200 OK — server-to-server calls bypass origin checks entirely</span>
+        </div>
+
+        <p style="background: var(--bg); padding: 0.75rem; border-radius: 6px; font-size: 0.8rem; color: var(--warning); margin-top: 0.75rem;">
+            <strong>⚠️ Key distinction:</strong> "No origins configured" does <strong>not</strong> mean "anyone can access."
+            It means anyone <em>who possesses the valid API key</em> can use it from any website.
+            No valid key = no access, regardless of origin settings. The key itself is always the first line of defence.
         </p>
         
         <!-- Key Compromise -->
-        <h3>🚨 If API Key Is Compromised</h3>
+        <h3>🚨 If Your API Key Is Compromised</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            If you suspect your API key has been leaked, exposed in a public repository, or used by an
+            unauthorized party — act immediately. Revoking a key is instant and irreversible; all
+            requests using the old key will fail immediately with <code>401 Unauthorized</code>.
+        </p>
         <div class="mermaid-container">
+            <div class="diagram-title">Key Rotation Procedure</div>
             <div class="mermaid">
 flowchart LR
     A[Key Compromised] --> B[Dashboard]
@@ -396,6 +850,31 @@ flowchart LR
     style E fill:#28a745,color:#fff
             </div>
         </div>
+        <p style="font-size: 0.85rem; margin-top: 0.5rem;"><strong>Step-by-step:</strong></p>
+        <ol style="font-size: 0.8rem; color: var(--text-muted); padding-left: 1.25rem; margin-bottom: 0.75rem;">
+            <li style="margin-bottom: 0.5rem;"><strong>Revoke the compromised key</strong> — Go to the
+                <strong>OTP Auth Dashboard → API Keys</strong> page. Find the compromised key and click
+                the <strong>🗑️ Revoke</strong> button. This takes effect immediately — any request
+                using this key from this moment forward will be rejected.</li>
+            <li style="margin-bottom: 0.5rem;"><strong>Create a new key</strong> — On the same page,
+                click <strong>Create API Key</strong>. Give it a descriptive name (e.g., "production-v2").
+                Copy the new key — it is only shown once.</li>
+            <li style="margin-bottom: 0.5rem;"><strong>Update your application</strong> — Replace the old
+                key in your environment variables (<code>OTP_AUTH_API_KEY</code>) or frontend configuration.
+                If using a backend proxy, update your server's <code>.env</code> file and redeploy. If using
+                a frontend key, push a new build with the updated key.</li>
+            <li style="margin-bottom: 0.5rem;"><strong>Configure origin restrictions</strong> (if frontend)
+                — On the new key, click the <strong>🌐 button</strong> and add your allowed origins to
+                prevent the same exposure from being exploitable again.</li>
+            <li><strong>Audit your logs</strong> — Check the <strong>Audit Logs</strong> page in the
+                dashboard to see if the compromised key was used for any unauthorized requests.</li>
+        </ol>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">
+            <strong>Impact:</strong> Revoking a key does <strong>not</strong> invalidate any JWTs that were
+            already issued using that key. Existing user sessions remain valid until their tokens expire
+            (15 minutes for access tokens). If you need to immediately invalidate specific user sessions,
+            use the <code>POST /auth/logout</code> endpoint for those users.
+        </p>
         
         <!-- Environment Info -->
         <h3>📋 This Test Page</h3>
