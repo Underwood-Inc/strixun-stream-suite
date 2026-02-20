@@ -424,13 +424,16 @@ export async function handleVerifyOTP(request: Request, env: Env, tenantCustomer
         const cookieDomainsToSet = isProduction ? getCookieDomains(env, null) : ['localhost'];
         
         // Build Set-Cookie header values (auth_token + refresh_token per domain)
+        // CRITICAL: SameSite=None is REQUIRED for cross-origin fetch (e.g. mods.idling.app → auth.idling.app).
+        // SameSite=Lax causes the browser to REJECT storing cookies from cross-site responses.
+        const sameSite = isProduction ? 'SameSite=None' : 'SameSite=Lax';
         const authTokenCookie = (domain: string) => {
-            const parts = [`auth_token=${tokenResponse.token}`, `Domain=${domain}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${tokenResponse.expires_in}`];
+            const parts = [`auth_token=${tokenResponse.token}`, `Domain=${domain}`, 'Path=/', 'HttpOnly', sameSite, `Max-Age=${tokenResponse.expires_in}`];
             if (isProduction) parts.push('Secure');
             return parts.join('; ');
         };
         const refreshTokenCookie = (domain: string) => {
-            const parts = [`refresh_token=${tokenResponse.refresh_token}`, `Domain=${domain}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${tokenResponse.refresh_expires_in}`];
+            const parts = [`refresh_token=${tokenResponse.refresh_token}`, `Domain=${domain}`, 'Path=/', 'HttpOnly', sameSite, `Max-Age=${tokenResponse.refresh_expires_in}`];
             if (isProduction) parts.push('Secure');
             return parts.join('; ');
         };

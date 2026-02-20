@@ -265,13 +265,15 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
         const isProduction = env.ENVIRONMENT === 'production';
         const cookieDomainsToClear = isProduction ? getCookieDomains(env, null) : ['localhost'];
         
+        // SameSite=None required for cross-origin logout (mods.idling.app → auth.idling.app)
+        const sameSite = isProduction ? 'SameSite=None' : 'SameSite=Lax';
         const clearCookieHeaders: string[] = [];
         for (const cookieDomain of cookieDomainsToClear) {
             const baseParts = [
                 `Domain=${cookieDomain}`,
                 'Path=/',
                 'HttpOnly',
-                'SameSite=Lax',
+                sameSite,
                 'Max-Age=0',
             ];
             if (isProduction) baseParts.push('Secure');

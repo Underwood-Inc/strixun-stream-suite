@@ -258,12 +258,14 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         const cookieDomains = resolveCookieDomains(env, request);
         const setCookieHeaders: string[] = [];
 
+        // CRITICAL: SameSite=None required for cross-origin fetch (mods.idling.app → auth.idling.app)
+        const sameSite = isProduction ? 'SameSite=None' : 'SameSite=Lax';
         for (const cookieDomain of cookieDomains) {
             const base = [
                 `Domain=${cookieDomain}`,
                 'Path=/',
                 'HttpOnly',
-                'SameSite=Lax',
+                sameSite,
             ];
             if (isProduction) base.push('Secure');
 
