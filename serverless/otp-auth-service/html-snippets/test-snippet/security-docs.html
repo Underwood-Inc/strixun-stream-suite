@@ -415,16 +415,14 @@ sequenceDiagram
             JSON structure that makes errors machine-readable and human-understandable. Your error-handling
             code can always rely on the same shape:
         </p>
-        <div class="code-example" style="margin-bottom: 0.75rem;">
-<span class="comment">// Every error response has this shape (Content-Type: application/problem+json)</span>
+        <div class="code-example" style="margin-bottom: 0.75rem;"><span class="comment">// Every error response has this shape (Content-Type: application/problem+json)</span>
 {
     <span class="string">"type"</span>:     <span class="string">"https://tools.ietf.org/html/rfc7231#section-6.5.1"</span>,  <span class="comment">// RFC reference</span>
     <span class="string">"title"</span>:    <span class="string">"Bad Request"</span>,                                      <span class="comment">// Human-readable category</span>
     <span class="string">"status"</span>:   400,                                                  <span class="comment">// HTTP status code</span>
     <span class="string">"detail"</span>:   <span class="string">"Valid email address required"</span>,                       <span class="comment">// Specific error message</span>
     <span class="string">"instance"</span>: <span class="string">"https://auth.idling.app/auth/request-otp"</span>            <span class="comment">// URL that was called</span>
-}
-        </div>
+}</div>
         <table class="security-table" style="font-size: 0.85rem;">
             <thead><tr><th>Status Code</th><th>When It Happens</th><th>The <code>detail</code> Field Tells You</th></tr></thead>
             <tbody>
@@ -508,8 +506,7 @@ sequenceDiagram
                 </div>
             </div>
             
-            <div class="code-example">
-<span class="comment">// YOUR BACKEND SERVER (Node.js / Express example)</span>
+            <div class="code-example"><span class="comment">// YOUR BACKEND SERVER (Node.js / Express example)</span>
 <span class="keyword">const</span> OTP_API_KEY = process.env.OTP_AUTH_API_KEY; <span class="comment">// Secret — never expose to browser</span>
 <span class="keyword">const</span> AUTH_BASE  = <span class="string">'{{BASE_URL}}'</span>;
 
@@ -562,14 +559,12 @@ app.post(<span class="string">'/api/auth/verify-otp'</span>, <span class="keywor
         customerId: data.sub,
         expiresIn: data.expires_in,
     });
-});
-            </div>
+});</div>
 
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">
                 <strong>Successful verify-otp response shape:</strong>
             </p>
-            <div class="code-example" style="margin-top: 0.5rem;">
-<span class="comment">// 200 OK — Content-Type: application/json</span>
+            <div class="code-example" style="margin-top: 0.5rem;"><span class="comment">// 200 OK — Content-Type: application/json</span>
 <span class="comment">// Also sets auth_token + refresh_token as HttpOnly cookies on the auth domain</span>
 {
     <span class="string">"access_token"</span>: <span class="string">"eyJhbGciOiJSUzI1NiIs..."</span>,  <span class="comment">// RS256 JWT (15 min)</span>
@@ -581,16 +576,14 @@ app.post(<span class="string">'/api/auth/verify-otp'</span>, <span class="keywor
     <span class="string">"scope"</span>:         <span class="string">"openid profile"</span>,
     <span class="string">"displayName"</span>:   <span class="string">"username"</span>,                    <span class="comment">// User's display name</span>
     <span class="string">"sub"</span>:           <span class="string">"cust_abc123"</span>                   <span class="comment">// customerId — your primary user ID</span>
-}
-            </div>
+}</div>
             
             <p style="font-size: 0.85rem; margin-top: 1rem; color: var(--text-secondary);">
                 <strong>Verifying tokens in your resource server</strong> — use the
                 <a href="https://github.com/panva/jose" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">jose</a>
                 library (works in Node.js, Deno, Bun, Cloudflare Workers, and browsers):
             </p>
-            <div class="code-example" style="margin-top: 0.5rem;">
-<span class="comment">// npm install jose</span>
+            <div class="code-example" style="margin-top: 0.5rem;"><span class="comment">// npm install jose</span>
 <span class="keyword">import</span> { createRemoteJWKSet, jwtVerify } <span class="keyword">from</span> <span class="string">'jose'</span>;
 
 <span class="comment">// Create a JWKS fetcher (caches keys automatically)</span>
@@ -624,8 +617,7 @@ app.use(<span class="keyword">async</span> (req, res, next) => {
     } <span class="keyword">catch</span> (err) {
         res.status(401).json({ error: <span class="string">'Invalid or expired token'</span> });
     }
-});
-            </div>
+});</div>
             <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
                 <strong>Other languages:</strong>
                 Python → <code>PyJWKClient</code> from <code>PyJWT</code> &nbsp;|&nbsp;
@@ -665,8 +657,7 @@ sequenceDiagram
                 </div>
             </div>
             
-            <div class="code-example">
-<span class="comment">// YOUR FRONTEND (React / Vue / Vanilla JS)</span>
+            <div class="code-example"><span class="comment">// YOUR FRONTEND (React / Vue / Vanilla JS)</span>
 <span class="keyword">const</span> OTP_API_KEY = <span class="string">'otp_live_sk_xxx'</span>; <span class="comment">// Visible — restrict with per-key origins</span>
 <span class="keyword">const</span> AUTH_BASE  = <span class="string">'{{BASE_URL}}'</span>;
 
@@ -720,8 +711,7 @@ sequenceDiagram
     }
 
     <span class="keyword">return</span> res;
-}
-            </div>
+}</div>
         </div>
         
         <!-- CORS / Origin Restrictions -->
@@ -804,8 +794,7 @@ flowchart TD
         </table>
 
         <h4 style="margin-top: 1rem;">What happens at runtime</h4>
-        <div class="code-example">
-<span class="comment">// Request from https://myapp.com (origin IS in the allowed list)</span>
+        <div class="code-example"><span class="comment">// Request from https://myapp.com (origin IS in the allowed list)</span>
 <span class="function">fetch</span>(<span class="string">'{{BASE_URL}}/auth/request-otp'</span>, {
     method: <span class="string">'POST'</span>,
     headers: {
@@ -820,8 +809,7 @@ flowchart TD
 <span class="comment">// → 403 Forbidden — origin rejected, no OTP is ever sent</span>
 
 <span class="comment">// Same key used from your Node.js server (no Origin header at all)</span>
-<span class="comment">// → 200 OK — server-to-server calls bypass origin checks entirely</span>
-        </div>
+<span class="comment">// → 200 OK — server-to-server calls bypass origin checks entirely</span></div>
 
         <p style="background: var(--bg); padding: 0.75rem; border-radius: 6px; font-size: 0.8rem; color: var(--warning); margin-top: 0.75rem;">
             <strong>⚠️ Key distinction:</strong> "No origins configured" does <strong>not</strong> mean "anyone can access."
