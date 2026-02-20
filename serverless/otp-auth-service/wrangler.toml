@@ -86,6 +86,8 @@ ENVIRONMENT = "production"
 JWT_ISSUER = "https://auth.idling.app"
 CUSTOMER_API_URL = "https://customer-api.idling.app"
 ACCESS_SERVICE_URL = "https://access-api.idling.app"
+# CRITICAL: Cookie domain for SSO - wrangler deploy (no --env) uses [vars]
+ALLOWED_ORIGINS = "https://mods.idling.app,https://www.idling.app,https://idling.app,https://auth.idling.app"
 
 # Default KV Namespace (required for routes configured in dashboard or when no environment is specified)
 [[kv_namespaces]]
