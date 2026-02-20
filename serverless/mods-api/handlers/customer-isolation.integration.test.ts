@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
 import { calculateRequestIntegrity } from '@strixun/service-client/integrity';
-import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
+import { createRS256JWT, mockAuthMeEndpoint } from '../../shared/test-rs256.js';
 import { authenticateRequest } from '../utils/auth.js';
 
 const NETWORK_INTEGRITY_KEYPHRASE = process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase';
@@ -25,11 +25,11 @@ const env = {
     AUTH_SERVICE_URL: AUTH_ISSUER,
 } as any;
 
-let cleanupJWKS: () => void;
+let cleanupAuthMe: () => void;
 
 describe('Customer Isolation Integration', () => {
     beforeAll(async () => {
-        cleanupJWKS = await mockJWKSEndpoint();
+        cleanupAuthMe = await mockAuthMeEndpoint();
     });
 
     describe('Integrity Verification with CustomerID', () => {
@@ -320,7 +320,7 @@ describe('Customer Isolation Integration', () => {
     });
 
     afterAll(async () => {
-      cleanupJWKS();
+      cleanupAuthMe();
       await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9');
       await clearLocalKVNamespace('0d3dafe0994046c6a47146c6bd082ad3');
       await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789');
