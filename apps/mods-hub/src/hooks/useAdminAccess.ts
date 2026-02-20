@@ -78,8 +78,8 @@ export function useAdminAccess() {
         retryDelay: 1000,
     });
     
-    // Log errors for debugging
-    if (error) {
+    // 401 is expected when session expired or cookie not sent; avoid noisy error logs
+    if (error && typeof error === 'object' && 'status' in error && error.status !== 401) {
         console.error('[useAdminAccess] Error checking permissions:', error);
     }
     

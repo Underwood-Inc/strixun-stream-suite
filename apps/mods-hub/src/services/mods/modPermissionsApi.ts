@@ -26,7 +26,10 @@ export async function checkUploadPermission(): Promise<{ hasPermission: boolean 
         }>('/mods/permissions/me');
         return { hasPermission: response.data.hasUploadPermission };
     } catch (error) {
-        console.error('[ModPermissionsAPI] Failed to check upload permission:', error);
+        const status = error && typeof error === 'object' && 'status' in error ? (error as { status?: number }).status : undefined;
+        if (status !== 401) {
+            console.error('[ModPermissionsAPI] Failed to check upload permission:', error);
+        }
         throw new Error(`Failed to check upload permission: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }

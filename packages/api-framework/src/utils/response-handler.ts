@@ -10,60 +10,17 @@ import { decryptWithJWT, decryptBinaryWithJWT } from '../../encryption/jwt-encry
 import type { APIError, APIRequest, APIResponse } from '../types';
 
 /**
- * Get auth token from request metadata or Authorization header
- * The auth middleware stores the token in request.metadata.token and Authorization header
+ * Get auth token from request metadata or Authorization header.
+ * Used only when decrypting responses. With HttpOnly cookie auth, client has no token.
  */
 function getTokenForDecryption(request: APIRequest): string | null {
-  // First check if token is in request metadata (set by auth middleware or passed explicitly)
-  // CRITICAL: Always trim token to ensure it matches the token used for encryption on backend
   if (request.metadata?.token && typeof request.metadata.token === 'string') {
-    const metadataToken = request.metadata.token;
-    const trimmedMetadataToken = metadataToken.trim();
-    const wasTrimmed = metadataToken !== trimmedMetadataToken;
-    
-    console.log('[ResponseHandler] getTokenForDecryption - Using token from metadata:', {
-      requestPath: request.path,
-      originalLength: metadataToken.length,
-      trimmedLength: trimmedMetadataToken.length,
-      wasTrimmed,
-      originalPrefix: metadataToken.substring(0, 20) + '...',
-      trimmedPrefix: trimmedMetadataToken.substring(0, 20) + '...',
-      originalEnd: metadataToken.substring(metadataToken.length - 10),
-      trimmedEnd: trimmedMetadataToken.substring(trimmedMetadataToken.length - 10),
-    });
-    
-    return trimmedMetadataToken;
+    return request.metadata.token.trim();
   }
-  
-  // Fallback: Extract token from Authorization header if present
-  // CRITICAL: Trim token to ensure it matches the token used for encryption
   const authHeader = request.headers?.['Authorization'] || request.headers?.['authorization'];
   if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-    const headerToken = authHeader.substring(7);
-    const trimmedHeaderToken = headerToken.trim();
-    const wasTrimmed = headerToken !== trimmedHeaderToken;
-    
-    console.log('[ResponseHandler] getTokenForDecryption - Using token from Authorization header:', {
-      requestPath: request.path,
-      originalLength: headerToken.length,
-      trimmedLength: trimmedHeaderToken.length,
-      wasTrimmed,
-      originalPrefix: headerToken.substring(0, 20) + '...',
-      trimmedPrefix: trimmedHeaderToken.substring(0, 20) + '...',
-      originalEnd: headerToken.substring(headerToken.length - 10),
-      trimmedEnd: trimmedHeaderToken.substring(trimmedHeaderToken.length - 10),
-    });
-    
-    return trimmedHeaderToken;
+    return authHeader.substring(7).trim();
   }
-  
-  console.warn('[ResponseHandler] getTokenForDecryption - No token found:', {
-    requestPath: request.path,
-    hasMetadata: !!request.metadata,
-    hasMetadataToken: !!request.metadata?.token,
-    hasAuthHeader: !!authHeader,
-  });
-  
   return null;
 }
 
@@ -93,7 +50,6 @@ export async function handleResponse<T = unknown>(
       
       // CRITICAL: Skip decryption if explicitly marked as unencrypted (HttpOnly cookie requests)
       if (isExplicitlyUnencrypted) {
-        console.log('[ResponseHandler] Skipping decryption - X-Encrypted: false header present');
         return {
           data: data as T,
           status: response.status,
@@ -104,20 +60,8 @@ export async function handleResponse<T = unknown>(
         };
       }
       
-      const token = getTokenForDecryption(request);
-      console.log('[ResponseHandler] Checking encryption:', { 
-        isEncrypted, 
-        isExplicitlyUnencrypted,
-        dataIsEncrypted,
-        shouldDecrypt,
-        hasData: !!data, 
-        dataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
-        hasToken: !!token,
-        tokenSource: token ? (request.metadata?.token ? 'metadata' : 'authorization-header') : 'none',
-        tokenLength: token?.length || 0
-      });
-      
       if (shouldDecrypt) {
+        const token = getTokenForDecryption(request);
         // CRITICAL: Extract thumbnailUrls before decryption (they're at top level of encrypted object)
         const thumbnailUrls = (data as any)?.thumbnailUrls;
         
@@ -138,17 +82,7 @@ export async function handleResponse<T = unknown>(
         }
         
         try {
-          const tokenSource = request.metadata?.token ? 'metadata' : 'authorization-header';
-          console.log('[ResponseHandler] Attempting JWT decryption:', {
-            tokenSource,
-            tokenLength: token?.length || 0,
-            tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
-            requestPath: request.path,
-            hasMetadataToken: !!request.metadata?.token,
-            hasAuthHeader: !!(request.headers?.['Authorization'] || request.headers?.['authorization'])
-          });
           data = await decryptWithJWT(data as any, token) as T;
-          console.log('[ResponseHandler] Successfully decrypted response with JWT');
         } catch (jwtError) {
           const errorMessage = jwtError instanceof Error ? jwtError.message : String(jwtError);
           // Check for various token mismatch error patterns
@@ -255,14 +189,12 @@ export async function handleResponse<T = unknown>(
         }
         
         try {
-          console.log('[ResponseHandler] Decrypting binary response with JWT...');
           const decryptedBinary = await decryptBinaryWithJWT(binaryData, token);
           // Convert Uint8Array back to ArrayBuffer for compatibility
           data = decryptedBinary.buffer.slice(
             decryptedBinary.byteOffset,
             decryptedBinary.byteOffset + decryptedBinary.byteLength
           ) as unknown as T;
-          console.log('[ResponseHandler] Successfully decrypted binary response');
         } catch (decryptError) {
           console.error('[ResponseHandler] Binary decryption failed:', decryptError);
           throw createError(
@@ -328,13 +260,9 @@ export async function handleErrorResponse(
       if (shouldDecryptError) {
         const token = getTokenForDecryption(request);
         
-        if (!token) {
-          console.error('[ResponseHandler] Encrypted error response received but no JWT token available for decryption');
-        } else {
+        if (token) {
           try {
-            console.log('[ResponseHandler] Decrypting encrypted error response with JWT...');
             errorData = await decryptWithJWT(errorData as any, token);
-            console.log('[ResponseHandler] Successfully decrypted error response');
           } catch (jwtError) {
             console.error('[ResponseHandler] JWT decryption failed for error response:', jwtError);
           }
