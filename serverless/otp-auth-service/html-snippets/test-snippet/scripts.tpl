@@ -745,9 +745,155 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+// --- Sidebar TOC ---
+
+var tocEntries = [];
+
+function buildToc() {
+    var nav = document.getElementById('tocNav');
+    var main = document.getElementById('main-content');
+    if (!nav || !main) return;
+
+    var headings = main.querySelectorAll('h2[id], h3[id], h4[id]');
+    var html = '';
+
+    headings.forEach(function(h) {
+        var level = h.tagName.toLowerCase();
+        var text = h.textContent.trim();
+        var id = h.id;
+
+        // Strip leading emoji for cleaner display
+        var clean = text.replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}⚙️⚠️❌📋📖📧🎫🔄👤🔍🚪🔐🔑🔒🛡️🌐🚨⏱️🎯🏗️]+\s*/u, '');
+
+        tocEntries.push({ id: id, text: clean, searchText: clean.toLowerCase(), level: level, el: h });
+        html += '<a href="#' + id + '" class="toc-' + level + '" data-toc-id="' + id + '">' + escHtml(clean) + '</a>';
+    });
+
+    nav.innerHTML = html;
+
+    // Scroll spy: highlight the TOC item nearest to viewport center
+    var tocLinks = nav.querySelectorAll('a[data-toc-id]');
+    if (!tocLinks.length) return;
+
+    var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+                var id = entry.target.id;
+                tocLinks.forEach(function(a) {
+                    a.classList.toggle('toc-active', a.dataset.tocId === id);
+                });
+            }
+        });
+    }, { rootMargin: '-10% 0px -70% 0px', threshold: 0 });
+
+    tocEntries.forEach(function(e) { observer.observe(e.el); });
+
+    // Close mobile sidebar on link click & handle collapsed/tab expansion
+    tocLinks.forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            var sidebar = document.getElementById('tocSidebar');
+            if (sidebar) sidebar.classList.remove('open');
+
+            var targetId = link.dataset.tocId;
+            var target = document.getElementById(targetId);
+            if (!target) return;
+
+            // Expand collapsed security docs if target is inside
+            var sec = document.getElementById('securityContent');
+            if (sec && !sec.classList.contains('expanded') && sec.contains(target)) {
+                e.preventDefault();
+                toggleSecurityDocs();
+                setTimeout(function() {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+
+            // Switch to correct tab if target is in an inactive tab panel
+            var tabPanel = target.closest('.tab-content');
+            if (tabPanel && !tabPanel.classList.contains('active')) {
+                e.preventDefault();
+                var tabId = tabPanel.id.replace('tab-', '');
+                var btn = document.getElementById('tabBtn-' + tabId);
+                showTab(tabId, btn);
+                setTimeout(function() {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+        });
+    });
+}
+
+function filterToc(query) {
+    var nav = document.getElementById('tocNav');
+    if (!nav) return;
+
+    var tocLinks = nav.querySelectorAll('a[data-toc-id]');
+
+    // Remove old content-match results
+    nav.querySelectorAll('.toc-divider, .toc-content-match, .toc-section-label').forEach(function(el) { el.remove(); });
+
+    if (!query || query.trim().length < 2) {
+        tocLinks.forEach(function(a) { a.classList.remove('toc-hidden'); });
+        return;
+    }
+
+    // Filter TOC headings using the search-query-parser
+    var anyTocMatch = false;
+    tocEntries.forEach(function(entry, i) {
+        var matches = matchesSearchQuery(entry.searchText + ' ' + entry.id, query);
+        tocLinks[i].classList.toggle('toc-hidden', !matches);
+        if (matches) anyTocMatch = true;
+    });
+
+    // Also search full page content and show results below a divider
+    if (contentIndex.length > 0) {
+        var parsed = parseSearchQuery(query);
+        if (!parsed.hasContent) return;
+
+        var hlTerms = [];
+        parsed.exactPhrases.forEach(function(p) { hlTerms.push(p); });
+        parsed.orGroups.forEach(function(g) { g.forEach(function(t) { hlTerms.push(t.replace(/\*$/, '')); }); });
+
+        var contentMatches = contentIndex.filter(function(item) {
+            return matchesSearchQuery(item.title + ' ' + item.section, query);
+        }).slice(0, 20);
+
+        if (contentMatches.length > 0) {
+            var divider = document.createElement('div');
+            divider.className = 'toc-divider';
+            nav.appendChild(divider);
+
+            var label = document.createElement('div');
+            label.className = 'toc-section-label';
+            label.textContent = 'Page content';
+            nav.appendChild(label);
+
+            contentMatches.forEach(function(m) {
+                var snippet = m.title.length > 80 ? m.title.substring(0, 80) + '...' : m.title;
+                var div = document.createElement('div');
+                div.className = 'toc-content-match';
+                div.innerHTML = highlightTerms(snippet, hlTerms);
+                div.addEventListener('click', function() {
+                    navigateToResultEl(m.el, null);
+                    // Close mobile sidebar
+                    var sidebar = document.getElementById('tocSidebar');
+                    if (sidebar) sidebar.classList.remove('open');
+                });
+                nav.appendChild(div);
+            });
+        }
+    }
+}
+
+function toggleTocSidebar() {
+    var sidebar = document.getElementById('tocSidebar');
+    if (sidebar) sidebar.classList.toggle('open');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     buildGlossaryLinks();
     buildSearchIndex();
+    buildToc();
 });
 
 // Verify API key on page load

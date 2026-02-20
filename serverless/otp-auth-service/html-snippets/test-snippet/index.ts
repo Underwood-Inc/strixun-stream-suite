@@ -60,23 +60,44 @@ ${mermaidInit}
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to content</a>
-    <main id="main-content" class="container">
-        <h1>🔐 OTP Auth API - Integration Test</h1>
-        <p class="subtitle">Test your API key with a complete end-to-end OTP flow</p>
-        
-        <div class="header-actions">
-            <button class="btn-download" onclick="downloadThisFile()">
-                ⬇️ Download This File
-            </button>
-            <span style="color: var(--text-muted); font-size: 0.75rem; align-self: center;">
-                Generated: ${generatedAt}
-            </span>
-        </div>
-        
-        ${interpolatedSecurityDocs}
-        
-        ${interpolatedTestForm}
-    </main>
+
+    <!-- Mobile TOC toggle -->
+    <button class="toc-toggle" onclick="toggleTocSidebar()" aria-label="Toggle table of contents">☰</button>
+
+    <div class="page-layout">
+        <!-- Sidebar Table of Contents -->
+        <nav class="toc-sidebar" id="tocSidebar" aria-label="Table of contents">
+            <div class="toc-header">
+                <h2>Contents</h2>
+                <label for="tocSearch" class="sr-only">Filter table of contents</label>
+                <input id="tocSearch" class="toc-search" type="text"
+                       placeholder="Filter... &quot;phrase&quot;, a | b, prefix*"
+                       autocomplete="off"
+                       oninput="filterToc(this.value)" />
+            </div>
+            <div class="toc-nav" id="tocNav" role="navigation">
+                <!-- Populated by JS on DOMContentLoaded -->
+            </div>
+        </nav>
+
+        <main id="main-content" class="container">
+            <h1>🔐 OTP Auth API - Integration Test</h1>
+            <p class="subtitle">Test your API key with a complete end-to-end OTP flow</p>
+            
+            <div class="header-actions">
+                <button class="btn-download" onclick="downloadThisFile()">
+                    ⬇️ Download This File
+                </button>
+                <span style="color: var(--text-muted); font-size: 0.75rem; align-self: center;">
+                    Generated: ${generatedAt}
+                </span>
+            </div>
+            
+            ${interpolatedSecurityDocs}
+            
+            ${interpolatedTestForm}
+        </main>
+    </div>
     
     <!-- Search overlay -->
     <div class="search-overlay" id="searchOverlay" role="dialog" aria-modal="true" aria-label="Search the guide" onclick="if(event.target===this)closeSearch()">
