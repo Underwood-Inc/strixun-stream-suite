@@ -31,16 +31,24 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
     }
 
     const authUrl = env.JWT_ISSUER || env.AUTH_SERVICE_URL || 'https://auth.idling.app';
+    const meUrl = `${authUrl}/auth/me`;
     try {
-        const res = await fetch(`${authUrl}/auth/me`, {
+        const res = await fetch(meUrl, {
             headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) return null;
+        if (!res.ok) {
+            const body = await res.text().catch(() => '');
+            console.error('[ModsAPI Auth] /auth/me failed:', { status: res.status, url: meUrl, body: body.substring(0, 200) });
+            return null;
+        }
         const data = (await res.json()) as { customerId?: string; isSuperAdmin?: boolean };
-        if (!data?.customerId) return null;
+        if (!data?.customerId) {
+            console.error('[ModsAPI Auth] /auth/me missing customerId:', data);
+            return null;
+        }
         return { customerId: data.customerId, jwtToken: token, isSuperAdmin: data.isSuperAdmin ?? false };
     } catch (error) {
-        console.error('[ModsAPI Auth] Verification failed:', error);
+        console.error('[ModsAPI Auth] /auth/me fetch error:', { url: meUrl, error: String(error) });
         return null;
     }
 }
