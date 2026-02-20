@@ -70,11 +70,14 @@
     }
   }
 
-  async function handleCreate(e: CustomEvent<{ name: string }>) {
+  async function handleCreate(e: CustomEvent<{ name: string; allowedOrigins?: string[] }>) {
     if (!customer?.customerId) return;
     try {
       const response: ApiKeyResponse = await apiClient.createApiKey(customer.customerId, e.detail.name);
       newApiKey = response.apiKey;
+      if (e.detail.allowedOrigins?.length && response.keyId) {
+        await apiClient.updateKeyOrigins(customer.customerId, response.keyId, e.detail.allowedOrigins);
+      }
       showNewKeyModal = true;
       await loadApiKeys();
     } catch (err) {

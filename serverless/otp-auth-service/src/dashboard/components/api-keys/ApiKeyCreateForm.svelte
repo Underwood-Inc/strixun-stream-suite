@@ -2,13 +2,46 @@
   import { createEventDispatcher } from 'svelte';
   import Card from '$dashboard/components/Card.svelte';
 
-  const dispatch = createEventDispatcher<{ create: { name: string } }>();
+  const dispatch = createEventDispatcher<{ create: { name: string; allowedOrigins?: string[] } }>();
 
   let newKeyName = '';
+  let origins: string[] = [];
+  let newOrigin = '';
+  let originsError: string | null = null;
+  let showOrigins = false;
+
+  function addOrigin() {
+    const origin = newOrigin.trim();
+    if (!origin) return;
+    originsError = null;
+    if (!origin.startsWith('http://') && !origin.startsWith('https://')) {
+      originsError = 'Origin must start with http:// or https://';
+      return;
+    }
+    const normalized = origin.replace(/\/$/, '');
+    if (origins.includes(normalized)) {
+      originsError = 'Already added';
+      return;
+    }
+    origins = [...origins, normalized];
+    newOrigin = '';
+  }
+
+  function removeOrigin(origin: string) {
+    origins = origins.filter((o) => o !== origin);
+    originsError = null;
+  }
 
   function handleCreate() {
-    dispatch('create', { name: newKeyName.trim() || 'Default API Key' });
+    const name = newKeyName.trim() || 'Default API Key';
+    dispatch('create', {
+      name,
+      allowedOrigins: origins.length > 0 ? origins : undefined,
+    });
     newKeyName = '';
+    origins = [];
+    newOrigin = '';
+    originsError = null;
   }
 </script>
 
@@ -20,11 +53,60 @@
       class="create-form__input"
       placeholder="Key name (optional)"
       bind:value={newKeyName}
-      onkeypress={(e) => e.key === 'Enter' && handleCreate()}
+      onkeypress={(e) => e.key === 'Enter' && !e.shiftKey && handleCreate()}
     />
     <button class="create-form__button" onclick={handleCreate}>
       Create API Key
     </button>
+  </div>
+
+  <div class="create-form__cors">
+    <button
+      type="button"
+      class="create-form__cors-toggle"
+      onclick={() => (showOrigins = !showOrigins)}
+      aria-expanded={showOrigins}
+      aria-controls="create-form-cors-panel"
+    >
+      {showOrigins ? '▼' : '▶'} Allowed origins (optional)
+    </button>
+    {#if showOrigins}
+      <div id="create-form-cors-panel" class="create-form__cors-panel" role="region" aria-label="CORS allowed origins">
+        <p class="create-form__cors-hint">
+          Restrict this key to specific origins (e.g. <code>https://myapp.com</code>, <code>http://localhost:3000</code>). Leave empty to allow any origin.
+        </p>
+        {#if originsError}
+          <div class="create-form__cors-error">{originsError}</div>
+        {/if}
+        <div class="create-form__cors-add">
+          <input
+            type="text"
+            class="create-form__input create-form__cors-input"
+            placeholder="https://your-app.com or http://localhost:3000"
+            bind:value={newOrigin}
+            onkeypress={(e) => e.key === 'Enter' && (e.preventDefault(), addOrigin())}
+          />
+          <button type="button" class="create-form__cors-add-btn" onclick={addOrigin}>Add</button>
+        </div>
+        {#if origins.length > 0}
+          <ul class="create-form__cors-list">
+            {#each origins as origin}
+              <li class="create-form__cors-item">
+                <code class="create-form__cors-value">{origin}</code>
+                <button
+                  type="button"
+                  class="create-form__cors-remove"
+                  onclick={() => removeOrigin(origin)}
+                  aria-label="Remove {origin}"
+                >
+                  ×
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    {/if}
   </div>
 </Card>
 
@@ -65,5 +147,116 @@
   .create-form__button:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 0 var(--accent-dark);
+  }
+
+  .create-form__cors {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--border);
+  }
+
+  .create-form__cors-toggle {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: var(--spacing-xs) 0;
+    text-align: left;
+    width: 100%;
+  }
+
+  .create-form__cors-toggle:hover {
+    color: var(--accent-light);
+  }
+
+  .create-form__cors-panel {
+    margin-top: var(--spacing-md);
+  }
+
+  .create-form__cors-hint {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .create-form__cors-hint code {
+    background: var(--bg-dark);
+    padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+  }
+
+  .create-form__cors-error {
+    font-size: 0.875rem;
+    color: var(--danger);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .create-form__cors-add {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .create-form__cors-input {
+    min-width: 0;
+  }
+
+  .create-form__cors-add-btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--info);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #000;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .create-form__cors-add-btn:hover {
+    filter: brightness(1.1);
+  }
+
+  .create-form__cors-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .create-form__cors-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .create-form__cors-value {
+    font-size: 0.875rem;
+    color: var(--accent);
+    word-break: break-all;
+  }
+
+  .create-form__cors-remove {
+    background: transparent;
+    border: none;
+    color: var(--danger);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    flex-shrink: 0;
+    opacity: 0.8;
+  }
+
+  .create-form__cors-remove:hover {
+    opacity: 1;
   }
 </style>
