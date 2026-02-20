@@ -12,8 +12,7 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { decodeJWTHeader, verifyRS256JWT } from './jwt.js';
-import type { RSAPublicJWK } from './jwt.js';
+import { extractTokenFromRequest, verifyWithJWKS } from '@strixun/oidc-jwt';
 
 /**
  * Admin access level
@@ -64,26 +63,6 @@ export function verifySuperAdminKey(apiKey: string, env: RouteProtectionEnv): bo
     return apiKey === superAdminKey;
 }
 
-let _jwksCache: { keys: RSAPublicJWK[]; fetchedAt: number } | null = null;
-const JWKS_CACHE_TTL_MS = 600_000; // 10 minutes
-
-async function fetchJWKS(env: RouteProtectionEnv): Promise<RSAPublicJWK[]> {
-    if (_jwksCache && Date.now() - _jwksCache.fetchedAt < JWKS_CACHE_TTL_MS) {
-        return _jwksCache.keys;
-    }
-    const issuer = (env as any).JWT_ISSUER || (env as any).AUTH_SERVICE_URL;
-    if (!issuer) return [];
-    try {
-        const res = await fetch(`${issuer}/.well-known/jwks.json`);
-        if (!res.ok) return _jwksCache?.keys ?? [];
-        const data = (await res.json()) as { keys: RSAPublicJWK[] };
-        _jwksCache = { keys: data.keys, fetchedAt: Date.now() };
-        return data.keys;
-    } catch {
-        return _jwksCache?.keys ?? [];
-    }
-}
-
 /**
  * Decode the payload of an already-verified JWT (no signature check).
  * Safe to call only AFTER token has been verified by authenticateJWT.
@@ -108,32 +87,12 @@ export async function authenticateJWT(
     token: string,
     env: RouteProtectionEnv,
 ): Promise<AuthResult | null> {
-    try {
-        const header = decodeJWTHeader(token);
-        if (!header || header.alg !== 'RS256') {
-            return null;
-        }
-
-        const keys = await fetchJWKS(env);
-        const matchingKey = header.kid
-            ? keys.find(k => k.kid === header.kid)
-            : keys[0];
-        if (!matchingKey) {
-            return null;
-        }
-
-        const payload = await verifyRS256JWT(token, matchingKey);
-        if (!payload || !payload.sub) {
-            return null;
-        }
-
-        return {
-            customerId: (payload.customerId as string) || payload.sub,
-            jwtToken: token,
-        };
-    } catch {
-        return null;
-    }
+    const payload = await verifyWithJWKS(token, env);
+    if (!payload || !payload.sub) return null;
+    return {
+        customerId: (payload.customerId as string) || (payload.sub as string),
+        jwtToken: token,
+    };
 }
 
 /**
@@ -145,29 +104,9 @@ export async function extractAuth(
     request: Request,
     env: RouteProtectionEnv,
 ): Promise<AuthResult | null> {
-    let token: string | null = null;
-    
-    const cookieHeader = request.headers.get('Cookie');
-    if (cookieHeader) {
-        const cookies = cookieHeader.split(';').map(c => c.trim());
-        const authCookie = cookies.find(c => c.startsWith('auth_token='));
-        if (authCookie) {
-            token = authCookie.substring('auth_token='.length).trim();
-        }
-    }
-    
-    if (!token) {
-        const authHeader = request.headers.get('Authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            token = authHeader.substring(7).trim();
-        }
-    }
-    
-    if (!token) {
-        return null;
-    }
-    
-    return await authenticateJWT(token, env);
+    const token = extractTokenFromRequest(request);
+    if (!token) return null;
+    return authenticateJWT(token, env);
 }
 
 /**

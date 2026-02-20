@@ -5,6 +5,7 @@ packages:
   - 'serverless/*/dashboard'
   - 'serverless/*/app'
   - 'packages/api-framework'
+  - 'packages/oidc-jwt'
   - 'packages/service-client'
   - 'packages/types'
   - 'packages/e2e-helpers'
