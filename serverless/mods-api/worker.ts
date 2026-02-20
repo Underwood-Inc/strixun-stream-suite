@@ -260,8 +260,11 @@ export default {
             });
         }
         
-        // Handle request
-        return handleRequest(request, env, ctx);
+        // Use service binding for JWKS fetch when available (avoids same-zone 522 to auth.idling.app)
+        const envForRequest = env.AUTH_SERVICE
+            ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE.fetch(url) }
+            : env;
+        return handleRequest(request, envForRequest, ctx);
     },
     
     /**
@@ -291,6 +294,9 @@ export interface Env {
     
     // R2 Buckets
     MODS_R2: R2Bucket;
+    
+    // Service binding to otp-auth-service (for JWKS fetch; avoids same-zone 522)
+    AUTH_SERVICE?: Fetcher;
     
     // Environment variables
     JWT_ISSUER?: string; // REQUIRED for auth: JWKS URL base (e.g. https://auth.idling.app), from wrangler [vars]

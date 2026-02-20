@@ -63,6 +63,12 @@ id = "680c9dbe86854c369dd23e278abb41f9"
 binding = "MODS_R2"
 bucket_name = "mods-storage"
 
+# Service binding to auth Worker so JWKS fetch uses internal routing (avoids same-zone 522).
+# If you deploy otp-auth-service with --env production, set service = "otp-auth-service-production".
+[[services]]
+binding = "AUTH_SERVICE"
+service = "otp-auth-service"
+
 # Default routes (production) - this is the ONLY route configuration
 [[routes]]
 pattern = "mods-api.idling.app/*"

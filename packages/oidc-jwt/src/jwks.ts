@@ -11,6 +11,8 @@ import { verifyAsymmetricJWT, importPublicKey } from './asymmetric.js';
 export interface JWKSEnv {
     JWT_ISSUER?: string;
     AUTH_SERVICE_URL?: string;
+    /** Optional: use this instead of global fetch (e.g. Service Binding) to avoid same-zone 522. */
+    JWKS_FETCH?: (url: string) => Promise<Response>;
     [key: string]: any;
 }
 
@@ -43,8 +45,9 @@ async function fetchJWKS(env: JWKSEnv): Promise<RSAPublicJWK[]> {
     }
     const issuer = raw.replace(/\/+$/, '');
     const jwksUrl = `${issuer}/.well-known/jwks.json`;
+    const fetcher = typeof env.JWKS_FETCH === 'function' ? env.JWKS_FETCH : fetch;
     try {
-        const res = await fetch(jwksUrl);
+        const res = await fetcher(jwksUrl);
         if (!res.ok) {
             console.warn('[JWKS] Fetch failed:', { url: jwksUrl, status: res.status });
             return _jwksCache?.keys ?? [];
