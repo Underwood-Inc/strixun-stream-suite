@@ -89,3 +89,61 @@ export async function mockJWKSEndpoint(): Promise<() => void> {
 
     return () => { globalThis.fetch = originalFetch; };
 }
+
+/**
+ * Verifies an RS256 JWT using the test key pair.
+ */
+async function verifyTestJWT(token: string): Promise<Record<string, any> | null> {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        const kp = await getTestKeyPair();
+        const [headerB64, payloadB64, sigB64] = parts;
+        const sig = Uint8Array.from(atob(sigB64.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+        const valid = await crypto.subtle.verify(
+            RS256_PARAMS.name,
+            kp.publicKey,
+            sig,
+            new TextEncoder().encode(`${headerB64}.${payloadB64}`),
+        );
+        if (!valid) return null;
+        const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+        if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+        return payload;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Installs a fetch mock that intercepts /auth/me and verifies Bearer token with test key.
+ * Used when mods-api delegates auth to auth service.
+ */
+export async function mockAuthMeEndpoint(): Promise<() => void> {
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+        if (url.includes('/auth/me')) {
+            let auth: string | null = null;
+            const h = init?.headers;
+            if (h instanceof Headers) auth = h.get('Authorization');
+            else if (h && typeof h === 'object') auth = (h as Record<string, string>)['Authorization'] ?? (h as Record<string, string>)['authorization'];
+            const token = auth?.replace(/^Bearer\s+/i, '').trim();
+            if (!token) return new Response(JSON.stringify({ error: 'Authentication required' }), { status: 401 });
+            const payload = await verifyTestJWT(token);
+            if (!payload) return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 });
+            return new Response(
+                JSON.stringify({
+                    customerId: payload.customerId || payload.sub,
+                    isSuperAdmin: payload.isSuperAdmin,
+                    displayName: payload.displayName,
+                }),
+                { status: 200, headers: { 'Content-Type': 'application/json' } },
+            );
+        }
+        return originalFetch(input, init);
+    }) as typeof fetch;
+
+    return () => { globalThis.fetch = originalFetch; };
+}

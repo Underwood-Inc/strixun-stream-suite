@@ -81,6 +81,10 @@ ${mermaidInit}
         </nav>
 
         <main id="main-content" class="container">
+            <div id="fileOriginBanner" class="file-origin-banner" style="display:none;">
+                <strong>⚠️ This page was opened from a local file (file://).</strong> Browsers block API calls from file:// to https://. 
+                <strong>To fix:</strong> Serve this file from a local web server, e.g. <code>npx serve .</code> in the folder containing this file, then open <code>http://localhost:3000/otp-auth-test.html</code>.
+            </div>
             <h1>🔐 OTP Auth API - Integration Test</h1>
             <p class="subtitle">Test your API key with a complete end-to-end OTP flow</p>
             
@@ -92,6 +96,9 @@ ${mermaidInit}
                     Generated: ${generatedAt}
                 </span>
             </div>
+            <p class="subtitle" style="margin-top: 0.5rem; font-size: 0.8rem;">
+                After downloading: serve from a web server (e.g. <code>npx serve .</code>) — opening file:// directly causes "Failed to fetch".
+            </p>
             
             ${interpolatedSecurityDocs}
             

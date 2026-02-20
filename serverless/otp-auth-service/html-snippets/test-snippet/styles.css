@@ -77,6 +77,22 @@ body {
 
 .container { max-width: 900px; margin: 0 auto; padding: 2rem; flex: 1; min-width: 0; }
 
+.file-origin-banner {
+    background: rgba(234, 43, 31, 0.15);
+    border: 1px solid var(--danger);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    color: var(--text);
+    font-size: 0.9rem;
+}
+.file-origin-banner code {
+    background: var(--bg-dark);
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
 /* ===== Sidebar TOC ===== */
 .toc-sidebar {
     width: 280px;

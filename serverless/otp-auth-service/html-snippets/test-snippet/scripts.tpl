@@ -935,6 +935,13 @@ function toggleTocSidebar() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Show banner when opened from file:// - browsers block fetch to https:// from file origin
+    var isFileOrigin = !window.location.origin || window.location.protocol === 'file:';
+    var banner = document.getElementById('fileOriginBanner');
+    if (banner && isFileOrigin) {
+        banner.style.display = 'block';
+    }
+
     buildGlossaryLinks();
     buildSearchIndex();
     buildToc();
