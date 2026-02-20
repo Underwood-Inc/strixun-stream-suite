@@ -11,7 +11,8 @@
 #   - RESEND_FROM_EMAIL: Verified domain email for sending OTP emails
 #   - TWITCH_CLIENT_ID: Your Twitch application client ID
 #   - TWITCH_CLIENT_SECRET: Your Twitch application client secret
-#   - ALLOWED_ORIGINS: Optional - Comma-separated list of allowed CORS origins
+#   - ALLOWED_ORIGINS: Optional - Comma-separated CORS origins. MUST include https://mods.idling.app
+#     for Mods Hub SSO (cookie Domain=.idling.app). Overrides wrangler.toml vars when set.
 #   - SERVICE_API_KEY: Required for Access Service admin endpoints - Service-to-service authentication
 #   - NETWORK_INTEGRITY_KEYPHRASE: Optional - Network security keyphrase for all services
 #   - MODS_PUBLIC_URL: Optional - Mods public URL
@@ -826,7 +827,8 @@ jobs:
           if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
             echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL $ENV_FLAG || true
           fi
-          # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
+          # CRITICAL: ALLOWED_ORIGINS - when set, overrides wrangler.toml. For Mods Hub SSO,
+          # must include https://mods.idling.app so cookie Domain=.idling.app (see apps/mods-hub/MODS_HUB_SSO_TROUBLESHOOTING.md).
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else

@@ -329,7 +329,7 @@ interface Env extends RouteProtectionEnv {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
     SUPER_ADMIN_EMAILS?: string;
-    ADMIN_EMAILS?: string; // Regular admin emails (for future use)
+    ADMIN_EMAILS?: string;
     JWT_SECRET?: string;
     ALLOWED_ORIGINS?: string;
     [key: string]: any;

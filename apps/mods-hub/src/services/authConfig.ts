@@ -30,18 +30,15 @@ export async function isAuthenticated(): Promise<boolean> {
 
 /**
  * Shared client configuration for all API clients
- * 
- * CRITICAL: Uses HttpOnly cookies for authentication
- * - NO tokenGetter (cookie sent automatically)
- * - credentials: 'include' ensures cookie is sent with every request
+ *
+ * HttpOnly cookie auth - cookie sent with credentials: 'include'.
+ * Domain=.idling.app set by auth service so cookie reaches mods-api.idling.app.
  */
 export const sharedClientConfig = {
     defaultHeaders: {
         'Content-Type': 'application/json',
     },
-    // CRITICAL: Include credentials to send HttpOnly cookies
     credentials: 'include' as RequestCredentials,
-    // CRITICAL: NO auth.tokenGetter needed - HttpOnly cookie handles everything!
     auth: {
         onTokenExpired: () => {
             if (typeof window !== 'undefined') {

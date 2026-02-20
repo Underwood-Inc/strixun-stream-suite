@@ -87,21 +87,21 @@ vi.mock('@strixun/api-framework', async (importOriginal) => {
                 customerId: auth?.customerId || null
             };
         }),
-        protectAdminRoute: vi.fn().mockImplementation(async (request, env, level) => {
+        protectAdminRoute: vi.fn().mockImplementation(async (request: Request) => {
             const authHeader = request.headers.get('Authorization');
-            if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            const cookieHeader = request.headers.get('Cookie');
+            const token = authHeader?.startsWith('Bearer ')
+                ? authHeader.substring(7)
+                : cookieHeader?.includes('auth_token=')
+                    ? cookieHeader.split(';').find((c: string) => c.trim().startsWith('auth_token='))?.split('=')[1]?.trim()
+                    : null;
+            if (!token) {
                 return { allowed: false, error: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }) };
             }
-            const token = authHeader.substring(7);
-            if (!token || token === 'regular-token') {
-                const customerId = token === 'regular-token' ? 'cust_456' : null;
-                if (level === 'admin' || level === 'super-admin') {
-                    return { allowed: false, error: new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 }) };
-                }
+            if (token === 'regular-token') {
+                return { allowed: false, error: new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 }) };
             }
-            
-            const customerId = 'cust_123';
-            return { allowed: true, auth: { userId: 'admin_123', customerId } };
+            return { allowed: true, auth: { customerId: 'cust_123', jwtToken: token } };
         }),
     };
 });

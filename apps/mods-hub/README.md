@@ -77,6 +77,8 @@ The Mods Hub is automatically deployed to Cloudflare Pages via GitHub Actions wh
 
 For deployment setup instructions, see [CLOUDFLARE_PAGES_SETUP.md](./CLOUDFLARE_PAGES_SETUP.md)
 
+**401 on authenticated endpoints?** See [MODS_HUB_SSO_TROUBLESHOOTING.md](./MODS_HUB_SSO_TROUBLESHOOTING.md) for cookie domain and `ALLOWED_ORIGINS` fixes.
+
 ## Project Structure
 
 ```
