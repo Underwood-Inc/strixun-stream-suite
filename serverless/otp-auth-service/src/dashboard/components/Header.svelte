@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Customer } from '$dashboard/lib/types';
   import { createEventDispatcher } from 'svelte';
-  import TruncatedText from '@shared-components/svelte/TruncatedText.svelte';
 
   export let customer: Customer | null = null;
 
@@ -17,12 +16,9 @@
     <a href="/" class="app-header__logo"> ★ OTP Auth API</a>
     {#if customer}
       <div class="app-header__user">
-        <span class="app-header__label">Logged in as</span>
-        <TruncatedText position="bottom">
-          <span class="app-header__display-name" style="display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            {customer.displayName || 'Customer'}
-          </span>
-        </TruncatedText>
+        <span class="app-header__user-label">
+          Logged in as <span class="app-header__display-name">{customer.displayName || 'Customer'}</span>
+        </span>
         <button class="app-header__logout" onclick={handleLogout}>Logout</button>
       </div>
     {/if}
@@ -65,9 +61,13 @@
     gap: var(--spacing-md);
   }
 
-  .app-header__label {
+  .app-header__user-label {
     color: var(--text-secondary);
     font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
   }
 
   .app-header__display-name {
@@ -112,7 +112,7 @@
       gap: var(--spacing-sm);
     }
 
-    .app-header__display-name {
+    .app-header__user-label {
       max-width: 150px;
       font-size: 0.875rem;
     }
@@ -136,7 +136,7 @@
       font-size: 1rem;
     }
 
-    .app-header__display-name {
+    .app-header__user-label {
       max-width: 120px;
       font-size: 0.75rem;
     }
