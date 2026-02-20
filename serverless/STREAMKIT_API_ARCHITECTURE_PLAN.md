@@ -290,7 +290,7 @@ export interface Env {
   "version": "1.0.0",
   "description": "Dedicated Cloudflare Worker for Streamkit cloud storage",
   "private": true,
-  "packageManager": "pnpm@10.28.0",
+  "packageManager": "pnpm@10.30.1",
   "type": "module",
   "scripts": {
     "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build && pnpm --filter @strixun/schemas build",
@@ -929,7 +929,7 @@ test_streamkit_api:
     - name: Setup pnpm
       uses: pnpm/action-setup@v4
       with:
-        version: 10.28.0
+        version: 10.30.1
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -981,7 +981,7 @@ deploy_streamkit_api:
     - name: Setup pnpm
       uses: pnpm/action-setup@v4
       with:
-        version: 10.28.0
+        version: 10.30.1
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -1102,7 +1102,7 @@ fi
   "version": "1.0.0",
   "description": "Dedicated Cloudflare Worker for Streamkit cloud storage",
   "private": true,
-  "packageManager": "pnpm@10.28.0",
+  "packageManager": "pnpm@10.30.1",
   "type": "module",
   "scripts": {
     "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/api-framework build && pnpm --filter @strixun/schemas build",
