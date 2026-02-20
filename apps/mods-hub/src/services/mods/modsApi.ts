@@ -17,12 +17,13 @@ import { sharedClientConfig } from '../authConfig';
 
 /**
  * Mods API base URL
- * Production: /api/mods (same-origin proxy) so auth cookie is sent reliably
+ * Production: /api (same-origin proxy at /api/mods/*) so auth cookie is sent reliably.
+ * Paths like /mods/permissions/me become /api/mods/permissions/me - proxy forwards to mods-api.
  * Dev: /mods-api (Vite proxy)
  */
 export const API_BASE_URL = import.meta.env.DEV
   ? '/mods-api'
-  : (import.meta.env.VITE_MODS_API_URL || '/api/mods');
+  : (import.meta.env.VITE_MODS_API_URL || '/api');
 
 /**
  * Singleton mods API client instance

@@ -71,7 +71,7 @@ export function ModMetaTags({ mod, baseUrl }: MetaTagsProps) {
     // The OG image is generated server-side with theming
     const API_BASE_URL = import.meta.env.DEV
       ? '/mods-api'  // Vite proxy in development
-      : (import.meta.env.VITE_MODS_API_URL || '/api/mods');
+      : (import.meta.env.VITE_MODS_API_URL || '/api');
     const ogImageUrl = `${API_BASE_URL}/mods/${mod.slug}/og-image`;
     const imageUrl = ogImageUrl; // Use OG image endpoint for rich preview
     

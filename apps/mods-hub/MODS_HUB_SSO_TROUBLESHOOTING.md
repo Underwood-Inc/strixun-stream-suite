@@ -6,14 +6,14 @@
 
 ## Same-Origin Proxy (Primary Fix)
 
-Mods Hub now uses a **same-origin proxy** at `/api/mods/*` that forwards to mods-api.idling.app. Requests go to `mods.idling.app/api/mods/...` (same origin), so the browser sends the `auth_token` cookie reliably.
+Mods Hub now uses a **same-origin proxy** at `/api/*` that forwards to mods-api.idling.app. Requests go to `mods.idling.app/api/...` (same origin), so the browser sends the `auth_token` cookie reliably.
 
 **Requirements:**
 1. Cookie must have `Domain=.idling.app` (set by auth service at login)
-2. Redeploy mods-hub so the proxy function is live (deploy workflow now defaults `VITE_MODS_API_URL` to `/api/mods`)
+2. Redeploy mods-hub so the proxy function is live (deploy workflow now defaults `VITE_MODS_API_URL` to `/api`)
 3. Clear cookies and re-login if you have an old cookie from before the fix
 
-**If `VITE_MODS_API_URL` is set in GitHub Secrets** to `https://mods-api.idling.app`, remove it or change to `/api/mods` so the app uses the proxy instead of direct cross-origin calls.
+**If `VITE_MODS_API_URL` is set in GitHub Secrets** to `https://mods-api.idling.app`, remove it or change to `/api` so the app uses the proxy instead of direct cross-origin calls.
 
 ---
 
@@ -92,7 +92,7 @@ sequenceDiagram
 
     Note over User,ModsAPI: API call via same-origin proxy
     User->>ModsHub: Visit mods.idling.app
-    User->>ModsHub: fetch /api/mods/permissions/me (same origin, credentials: include)
+    User->>ModsHub: fetch /api/mods/permissions/me (same origin via /api/* proxy)
     Note over User: Browser sends auth_token (Domain=.idling.app matches mods.idling.app)
     ModsHub->>ModsAPI: Proxy forwards request with Cookie header
     ModsAPI->>Auth: Verify token via /auth/me
@@ -115,9 +115,9 @@ sequenceDiagram
    - Look for `auth_token`; its Domain should be `.idling.app`
 
 2. **Check network request (proxy flow):**
-   - DevTools → Network → select a request to `mods.idling.app/api/mods/...`
+   - DevTools → Network → select a request to `mods.idling.app/api/...`
    - Request Headers should include `Cookie: auth_token=...`
-   - If you still see requests to `mods-api.idling.app` directly, the app may not be using the proxy (check `API_BASE_URL` in modsApi.ts)
+   - If you still see requests to `mods-api.idling.app` directly, the app may not be using the proxy (check `API_BASE_URL` in modsApi.ts - should be `/api`)
 
 3. **Check CORS (if 401 persists):**
    - Response headers should include `Access-Control-Allow-Origin: https://mods.idling.app`
@@ -129,8 +129,8 @@ sequenceDiagram
 
 | File | Purpose |
 |------|---------|
-| `apps/mods-hub/functions/api/mods/[[path]].ts` | Same-origin proxy: `/api/mods/*` → mods-api.idling.app |
-| `apps/mods-hub/src/services/mods/modsApi.ts` | `API_BASE_URL` (uses `/api/mods` in prod) |
+| `apps/mods-hub/functions/api/[[path]].ts` | Same-origin proxy: `/api/*` → mods-api.idling.app |
+| `apps/mods-hub/src/services/mods/modsApi.ts` | `API_BASE_URL` (uses `/api` in prod) |
 | `serverless/otp-auth-service/wrangler.toml` | `ALLOWED_ORIGINS` in `[vars]` and `[env.production.vars]` |
 | `serverless/otp-auth-service/utils/cookie-domains.ts` | Derives cookie domain from `ALLOWED_ORIGINS` |
 | `serverless/otp-auth-service/handlers/auth/verify-otp.ts` | Sets cookie with domain from `getCookieDomains()` |

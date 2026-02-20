@@ -2,10 +2,10 @@
  * Same-Origin Proxy for Mods API
  *
  * CRITICAL: Fixes 401 on /mods/permissions/me and /admin/* when auth cookie
- * is not sent cross-origin. By proxying through mods.idling.app/api/mods/*,
- * the request is same-origin and the browser sends the auth_token cookie.
+ * is not sent cross-origin. Client uses baseURL=/api, paths like /mods/permissions/me
+ * become /api/mods/permissions/me - this proxy forwards to mods-api.idling.app.
  *
- * Forwards all requests to mods-api.idling.app with Cookie and other headers.
+ * Forwards all /api/* requests to mods-api.idling.app with Cookie and other headers.
  */
 
 interface Env {
