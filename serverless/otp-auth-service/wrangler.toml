@@ -42,6 +42,7 @@ watch_dir = ["handlers", "html-snippets", "router", "services", "utils", "shared
 
 [env.production.vars]
 ENVIRONMENT = "production"
+JWT_ISSUER = "https://auth.idling.app"
 CUSTOMER_API_URL = "https://customer-api.idling.app"
 ACCESS_SERVICE_URL = "https://access-api.idling.app"
 

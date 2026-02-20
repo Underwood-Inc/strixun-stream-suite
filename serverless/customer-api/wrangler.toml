@@ -18,7 +18,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # Production environment
 [env.production]
-vars = { ENVIRONMENT = "production", ACCESS_SERVICE_URL = "https://access-api.idling.app" }
+vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", ACCESS_SERVICE_URL = "https://access-api.idling.app" }
 
 # Production KV Namespace
 [[env.production.kv_namespaces]]

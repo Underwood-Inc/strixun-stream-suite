@@ -7,20 +7,28 @@
  * Uses real encryption/decryption, mocks network
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { encryptWithJWT, decryptWithJWT } from '@strixun/api-framework';
-import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
+import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
 
 // Mock external dependencies
 vi.mock('@strixun/api-framework/enhanced', () => ({
     createCORSHeaders: vi.fn(() => new Headers()),
 }));
 
+let cleanupJWKS: () => void;
+
 describe('Encryption/Decryption Flow Integration', () => {
     const mockEnv = {
-        JWT_SECRET: 'test-jwt-secret-for-integration-tests',
+        JWT_ISSUER: 'https://test-issuer.example.com',
         ALLOWED_ORIGINS: '*',
     } as any;
+
+    beforeAll(async () => {
+        cleanupJWKS = await mockJWKSEndpoint();
+    });
+
+    afterAll(() => cleanupJWKS());
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -34,13 +42,13 @@ describe('Encryption/Decryption Flow Integration', () => {
 
             // Create JWT token for encryption
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const token = await createJWT({
+            const token = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             // Original request data
             const originalData = {
@@ -74,22 +82,22 @@ describe('Encryption/Decryption Flow Integration', () => {
 
             // Create JWT token for encryption
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const correctToken = await createJWT({
+            const correctToken = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             // Create different token (wrong user)
-            const wrongToken = await createJWT({
+            const wrongToken = await createRS256JWT({
                 sub: 'user_456',
                 email: 'other@example.com',
                 customerId: 'cust_xyz',
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             const originalData = { modId: 'mod_123', title: 'Test Mod' };
 
@@ -106,13 +114,13 @@ describe('Encryption/Decryption Flow Integration', () => {
             const customerId = 'cust_abc';
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const token = await createJWT({
+            const token = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             // Simulate API response data
             const responseData = {
@@ -142,13 +150,13 @@ describe('Encryption/Decryption Flow Integration', () => {
             const customerId = 'cust_abc';
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const token = await createJWT({
+            const token = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             const complexData = {
                 mod: {
@@ -186,13 +194,13 @@ describe('Encryption/Decryption Flow Integration', () => {
             const customerId = 'cust_abc';
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const token = await createJWT({
+            const token = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             // Step 1: Client encrypts request
             const requestData = {
@@ -232,13 +240,13 @@ describe('Encryption/Decryption Flow Integration', () => {
             const customerId = 'cust_abc';
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const baseToken = await createJWT({
+            const baseToken = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             // Simulate token with whitespace (as might be stored in localStorage)
             const tokenWithWhitespace = `  ${baseToken}  `;
@@ -273,13 +281,13 @@ describe('Encryption/Decryption Flow Integration', () => {
             const customerId = 'cust_abc';
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const baseToken = await createJWT({
+            const baseToken = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             // Simulate token with whitespace
             const tokenWithWhitespace = `  ${baseToken}  `;
@@ -305,13 +313,13 @@ describe('Encryption/Decryption Flow Integration', () => {
             const customerId = 'cust_abc';
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const baseToken = await createJWT({
+            const baseToken = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             // Simulate token with whitespace stored in auth store
             const tokenWithWhitespace = `  ${baseToken}  `;

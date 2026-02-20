@@ -12,19 +12,22 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
-import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
+import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
 
 const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
-
-// Get secrets from environment (set by shared setup)
-const JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-for-integration-tests';
+const AUTH_ISSUER = 'https://test-issuer.example.com';
 
 const env = {
-    JWT_SECRET,
+    JWT_ISSUER: AUTH_ISSUER,
     AUTH_API_URL: OTP_AUTH_SERVICE_URL,
 } as any;
 
+let cleanupJWKS: () => void;
+
 describe('Session Restore Integration', () => {
+    beforeAll(async () => {
+        cleanupJWKS = await mockJWKSEndpoint();
+    });
     // NOTE: These tests don't need live workers - they test JWT utilities locally
 
     describe('Token Validation', () => {
@@ -34,13 +37,13 @@ describe('Session Restore Integration', () => {
             const customerId = 'cust_abc';
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const token = await createJWT({
+            const token = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, env.JWT_SECRET);
+            });
 
             // Token should be valid (not expired, properly signed)
             expect(token).toBeDefined();
@@ -141,6 +144,7 @@ describe('Session Restore Integration', () => {
     });
 
     afterAll(async () => {
+      cleanupJWKS();
       // Cleanup: Clear local KV storage to ensure test isolation
       await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9'); // OTP_AUTH_KV namespace
       await clearLocalKVNamespace('0d3dafe0994046c6a47146c6bd082ad3'); // MODS_KV namespace

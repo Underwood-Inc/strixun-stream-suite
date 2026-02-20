@@ -7,7 +7,7 @@ compatibility_date = "2024-01-01"
 # Then wrangler deploys the pre-built dist/worker.js
 
 [env.production]
-vars = { ENVIRONMENT = "production", CUSTOMER_API_URL = "https://customer-api.idling.app" }
+vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", CUSTOMER_API_URL = "https://customer-api.idling.app" }
 # Custom domain route (s.idling.app/*) is managed in Cloudflare Dashboard
 # Routes configured in the dashboard take precedence over wrangler.toml
 # KV Namespace for storing URL mappings

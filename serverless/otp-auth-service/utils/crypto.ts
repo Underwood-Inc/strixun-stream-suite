@@ -1,6 +1,10 @@
 /**
  * Cryptographic utilities
- * OTP generation, hashing, JWT creation and verification
+ * OTP generation, hashing, and AES encryption for API-key storage.
+ *
+ * JWT signing/verification is handled exclusively by:
+ *   - utils/asymmetric-jwt.ts  (RS256 signing via OIDC_SIGNING_KEY)
+ *   - utils/verify-token.ts    (RS256 verification)
  */
 
 // Re-export JWTPayload from shared utilities
@@ -58,40 +62,14 @@ export async function generateUserId(email: string): Promise<string> {
     return `user_${hash.substring(0, 12)}`;
 }
 
-// Use shared JWT utilities from api-framework (canonical implementation)
-import { createJWT as createJWTShared, verifyJWT as verifyJWTShared, type JWTPayload as JWTPayloadShared } from '@strixun/api-framework/jwt';
-
 /**
- * Create JWT token
- * Uses shared implementation from api-framework
- * @param payload - Token payload
- * @param secret - Secret key for signing
- * @returns JWT token
- */
-export async function createJWT(payload: JWTPayload, secret: string): Promise<string> {
-    return createJWTShared(payload, secret);
-}
-
-/**
- * Verify JWT token
- * Uses shared implementation from api-framework
- * @param token - JWT token
- * @param secret - Secret key for verification
- * @returns Decoded payload or null if invalid
- */
-export async function verifyJWT(token: string, secret: string): Promise<JWTPayload | null> {
-    return verifyJWTShared(token, secret);
-}
-
-/**
- * Get JWT secret from environment
- * @param env - Worker environment
- * @returns JWT secret
- * @throws Error if JWT_SECRET is not set
+ * Get AES encryption secret from environment.
+ * Used exclusively for encrypting/decrypting API keys at rest (AES-GCM).
+ * NOT used for JWT signing — that is RS256 via OIDC_SIGNING_KEY.
  */
 export function getJWTSecret(env: Env): string {
     if (!env.JWT_SECRET) {
-        throw new Error('JWT_SECRET environment variable is required. Set it via: wrangler secret put JWT_SECRET');
+        throw new Error('JWT_SECRET environment variable is required for API-key encryption. Set it via: wrangler secret put JWT_SECRET');
     }
     return env.JWT_SECRET;
 }

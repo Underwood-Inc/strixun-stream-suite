@@ -11,9 +11,9 @@
  */
 
 // @vitest-environment node
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { handleDashboardRoutes } from './dashboard-routes.js';
-import { createJWT } from '../utils/crypto.js';
+import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
 
 // Only mock external dependencies (KV, handlers), NOT auth functions
 vi.mock('../services/customer.js', () => ({
@@ -96,8 +96,16 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
         } as any,
         SUPER_ADMIN_API_KEY: 'super-secret-key', // TEST-ONLY: Not a real production key
         SUPER_ADMIN_EMAILS: 'admin@example.com,superadmin@example.com', // TEST-ONLY: example.com is reserved for examples
-        JWT_SECRET: 'test-jwt-secret-for-integration-tests', // TEST-ONLY: Not a real production secret
+        JWT_ISSUER: 'https://test-issuer.example.com',
     };
+
+    let cleanupJWKS: () => void;
+
+    beforeAll(async () => {
+        cleanupJWKS = await mockJWKSEndpoint();
+    });
+
+    afterAll(() => cleanupJWKS());
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -160,11 +168,11 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
     describe('Authentication Flow Integration', () => {
         it('should authenticate with JWT and allow GET /admin/analytics for any authenticated user', async () => {
             // Create a valid JWT token for any user (analytics are customer-scoped)
-            const jwtToken = await createJWT({
+            const jwtToken = await createRS256JWT({
                 email: 'admin@example.com',
                 customerId: 'cust_123',
                 exp: Math.floor(Date.now() / 1000) + 3600,
-            }, mockEnv.JWT_SECRET!);
+            });
 
             // Dashboard routes use HttpOnly cookies, not Authorization header
             const request = new Request('https://api.example.com/admin/analytics', {
@@ -183,11 +191,11 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
         it('should allow regular users to access their own analytics (customer-scoped)', async () => {
             // Create a valid JWT token for a regular user (not super admin)
             // Analytics are filtered by customerId, so regular users see only their own data
-            const jwtToken = await createJWT({
+            const jwtToken = await createRS256JWT({
                 email: 'regularuser@example.com',
                 customerId: 'cust_456',
                 exp: Math.floor(Date.now() / 1000) + 3600,
-            }, mockEnv.JWT_SECRET!);
+            });
 
             // Dashboard routes use HttpOnly cookies, not Authorization header
             const request = new Request('https://api.example.com/admin/analytics', {

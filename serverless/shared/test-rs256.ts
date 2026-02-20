@@ -2,6 +2,13 @@
  * RS256 test utilities
  * Generates ephemeral key pairs for integration tests that need
  * real RS256 JWT verification through the production code path.
+ *
+ * Usage:
+ *   import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
+ *
+ *   let cleanupJWKS: () => void;
+ *   beforeAll(async () => { cleanupJWKS = await mockJWKSEndpoint(); });
+ *   afterAll(() => cleanupJWKS());
  */
 
 let _cachedKeyPair: CryptoKeyPair | null = null;
@@ -36,6 +43,10 @@ function base64url(buf: ArrayBuffer | Uint8Array): string {
         .replace(/=/g, '');
 }
 
+/**
+ * Create an RS256-signed JWT with the given payload.
+ * The token will be verifiable by the mocked JWKS endpoint.
+ */
 export async function createRS256JWT(
     payload: Record<string, any>,
 ): Promise<string> {
@@ -57,8 +68,8 @@ export async function createRS256JWT(
 }
 
 /**
- * Installs a fetch mock that intercepts JWKS requests and returns the test public key.
- * Call in beforeAll/beforeEach. Returns a cleanup function.
+ * Installs a fetch mock that intercepts JWKS requests and returns
+ * the test public key. Returns a cleanup function to restore fetch.
  */
 export async function mockJWKSEndpoint(): Promise<() => void> {
     const publicJWK = await getTestPublicJWK();

@@ -7,8 +7,8 @@
  * Uses real handlers, mocks external services
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
+import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
 
 // Mock external dependencies
 vi.mock('@strixun/api-framework/enhanced', () => ({
@@ -21,9 +21,11 @@ vi.mock('../utils/admin.js', () => ({
     hasUploadPermission: vi.fn().mockResolvedValue(true),
 }));
 
+let cleanupJWKS: () => void;
+
 describe('Mod Review Flow Integration', () => {
     const mockEnv = {
-        JWT_SECRET: 'test-jwt-secret-for-integration-tests',
+        JWT_ISSUER: 'https://test-issuer.example.com',
         MODS_KV: {
             get: vi.fn(),
             put: vi.fn(),
@@ -43,6 +45,12 @@ describe('Mod Review Flow Integration', () => {
         createdAt: new Date().toISOString(),
     };
 
+    beforeAll(async () => {
+        cleanupJWKS = await mockJWKSEndpoint();
+    });
+
+    afterAll(() => cleanupJWKS());
+
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(mockEnv.MODS_KV.get).mockResolvedValue(JSON.stringify(mockMod));
@@ -60,13 +68,13 @@ describe('Mod Review Flow Integration', () => {
             const customerId = 'cust_abc';
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const token = await createJWT({
+            const token = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             // Step 1: Submit mod (status should be 'pending')
             const submittedMod = {
@@ -85,13 +93,13 @@ describe('Mod Review Flow Integration', () => {
             const customerId = 'cust_abc';
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const token = await createJWT({
+            const token = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             // Author should be able to view their own mod
             const isAuthor = mockMod.authorId === userId;
@@ -108,13 +116,13 @@ describe('Mod Review Flow Integration', () => {
             mockIsSuperAdmin.mockResolvedValue(true);
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const adminToken = await createJWT({
+            const adminToken = await createRS256JWT({
                 sub: adminUserId,
                 email: adminEmail,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             // Admin should be able to review mod (verified via mock)
             // Test the mock directly since we're in unit test mode

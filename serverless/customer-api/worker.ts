@@ -169,32 +169,6 @@ export default {
             console.error('[Customer API Worker] Request path:', path);
             console.error('[Customer API Worker] Request method:', request.method);
             
-            // Check if it's a JWT secret error (configuration issue)
-            if (error.message && error.message.includes('JWT_SECRET')) {
-                const rfcError = createError(
-                    request,
-                    500,
-                    'Server Configuration Error',
-                    'JWT_SECRET environment variable is required. Please contact the administrator.'
-                );
-                const corsHeaders = createCORSHeaders(request, {
-                    credentials: true,
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()).filter(Boolean) || [],
-                });
-                const errorResponse = new Response(JSON.stringify(rfcError), {
-                    status: 500,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
-                // CRITICAL: Allow service-to-service calls without JWT
-                const wrappedResult = await wrapWithEncryption(errorResponse, null, request, env, {
-                    allowServiceCallsWithoutJWT: true
-                });
-                return wrappedResult.response;
-            }
-            
             const rfcError = createError(
                 request,
                 500,

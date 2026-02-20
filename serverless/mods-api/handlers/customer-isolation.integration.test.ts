@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
 import { calculateRequestIntegrity } from '@strixun/service-client/integrity';
-import { createRS256JWT, mockJWKSEndpoint } from '../utils/test-rs256.js';
+import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
 import { authenticateRequest } from '../utils/auth.js';
 
 const NETWORK_INTEGRITY_KEYPHRASE = process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase';

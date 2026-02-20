@@ -7,9 +7,9 @@
  * Uses real hash calculation, mocks R2/KV
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { calculateFileHash, formatStrixunHash } from '../utils/hash.js';
-import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
+import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
 
 // Mock external dependencies
 vi.mock('@strixun/api-framework/enhanced', () => ({
@@ -21,9 +21,11 @@ vi.mock('../../utils/admin.js', () => ({
     isEmailAllowed: vi.fn().mockReturnValue(true),
 }));
 
+let cleanupJWKS: () => void;
+
 describe('Mod Upload Flow Integration', () => {
     const mockEnv = {
-        JWT_SECRET: 'test-jwt-secret-for-integration-tests',
+        JWT_ISSUER: 'https://test-issuer.example.com',
         MODS_KV: {
             get: vi.fn(),
             put: vi.fn(),
@@ -35,6 +37,12 @@ describe('Mod Upload Flow Integration', () => {
         },
         ALLOWED_ORIGINS: '*',
     } as any;
+
+    beforeAll(async () => {
+        cleanupJWKS = await mockJWKSEndpoint();
+    });
+
+    afterAll(() => cleanupJWKS());
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -143,13 +151,13 @@ describe('Mod Upload Flow Integration', () => {
             const customerId = 'cust_abc';
             
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const token = await createJWT({
+            const token = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             const fileContent = new TextEncoder().encode('test mod file content');
             const modId = 'mod_123';

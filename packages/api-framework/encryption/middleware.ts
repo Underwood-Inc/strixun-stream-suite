@@ -10,6 +10,43 @@ import { encryptWithJWT } from './jwt-encryption';
 import { isServiceToServiceCall, wrapResponseWithIntegrity } from '@strixun/service-client/integrity-response';
 
 /**
+ * Create a new Response preserving all Set-Cookie headers from the original.
+ * `new Headers(src)` should copy multi-value headers, but this function
+ * adds an explicit tuple-based copy as a safety net.
+ */
+function cloneResponsePreservingCookies(
+    body: BodyInit | null,
+    original: Response,
+    extraHeaders?: Record<string, string>,
+    overrides?: { status?: number; statusText?: string },
+): Response {
+    const tuples: [string, string][] = [];
+
+    original.headers.forEach((value, name) => {
+        if (name.toLowerCase() !== 'set-cookie') {
+            tuples.push([name, value]);
+        }
+    });
+
+    const setCookies = original.headers.getSetCookie?.() ?? [];
+    for (const cookie of setCookies) {
+        tuples.push(['Set-Cookie', cookie]);
+    }
+
+    if (extraHeaders) {
+        for (const [k, v] of Object.entries(extraHeaders)) {
+            tuples.push([k, v]);
+        }
+    }
+
+    return new Response(body, {
+        status: overrides?.status ?? original.status,
+        statusText: overrides?.statusText ?? original.statusText,
+        headers: tuples,
+    });
+}
+
+/**
  * Route result interface
  */
 export interface RouteResult {
@@ -229,15 +266,9 @@ export async function wrapWithEncryption(
             // Ensure X-Encrypted header is set (wrapResponseWithIntegrity already added integrity header)
             // Read the body once (addResponseIntegrityHeader already converted it to string)
             const bodyText = await responseWithIntegrity.text();
-            const finalHeaders = new Headers(responseWithIntegrity.headers);
-            finalHeaders.set('X-Encrypted', 'false');
             
             // Create new response with integrity header preserved and X-Encrypted added
-            const finalResponse = new Response(bodyText, {
-                status: responseWithIntegrity.status,
-                statusText: responseWithIntegrity.statusText,
-                headers: finalHeaders,
-            });
+            const finalResponse = cloneResponsePreservingCookies(bodyText, responseWithIntegrity, { 'X-Encrypted': 'false' });
             
             return {
                 response: finalResponse,
@@ -268,27 +299,17 @@ export async function wrapWithEncryption(
     if (!requireJWT) {
       // JWT not required - return unencrypted response
       const contentType = handlerResponse.headers.get('content-type');
-      const headers = new Headers(handlerResponse.headers);
-      headers.set('X-Encrypted', 'false');
       
       if (contentType?.includes('application/json')) {
         const bodyText = await handlerResponse.text();
         return {
-          response: new Response(bodyText, {
-            status: handlerResponse.status,
-            statusText: handlerResponse.statusText,
-            headers: headers,
-          }),
+          response: cloneResponsePreservingCookies(bodyText, handlerResponse, { 'X-Encrypted': 'false' }),
           customerId: auth?.customerId || null,
         };
       }
       
       return {
-        response: new Response(handlerResponse.body, {
-          status: handlerResponse.status,
-          statusText: handlerResponse.statusText,
-          headers: headers,
-        }),
+        response: cloneResponsePreservingCookies(handlerResponse.body, handlerResponse, { 'X-Encrypted': 'false' }),
         customerId: auth?.customerId || null,
       };
     }
@@ -297,27 +318,17 @@ export async function wrapWithEncryption(
     if (isServiceCall && allowServiceCallsWithoutJWT) {
       // Service call allowed without JWT - return unencrypted with integrity header
       const contentType = handlerResponse.headers.get('content-type');
-      const headers = new Headers(handlerResponse.headers);
-      headers.set('X-Encrypted', 'false');
       
       if (contentType?.includes('application/json')) {
         const bodyText = await handlerResponse.text();
         return {
-          response: new Response(bodyText, {
-            status: handlerResponse.status,
-            statusText: handlerResponse.statusText,
-            headers: headers,
-          }),
+          response: cloneResponsePreservingCookies(bodyText, handlerResponse, { 'X-Encrypted': 'false' }),
           customerId: auth?.customerId || null,
         };
       }
       
       return {
-        response: new Response(handlerResponse.body, {
-          status: handlerResponse.status,
-          statusText: handlerResponse.statusText,
-          headers: headers,
-        }),
+        response: cloneResponsePreservingCookies(handlerResponse.body, handlerResponse, { 'X-Encrypted': 'false' }),
         customerId: auth?.customerId || null,
       };
     }
@@ -351,30 +362,18 @@ export async function wrapWithEncryption(
     }
     
     // JWT not required - return unencrypted (for endpoints that explicitly don't require JWT, like auth endpoints that return JWTs)
-    const headers = new Headers(handlerResponse.headers);
-    headers.set('X-Encrypted', 'false');
-    
-    // Get content type before reading body
     const contentType = handlerResponse.headers.get('content-type');
     
     if (contentType?.includes('application/json')) {
       const bodyText = await handlerResponse.text();
       return {
-        response: new Response(bodyText, {
-          status: handlerResponse.status,
-          statusText: handlerResponse.statusText,
-          headers: headers,
-        }),
+        response: cloneResponsePreservingCookies(bodyText, handlerResponse, { 'X-Encrypted': 'false' }),
         customerId: auth?.customerId || null,
       };
     }
     
     return {
-      response: new Response(handlerResponse.body, {
-        status: handlerResponse.status,
-        statusText: handlerResponse.statusText,
-        headers: headers,
-      }),
+      response: cloneResponsePreservingCookies(handlerResponse.body, handlerResponse, { 'X-Encrypted': 'false' }),
       customerId: auth?.customerId || null,
     };
   }
@@ -388,14 +387,8 @@ export async function wrapWithEncryption(
     const contentType = handlerResponse.headers.get('content-type');
     if (!contentType?.includes('application/json')) {
       // Not JSON, don't encrypt but set header
-      const headers = new Headers(handlerResponse.headers);
-      headers.set('X-Encrypted', 'false');
       return {
-        response: new Response(handlerResponse.body, {
-          status: handlerResponse.status,
-          statusText: handlerResponse.statusText,
-          headers: headers,
-        }),
+        response: cloneResponsePreservingCookies(handlerResponse.body, handlerResponse, { 'X-Encrypted': 'false' }),
         customerId: auth.customerId || null,
       };
     }
@@ -460,15 +453,11 @@ export async function wrapWithEncryption(
     }
 
     // Create encrypted response - ALWAYS set X-Encrypted header
-    const headers = new Headers(handlerResponse.headers);
-    headers.set('Content-Type', 'application/json');
-    headers.set('X-Encrypted', 'true');
-
-    const encryptedResponse = new Response(JSON.stringify(encrypted), {
-      status: handlerResponse.status,
-      statusText: handlerResponse.statusText,
-      headers: headers,
-    });
+    const encryptedResponse = cloneResponsePreservingCookies(
+      JSON.stringify(encrypted),
+      handlerResponse,
+      { 'Content-Type': 'application/json', 'X-Encrypted': 'true' },
+    );
 
     // For JWT-encrypted responses, we don't add integrity header
     // (integrity is only for service-to-service calls)
@@ -482,27 +471,21 @@ export async function wrapWithEncryption(
     // If JSON parsing failed, responseData will be null and body is already consumed
     // In this case, we can't reconstruct the response - return error response
     if (responseData === null) {
-      const headers = new Headers(handlerResponse.headers);
-      headers.set('Content-Type', 'application/json');
-      headers.set('X-Encrypted', 'false');
       return {
-        response: new Response(JSON.stringify({
-          error: 'Failed to parse response for encryption',
-          message: error instanceof Error ? error.message : String(error)
-        }), {
-          status: 500,
-          statusText: 'Internal Server Error',
-          headers: headers,
-        }),
+        response: cloneResponsePreservingCookies(
+          JSON.stringify({
+            error: 'Failed to parse response for encryption',
+            message: error instanceof Error ? error.message : String(error)
+          }),
+          handlerResponse,
+          { 'Content-Type': 'application/json', 'X-Encrypted': 'false' },
+          { status: 500, statusText: 'Internal Server Error' },
+        ),
         customerId: auth.customerId || null,
       };
     }
     
     // Encryption failed but we have parsed data - return unencrypted with X-Encrypted: false
-    const headers = new Headers(handlerResponse.headers);
-    headers.set('Content-Type', 'application/json');
-    headers.set('X-Encrypted', 'false');
-    
     // Restore thumbnailUrls if they were removed before encryption attempt
     let dataToReturn = responseData;
     if (thumbnailUrlsMap && Object.keys(thumbnailUrlsMap).length > 0 && dataToReturn && typeof dataToReturn === 'object') {
@@ -522,11 +505,11 @@ export async function wrapWithEncryption(
     }
     
     return {
-      response: new Response(JSON.stringify(dataToReturn), {
-        status: handlerResponse.status,
-        statusText: handlerResponse.statusText,
-        headers: headers,
-      }),
+      response: cloneResponsePreservingCookies(
+        JSON.stringify(dataToReturn),
+        handlerResponse,
+        { 'Content-Type': 'application/json', 'X-Encrypted': 'false' },
+      ),
       customerId: auth.customerId || null,
     };
   }

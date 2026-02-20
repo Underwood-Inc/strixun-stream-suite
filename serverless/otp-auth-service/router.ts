@@ -27,6 +27,7 @@ import type { ExecutionContext } from '@strixun/types';
 const NO_JWT_REQUIRED_PATHS = [
     '/auth/request-otp',
     '/auth/verify-otp',      // ⚠ CRITICAL - Returns JWT token
+    '/auth/refresh',         // Exchanges refresh_token cookie for new tokens - must work when access token expired
     '/auth/me',              // Reads HttpOnly cookie for SSO
     '/signup',
     '/signup/verify',
@@ -330,15 +331,27 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         const authForEncryptionParam = isHttpOnlyCookie ? null : authForEncryption;
         const requireJWT = authForEncryptionParam ? shouldRequireJWT : false;
         
+        // Log Set-Cookie count BEFORE encryption middleware (for cookie-setting endpoints)
+        if (path === '/auth/verify-otp' || path === '/auth/refresh') {
+            const preCookies = response.headers.getSetCookie?.() ?? [];
+            console.log(`[Router] Pre-encryption Set-Cookie count for ${path}:`, preCookies.length);
+        }
+
         const encryptedResult = await wrapWithEncryption(
             response,
-            authForEncryptionParam, // Pass null to disable encryption for HttpOnly cookies
+            authForEncryptionParam,
             request,
             env,
             { 
                 requireJWT
             }
         );
+
+        // Log Set-Cookie count AFTER encryption middleware
+        if (path === '/auth/verify-otp' || path === '/auth/refresh') {
+            const postCookies = encryptedResult.response.headers.getSetCookie?.() ?? [];
+            console.log(`[Router] Post-encryption Set-Cookie count for ${path}:`, postCookies.length);
+        }
         
         return encryptedResult.response;
     } catch (error: any) {

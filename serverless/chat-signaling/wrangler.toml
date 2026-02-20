@@ -4,7 +4,7 @@ compatibility_date = "2024-01-01"
 
 # Production environment
 [env.production]
-vars = { ENVIRONMENT = "production" }
+vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app" }
 
 # Production KV Namespace
 [[env.production.kv_namespaces]]

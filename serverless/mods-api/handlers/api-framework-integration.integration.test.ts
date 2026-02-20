@@ -9,9 +9,9 @@
  * - Encryption failure handling
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { encryptWithJWT, decryptWithJWT } from '@strixun/api-framework';
-import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
+import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
 import { getCorsHeaders } from '../utils/cors.js';
 
 // Mock external dependencies
@@ -29,9 +29,11 @@ vi.mock('../../utils/admin.js', () => ({
     isSuperAdmin: vi.fn(() => Promise.resolve(true)),
 }));
 
+let cleanupJWKS: () => void;
+
 describe('API Framework Integration Tests', () => {
     const mockEnv = {
-        JWT_SECRET: 'test-jwt-secret-for-integration-tests',
+        JWT_ISSUER: 'https://test-issuer.example.com',
         ALLOWED_ORIGINS: '*',
         MODS_KV: {
             get: vi.fn(),
@@ -40,6 +42,12 @@ describe('API Framework Integration Tests', () => {
         },
         AUTH_API_URL: 'https://auth.idling.app',
     } as any;
+
+    beforeAll(async () => {
+        cleanupJWKS = await mockJWKSEndpoint();
+    });
+
+    afterAll(() => cleanupJWKS());
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -52,13 +60,13 @@ describe('API Framework Integration Tests', () => {
             const customerId = 'cust_abc';
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const token = await createJWT({
+            const token = await createRS256JWT({
                 sub: userId,
                 email: email,
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             const requestData = { status: 'approved', reason: 'Looks good' };
             const encryptedData = await encryptWithJWT(requestData, token);
@@ -114,13 +122,13 @@ describe('API Framework Integration Tests', () => {
 
         it('should reject request with invalid encrypted data structure', async () => {
             const userId = 'user_123';
-            const token = await createJWT({
+            const token = await createRS256JWT({
                 sub: userId,
                 email: 'admin@example.com',
                 customerId: 'cust_abc',
                 exp: Math.floor(Date.now() / 1000) + (7 * 60 * 60),
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            });
 
             // Invalid structure - missing 'data' field
             const invalidEncrypted = {

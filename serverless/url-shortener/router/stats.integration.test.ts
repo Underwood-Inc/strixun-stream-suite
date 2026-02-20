@@ -4,10 +4,11 @@
  * Tests the full request/response cycle for the /api/stats endpoint
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { createRouter } from './routes.js';
 import { handleGetStats } from '../handlers/url.js';
-import { createJWT, decryptWithJWT } from '@strixun/api-framework';
+import { decryptWithJWT } from '@strixun/api-framework';
+import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
 
 // Mock handlers
 vi.mock('../handlers/url.js', () => ({
@@ -39,6 +40,8 @@ vi.mock('../handlers/display-name.js', () => ({
   handleGetDisplayName: vi.fn(),
 }));
 
+let cleanupJWKS: () => void;
+
 describe('Stats Endpoint Integration', () => {
   const mockEnv = {
     URL_KV: {
@@ -47,11 +50,17 @@ describe('Stats Endpoint Integration', () => {
     },
     ALLOWED_ORIGINS: 'https://example.com',
     NETWORK_INTEGRITY_KEYPHRASE: 'test-keyphrase',
-    JWT_SECRET: 'test-jwt-secret-for-url-shortener-tests',
+    JWT_ISSUER: 'https://test-issuer.example.com',
   } as any;
 
   let router: (request: Request, env: any) => Promise<Response>;
   let mockJWTToken: string;
+
+  beforeAll(async () => {
+    cleanupJWKS = await mockJWKSEndpoint();
+  });
+
+  afterAll(() => cleanupJWKS());
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -59,12 +68,12 @@ describe('Stats Endpoint Integration', () => {
     
     // Create a mock JWT token for tests
     const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-    mockJWTToken = await createJWT({
+    mockJWTToken = await createRS256JWT({
       sub: 'test_user',
       email: 'test@example.com',
       exp: exp,
       iat: Math.floor(Date.now() / 1000),
-    }, mockEnv.JWT_SECRET);
+    });
   });
 
   describe('GET /api/stats', () => {

@@ -22,7 +22,6 @@ vi.mock('../utils/super-admin.js', () => ({
 }));
 
 vi.mock('../utils/crypto.js', () => ({
-    verifyJWT: vi.fn(),
     getJWTSecret: vi.fn().mockReturnValue('test-secret'),
     hashEmail: vi.fn().mockResolvedValue('hashed-token'),
     hashApiKey: vi.fn().mockResolvedValue('hashed-api-key'),

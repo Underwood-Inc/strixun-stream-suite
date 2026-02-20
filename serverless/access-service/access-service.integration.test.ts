@@ -12,7 +12,6 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { Miniflare } from 'miniflare';
-import { createJWT } from '../otp-auth-service/utils/crypto.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-for-integration-tests';
 const SERVICE_API_KEY = 'test-service-key-12345';

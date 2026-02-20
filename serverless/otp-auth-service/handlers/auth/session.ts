@@ -51,19 +51,22 @@ interface JWTPayload {
 export async function handleGetMe(request: Request, env: Env): Promise<Response> {
     try {
         console.log('[handleGetMe] Starting request processing');
-        // PRIORITY 1: Check HttpOnly cookie (browser requests - primary SSO method)
-        // PRIORITY 2: Check Authorization header (service-to-service calls)
         let token: string | null = null;
         
         const cookieHeader = request.headers.get('Cookie');
-        console.log('[handleGetMe] Cookie header:', cookieHeader ? 'present' : 'missing');
         if (cookieHeader) {
+            const cookieNames = cookieHeader.split(';').map(c => c.trim().split('=')[0]);
+            console.log('[handleGetMe] Cookie names present:', cookieNames);
             const cookies = cookieHeader.split(';').map(c => c.trim());
             const authCookie = cookies.find(c => c.startsWith('auth_token='));
             if (authCookie) {
                 token = authCookie.substring('auth_token='.length).trim();
-                console.log('[handleGetMe] Token extracted from HttpOnly cookie');
+                console.log('[handleGetMe] auth_token extracted, length:', token.length);
+            } else {
+                console.log('[handleGetMe] auth_token NOT found in cookies');
             }
+        } else {
+            console.log('[handleGetMe] No Cookie header at all');
         }
         
         // Fallback to Authorization header for service-to-service calls

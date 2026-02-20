@@ -13,7 +13,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
 import { authenticateRequest } from '../utils/auth.js';
-import { createRS256JWT, mockJWKSEndpoint } from '../utils/test-rs256.js';
+import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
 
 const AUTH_ISSUER = 'https://test-issuer.example.com';
 
