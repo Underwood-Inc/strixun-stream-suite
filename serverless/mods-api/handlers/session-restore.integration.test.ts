@@ -12,7 +12,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
-import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
+import { createRS256JWT, mockAuthMeEndpoint } from '../../shared/test-rs256.js';
 
 const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
 const AUTH_ISSUER = 'https://test-issuer.example.com';
@@ -22,11 +22,11 @@ const env = {
     AUTH_API_URL: OTP_AUTH_SERVICE_URL,
 } as any;
 
-let cleanupJWKS: () => void;
+let cleanupAuthMe: () => void;
 
 describe('Session Restore Integration', () => {
     beforeAll(async () => {
-        cleanupJWKS = await mockJWKSEndpoint();
+        cleanupAuthMe = await mockAuthMeEndpoint();
     });
     // NOTE: These tests don't need live workers - they test JWT utilities locally
 
@@ -144,7 +144,7 @@ describe('Session Restore Integration', () => {
     });
 
     afterAll(async () => {
-      cleanupJWKS();
+      cleanupAuthMe();
       // Cleanup: Clear local KV storage to ensure test isolation
       await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9'); // OTP_AUTH_KV namespace
       await clearLocalKVNamespace('0d3dafe0994046c6a47146c6bd082ad3'); // MODS_KV namespace

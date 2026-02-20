@@ -9,7 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { calculateFileHash, formatStrixunHash } from '../utils/hash.js';
-import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
+import { createRS256JWT, mockAuthMeEndpoint } from '../../shared/test-rs256.js';
 
 // Mock external dependencies
 vi.mock('@strixun/api-framework/enhanced', () => ({
@@ -21,7 +21,7 @@ vi.mock('../../utils/admin.js', () => ({
     isEmailAllowed: vi.fn().mockReturnValue(true),
 }));
 
-let cleanupJWKS: () => void;
+let cleanupAuthMe: () => void;
 
 describe('Mod Upload Flow Integration', () => {
     const mockEnv = {
@@ -39,10 +39,10 @@ describe('Mod Upload Flow Integration', () => {
     } as any;
 
     beforeAll(async () => {
-        cleanupJWKS = await mockJWKSEndpoint();
+        cleanupAuthMe = await mockAuthMeEndpoint();
     });
 
-    afterAll(() => cleanupJWKS());
+    afterAll(() => cleanupAuthMe());
 
     beforeEach(() => {
         vi.clearAllMocks();

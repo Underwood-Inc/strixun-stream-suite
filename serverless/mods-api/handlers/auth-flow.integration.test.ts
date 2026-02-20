@@ -13,7 +13,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
 import { authenticateRequest } from '../utils/auth.js';
-import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
+import { createRS256JWT, mockAuthMeEndpoint } from '../../shared/test-rs256.js';
 
 const AUTH_ISSUER = 'https://test-issuer.example.com';
 
@@ -23,15 +23,15 @@ const env = {
     AUTH_SERVICE_URL: AUTH_ISSUER,
 } as any;
 
-let cleanupJWKS: () => void;
+let cleanupAuthMe: () => void;
 
 describe('Authentication Flow Integration', () => {
     beforeAll(async () => {
-        cleanupJWKS = await mockJWKSEndpoint();
+        cleanupAuthMe = await mockAuthMeEndpoint();
     });
 
     afterAll(async () => {
-        cleanupJWKS();
+        cleanupAuthMe();
         await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9');
         await clearLocalKVNamespace('0d3dafe0994046c6a47146c6bd082ad3');
         await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789');

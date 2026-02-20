@@ -9,14 +9,14 @@
 
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { encryptWithJWT, decryptWithJWT } from '@strixun/api-framework';
-import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
+import { createRS256JWT, mockAuthMeEndpoint } from '../../shared/test-rs256.js';
 
 // Mock external dependencies
 vi.mock('@strixun/api-framework/enhanced', () => ({
     createCORSHeaders: vi.fn(() => new Headers()),
 }));
 
-let cleanupJWKS: () => void;
+let cleanupAuthMe: () => void;
 
 describe('Encryption/Decryption Flow Integration', () => {
     const mockEnv = {
@@ -25,10 +25,10 @@ describe('Encryption/Decryption Flow Integration', () => {
     } as any;
 
     beforeAll(async () => {
-        cleanupJWKS = await mockJWKSEndpoint();
+        cleanupAuthMe = await mockAuthMeEndpoint();
     });
 
-    afterAll(() => cleanupJWKS());
+    afterAll(() => cleanupAuthMe());
 
     beforeEach(() => {
         vi.clearAllMocks();

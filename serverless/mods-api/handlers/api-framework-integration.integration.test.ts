@@ -11,7 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { encryptWithJWT, decryptWithJWT } from '@strixun/api-framework';
-import { createRS256JWT, mockJWKSEndpoint } from '../../shared/test-rs256.js';
+import { createRS256JWT, mockAuthMeEndpoint } from '../../shared/test-rs256.js';
 import { getCorsHeaders } from '../utils/cors.js';
 
 // Mock external dependencies
@@ -29,7 +29,7 @@ vi.mock('../../utils/admin.js', () => ({
     isSuperAdmin: vi.fn(() => Promise.resolve(true)),
 }));
 
-let cleanupJWKS: () => void;
+let cleanupAuthMe: () => void;
 
 describe('API Framework Integration Tests', () => {
     const mockEnv = {
@@ -44,10 +44,10 @@ describe('API Framework Integration Tests', () => {
     } as any;
 
     beforeAll(async () => {
-        cleanupJWKS = await mockJWKSEndpoint();
+        cleanupAuthMe = await mockAuthMeEndpoint();
     });
 
-    afterAll(() => cleanupJWKS());
+    afterAll(() => cleanupAuthMe());
 
     beforeEach(() => {
         vi.clearAllMocks();
