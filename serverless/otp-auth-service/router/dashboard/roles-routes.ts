@@ -33,10 +33,10 @@ export async function handleRolesRoutes(
             };
         }
         
-        // Service-to-service call to Access Service for authenticated user's roles
+        // Service-to-service call to Access Service - use SERVICE_API_KEY (same as login flow).
+        // User is already authenticated by OTP Auth; we just need to fetch their roles from Access Service.
         const { createAccessClient } = await import('../../../shared/access-client.js');
-        const jwtToken = 'jwtToken' in auth ? auth.jwtToken : undefined;
-        const accessClient = createAccessClient(env, { jwtToken: jwtToken || undefined });
+        const accessClient = createAccessClient(env);
         const authorization = await accessClient.getCustomerAuthorization(auth.customerId);
         
         if (!authorization) {
