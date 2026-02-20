@@ -23,7 +23,7 @@ watch_dir = ["handlers", "html-snippets", "router", "services", "utils", "shared
 #   wrangler secret put JWT_SECRET          # REQUIRED: Used for AES encryption of API keys at rest (NOT for JWT signing)
 #   wrangler secret put RESEND_API_KEY       # REQUIRED: Resend API key from https://resend.com/api-keys
 #   wrangler secret put RESEND_FROM_EMAIL    # REQUIRED: Verified email address (e.g., noreply@yourdomain.com)
-#   wrangler secret put ALLOWED_ORIGINS      # OPTIONAL: Comma-separated CORS origins (recommended for production)
+#   wrangler secret put ALLOWED_ORIGINS      # OPTIONAL: Overrides vars; default in [env.production.vars]
 #   wrangler secret put OIDC_SIGNING_KEY     # REQUIRED for OIDC: RSA private JWK (JSON string) for ID Token signing
 #                                            # Generate with:
 #                                            #   node -e "crypto.subtle.generateKey(
@@ -45,6 +45,10 @@ ENVIRONMENT = "production"
 JWT_ISSUER = "https://auth.idling.app"
 CUSTOMER_API_URL = "https://customer-api.idling.app"
 ACCESS_SERVICE_URL = "https://access-api.idling.app"
+# CRITICAL: Cookie domain for SSO - extractRootDomain yields .idling.app so auth_token
+# is sent to mods.idling.app, mods-api.idling.app, auth.idling.app, etc.
+# Secret overrides this if set; vars ensure correct default for idling.app deployment.
+ALLOWED_ORIGINS = "https://mods.idling.app,https://www.idling.app,https://idling.app,https://auth.idling.app"
 
 # Production KV Namespace
 [[env.production.kv_namespaces]]
