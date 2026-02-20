@@ -103,11 +103,12 @@ export class ApiClient {
    * Check if user is authenticated via HttpOnly cookie SSO
    * Uses /auth/me (proxied to otp-auth-service) - the same fast, reliable
    * endpoint that all other apps use for SSO checks.
-   * Returns basic auth info (customerId, isSuperAdmin) or null if not authenticated.
+   * Returns basic auth info (customerId, displayName, isSuperAdmin) or null if not authenticated.
+   * displayName comes from JWT payload when available (avoids Customer API call).
    */
-  async checkAuth(): Promise<{ customerId: string; isSuperAdmin?: boolean } | null> {
+  async checkAuth(): Promise<{ customerId: string; displayName?: string | null; isSuperAdmin?: boolean } | null> {
     try {
-      const response = await this.api.get<{ customerId: string; isSuperAdmin?: boolean }>('/auth/me');
+      const response = await this.api.get<{ customerId: string; displayName?: string | null; isSuperAdmin?: boolean }>('/auth/me');
       if (response.status === 200 && response.data?.customerId) {
         return response.data;
       }

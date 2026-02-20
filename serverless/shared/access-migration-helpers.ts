@@ -48,8 +48,7 @@ export async function ensureCustomerAccess(
     console.error('[AccessMigration] ❌ CRITICAL: Failed to provision customer:', customerId);
     console.error('[AccessMigration] Error details:', error);
     console.error('[AccessMigration] Stack:', error instanceof Error ? error.stack : 'No stack trace');
-    // THROW - provisioning failure MUST be visible!
-    throw new Error(`Failed to provision customer ${customerId} in Access Service: ${error}`);
+    throw error;
   }
 }
 

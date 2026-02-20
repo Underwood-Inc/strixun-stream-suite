@@ -172,38 +172,32 @@ export async function fetchCustomerInfo(
         
         const customerId = authResponse.data.customerId;
         const isSuperAdmin = authResponse.data.isSuperAdmin || false;
+        // Prefer displayName from /auth/me (JWT payload) - avoids Customer API call
+        let displayName: string | null = authResponse.data.displayName || null;
         
-        // Step 2: Fetch displayName from Customer API
-        const customerApiUrl = getCustomerApiUrl(config);
-        
-        let displayName: string | null = null;
-        try {
-            const customerClient = createAPIClient({
-                baseURL: customerApiUrl,
-                timeout: 10000,
-                // CRITICAL: Include credentials to send HttpOnly cookies
-                credentials: 'include' as RequestCredentials,
-                cache: {
-                    enabled: false,
-                },
-            });
-            
-            const customerResponse = await customerClient.get<{
-                displayName?: string | null;
-                [key: string]: any;
-            }>('/customer/me', undefined, {
-                metadata: {
-                    cache: false,
-                },
-            });
-            
-            if (customerResponse.status === 200 && customerResponse.data) {
-                displayName = customerResponse.data.displayName || null;
+        // Fallback: Fetch displayName from Customer API only when not in JWT
+        if (!displayName) {
+            const customerApiUrl = getCustomerApiUrl(config);
+            try {
+                const customerClient = createAPIClient({
+                    baseURL: customerApiUrl,
+                    timeout: 10000,
+                    credentials: 'include' as RequestCredentials,
+                    cache: { enabled: false },
+                });
+                const customerResponse = await customerClient.get<{
+                    displayName?: string | null;
+                    [key: string]: any;
+                }>('/customer/me', undefined, {
+                    metadata: { cache: false },
+                });
+                if (customerResponse.status === 200 && customerResponse.data) {
+                    displayName = customerResponse.data.displayName || null;
+                }
+            } catch (customerError) {
+                console.warn('[Auth] Failed to fetch displayName from Customer API:', 
+                    customerError instanceof Error ? customerError.message : String(customerError));
             }
-        } catch (customerError) {
-            // If Customer API call fails, we still return auth data (just without displayName)
-            console.warn('[Auth] Failed to fetch displayName from Customer API:', 
-                customerError instanceof Error ? customerError.message : String(customerError));
         }
         
         return {

@@ -158,15 +158,13 @@ export async function createAuthToken(
     }
     
     // AUTHORIZATION SERVICE INTEGRATION: Ensure customer has roles/permissions provisioned
-    // This is called on every login to auto-provision new customers with default roles
-    // Idempotent - safe to call multiple times (skips if already provisioned)
+    // FAIL-FAST: Login must not succeed if customer cannot be found in Access Service.
     try {
         const { ensureCustomerAccess } = await import('../../../shared/access-migration-helpers.js');
         await ensureCustomerAccess(customerId, emailLower, env);
     } catch (error) {
         console.error('[JWT] Failed to provision customer authorization:', error);
-        // Don't throw - authorization provisioning failure shouldn't break login
-        // Customer will still get JWT, but may have permission issues until manually provisioned
+        throw error;
     }
     
     // Check if customer is a super admin (via Access Service)

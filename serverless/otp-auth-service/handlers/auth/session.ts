@@ -205,6 +205,10 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             responseData.name = payload.displayName;
             responseData.preferred_username = payload.displayName;
         }
+        // Always include displayName when in JWT (auth store uses it; avoids Customer API call)
+        if (payload.displayName) {
+            responseData.displayName = payload.displayName;
+        }
 
         console.log('[handleGetMe] Returning SUCCESS 200 with customer data:', {
             customerId: responseData.customerId,

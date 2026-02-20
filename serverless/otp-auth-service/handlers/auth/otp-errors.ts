@@ -234,6 +234,10 @@ export function createInternalErrorResponse(request: Request, error: any, env: E
         userMessage = 'Storage error: Unable to access data storage. Please try again.';
         errorCode = 'storage_error';
         httpStatusCode = 500;
+    } else if (errorMessage.includes('Access Service') || errorMessage.includes('Failed to provision customer')) {
+        userMessage = 'Service integration error: Unable to verify your account. Please try again or contact support.';
+        errorCode = 'service_integration_error';
+        httpStatusCode = 503;
     } else if (errorMessage.includes('decrypt')) {
         // Decryption errors - provide clear feedback
         if (errorMessage.includes('mismatch')) {

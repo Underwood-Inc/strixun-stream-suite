@@ -15,6 +15,7 @@
 
   let customer: Customer | null = null;
   let isAuthenticated = false;
+  let rolesVerified = false;
   let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' | 'roles-permissions' = 'dashboard';
   let loading = true;
   let authView: 'login' | 'signup' = 'login';
@@ -41,13 +42,20 @@
           return;
         }
         
-        // Step 2: SSO confirmed - load full customer data from customer-api
+        // Step 2: SSO confirmed - set customer with displayName from /auth/me so header shows who's logged in
         isAuthenticated = true;
+        customer = {
+          customerId: authResult.customerId,
+          displayName: authResult.displayName ?? 'Customer',
+          email: '',
+          status: 'active',
+          plan: 'free',
+          createdAt: new Date().toISOString(),
+        };
         try {
           await loadCustomer();
         } catch (customerError) {
-          // Auth is valid but customer data failed to load
-          // Keep authenticated (SSO works), customer data will be null
+          rolesVerified = false;
           console.warn('Customer data load failed (SSO still valid):', customerError);
         }
       } catch (error) {
@@ -56,6 +64,7 @@
         isAuthenticated = false;
         customer = null;
         userRoles = [];
+        rolesVerified = false;
       } finally {
         loading = false;
       }
@@ -77,34 +86,35 @@
 
   async function loadCustomer() {
     try {
-      customer = await apiClient.getCustomer();
-      // Load user roles for permission checks
-      if (customer?.customerId) {
-        userRoles = await apiClient.getUserRoles(customer.customerId);
+      const fullCustomer = await apiClient.getCustomer();
+      customer = fullCustomer;
+      if (!fullCustomer?.customerId) {
+        rolesVerified = false;
+        return;
       }
+      userRoles = await apiClient.getUserRoles(fullCustomer.customerId);
+      rolesVerified = true;
     } catch (error: any) {
       console.error('Failed to load customer:', error);
-      customer = null;
       userRoles = [];
-      
-      // Check if error is "no customer account"
+      rolesVerified = false;
+
       const errorMessage = error?.message || error?.toString() || '';
       const errorCode = error?.code || '';
-      
-      if (errorCode === 'AUTHENTICATION_REQUIRED' || 
-          errorMessage.includes('No customer account') || 
+
+      if (errorCode === 'AUTHENTICATION_REQUIRED' ||
+          errorMessage.includes('No customer account') ||
           errorMessage.includes('customer account found')) {
-        // No customer account - show signup prompt
         window.dispatchEvent(new CustomEvent('auth:no-customer-account', {
-          detail: { 
+          detail: {
             email: customer?.email,
             message: 'You need to create a customer account to access the dashboard.'
           }
         }));
-        // Log them out so they can sign up
         isAuthenticated = false;
         customer = null;
         userRoles = [];
+        rolesVerified = false;
         apiClient.setToken(null);
       }
     }
@@ -129,16 +139,24 @@
     apiClient.setToken(null);
   }
 
-  async function handleLogin(event: Event) {
-    // User logged in successfully via OTP
-    // Update state synchronously to trigger reactive update
+  async function handleLogin(_event: Event) {
     isAuthenticated = true;
     loading = false;
-    
-    // Force a tick to ensure DOM updates
+    rolesVerified = false;
+
+    const authResult = await apiClient.checkAuth();
+    if (authResult) {
+      customer = {
+        customerId: authResult.customerId,
+        displayName: authResult.displayName ?? 'Customer',
+        email: '',
+        status: 'active',
+        plan: 'free',
+        createdAt: new Date().toISOString(),
+      };
+    }
+
     await tick();
-    
-    // Load customer data in background
     loadCustomer();
   }
 
@@ -146,6 +164,7 @@
     isAuthenticated = false;
     customer = null;
     userRoles = [];
+    rolesVerified = false;
     currentPage = 'dashboard';
   }
 
@@ -174,20 +193,31 @@
   {:else}
     <DashboardHeader {customer} on:logout={handleLogoutClick} />
     <main class="app-main">
-      <Navigation {currentPage} {userRoles} on:navigate={e => navigateToPage(e.detail)} />
-      <div class="page-container">
-        {#if currentPage === 'dashboard'}
-          <Dashboard {customer} />
-        {:else if currentPage === 'api-keys'}
-          <ApiKeys {customer} />
-        {:else if currentPage === 'audit-logs'}
-          <AuditLogs {customer} />
-        {:else if currentPage === 'analytics'}
-          <Analytics {customer} />
-        {:else if currentPage === 'roles-permissions'}
-          <RolesPermissions {customer} {userRoles} />
-        {/if}
-      </div>
+      {#if rolesVerified}
+        <Navigation {currentPage} {userRoles} on:navigate={e => navigateToPage(e.detail)} />
+        <div class="page-container">
+          {#if currentPage === 'dashboard'}
+            <Dashboard {customer} />
+          {:else if currentPage === 'api-keys'}
+            <ApiKeys {customer} />
+          {:else if currentPage === 'audit-logs'}
+            <AuditLogs {customer} />
+          {:else if currentPage === 'analytics'}
+            <Analytics {customer} />
+          {:else if currentPage === 'roles-permissions'}
+            <RolesPermissions {customer} {userRoles} />
+          {/if}
+        </div>
+      {:else}
+        <div class="access-denied">
+          <h2>Access verification failed</h2>
+          <p>Unable to verify your permissions. You cannot access the dashboard until your roles are confirmed.</p>
+          <div class="access-denied__actions">
+            <button class="access-denied__retry" onclick={() => loadCustomer()}>Retry</button>
+            <button class="access-denied__logout" onclick={handleLogoutClick}>Logout</button>
+          </div>
+        </div>
+      {/if}
     </main>
   {/if}
 </div>
@@ -255,6 +285,50 @@
 
   @keyframes spin {
     to { transform: rotate(360deg); }
+  }
+
+  .access-denied {
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-xl);
+    background: var(--card);
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .access-denied h2 {
+    color: var(--text);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .access-denied p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .access-denied__actions {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+  }
+
+  .access-denied__retry,
+  .access-denied__logout {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    font-weight: 600;
+    cursor: pointer;
+    border: 2px solid var(--border);
+    background: transparent;
+    color: var(--text);
+  }
+
+  .access-denied__retry:hover,
+  .access-denied__logout:hover {
+    border-color: var(--border-light);
+  }
+
+  .access-denied__logout {
+    border-color: var(--error, #c53030);
+    color: var(--error, #c53030);
   }
 
   @media (max-width: 768px) {

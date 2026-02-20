@@ -230,27 +230,25 @@ export class AccessClient {
    */
   async ensureCustomer(customerId: string, defaultRoles: string[] = ['customer']): Promise<void> {
     try {
-      // Check if customer already exists
       const existing = await this.getCustomerAuthorization(customerId);
       if (existing) {
         console.log('[AccessClient] Customer already exists in access service:', customerId);
-        return; // Already provisioned
+        return;
       }
 
-      // Create customer with default roles
       const response = await this.fetch(`/access/${customerId}/roles`, {
         method: 'PUT',
         body: JSON.stringify({ roles: defaultRoles }),
       });
 
       if (!response.ok) {
-        console.error('[AccessClient] Ensure customer failed:', response.status);
-      } else {
-        console.log('[AccessClient] Customer provisioned in access service:', customerId, 'roles:', defaultRoles);
+        const body = await response.text().catch(() => '');
+        throw new Error(`Access Service provisioning failed: ${response.status} ${body}`);
       }
+      console.log('[AccessClient] Customer provisioned in access service:', customerId, 'roles:', defaultRoles);
     } catch (error) {
       console.error('[AccessClient] Ensure customer error:', error);
-      // Don't throw - provisioning failure shouldn't break login
+      throw error;
     }
   }
 

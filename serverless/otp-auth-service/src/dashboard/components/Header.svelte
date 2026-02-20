@@ -17,8 +17,9 @@
     <a href="/" class="app-header__logo"> ★ OTP Auth API</a>
     {#if customer}
       <div class="app-header__user">
+        <span class="app-header__label">Logged in as</span>
         <TruncatedText position="bottom">
-          <span class="app-header__email" style="display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <span class="app-header__display-name" style="display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
             {customer.displayName || 'Customer'}
           </span>
         </TruncatedText>
@@ -64,8 +65,14 @@
     gap: var(--spacing-md);
   }
 
-  .app-header__email {
+  .app-header__label {
     color: var(--text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .app-header__display-name {
+    color: var(--text);
+    font-weight: 600;
   }
 
   .app-header__logout {
@@ -105,7 +112,7 @@
       gap: var(--spacing-sm);
     }
 
-    .app-header__email {
+    .app-header__display-name {
       max-width: 150px;
       font-size: 0.875rem;
     }
@@ -129,7 +136,7 @@
       font-size: 1rem;
     }
 
-    .app-header__email {
+    .app-header__display-name {
       max-width: 120px;
       font-size: 0.75rem;
     }
