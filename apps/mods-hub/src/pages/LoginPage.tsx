@@ -3,7 +3,7 @@
  * Uses shared OTP login component with full encryption support
  */
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
@@ -23,19 +23,18 @@ const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL
 
 export function LoginPage() {
     const navigate = useNavigate();
-    const { checkAuth } = useAuthStore();
+    const checkAuth = useAuthStore((s) => s.checkAuth);
 
     // Check authentication status on mount (HttpOnly cookie SSO)
-    // This enables cross-application session sharing
-    // If customer already has a session, they'll be redirected automatically
     useEffect(() => {
-        // Check if customer is already authenticated via HttpOnly cookie
-        checkAuth().catch(() => {
-            // Non-critical - user may not be logged in yet
-        });
-    }, [checkAuth]); // Only run once on mount
+        checkAuth().catch(() => {});
+    }, [checkAuth]);
 
-    const handleLoginSuccess = async (_data: LoginSuccessData) => {
+    const handleLoginError = useCallback((error: string) => {
+        console.error('[Login] ✗ Login failed:', error);
+    }, []);
+
+    const handleLoginSuccess = useCallback(async (_data: LoginSuccessData) => {
         // CRITICAL: After OTP login, the backend sets an HttpOnly cookie
         // We immediately call checkAuth() to validate the cookie and fetch customer info
         console.log('[Login] ✓ OTP verification successful, validating HttpOnly cookie session...');
@@ -53,11 +52,7 @@ export function LoginPage() {
             console.error('[Login] ✗ Error validating session:', error);
             handleLoginError('Session validation error. Please try again.');
         }
-    };
-
-    const handleLoginError = (error: string) => {
-        console.error('[Login] ✗ Login failed:', error);
-    };
+    }, [checkAuth, navigate, handleLoginError]);
 
     return (
         <OtpLogin
