@@ -1142,24 +1142,21 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
           if [ "${{ inputs.environment }}" == "development" ]; then
-            DEPLOY_CMD='pnpm exec wrangler deploy --env development'
+            pnpm exec wrangler deploy --env development
           else
-            # Explicit top-level env (--env="") suppresses wrangler warning about multiple environments
-            DEPLOY_CMD='pnpm exec wrangler deploy --env=""'
+            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
+            for attempt in 1 2 3; do
+              echo "Deploy attempt $attempt/3..."
+              if pnpm exec wrangler deploy; then
+                exit 0
+              fi
+              if [ $attempt -lt 3 ]; then
+                echo "Deploy failed (504 from Cloudflare route API is often transient). Retrying in 30s..."
+                sleep 30
+              fi
+            done
+            exit 1
           fi
-          for attempt in 1 2 3; do
-            echo "Deploy attempt $attempt/3..."
-            if $DEPLOY_CMD; then
-              echo "Deploy succeeded."
-              exit 0
-            fi
-            if [ $attempt -lt 3 ]; then
-              echo "Deploy failed (often 504 from Cloudflare route API). Retrying in 30s..."
-              sleep 30
-            fi
-          done
-          echo "Deploy failed after 3 attempts."
-          exit 1
 
       - name: Rollback on Failure
         if: failure()
