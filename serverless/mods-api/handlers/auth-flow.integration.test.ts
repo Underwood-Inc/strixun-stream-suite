@@ -13,97 +13,87 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
 import { authenticateRequest } from '../utils/auth.js';
-import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
+import { createRS256JWT, mockJWKSEndpoint } from '../utils/test-rs256.js';
 
-const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
-const CUSTOMER_API_URL = process.env.CUSTOMER_API_URL || 'http://localhost:8790';
-
-// Get secrets from environment (set by shared setup)
-const JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-for-integration-tests';
+const AUTH_ISSUER = 'https://test-issuer.example.com';
 
 const env = {
-    JWT_SECRET,
     ALLOWED_ORIGINS: '*',
-    AUTH_API_URL: OTP_AUTH_SERVICE_URL,
+    JWT_ISSUER: AUTH_ISSUER,
+    AUTH_SERVICE_URL: AUTH_ISSUER,
 } as any;
 
+let cleanupJWKS: () => void;
+
 describe('Authentication Flow Integration', () => {
-    // NOTE: These tests don't need live workers - they test JWT utilities locally
+    beforeAll(async () => {
+        cleanupJWKS = await mockJWKSEndpoint();
+    });
+
+    afterAll(async () => {
+        cleanupJWKS();
+        await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9');
+        await clearLocalKVNamespace('0d3dafe0994046c6a47146c6bd082ad3');
+        await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789');
+        console.log('[Auth Flow Integration Tests] ✓ KV cleanup completed');
+    });
 
     describe('JWT Creation and Verification Flow', () => {
-        it('should create JWT token and verify it for API access', async () => {
+        it('should create RS256 JWT and verify it for API access', async () => {
             const userId = 'user_123';
             const email = 'user@example.com';
             const customerId = 'cust_abc';
 
-            // Step 1: Create JWT token (simulating OTP verification)
-            const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60); // 7 hours
-            const token = await createJWT({
+            const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
+            const token = await createRS256JWT({
                 sub: userId,
-                email: email,
-                customerId: customerId,
-                exp: exp,
+                email,
+                customerId,
+                exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, env.JWT_SECRET);
+            });
 
             expect(token).toBeDefined();
             expect(typeof token).toBe('string');
-            expect(token.split('.').length).toBe(3); // JWT has 3 parts
+            expect(token.split('.').length).toBe(3);
 
-            // Step 2: Use token to authenticate API request
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
-                headers: {
-                    'Cookie': `auth_token=${token}`,
-                },
+                headers: { 'Cookie': `auth_token=${token}` },
             });
 
             const auth = await authenticateRequest(mockRequest, env);
 
-            // Step 3: Verify authentication succeeded
             expect(auth).not.toBeNull();
-            expect(auth?.customerId).toBe(userId); // customerId comes from JWT sub field
-            // NOTE: email is NOT included in auth response for privacy/security
+            expect(auth?.customerId).toBe(customerId);
             expect(auth?.jwtToken).toBe(token);
         });
 
         it('should reject invalid JWT tokens', async () => {
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer invalid-token-123',
-                },
+                headers: { 'Authorization': 'Bearer invalid-token-123' },
             });
 
             const auth = await authenticateRequest(mockRequest, env);
-
             expect(auth).toBeNull();
         });
 
         it('should reject expired JWT tokens', async () => {
-            const userId = 'user_123';
-            const email = 'user@example.com';
-            const customerId = 'cust_abc';
-
-            // Create expired token (expired 1 hour ago)
-            const expiredExp = Math.floor(Date.now() / 1000) - 3600; // Expired 1 hour ago
-            const expiredToken = await createJWT({
-                sub: userId,
-                email: email,
-                customerId: customerId,
-                exp: expiredExp,
-                iat: Math.floor(Date.now() / 1000) - 7200, // Created 2 hours ago
-            }, env.JWT_SECRET);
+            const expiredToken = await createRS256JWT({
+                sub: 'user_123',
+                email: 'user@example.com',
+                customerId: 'cust_abc',
+                exp: Math.floor(Date.now() / 1000) - 3600,
+                iat: Math.floor(Date.now() / 1000) - 7200,
+            });
 
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
-                headers: {
-                    'Cookie': `auth_token=${expiredToken}`,
-                },
+                headers: { 'Cookie': `auth_token=${expiredToken}` },
             });
 
             const auth = await authenticateRequest(mockRequest, env);
-
             expect(auth).toBeNull();
         });
 
@@ -113,119 +103,85 @@ describe('Authentication Flow Integration', () => {
             });
 
             const auth = await authenticateRequest(mockRequest, env);
-
             expect(auth).toBeNull();
         });
 
         it('should extract customerID from JWT for integrity verification', async () => {
-            const userId = 'user_123';
-            const email = 'user@example.com';
             const customerId = 'cust_abc';
 
-            const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60); // 7 hours
-            const token = await createJWT({
-                sub: userId,
-                email: email,
-                customerId: customerId,
-                exp: exp,
+            const token = await createRS256JWT({
+                sub: 'user_123',
+                email: 'user@example.com',
+                customerId,
+                exp: Math.floor(Date.now() / 1000) + (7 * 60 * 60),
                 iat: Math.floor(Date.now() / 1000),
-            }, env.JWT_SECRET);
+            });
 
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
-                headers: {
-                    'Cookie': `auth_token=${token}`,
-                },
+                headers: { 'Cookie': `auth_token=${token}` },
             });
 
             const auth = await authenticateRequest(mockRequest, env);
 
-            // Verify customerID is extracted for integrity verification (comes from sub)
-            expect(auth?.customerId).toBe(userId); // customerId is from JWT sub field
+            expect(auth?.customerId).toBe(customerId);
             expect(auth?.customerId).not.toBeNull();
         });
 
-        it('should handle missing customerID in JWT gracefully', async () => {
-            const userId = 'user_123';
-            const email = 'user@example.com';
+        it('should fall back to sub when customerId claim is missing', async () => {
+            const sub = 'user_123';
 
-            // Create token without customerID
-            const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const token = await createJWT({
-                sub: userId,
-                email: email,
+            const token = await createRS256JWT({
+                sub,
+                email: 'user@example.com',
                 customerId: null,
-                exp: exp,
+                exp: Math.floor(Date.now() / 1000) + (7 * 60 * 60),
                 iat: Math.floor(Date.now() / 1000),
-            }, env.JWT_SECRET);
+            });
 
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
-                headers: {
-                    'Cookie': `auth_token=${token}`,
-                },
+                headers: { 'Cookie': `auth_token=${token}` },
             });
 
             const auth = await authenticateRequest(mockRequest, env);
 
-            // Should still authenticate with customerId from sub
             expect(auth).not.toBeNull();
-            expect(auth?.customerId).toBe(userId); // customerId comes from JWT sub field
+            expect(auth?.customerId).toBe(sub);
         });
     });
 
     describe('End-to-End Authentication Flow', () => {
-        it('should complete full flow: OTP  JWT  API access', async () => {
-            // Simulate complete flow
-            const userId = 'user_123';
-            const email = 'user@example.com';
+        it('should complete full flow: OTP → JWT → API access', async () => {
             const customerId = 'cust_abc';
 
-            // Step 1: OTP verification would create JWT (simulated)
-            const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const token = await createJWT({
-                sub: userId,
-                email: email,
-                customerId: customerId,
-                exp: exp,
+            const token = await createRS256JWT({
+                sub: 'user_123',
+                email: 'user@example.com',
+                customerId,
+                exp: Math.floor(Date.now() / 1000) + (7 * 60 * 60),
                 iat: Math.floor(Date.now() / 1000),
-            }, env.JWT_SECRET);
+            });
 
-            // Step 2: Use JWT to access protected API endpoint
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
-                headers: {
-                    'Cookie': `auth_token=${token}`,
-                },
+                headers: { 'Cookie': `auth_token=${token}` },
             });
 
             const auth = await authenticateRequest(mockRequest, env);
 
-            // Step 3: Verify API access is granted
             expect(auth).not.toBeNull();
-            expect(auth?.customerId).toBe(userId); // customerId comes from JWT sub field
-            // NOTE: email is NOT included in auth response for privacy/security
+            expect(auth?.customerId).toBe(customerId);
 
-            // Step 4: Verify token can be used for subsequent requests
             const secondRequest = new Request('https://example.com/api/mods/123', {
                 method: 'GET',
-                headers: {
-                    'Cookie': `auth_token=${token}`,
-                },
+                headers: { 'Cookie': `auth_token=${token}` },
             });
 
             const secondAuth = await authenticateRequest(secondRequest, env);
             expect(secondAuth).not.toBeNull();
-            expect(secondAuth?.customerId).toBe(userId);
+            expect(secondAuth?.customerId).toBe(customerId);
         });
-    });
-
-    afterAll(async () => {
-      // Cleanup: Clear local KV storage to ensure test isolation
-      await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9'); // OTP_AUTH_KV namespace
-      await clearLocalKVNamespace('0d3dafe0994046c6a47146c6bd082ad3'); // MODS_KV namespace
-      await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789'); // CUSTOMER_KV namespace
-      console.log('[Auth Flow Integration Tests] ✓ KV cleanup completed');
     });
 });
 

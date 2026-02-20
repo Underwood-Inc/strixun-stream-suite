@@ -333,6 +333,9 @@ describe('Mods API Admin Routes', () => {
 
     describe('Error Handling', () => {
         it('should handle errors gracefully', async () => {
+            const { handleListAllMods } = await import('../handlers/admin/list.js');
+            (handleListAllMods as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('KV read failure'));
+
             const request = new Request('https://api.example.com/admin/mods', {
                 method: 'GET',
                 headers: {

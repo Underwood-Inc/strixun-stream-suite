@@ -674,6 +674,57 @@ function highlightTerms(text, terms) {
     return escHtml(text).replace(re, '<mark>$1</mark>');
 }
 
+/**
+ * Finds the nearest scrollable ancestor (not the viewport) for an element.
+ */
+function findScrollParent(el) {
+    var node = el.parentElement;
+    while (node && node !== document.body && node !== document.documentElement) {
+        var style = getComputedStyle(node);
+        var overflowY = style.overflowY || style.overflow;
+        if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
+            return node;
+        }
+        node = node.parentElement;
+    }
+    return null;
+}
+
+/**
+ * Two-phase smooth scroll that handles nested scroll containers reliably.
+ * Phase 1: scroll the viewport so the container is visible.
+ * Phase 2: scroll within the container so the target is visible.
+ */
+function smoothScrollTo(target) {
+    var scrollParent = findScrollParent(target);
+
+    if (scrollParent) {
+        var containerRect = scrollParent.getBoundingClientRect();
+        var inViewport = containerRect.top >= 0 && containerRect.bottom <= window.innerHeight;
+
+        if (!inViewport) {
+            scrollParent.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        setTimeout(function() {
+            var targetTop = target.getBoundingClientRect().top - scrollParent.getBoundingClientRect().top + scrollParent.scrollTop;
+            var desired = targetTop - scrollParent.clientHeight / 3;
+            scrollParent.scrollTo({ top: Math.max(0, desired), behavior: 'smooth' });
+        }, inViewport ? 0 : 200);
+    } else {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+function flashHighlight(target) {
+    target.style.transition = 'background 0.3s';
+    target.style.background = 'rgba(237, 174, 73, 0.25)';
+    setTimeout(function() {
+        target.style.background = '';
+        setTimeout(function() { target.style.transition = ''; }, 300);
+    }, 1500);
+}
+
 function navigateToResultEl(el, id) {
     closeSearch();
     var target = id ? document.getElementById(id) : el;
@@ -694,14 +745,9 @@ function navigateToResultEl(el, id) {
     }
 
     setTimeout(function() {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        target.style.transition = 'background 0.3s';
-        target.style.background = 'rgba(237, 174, 73, 0.25)';
-        setTimeout(function() {
-            target.style.background = '';
-            setTimeout(function() { target.style.transition = ''; }, 300);
-        }, 1500);
-    }, 100);
+        smoothScrollTo(target);
+        setTimeout(function() { flashHighlight(target); }, 300);
+    }, 120);
 }
 
 function handleSearchKeydown(e) {
@@ -791,6 +837,7 @@ function buildToc() {
     // Close mobile sidebar on link click & handle collapsed/tab expansion
     tocLinks.forEach(function(link) {
         link.addEventListener('click', function(e) {
+            e.preventDefault();
             var sidebar = document.getElementById('tocSidebar');
             if (sidebar) sidebar.classList.remove('open');
 
@@ -801,24 +848,21 @@ function buildToc() {
             // Expand collapsed security docs if target is inside
             var sec = document.getElementById('securityContent');
             if (sec && !sec.classList.contains('expanded') && sec.contains(target)) {
-                e.preventDefault();
                 toggleSecurityDocs();
-                setTimeout(function() {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100);
             }
 
             // Switch to correct tab if target is in an inactive tab panel
             var tabPanel = target.closest('.tab-content');
             if (tabPanel && !tabPanel.classList.contains('active')) {
-                e.preventDefault();
                 var tabId = tabPanel.id.replace('tab-', '');
                 var btn = document.getElementById('tabBtn-' + tabId);
                 showTab(tabId, btn);
-                setTimeout(function() {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100);
             }
+
+            setTimeout(function() {
+                smoothScrollTo(target);
+                setTimeout(function() { flashHighlight(target); }, 300);
+            }, 120);
         });
     });
 }

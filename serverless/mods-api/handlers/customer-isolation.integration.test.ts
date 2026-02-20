@@ -12,24 +12,25 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
 import { calculateRequestIntegrity } from '@strixun/service-client/integrity';
-import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
+import { createRS256JWT, mockJWKSEndpoint } from '../utils/test-rs256.js';
 import { authenticateRequest } from '../utils/auth.js';
 
-const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
-const CUSTOMER_API_URL = process.env.CUSTOMER_API_URL || 'http://localhost:8790';
-
-// Get secrets from environment (set by shared setup)
-const JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-for-integration-tests';
 const NETWORK_INTEGRITY_KEYPHRASE = process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase';
+const AUTH_ISSUER = 'https://test-issuer.example.com';
 
 const env = {
-    JWT_SECRET,
     NETWORK_INTEGRITY_KEYPHRASE,
     ALLOWED_ORIGINS: '*',
+    JWT_ISSUER: AUTH_ISSUER,
+    AUTH_SERVICE_URL: AUTH_ISSUER,
 } as any;
 
+let cleanupJWKS: () => void;
+
 describe('Customer Isolation Integration', () => {
-    // NOTE: These tests don't need live workers - they test integrity utilities locally
+    beforeAll(async () => {
+        cleanupJWKS = await mockJWKSEndpoint();
+    });
 
     describe('Integrity Verification with CustomerID', () => {
         it('should include customerID in integrity hash calculation', async () => {
@@ -163,21 +164,18 @@ describe('Customer Isolation Integration', () => {
 
     describe('Cross-Customer Data Access Prevention', () => {
         it('should prevent Customer A from accessing Customer B data via JWT', async () => {
-            const userIdA = 'user_123';
             const customerIdA = 'cust_abc';
             const customerIdB = 'cust_xyz';
 
-            // Create JWT for Customer A
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const tokenA = await createJWT({
-                sub: userIdA,
+            const tokenA = await createRS256JWT({
+                sub: 'user_123',
                 email: 'userA@example.com',
                 customerId: customerIdA,
-                exp: exp,
+                exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, env.JWT_SECRET);
+            });
 
-            // Authenticate request from Customer A
             const requestA = new Request('https://example.com/api/mods', {
                 method: 'GET',
                 headers: {
@@ -187,9 +185,8 @@ describe('Customer Isolation Integration', () => {
 
             const authA = await authenticateRequest(requestA, env);
 
-            // Verify Customer A's auth is extracted correctly (customerId is from sub)
             expect(authA).not.toBeNull();
-            expect(authA?.customerId).toBe(userIdA);
+            expect(authA?.customerId).toBe(customerIdA);
             expect(authA?.customerId).not.toBe(customerIdB);
 
             // Customer A should NOT be able to use Customer B's customerID in integrity checks
@@ -223,17 +220,16 @@ describe('Customer Isolation Integration', () => {
         });
 
         it('should allow Customer A to access their own data', async () => {
-            const userIdA = 'user_123';
             const customerIdA = 'cust_abc';
 
             const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
-            const tokenA = await createJWT({
-                sub: userIdA,
+            const tokenA = await createRS256JWT({
+                sub: 'user_123',
                 email: 'userA@example.com',
                 customerId: customerIdA,
-                exp: exp,
+                exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, env.JWT_SECRET);
+            });
 
             const requestA = new Request('https://example.com/api/mods', {
                 method: 'GET',
@@ -245,7 +241,7 @@ describe('Customer Isolation Integration', () => {
             const authA = await authenticateRequest(requestA, env);
 
             expect(authA).not.toBeNull();
-            expect(authA?.customerId).toBe(userIdA);
+            expect(authA?.customerId).toBe(customerIdA);
 
             // Customer A should be able to use their own customerID in integrity checks
             const method = 'GET';
@@ -324,10 +320,10 @@ describe('Customer Isolation Integration', () => {
     });
 
     afterAll(async () => {
-      // Cleanup: Clear local KV storage to ensure test isolation
-      await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9'); // OTP_AUTH_KV namespace
-      await clearLocalKVNamespace('0d3dafe0994046c6a47146c6bd082ad3'); // MODS_KV namespace
-      await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789'); // CUSTOMER_KV namespace
+      cleanupJWKS();
+      await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9');
+      await clearLocalKVNamespace('0d3dafe0994046c6a47146c6bd082ad3');
+      await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789');
       console.log('[Customer Isolation Integration Tests] ✓ KV cleanup completed');
     });
 });
