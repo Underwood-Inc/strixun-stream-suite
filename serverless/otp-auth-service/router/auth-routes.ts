@@ -14,6 +14,7 @@ import { handleRequestOTP } from '../handlers/auth/request-otp.js';
 import { handleVerifyOTP } from '../handlers/auth/verify-otp.js';
 import { handleRefresh } from '../handlers/auth/refresh.js';
 import { handleServiceIssueToken } from '../handlers/auth/service-issue.js';
+import { trackApiKeyRequest } from '../services/api-key-usage.js';
 // CRITICAL: user-lookup removed - we ONLY use customerId, NO userId
 // CRITICAL: wrapWithEncryption removed - main router handles ALL encryption (avoids double-encryption)
 
@@ -383,6 +384,8 @@ export async function handleAuthRoutes(
                 method: request.method,
                 ip: clientIP
             }, env);
+            // Per-key usage tracking (fire-and-forget)
+            trackApiKeyRequest(apiKeyAuth.keyId, apiKeyAuth.customerId, 'requests', env);
         } else if (jwtAuth) {
             await logSecurityEvent(customerId, 'jwt_auth', {
                 endpoint: path,
@@ -434,6 +437,8 @@ export async function handleAuthRoutes(
         // - Per-key allowedOrigins restricts which origins can use this key (if configured)
         // - API key does NOT replace JWT - it's additional functionality
         const handlerResponse = await handleRequestOTP(request, env, customerId);
+
+        if (apiKeyAuth) trackApiKeyRequest(apiKeyAuth.keyId, apiKeyAuth.customerId, 'otpRequests', env);
         
         // CORS: Use API key's per-key origins (not customer config)
         // Valid API key with origins → use those. Valid key without origins → ['*'] (allow any)
@@ -464,6 +469,11 @@ export async function handleAuthRoutes(
         // - User does NOT inherit API key owner's customerId, permissions, or super admin status
         const tenantCustomerId = apiKeyAuth?.customerId ?? null;
         const handlerResponse = await handleVerifyOTP(request, env, tenantCustomerId);
+
+        if (apiKeyAuth) {
+            const metric = handlerResponse.ok ? 'otpVerifications' : 'otpFailures';
+            trackApiKeyRequest(apiKeyAuth.keyId, apiKeyAuth.customerId, metric, env);
+        }
         
         // CORS: Use API key's per-key origins (not customer config)
         // Valid API key with origins → use those. Valid key without origins → ['*'] (allow any)

@@ -1,0 +1,204 @@
+<script lang="ts">
+  import { createEventDispatcher } from 'svelte';
+
+  export let show = false;
+  export let keyName = '';
+  export let origins: string[] = [];
+  export let saving = false;
+  export let error: string | null = null;
+  export let success: string | null = null;
+
+  let newOrigin = '';
+
+  const dispatch = createEventDispatcher<{
+    save: { origins: string[] };
+    close: void;
+  }>();
+
+  function addOrigin() {
+    const origin = newOrigin.trim();
+    if (!origin) return;
+
+    if (!origin.startsWith('http://') && !origin.startsWith('https://')) {
+      error = 'Origin must start with http:// or https://';
+      return;
+    }
+
+    const normalizedOrigin = origin.replace(/\/$/, '');
+
+    if (origins.includes(normalizedOrigin)) {
+      error = 'This origin is already added';
+      return;
+    }
+
+    origins = [...origins, normalizedOrigin];
+    newOrigin = '';
+    error = null;
+    success = null;
+  }
+
+  function removeOrigin(origin: string) {
+    origins = origins.filter(o => o !== origin);
+    success = null;
+  }
+
+  function close() {
+    dispatch('close');
+  }
+</script>
+
+{#if show}
+  <div class="modal" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="origins-modal-title"
+    onclick={(e) => e.target === e.currentTarget && close()}
+    onkeydown={(e) => e.key === 'Escape' && close()}>
+    <div class="modal__content">
+      <div class="modal__header">
+        <h2 id="origins-modal-title" class="modal__title">Allowed Origins</h2>
+        <button class="modal__close" onclick={close} aria-label="Close modal">x</button>
+      </div>
+
+      <div class="modal__body">
+        <p class="modal__text">
+          Configure which domains can use the API key <strong>"{keyName}"</strong>.
+        </p>
+        <p class="modal__text modal__text--info">
+          <strong>No origins configured</strong> = Key works from <em>any</em> origin.<br/>
+          <strong>Origins configured</strong> = Key <em>only</em> works from those specific origins.
+        </p>
+
+        {#if error}
+          <div class="modal__alert modal__alert--error">{error}</div>
+        {/if}
+        {#if success}
+          <div class="modal__alert modal__alert--success">{success}</div>
+        {/if}
+
+        <div class="modal__add-row">
+          <input type="text" class="modal__input" placeholder="https://your-app.com"
+            bind:value={newOrigin}
+            onkeypress={(e) => e.key === 'Enter' && addOrigin()} />
+          <button class="modal__btn modal__btn--add" onclick={addOrigin}>Add</button>
+        </div>
+
+        <div class="modal__help">
+          <strong>Examples:</strong>
+          <code>https://myapp.com</code>,
+          <code>http://localhost:3000</code>
+        </div>
+
+        {#if origins.length === 0}
+          <div class="modal__empty">
+            <p>No allowed origins configured for this key.</p>
+            <p class="modal__empty-hint">Add origins to use this API key from a browser.</p>
+          </div>
+        {:else}
+          <ul class="modal__list">
+            {#each origins as origin}
+              <li class="modal__list-item">
+                <code class="modal__origin-value">{origin}</code>
+                <button class="modal__origin-remove" onclick={() => removeOrigin(origin)} aria-label={`Remove ${origin}`}>x</button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+
+      <div class="modal__footer">
+        <button class="modal__btn modal__btn--secondary" onclick={close}>Cancel</button>
+        <button class="modal__btn modal__btn--primary" onclick={() => dispatch('save', { origins })} disabled={saving}>
+          {saving ? 'Saving...' : 'Save Origins'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<style>
+  .modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10000; padding: 1rem;
+  }
+  .modal__content {
+    background: var(--card); border: 2px solid var(--accent);
+    border-radius: var(--radius-md); padding: var(--spacing-xl);
+    max-width: 600px; width: 90%; max-height: 80vh;
+    overflow-y: auto; display: flex; flex-direction: column;
+  }
+  .modal__header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: var(--spacing-md); border-bottom: 1px solid var(--border);
+    margin-bottom: var(--spacing-md);
+  }
+  .modal__title { margin: 0; color: var(--accent); }
+  .modal__close {
+    background: transparent; border: none; color: var(--text-secondary);
+    font-size: 1.5rem; cursor: pointer; padding: var(--spacing-xs); line-height: 1;
+  }
+  .modal__close:hover { color: var(--text); }
+  .modal__body { flex: 1; overflow-y: auto; }
+  .modal__text { margin-bottom: var(--spacing-md); color: var(--text-secondary); }
+  .modal__text--info { font-size: 0.875rem; }
+  .modal__footer {
+    display: flex; justify-content: flex-end; gap: var(--spacing-md);
+    padding-top: var(--spacing-md); border-top: 1px solid var(--border);
+    margin-top: var(--spacing-md);
+  }
+  .modal__alert {
+    border-radius: var(--radius-sm); padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-md); font-size: 0.875rem;
+  }
+  .modal__alert--error {
+    color: var(--danger); background: rgba(255,71,87,0.1); border: 1px solid var(--danger);
+  }
+  .modal__alert--success {
+    color: var(--success); background: rgba(0,210,106,0.1); border: 1px solid var(--success);
+  }
+  .modal__add-row { display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-md); }
+  .modal__input {
+    flex: 1; padding: var(--spacing-md); background: var(--bg-dark);
+    border: 1px solid var(--border); border-radius: var(--radius-md);
+    color: var(--text); font-size: 1rem;
+  }
+  .modal__btn {
+    padding: var(--spacing-sm) var(--spacing-lg); font-weight: 600;
+    font-size: 0.875rem; cursor: pointer; border-radius: var(--radius-sm);
+  }
+  .modal__btn--add {
+    background: var(--accent); border: none; color: #000; flex-shrink: 0;
+  }
+  .modal__btn--secondary {
+    background: transparent; border: 1px solid var(--border); color: var(--text-secondary);
+  }
+  .modal__btn--secondary:hover { background: var(--bg-dark); border-color: var(--text-secondary); }
+  .modal__btn--primary {
+    background: var(--success); border: none; color: #fff;
+  }
+  .modal__btn--primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .modal__help {
+    font-size: 0.75rem; color: var(--text-secondary); margin-bottom: var(--spacing-lg);
+  }
+  .modal__help code {
+    background: var(--bg-dark); padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-sm); color: var(--accent); margin: 0 var(--spacing-xs);
+  }
+  .modal__empty {
+    text-align: center; padding: var(--spacing-xl); color: var(--text-secondary);
+    background: var(--bg-dark); border-radius: var(--radius-md); border: 1px dashed var(--border);
+  }
+  .modal__empty-hint { margin-top: var(--spacing-sm); font-size: 0.875rem; color: var(--muted); }
+  .modal__list { list-style: none; padding: 0; margin: 0 0 var(--spacing-lg) 0; }
+  .modal__list-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md); background: var(--bg-dark);
+    border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: var(--spacing-sm);
+  }
+  .modal__origin-value {
+    font-family: monospace; font-size: 0.875rem; color: var(--accent); word-break: break-all;
+  }
+  .modal__origin-remove {
+    background: transparent; border: none; color: var(--danger);
+    font-size: 1.25rem; cursor: pointer; padding: var(--spacing-xs); line-height: 1; opacity: 0.7;
+  }
+  .modal__origin-remove:hover { opacity: 1; }
+</style>

@@ -13,7 +13,8 @@ import type {
   AuditLogsResponse,
   Analytics,
   RealtimeAnalytics,
-  ErrorAnalytics
+  ErrorAnalytics,
+  UsageSummaryResponse,
 } from './types.js';
 
 // API base URL - uses current origin (works with Vite proxy in dev, or same origin in production)
@@ -176,6 +177,15 @@ export class ApiClient {
     if (response.status !== 200 || !response.data) {
       const error = response.data as { detail?: string } | undefined;
       throw new Error(error?.detail || 'Failed to rotate API key');
+    }
+    return response.data;
+  }
+
+  async getApiKeyUsageSummary(): Promise<UsageSummaryResponse> {
+    const response = await this.api.get<UsageSummaryResponse>('/admin/api-keys/usage-summary');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get usage summary');
     }
     return response.data;
   }

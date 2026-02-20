@@ -34,3 +34,13 @@ export {
 export {
     handleDeleteCustomerData, handleExportCustomerData, handleGetAuditLogs
 } from './admin/gdpr.js';
+
+// API Key Usage
+export {
+    handleGetKeyUsage, handleGetUsageSummary
+} from './admin/api-key-usage.js';
+
+// API Key Origins
+export {
+    handleUpdateKeyOrigins
+} from './admin/api-keys.js';

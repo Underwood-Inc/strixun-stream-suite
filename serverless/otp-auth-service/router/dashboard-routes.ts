@@ -272,6 +272,26 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
         };
     }
 
+    // Per-key usage data
+    // GET /admin/customers/{customerId}/api-keys/{keyId}/usage
+    const keyUsageMatch = path.match(/^\/admin\/customers\/([^\/]+)\/api-keys\/([^\/]+)\/usage$/);
+    if (keyUsageMatch && request.method === 'GET') {
+        const pathCustomerId = keyUsageMatch[1];
+        const keyId = keyUsageMatch[2];
+        const auth = await authenticateRequest(request, env);
+        return handleAdminRoute(
+            (req, e, cid) => adminHandlers.handleGetKeyUsage(req, e, pathCustomerId, keyId),
+            request, env, auth,
+        );
+    }
+
+    // Usage summary for all keys
+    // GET /admin/api-keys/usage-summary
+    if (path === '/admin/api-keys/usage-summary' && request.method === 'GET') {
+        const auth = await authenticateRequest(request, env);
+        return handleAdminRoute(adminHandlers.handleGetUsageSummary, request, env, auth);
+    }
+
     // Customer status management endpoints
     const suspendCustomerMatch = path.match(/^\/admin\/customers\/([^\/]+)\/suspend$/);
     if (suspendCustomerMatch && request.method === 'POST') {

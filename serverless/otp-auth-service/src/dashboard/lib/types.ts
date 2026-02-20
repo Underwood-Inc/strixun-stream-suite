@@ -65,6 +65,47 @@ export interface AuditLogsResponse {
   events: AuditLog[];
 }
 
+/** Per-key daily usage snapshot returned by the usage summary endpoint */
+export interface KeyUsageSummary {
+  keyId: string;
+  name: string;
+  today: {
+    requests: number;
+    otpRequests: number;
+    otpVerifications: number;
+    otpFailures: number;
+    lastRequest: string | null;
+  };
+  month: {
+    requests: number;
+    otpRequests: number;
+    otpVerifications: number;
+    otpFailures: number;
+  };
+}
+
+/** Plan quota limits */
+export interface PlanQuota {
+  plan: string;
+  dailyLimit: number;
+  monthlyLimit: number;
+}
+
+/** Response from GET /admin/api-keys/usage-summary */
+export interface UsageSummaryResponse {
+  success: boolean;
+  plan: string;
+  quota: PlanQuota;
+  customerTotal: {
+    todayRequests: number;
+    monthRequests: number;
+  };
+  dailyUsagePercent: number;
+  monthlyUsagePercent: number;
+  suggestUpgrade: boolean;
+  keys: KeyUsageSummary[];
+}
+
 export interface Analytics {
   today?: {
     otpRequests: number;
