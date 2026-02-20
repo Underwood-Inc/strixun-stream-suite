@@ -18,6 +18,36 @@ import { trackApiKeyRequest } from '../services/api-key-usage.js';
 // CRITICAL: user-lookup removed - we ONLY use customerId, NO userId
 // CRITICAL: wrapWithEncryption removed - main router handles ALL encryption (avoids double-encryption)
 
+/**
+ * Merge a handler Response with CORS headers while preserving all Set-Cookie
+ * headers. Object.fromEntries() collapses duplicate keys, which destroys
+ * multi-cookie responses. This helper uses header tuples instead.
+ */
+function wrapWithCors(handlerResponse: Response, corsHeaders: Headers): Response {
+    const tuples: [string, string][] = [];
+
+    handlerResponse.headers.forEach((value, name) => {
+        if (name.toLowerCase() !== 'set-cookie') {
+            tuples.push([name, value]);
+        }
+    });
+
+    const setCookies = handlerResponse.headers.getSetCookie();
+    for (const cookie of setCookies) {
+        tuples.push(['Set-Cookie', cookie]);
+    }
+
+    corsHeaders.forEach((value, name) => {
+        tuples.push([name, value]);
+    });
+
+    return new Response(handlerResponse.body, {
+        status: handlerResponse.status,
+        statusText: handlerResponse.statusText,
+        headers: tuples,
+    });
+}
+
 interface Env {
     OTP_AUTH_KV: KVNamespace;
     [key: string]: any;
@@ -446,14 +476,7 @@ export async function handleAuthRoutes(
             ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }
             : customer;
         const corsHeaders = getCorsHeaders(env, request, corsCustomer);
-        const responseWithCors = new Response(handlerResponse.body, {
-            status: handlerResponse.status,
-            statusText: handlerResponse.statusText,
-            headers: {
-                ...Object.fromEntries(handlerResponse.headers.entries()),
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        const responseWithCors = wrapWithCors(handlerResponse, corsHeaders);
         
         // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
         return { response: responseWithCors, customerId };
@@ -481,14 +504,7 @@ export async function handleAuthRoutes(
             ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }
             : customer;
         const corsHeaders = getCorsHeaders(env, request, corsCustomer);
-        const responseWithCors = new Response(handlerResponse.body, {
-            status: handlerResponse.status,
-            statusText: handlerResponse.statusText,
-            headers: {
-                ...Object.fromEntries(handlerResponse.headers.entries()),
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        const responseWithCors = wrapWithCors(handlerResponse, corsHeaders);
         
         // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
         return { response: responseWithCors, customerId };
@@ -502,14 +518,7 @@ export async function handleAuthRoutes(
             ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }
             : customer;
         const corsHeaders = getCorsHeaders(env, request, corsCustomer);
-        const responseWithCors = new Response(handlerResponse.body, {
-            status: handlerResponse.status,
-            statusText: handlerResponse.statusText,
-            headers: {
-                ...Object.fromEntries(handlerResponse.headers.entries()),
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        const responseWithCors = wrapWithCors(handlerResponse, corsHeaders);
         
         // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
         return { response: responseWithCors, customerId };
@@ -546,14 +555,7 @@ export async function handleAuthRoutes(
             ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }
             : customer;
         const corsHeaders = getCorsHeaders(env, request, corsCustomer);
-        const responseWithCors = new Response(handlerResponse.body, {
-            status: handlerResponse.status,
-            statusText: handlerResponse.statusText,
-            headers: {
-                ...Object.fromEntries(handlerResponse.headers.entries()),
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        const responseWithCors = wrapWithCors(handlerResponse, corsHeaders);
         
         return { response: responseWithCors, customerId };
     }
@@ -564,14 +566,7 @@ export async function handleAuthRoutes(
             ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }
             : customer;
         const corsHeaders = getCorsHeaders(env, request, corsCustomer);
-        const responseWithCors = new Response(handlerResponse.body, {
-            status: handlerResponse.status,
-            statusText: handlerResponse.statusText,
-            headers: {
-                ...Object.fromEntries(handlerResponse.headers.entries()),
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        const responseWithCors = wrapWithCors(handlerResponse, corsHeaders);
 
         return { response: responseWithCors, customerId };
     }
@@ -587,14 +582,7 @@ export async function handleAuthRoutes(
             ? { config: { allowedOrigins: apiKeyAuth.allowedOrigins?.length ? apiKeyAuth.allowedOrigins : ['*'] } }
             : customer;
         const corsHeaders = getCorsHeaders(env, request, corsCustomer);
-        const responseWithCors = new Response(handlerResponse.body, {
-            status: handlerResponse.status,
-            statusText: handlerResponse.statusText,
-            headers: {
-                ...Object.fromEntries(handlerResponse.headers.entries()),
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        const responseWithCors = wrapWithCors(handlerResponse, corsHeaders);
         
         // CRITICAL: Do NOT encrypt here - main router handles ALL encryption
         return { response: responseWithCors, customerId };
