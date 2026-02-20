@@ -15,6 +15,7 @@ import { handleCustomerRoutes } from './router/customer-routes.js';
 import { handleGameRoutes } from './router/game-routes.js';
 import { handleSSOConfigRoutes } from './router/sso-config-routes.js';
 import { handleMigrationRoutes } from './router/migration-routes.js';
+import { handleAccessProxy } from './handlers/access-proxy.js';
 import { handleDiscovery } from './handlers/oidc/discovery.js';
 import { handleJWKS } from './handlers/oidc/jwks.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
@@ -137,6 +138,11 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             response = publicResponse;
         }
         
+        // Same-origin proxy for Access API (dashboard calls auth.idling.app/api/access/* -> access-api)
+        if (!response && (path === '/api/access' || path.startsWith('/api/access/'))) {
+            response = await handleAccessProxy(request, path, env);
+        }
+
         // OIDC discovery / JWKS (public, no auth required)
         if (!response && path === '/.well-known/openid-configuration') {
             response = await handleDiscovery(request, env);

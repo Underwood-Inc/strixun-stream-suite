@@ -24,9 +24,9 @@ const getAccessServiceUrl = (): string => {
     return window.location.origin; // Vite proxy handles /access
   }
   
-  // Production: use env var or fallback (should be set via env var)
+  // Production: use same-origin proxy at /api so requests go to auth.idling.app/api/access/*
   return (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ACCESS_SERVICE_URL) 
-    || 'https://access-api.idling.app';
+    || '/api';
 };
 
 const ACCESS_SERVICE_URL = getAccessServiceUrl();
