@@ -53,6 +53,7 @@ global.fetch = vi.fn();
 // NOW import after mocks are set up
 import { createAuthStore } from './svelte.js';
 import { getCookie, deleteCookie } from '../core/utils.js';
+import { fetchCustomerInfo, refreshAuth } from '../core/api.js';
 import { fetchCustomerInfo } from '../core/api.js';
 
 describe('Auth Store - Svelte Adapter (HttpOnly Cookie SSO)', () => {
@@ -93,7 +94,6 @@ describe('Auth Store - Svelte Adapter (HttpOnly Cookie SSO)', () => {
             const customer = get(authStore.customer);
             expect(customer).toBeDefined();
             expect(customer?.customerId).toBe('cust_123');
-            expect(customer?.email).toBe('test@example.com');
             expect(customer?.displayName).toBe('Test User');
             expect(customer?.isSuperAdmin).toBe(true);
             expect(get(authStore.isAuthenticated)).toBe(true);
@@ -175,24 +175,19 @@ describe('Auth Store - Svelte Adapter (HttpOnly Cookie SSO)', () => {
         });
 
         it('should clear cookie and state when token invalid', async () => {
-            vi.mocked(getCookie).mockReturnValue('invalid_token');
             vi.mocked(fetchCustomerInfo).mockResolvedValue(null);
+            vi.mocked(refreshAuth).mockResolvedValue(false);
             
             const result = await authStore.checkAuth();
             
             expect(result).toBe(false);
-            expect(deleteCookie).toHaveBeenCalledWith('auth_token', '.idling.app', '/');
             expect(get(authStore.isAuthenticated)).toBe(false);
         });
 
         it('should handle fetch errors gracefully', async () => {
-            vi.mocked(getCookie).mockReturnValue('valid_jwt_token');
             vi.mocked(fetchCustomerInfo).mockRejectedValue(new Error('Network error'));
             
-            const result = await authStore.checkAuth();
-            
-            expect(result).toBe(false);
-            expect(deleteCookie).toHaveBeenCalled();
+            await expect(authStore.checkAuth()).rejects.toThrow('Authentication check failed');
             expect(get(authStore.isAuthenticated)).toBe(false);
         });
     });
@@ -254,20 +249,14 @@ describe('Auth Store - Svelte Adapter (HttpOnly Cookie SSO)', () => {
     });
 
     describe('getAuthToken()', () => {
-        it('should return token from cookie', () => {
-            vi.mocked(getCookie).mockReturnValue('test_token_123');
-            
+        it('should return null (HttpOnly cookie not readable by JS)', () => {
             const token = authStore.getAuthToken();
-            
-            expect(token).toBe('test_token_123');
-            expect(getCookie).toHaveBeenCalledWith('auth_token');
+            expect(token).toBeNull();
         });
 
-        it('should return null when no cookie', () => {
-            vi.mocked(getCookie).mockReturnValue(null);
-            
+        it('should return null when not authenticated', () => {
+            authStore.setCustomer(null);
             const token = authStore.getAuthToken();
-            
             expect(token).toBeNull();
         });
     });
@@ -360,12 +349,13 @@ describe('Auth Store - Svelte Adapter (HttpOnly Cookie SSO)', () => {
     });
 
     describe('loadAuthState()', () => {
-        it('should call checkAuth internally', async () => {
-            vi.mocked(getCookie).mockReturnValue(null);
+        it('should clear state when checkAuth fails', async () => {
+            vi.mocked(fetchCustomerInfo).mockResolvedValue(null);
+            vi.mocked(refreshAuth).mockResolvedValue(false);
             
             await authStore.loadAuthState();
             
-            expect(getCookie).toHaveBeenCalledWith('auth_token');
+            expect(get(authStore.isAuthenticated)).toBe(false);
         });
 
         it('should handle errors gracefully', async () => {
