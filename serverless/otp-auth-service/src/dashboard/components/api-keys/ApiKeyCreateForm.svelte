@@ -11,19 +11,29 @@
   let showOrigins = false;
 
   function addOrigin() {
-    const origin = newOrigin.trim();
-    if (!origin) return;
+    const text = newOrigin.trim();
+    if (!text) return;
     originsError = null;
-    if (!origin.startsWith('http://') && !origin.startsWith('https://')) {
-      originsError = 'Origin must start with http:// or https://';
+    const tokens = text.split(/[\n,]+/).map((s) => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+    const invalid: string[] = [];
+    const added: string[] = [];
+    for (const token of tokens) {
+      const normalized = token === 'null' ? 'null' : (token.startsWith('http://') || token.startsWith('https://') ? token.replace(/\/$/, '') : null);
+      if (normalized === null) {
+        invalid.push(token);
+        continue;
+      }
+      if (!origins.includes(normalized) && !added.includes(normalized)) added.push(normalized);
+    }
+    if (invalid.length > 0) {
+      originsError = `Invalid: ${invalid.join(', ')}. Use http:// or https:// URL, or null (no quotes needed).`;
       return;
     }
-    const normalized = origin.replace(/\/$/, '');
-    if (origins.includes(normalized)) {
+    if (added.length === 0) {
       originsError = 'Already added';
       return;
     }
-    origins = [...origins, normalized];
+    origins = [...origins, ...added];
     newOrigin = '';
   }
 
@@ -73,18 +83,18 @@
     {#if showOrigins}
       <div id="create-form-cors-panel" class="create-form__cors-panel" role="region" aria-label="CORS allowed origins">
         <p class="create-form__cors-hint">
-          Restrict this key to specific origins (e.g. <code>https://myapp.com</code>, <code>http://localhost:3000</code>). Leave empty to allow any origin.
+          <strong>One per line or comma-separated.</strong> Use <code>null</code> (no quotes) to allow the downloadable test page when opened as file://. Examples: <code>https://myapp.com</code>, <code>http://localhost:3000</code>. Leave empty to allow any origin.
         </p>
         {#if originsError}
           <div class="create-form__cors-error">{originsError}</div>
         {/if}
         <div class="create-form__cors-add">
-          <input
-            type="text"
-            class="create-form__input create-form__cors-input"
-            placeholder="https://your-app.com or http://localhost:3000"
+          <textarea
+            class="create-form__input create-form__cors-textarea"
+            placeholder="https://myapp.com&#10;http://localhost:3000&#10;null"
             bind:value={newOrigin}
-            onkeypress={(e) => e.key === 'Enter' && (e.preventDefault(), addOrigin())}
+            rows="3"
+            aria-label="Allowed origins (one per line or comma-separated)"
           />
           <button type="button" class="create-form__cors-add-btn" onclick={addOrigin}>Add</button>
         </div>
@@ -196,12 +206,16 @@
 
   .create-form__cors-add {
     display: flex;
+    flex-direction: column;
     gap: var(--spacing-sm);
     margin-bottom: var(--spacing-md);
   }
 
-  .create-form__cors-input {
+  .create-form__cors-textarea {
     min-width: 0;
+    resize: vertical;
+    min-height: 4.5rem;
+    font-family: inherit;
   }
 
   .create-form__cors-add-btn {

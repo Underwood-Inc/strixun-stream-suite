@@ -16,22 +16,29 @@
   }>();
 
   function addOrigin() {
-    const origin = newOrigin.trim();
-    if (!origin) return;
+    const text = newOrigin.trim();
+    if (!text) return;
 
-    if (!origin.startsWith('http://') && !origin.startsWith('https://')) {
-      error = 'Origin must start with http:// or https://';
+    const tokens = text.split(/[\n,]+/).map((s) => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+    const invalid: string[] = [];
+    const added: string[] = [];
+    for (const token of tokens) {
+      const normalized = token === 'null' ? 'null' : (token.startsWith('http://') || token.startsWith('https://') ? token.replace(/\/$/, '') : null);
+      if (normalized === null) {
+        invalid.push(token);
+        continue;
+      }
+      if (!origins.includes(normalized) && !added.includes(normalized)) added.push(normalized);
+    }
+    if (invalid.length > 0) {
+      error = `Invalid: ${invalid.join(', ')}. Use http:// or https:// URL, or null (no quotes needed).`;
       return;
     }
-
-    const normalizedOrigin = origin.replace(/\/$/, '');
-
-    if (origins.includes(normalizedOrigin)) {
-      error = 'This origin is already added';
+    if (added.length === 0) {
+      error = 'Already added';
       return;
     }
-
-    origins = [...origins, normalizedOrigin];
+    origins = [...origins, ...added];
     newOrigin = '';
     error = null;
     success = null;
@@ -65,6 +72,9 @@
           <strong>No origins configured</strong> = Key works from <em>any</em> origin.<br/>
           <strong>Origins configured</strong> = Key <em>only</em> works from those specific origins.
         </p>
+        <p class="modal__text modal__text--info">
+          Add <code>null</code> (no quotes) to allow the downloadable test page when opened as file://. One origin per line or comma-separated.
+        </p>
 
         {#if error}
           <div class="modal__alert modal__alert--error">{error}</div>
@@ -73,17 +83,15 @@
           <div class="modal__alert modal__alert--success">{success}</div>
         {/if}
 
-        <div class="modal__add-row">
-          <input type="text" class="modal__input" placeholder="https://your-app.com"
+        <div class="modal__add-block">
+          <textarea
+            class="modal__textarea"
+            placeholder="https://myapp.com&#10;http://localhost:3000&#10;null"
             bind:value={newOrigin}
-            onkeypress={(e) => e.key === 'Enter' && addOrigin()} />
+            rows="3"
+            aria-label="Allowed origins (one per line or comma-separated)"
+          />
           <button class="modal__btn modal__btn--add" onclick={addOrigin}>Add</button>
-        </div>
-
-        <div class="modal__help">
-          <strong>Examples:</strong>
-          <code>https://myapp.com</code>,
-          <code>http://localhost:3000</code>
         </div>
 
         {#if origins.length === 0}
@@ -165,7 +173,7 @@
     font-size: 0.875rem; cursor: pointer; border-radius: var(--radius-sm);
   }
   .modal__btn--add {
-    background: var(--accent); border: none; color: #000; flex-shrink: 0;
+    background: var(--accent); border: none; color: #000; align-self: flex-start;
   }
   .modal__btn--secondary {
     background: transparent; border: 1px solid var(--border); color: var(--text-secondary);
