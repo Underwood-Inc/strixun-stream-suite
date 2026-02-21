@@ -907,12 +907,16 @@ graph LR
         A5["aud"]
         A6["isSuperAdmin"]
         A7["csrf"]
-        A8["email_verified"]
     end
 
     subgraph "Scope: profile"
         C1["name"]
         C2["preferred_username"]
+        C3["displayName"]
+    end
+
+    subgraph "Scope: email"
+        E1["email_verified"]
     end
 
     style A1 fill:#edae49,stroke:#c68214,stroke-width:1px,color:#1a1611
@@ -922,12 +926,27 @@ graph LR
     style A5 fill:#edae49,stroke:#c68214,stroke-width:1px,color:#1a1611
     style A6 fill:#edae49,stroke:#c68214,stroke-width:1px,color:#1a1611
     style A7 fill:#edae49,stroke:#c68214,stroke-width:1px,color:#1a1611
-    style A8 fill:#edae49,stroke:#c68214,stroke-width:1px,color:#1a1611
     style C1 fill:#28a745,stroke:#252017,stroke-width:1px,color:#f9f9f9
     style C2 fill:#28a745,stroke:#252017,stroke-width:1px,color:#f9f9f9
+    style C3 fill:#28a745,stroke:#252017,stroke-width:1px,color:#f9f9f9
+    style E1 fill:#5bc0de,stroke:#252017,stroke-width:1px,color:#1a1611
 ```
 
-**Privacy note:** The raw email address is **never** included in JWT payloads, token responses, or the UserInfo endpoint. Only `email_verified` (a true/false flag) is included, confirming that the user authenticated via OTP. The `customerId` is the sole external identifier. Email exists only in server-side KV storage (session and refresh token records) for internal operations like OTP verification and access provisioning.
+**Privacy note:** The raw email address is **never** included in JWT payloads, token responses, or the UserInfo endpoint. Only `email_verified` (a true/false flag) is included when the `email` scope is requested, confirming that the user authenticated via OTP. The `customerId` is the sole external identifier. Email exists only in server-side KV storage (session and refresh token records) for internal operations like OTP verification and access provisioning.
+
+#### What happens when a scope or claim is provided or omitted
+
+- **Clients send only scopes.** In `POST /auth/verify-otp` the request body includes `scope` (e.g. `"openid profile"`). Clients do not send individual claim names; the server decides which claims to include based on the granted scope(s).
+
+- **When a scope is provided:** The access token and `GET /auth/me` (UserInfo) include every claim that belongs to that scope (see "Claims by scope" in the diagram above). If multiple scopes are granted, the response contains the union of their claims.
+
+- **When a scope is omitted:** Claims that belong only to that scope are not included. Examples:
+  - Request only `openid` (no `profile`) → `name`, `preferred_username`, and `displayName` are **not** in the token or UserInfo.
+  - Omit `email` → `email_verified` is **not** included.
+
+- **You cannot request a specific claim by name.** To receive a claim, you must request the scope that grants it. If a claim is not in the scope→claim mapping for any requested scope, it will not appear in the response.
+
+- **If the client omits `scope` entirely:** The server uses the default scope (`openid profile`), so the client receives openid + profile claims only (no `email_verified` unless `email` is explicitly requested).
 
 ### Endpoint Reference
 

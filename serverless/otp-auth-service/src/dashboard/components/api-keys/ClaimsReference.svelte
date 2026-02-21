@@ -26,6 +26,18 @@
         <p class="claims-ref__intro">
           Configure which scopes (and thus claims) each API key can request. In <code>POST /auth/verify-otp</code>, send <code>scope</code> in the body (e.g. <code>"openid profile"</code>). Per-key allowed scopes are set in the key create form or in the key’s configuration (origins modal).
         </p>
+
+        <div class="claims-ref__behavior" role="region" aria-labelledby="claims-ref-behavior-heading">
+          <h3 id="claims-ref-behavior-heading" class="claims-ref__h3">What happens when a scope or claim is provided or omitted</h3>
+          <ul class="claims-ref__ul">
+            <li><strong>You only send scopes in the request.</strong> In <code>POST /auth/verify-otp</code> you send <code>scope</code> (e.g. <code>"openid profile"</code>). You do not send individual claim names; claims are determined by the server from the scopes you request.</li>
+            <li><strong>When a scope is provided:</strong> The access token and <code>GET /auth/me</code> (UserInfo) will include every claim listed under that scope in "Claims by scope" below. If you request multiple scopes, you get the union of their claims.</li>
+            <li><strong>When a scope is omitted:</strong> The claims that belong only to that scope are not included. For example, if you request only <code>openid</code> (no <code>profile</code>), then <code>name</code>, <code>preferred_username</code>, and <code>displayName</code> are not in the token or UserInfo. If you omit <code>email</code>, <code>email_verified</code> is not included.</li>
+            <li><strong>You cannot request a specific claim by name.</strong> To get a claim, you must request the scope that grants it. If a claim is not in "Claims by scope" for any requested scope, it will not appear in the response.</li>
+            <li><strong>If you omit <code>scope</code> entirely:</strong> The server uses the default scope (<code>openid profile</code>), so you get openid + profile claims (not email).</li>
+          </ul>
+        </div>
+
         {#if scopesSupported.length > 0}
           <p class="claims-ref__row"><strong>Supported scopes:</strong> {#each scopesSupported as s}<code class="claims-ref__code">{s}</code>{/each}</p>
         {/if}
@@ -83,6 +95,30 @@
     margin-bottom: var(--spacing-md);
   }
   .claims-ref__intro code {
+    background: var(--bg-dark);
+    padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+  }
+  .claims-ref__behavior {
+    margin-bottom: var(--spacing-lg);
+  }
+  .claims-ref__h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-sm) 0;
+  }
+  .claims-ref__ul {
+    margin: 0;
+    padding-left: var(--spacing-lg);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+  .claims-ref__ul li {
+    margin-bottom: var(--spacing-xs);
+  }
+  .claims-ref__ul code {
     background: var(--bg-dark);
     padding: 2px var(--spacing-xs);
     border-radius: var(--radius-sm);
