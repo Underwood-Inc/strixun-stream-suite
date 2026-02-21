@@ -7,7 +7,7 @@ compatibility_date = "2024-12-01"
 # Then wrangler deploys the pre-built dist/worker.js
 
 [env.production]
-vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", CUSTOMER_API_URL = "https://customer-api.idling.app" }
+vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", CUSTOMER_API_URL = "https://customer-api.idling.app", ALLOWED_ORIGINS = "https://streamkit.idling.app,https://mods.idling.app,https://www.idling.app,https://idling.app,https://s.idling.app" }
 # Custom domain route (s.idling.app/*) is managed in Cloudflare Dashboard
 # Routes configured in the dashboard take precedence over wrangler.toml
 # KV Namespace for storing URL mappings
@@ -44,6 +44,7 @@ preview_id = "b0e590fa55ce4513af3c5e07068372ef"
 ENVIRONMENT = "production"
 JWT_ISSUER = "https://auth.idling.app"
 CUSTOMER_API_URL = "https://customer-api.idling.app"
+ALLOWED_ORIGINS = "https://streamkit.idling.app,https://mods.idling.app,https://www.idling.app,https://idling.app,https://s.idling.app"
 
 # Default KV Namespaces (required for routes configured in dashboard or when no environment is specified)
 [[kv_namespaces]]
