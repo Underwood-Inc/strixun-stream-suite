@@ -442,7 +442,7 @@
   .api-keys__btn--warning { background: var(--warning); border: 2px solid var(--warning); color: #000; }
   .api-keys__btn--danger { background: transparent; border: 2px solid var(--danger); color: var(--danger); }
 
-  /* Condensed view: one card per row (proper list of rows with per-row hover) */
+  /* Condensed view: one card per key; hover highlights the individual data row (td), not the whole card */
   @media (max-width: 1024px) {
     .api-keys__table { min-width: 0; display: block; }
     .api-keys__table thead { display: none; }
@@ -461,12 +461,6 @@
       border-radius: var(--radius-md);
       isolation: isolate;
     }
-    .api-keys__row:hover {
-      background: rgba(234, 43, 31, 0.1);
-    }
-    .api-keys__row:hover td {
-      background: transparent;
-    }
     .api-keys__row td {
       display: flex;
       align-items: center;
@@ -475,6 +469,9 @@
       padding: var(--spacing-sm) 0;
       padding-right: 0;
       border-bottom: 1px solid var(--border);
+    }
+    .api-keys__row td:hover {
+      background: rgba(234, 43, 31, 0.1);
     }
     .api-keys__row td:last-child { border-bottom: none; padding-bottom: 0; }
     .api-keys__row td::before {
