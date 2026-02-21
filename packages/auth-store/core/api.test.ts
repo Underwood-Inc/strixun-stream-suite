@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getAuthApiUrl, decodeJWTPayload, refreshAuth } from './api.js';
+import { getAuthApiUrl, decodeJWTPayload, refreshAuth, fetchWithAuthRetry } from './api.js';
 import type { AuthStoreConfig } from './types.js';
 
 // Save original values
@@ -341,6 +341,74 @@ describe('Auth Store Core API', () => {
             expect(ra).toBe(true);
             expect(rb).toBe(true);
             expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('fetchWithAuthRetry', () => {
+        const fetchMock = vi.fn();
+
+        beforeEach(() => {
+            (global as any).fetch = fetchMock;
+        });
+
+        it('should return response immediately when status is not 401', async () => {
+            fetchMock.mockResolvedValue({ ok: true, status: 200 });
+            const tryRefresh = vi.fn();
+            const res = await fetchWithAuthRetry('https://api.example.com/list', { method: 'GET' }, { tryRefresh, maxAttempts: 3 });
+            expect(res.ok).toBe(true);
+            expect(res.status).toBe(200);
+            expect(tryRefresh).not.toHaveBeenCalled();
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('should retry up to maxAttempts on 401 when refresh succeeds then return last response', async () => {
+            fetchMock
+                .mockResolvedValueOnce({ ok: false, status: 401 })
+                .mockResolvedValueOnce({ ok: false, status: 401 })
+                .mockResolvedValueOnce({ ok: false, status: 401 });
+            const tryRefresh = vi.fn().mockResolvedValue(true);
+            const res = await fetchWithAuthRetry('https://api.example.com/list', { method: 'GET' }, { tryRefresh, maxAttempts: 3 });
+            expect(res.status).toBe(401);
+            expect(tryRefresh).toHaveBeenCalledTimes(2); // after 1st and 2nd 401
+            expect(fetchMock).toHaveBeenCalledTimes(3);
+        });
+
+        it('should stop retrying and return 401 when refresh returns false', async () => {
+            fetchMock.mockResolvedValue({ ok: false, status: 401 });
+            const tryRefresh = vi.fn().mockResolvedValue(false);
+            const res = await fetchWithAuthRetry('https://api.example.com/list', { method: 'GET' }, { tryRefresh, maxAttempts: 3 });
+            expect(res.status).toBe(401);
+            expect(tryRefresh).toHaveBeenCalledTimes(1);
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('should return success response on retry after 401 when refresh succeeds', async () => {
+            fetchMock
+                .mockResolvedValueOnce({ ok: false, status: 401 })
+                .mockResolvedValueOnce({ ok: true, status: 200 });
+            const tryRefresh = vi.fn().mockResolvedValue(true);
+            const res = await fetchWithAuthRetry('https://api.example.com/list', { method: 'GET' }, { tryRefresh, maxAttempts: 3 });
+            expect(res.ok).toBe(true);
+            expect(res.status).toBe(200);
+            expect(tryRefresh).toHaveBeenCalledTimes(1);
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        it('should complete with backoff option exponential (retry then succeed)', async () => {
+            fetchMock
+                .mockResolvedValueOnce({ ok: false, status: 401 })
+                .mockResolvedValueOnce({ ok: true, status: 200 });
+            const tryRefresh = vi.fn().mockResolvedValue(true);
+            const res = await fetchWithAuthRetry('https://api.example.com/list', { method: 'GET' }, {
+                tryRefresh,
+                maxAttempts: 3,
+                backoff: 'exponential',
+                initialDelayMs: 10,
+                maxDelayMs: 5000,
+            });
+            expect(res.ok).toBe(true);
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(tryRefresh).toHaveBeenCalledTimes(1);
         });
     });
 });

@@ -13,8 +13,17 @@
   import { Tooltip } from '@components';
   import { stagger } from '../core/animations';
   import { logout, customer, tryRefreshSession } from '../stores/auth';
+  import { fetchWithAuthRetry } from '@strixun/auth-store/core';
   import { showToast } from '../stores/toast-queue';
   import { navigate } from '../router';
+
+  const AUTH_RETRY_OPTIONS = {
+    tryRefresh: tryRefreshSession,
+    maxAttempts: 3,
+    backoff: 'exponential' as const,
+    initialDelayMs: 200,
+    maxDelayMs: 2000,
+  };
 
   interface ShortUrl {
     shortCode: string;
@@ -75,7 +84,7 @@
   }
 
   /**
-   * Load user's URLs
+   * Load user's URLs. Uses shared 3-try + optional backoff (no infinite 401 retries).
    */
   async function loadUrls(): Promise<void> {
     if (!urlShortenerApiUrl) {
@@ -84,22 +93,18 @@
 
     try {
       isLoading = true;
-      // CRITICAL: Use credentials: 'include' to send HttpOnly cookie automatically
-      const response = await fetch(`${urlShortenerApiUrl}/api/list`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithAuthRetry(
+        `${urlShortenerApiUrl}/api/list`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
         },
-        credentials: 'include', // Send HttpOnly cookie
-      });
+        AUTH_RETRY_OPTIONS
+      );
 
       if (!response.ok) {
         if (response.status === 401) {
-          const refreshed = await tryRefreshSession();
-          if (refreshed) {
-            await loadUrls();
-            return;
-          }
           await handleUnauthorized();
           return;
         }
@@ -112,9 +117,9 @@
       }
     } catch (error) {
       console.error('[URL Shortener] Failed to load URLs:', error);
-      showToast({ 
-        message: error instanceof Error ? error.message : 'Failed to load URLs', 
-        type: 'error' 
+      showToast({
+        message: error instanceof Error ? error.message : 'Failed to load URLs',
+        type: 'error',
       });
     } finally {
       isLoading = false;
@@ -154,26 +159,22 @@
 
     try {
       isCreating = true;
-      // CRITICAL: Use credentials: 'include' to send HttpOnly cookie automatically
-      const response = await fetch(`${urlShortenerApiUrl}/api/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithAuthRetry(
+        `${urlShortenerApiUrl}/api/create`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            url: urlInput.trim(),
+            customCode: customCodeInput.trim() || undefined,
+          }),
         },
-        credentials: 'include', // Send HttpOnly cookie
-        body: JSON.stringify({
-          url: urlInput.trim(),
-          customCode: customCodeInput.trim() || undefined,
-        }),
-      });
+        AUTH_RETRY_OPTIONS
+      );
 
       if (!response.ok) {
         if (response.status === 401) {
-          const refreshed = await tryRefreshSession();
-          if (refreshed) {
-            await createShortUrl();
-            return;
-          }
           await handleUnauthorized();
           return;
         }
@@ -216,22 +217,18 @@
     }
 
     try {
-      // CRITICAL: Use credentials: 'include' to send HttpOnly cookie automatically
-      const response = await fetch(`${urlShortenerApiUrl}/api/delete/${shortCode}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithAuthRetry(
+        `${urlShortenerApiUrl}/api/delete/${shortCode}`,
+        {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
         },
-        credentials: 'include', // Send HttpOnly cookie
-      });
+        AUTH_RETRY_OPTIONS
+      );
 
       if (!response.ok) {
         if (response.status === 401) {
-          const refreshed = await tryRefreshSession();
-          if (refreshed) {
-            await deleteUrl(shortCode);
-            return;
-          }
           await handleUnauthorized();
           return;
         }

@@ -253,6 +253,91 @@ export async function refreshAuth(config?: AuthStoreConfig): Promise<boolean> {
 }
 
 /**
+ * Options for fetch-with-401-retry: max attempts and optional progressive backoff.
+ */
+export interface FetchWithAuthRetryOptions {
+    /** Called on 401 to refresh session. Default: () => refreshAuth() */
+    tryRefresh?: () => Promise<boolean>;
+    /** Max total attempts (initial + retries). Default 3. */
+    maxAttempts?: number;
+    /** Backoff strategy between retries: none, linear, or exponential. Default 'none'. */
+    backoff?: 'none' | 'linear' | 'exponential';
+    /** Initial delay in ms (used for linear/exponential). Default 200. */
+    initialDelayMs?: number;
+    /** Cap delay in ms. Default 2000. */
+    maxDelayMs?: number;
+}
+
+/**
+ * Compute delay before the next retry (1-based attempt = which retry we're about to do).
+ */
+function authRetryDelay(
+    attempt: number,
+    backoff: 'none' | 'linear' | 'exponential',
+    initialDelayMs: number,
+    maxDelayMs: number
+): number {
+    if (backoff === 'none' || attempt < 1) return 0;
+    let delay: number;
+    if (backoff === 'exponential') {
+        delay = initialDelayMs * Math.pow(2, attempt - 1);
+    } else {
+        delay = initialDelayMs * attempt;
+    }
+    return Math.min(delay, maxDelayMs);
+}
+
+/**
+ * Fetch with 401 handling: up to maxAttempts attempts, calling tryRefresh on 401 and retrying.
+ * Optional progressive backoff (linear or exponential) between retries.
+ * Use this for any credentialed request so 401 does not trigger infinite retry loops.
+ *
+ * @param url - Full URL to fetch
+ * @param options - Standard RequestInit (must use credentials: 'include' for cookie auth)
+ * @param retryOptions - maxAttempts (default 3), optional tryRefresh, backoff, initialDelayMs, maxDelayMs
+ * @returns Last response (caller should check response.ok / response.status)
+ */
+export async function fetchWithAuthRetry(
+    url: string,
+    options: RequestInit,
+    retryOptions?: FetchWithAuthRetryOptions
+): Promise<Response> {
+    const tryRefresh = retryOptions?.tryRefresh ?? (() => refreshAuth());
+    const maxAttempts = Math.max(1, retryOptions?.maxAttempts ?? 3);
+    const backoff = retryOptions?.backoff ?? 'none';
+    const initialDelayMs = Math.max(0, retryOptions?.initialDelayMs ?? 200);
+    const maxDelayMs = Math.max(initialDelayMs, retryOptions?.maxDelayMs ?? 2000);
+
+    let lastResponse: Response | null = null;
+    let attempt = 0;
+
+    while (attempt < maxAttempts) {
+        attempt++;
+        lastResponse = await fetch(url, options);
+
+        if (lastResponse.status !== 401) {
+            return lastResponse;
+        }
+
+        const refreshed = await tryRefresh();
+        if (!refreshed) {
+            return lastResponse;
+        }
+
+        if (attempt >= maxAttempts) {
+            return lastResponse;
+        }
+
+        const delay = authRetryDelay(attempt, backoff, initialDelayMs, maxDelayMs);
+        if (delay > 0) {
+            await new Promise((r) => setTimeout(r, delay));
+        }
+    }
+
+    return lastResponse!;
+}
+
+/**
  * Decode JWT payload (without verification - for extracting CSRF token and other claims)
  * NOTE: With HttpOnly cookies, we can't access the token directly
  * This function is kept for backward compatibility but will return null
