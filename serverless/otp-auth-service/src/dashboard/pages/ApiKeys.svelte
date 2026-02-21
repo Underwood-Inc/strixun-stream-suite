@@ -346,6 +346,11 @@
     vertical-align: middle;
   }
 
+  /* Match generated test page row hover (security-table tr:hover td) */
+  .api-keys__row:hover td {
+    background: rgba(234, 43, 31, 0.1);
+  }
+
   .api-keys__th-name { min-width: 6rem; }
   .api-keys__th-key { min-width: 11rem; }
   .api-keys__th-actions { min-width: 18rem; white-space: nowrap; }
