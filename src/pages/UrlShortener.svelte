@@ -12,7 +12,7 @@
   import { onMount } from 'svelte';
   import { Tooltip } from '@components';
   import { stagger } from '../core/animations';
-  import { logout, customer } from '../stores/auth';
+  import { logout, customer, tryRefreshSession } from '../stores/auth';
   import { showToast } from '../stores/toast-queue';
   import { navigate } from '../router';
 
@@ -92,6 +92,11 @@
 
       if (!response.ok) {
         if (response.status === 401) {
+          const refreshed = await tryRefreshSession();
+          if (refreshed) {
+            await loadUrls();
+            return;
+          }
           handleUnauthorized();
           return;
         }
@@ -161,6 +166,11 @@
 
       if (!response.ok) {
         if (response.status === 401) {
+          const refreshed = await tryRefreshSession();
+          if (refreshed) {
+            await createShortUrl();
+            return;
+          }
           handleUnauthorized();
           return;
         }
@@ -214,6 +224,11 @@
 
       if (!response.ok) {
         if (response.status === 401) {
+          const refreshed = await tryRefreshSession();
+          if (refreshed) {
+            await deleteUrl(shortCode);
+            return;
+          }
           handleUnauthorized();
           return;
         }

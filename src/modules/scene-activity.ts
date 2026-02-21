@@ -1,29 +1,34 @@
 /**
  * Scene Activity Tracking Module
- * 
+ *
  * Records scene switches and retrieves top active scenes from Streamkit API
  */
 
 import { STREAMKIT_API_URL } from '../config/api';
+import { tryRefreshSession } from '../stores/auth';
 
 /**
- * Authenticated fetch wrapper
- * Uses auth_token HttpOnly cookie for authentication
+ * Authenticated fetch wrapper. On 401, tries session refresh and retries once.
  */
 async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const response = await fetch(url, {
+  const opts = {
     ...options,
-    credentials: 'include', // Include HttpOnly cookies
+    credentials: 'include' as RequestCredentials,
     headers: {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     },
-  });
-  
+  };
+  let response = await fetch(url, opts);
+  if (response.status === 401) {
+    const refreshed = await tryRefreshSession();
+    if (refreshed) {
+      response = await fetch(url, opts);
+    }
+  }
   if (!response.ok) {
     throw new Error(`API request failed: ${response.status} ${response.statusText}`);
   }
-  
   return response;
 }
 

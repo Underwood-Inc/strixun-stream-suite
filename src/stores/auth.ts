@@ -11,6 +11,7 @@ import type { Readable, Writable } from 'svelte/store';
 import { derived, writable } from 'svelte/store';
 import { createAuthStore } from '@strixun/auth-store/svelte';
 import { getDefaultAuthConfig } from '@strixun/auth-store/core';
+import { refreshAuth } from '@strixun/auth-store/core/api';
 import type { AuthenticatedCustomer } from '@strixun/auth-store/core';
 import { secureFetch } from '../core/services/encryption';
 import { storage } from '../modules/storage';
@@ -95,6 +96,14 @@ export function clearAuth(): void {
   authStore.setCustomer(null);
 }
 
+/**
+ * Try to refresh the session (exchange refresh_token for new access token).
+ * Use this on 401 before redirecting to login — if true, retry the request; if false, session is dead.
+ */
+export async function tryRefreshSession(): Promise<boolean> {
+  return refreshAuth(getDefaultAuthConfig());
+}
+
 /** Logout: call /auth/logout and clear local state. */
 export async function logout(): Promise<void> {
   await authStore.logout();
@@ -117,6 +126,7 @@ export function getApiUrl(): string {
 
 /**
  * Authenticated API request. Uses credentials: 'include' so HttpOnly cookie is sent.
+ * On 401, tries refresh once and retries the request; only throws if refresh fails.
  */
 export async function authenticatedFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
   if (!get(isAuthenticated)) {
@@ -133,9 +143,20 @@ export async function authenticatedFetch(endpoint: string, options: RequestInit 
     const csrf = getCsrfToken();
     if (csrf) headers.set('X-CSRF-Token', csrf);
   }
-  return secureFetch(`${apiUrl}${endpoint}`, {
+  let response = await secureFetch(`${apiUrl}${endpoint}`, {
     ...options,
     headers,
     credentials: 'include',
   });
+  if (response.status === 401) {
+    const refreshed = await tryRefreshSession();
+    if (refreshed) {
+      response = await secureFetch(`${apiUrl}${endpoint}`, {
+        ...options,
+        headers,
+        credentials: 'include',
+      });
+    }
+  }
+  return response;
 }
