@@ -7,7 +7,7 @@
 
 import { generateApiKey as generateKey, hashApiKey as hashApiKeyUtil, encryptData, decryptData, getJWTSecret } from '../utils/crypto.js';
 import { fetchCustomerByCustomerId } from '@strixun/api-framework';
-import { getEntity, putEntity, indexGet, indexAdd } from '@strixun/kv-entities';
+import { getEntity, putEntity, indexGet, indexAdd, indexRemove } from '@strixun/kv-entities';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -246,7 +246,15 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     // Update last used timestamp
     keyData.lastUsed = new Date().toISOString();
     await putEntity(env.OTP_AUTH_KV, 'auth', 'apikey', apiKeyHash, keyData);
-    
+
+    // Keep customer index in sync so list API shows correct lastUsed
+    const keyDataStrings = await indexGet(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', keyData.customerId);
+    const oldEntry = keyDataStrings.find((s) => (JSON.parse(s) as ApiKeyData).keyId === keyData.keyId);
+    if (oldEntry) {
+        await indexRemove(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', keyData.customerId, oldEntry);
+        await indexAdd(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', keyData.customerId, JSON.stringify(keyData));
+    }
+
     // Check if customer exists and is active
     // CRITICAL: Use the api-framework's fetchCustomerByCustomerId which calls customer-api service
     // The local getCustomer looks in local KV which may not have the customer data
