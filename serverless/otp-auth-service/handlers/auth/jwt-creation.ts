@@ -69,7 +69,7 @@ interface RefreshTokenData {
 }
 
 export const ACCESS_TOKEN_TTL_SECONDS = 900; // 15 minutes
-export const SESSION_TTL_SECONDS = 25200; // 7 hours (inactive cleanup)
+export const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days — matches refresh max lifetime so session KV is not removed while refresh is valid
 export const REFRESH_TOKEN_MAX_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /**
@@ -273,7 +273,7 @@ export async function createAuthToken(
         customerId: customerId, // MANDATORY - the ONLY identifier
         email: emailLower, // Stored for internal use only, NOT returned in responses
         token: await hashEmail(accessToken), // Store hash of token
-        expiresAt: expiresAt.toISOString(),
+        expiresAt: absoluteRefreshExpiresAt.toISOString(), // Session valid until refresh token absolute expiry (not access token)
         createdAt: new Date().toISOString(),
         ipAddress: clientIP,
         userAgent,

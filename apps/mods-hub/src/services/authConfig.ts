@@ -1,12 +1,15 @@
 /**
  * Shared Authentication Configuration
  * Used by all API clients (Mods API, Customer API)
- * 
+ *
  * CRITICAL: HttpOnly cookie-based authentication
  * - Token is in HttpOnly cookie (inaccessible to JavaScript)
  * - Browser automatically sends cookie with credentials: 'include'
  * - NO token reading, NO tokenGetter, NO manual Authorization headers
+ * - On 401 we try refresh (POST /auth/refresh); only logout if refresh fails.
  */
+
+import { refreshAuth } from '@strixun/auth-store/core/api';
 
 /**
  * Check if user is authenticated
@@ -40,12 +43,12 @@ export const sharedClientConfig = {
     },
     credentials: 'include' as RequestCredentials,
     auth: {
-        onTokenExpired: () => {
-            if (typeof window !== 'undefined') {
-                console.warn('[Auth] Token expired, clearing auth state');
-                import('../stores/auth').then(({ useAuthStore }) => {
-                    useAuthStore.getState().logout();
-                }).catch(() => {});
+        onTokenExpired: async () => {
+            if (typeof window === 'undefined') return;
+            const ok = await refreshAuth();
+            if (!ok) {
+                const { useAuthStore } = await import('../stores/auth');
+                useAuthStore.getState().logout();
                 window.dispatchEvent(new CustomEvent('auth:logout'));
             }
         },
@@ -82,11 +85,12 @@ export const modernClientConfig = {
     credentials: 'include' as RequestCredentials,
     // No auth.tokenGetter needed - cookie handles everything!
     auth: {
-        onTokenExpired: () => {
-            if (typeof window !== 'undefined') {
-                import('../stores/auth').then(({ useAuthStore }) => {
-                    useAuthStore.getState().logout();
-                }).catch(() => {});
+        onTokenExpired: async () => {
+            if (typeof window === 'undefined') return;
+            const ok = await refreshAuth();
+            if (!ok) {
+                const { useAuthStore } = await import('../stores/auth');
+                useAuthStore.getState().logout();
                 window.dispatchEvent(new CustomEvent('auth:logout'));
             }
         },

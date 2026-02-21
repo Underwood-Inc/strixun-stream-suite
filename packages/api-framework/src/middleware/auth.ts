@@ -123,47 +123,37 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig): Middleware {
 
       // Handle token expiration (401)
       if (response.status === 401 && config.onTokenExpired) {
-        console.log('[AuthMiddleware] 401 received, refreshing token...');
+        console.log('[AuthMiddleware] 401 received, attempting refresh...');
         await config.onTokenExpired();
-        
-        // Retry request with new token
+        // Retry: with tokenGetter use new token; with cookie auth (no tokenGetter) retry so new Set-Cookie is sent
         if (config.tokenGetter) {
           const newToken = await config.tokenGetter();
-          console.log('[AuthMiddleware] Token after refresh:', { hasToken: !!newToken, method: request.method, path: request.path });
           if (newToken) {
-            if (!request.headers) {
-              request.headers = {};
-            }
+            if (!request.headers) request.headers = {};
             request.headers['Authorization'] = `Bearer ${newToken}`;
-            console.log('[AuthMiddleware] Retrying request with new token');
             return next(request);
-          } else {
-            console.error('[AuthMiddleware] No token available after refresh, cannot retry');
           }
+        } else {
+          // Cookie-based auth: refresh sets new cookies; retry sends them via credentials: 'include'
+          return next(request);
         }
       }
 
       return response;
     } catch (error) {
-      // Handle 401 errors
+      // Handle 401 errors (e.g. thrown by fetch layer)
       if (error && typeof error === 'object' && 'status' in error && error.status === 401) {
         if (config.onTokenExpired) {
           await config.onTokenExpired();
-          
-          // Retry request with new token
           if (config.tokenGetter) {
             const newToken = await config.tokenGetter();
             if (newToken) {
-              if (!request.headers) {
-                request.headers = {};
-              }
+              if (!request.headers) request.headers = {};
               request.headers['Authorization'] = `Bearer ${newToken}`;
-              try {
-                return await next(request);
-              } catch (retryError) {
-                throw retryError;
-              }
+              return await next(request);
             }
+          } else {
+            return await next(request);
           }
         }
       }

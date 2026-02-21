@@ -238,8 +238,8 @@ export class APIClient {
       })
     );
 
-    // Authentication
-    if (this.config.auth.tokenGetter || this.config.auth.csrfTokenGetter) {
+    // Authentication (include when onTokenExpired is set for cookie-based refresh+retry)
+    if (this.config.auth.tokenGetter || this.config.auth.csrfTokenGetter || this.config.auth.onTokenExpired) {
       this.use(
         createAuthMiddleware({
           tokenGetter: this.config.auth.tokenGetter,

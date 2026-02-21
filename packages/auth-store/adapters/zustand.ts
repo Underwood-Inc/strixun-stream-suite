@@ -1,18 +1,58 @@
 /**
  * Zustand adapter for auth store
  * Use this in React projects
- * 
+ *
  * SIMPLIFIED: HttpOnly cookie-based authentication
  * - No IP restoration
  * - No localStorage token storage
  * - Cookies handle everything
+ * - Proactive refresh: while tab is visible, refresh access token every 14 min (before 15 min expiry).
  */
 
 import { create, type StateCreator } from 'zustand';
 import type { AuthenticatedCustomer, AuthState, AuthStoreMethods, AuthStoreConfig } from '../core/types';
 import { fetchCustomerInfo, getAuthApiUrl, refreshAuth } from '../core/api';
 
+/** Access token TTL is 15 min; refresh 1 min before so the tab never sees 401. */
+const PROACTIVE_REFRESH_MS = 14 * 60 * 1000;
+
 interface ZustandAuthState extends AuthState, AuthStoreMethods {}
+
+let refreshTimerId: ReturnType<typeof setTimeout> | null = null;
+let visibilityListenerAttached = false;
+
+function stopProactiveRefresh(): void {
+    if (refreshTimerId !== null) {
+        clearTimeout(refreshTimerId);
+        refreshTimerId = null;
+    }
+}
+
+function scheduleProactiveRefresh(
+    get: () => ZustandAuthState,
+    cfg?: AuthStoreConfig
+): void {
+    stopProactiveRefresh();
+    if (typeof document === 'undefined' || document.visibilityState === 'hidden') return;
+    refreshTimerId = setTimeout(async () => {
+        refreshTimerId = null;
+        if (document.visibilityState !== 'visible' || !get().isAuthenticated) return;
+        const ok = await refreshAuth(cfg);
+        if (ok && get().isAuthenticated) scheduleProactiveRefresh(get, cfg);
+    }, PROACTIVE_REFRESH_MS);
+}
+
+function attachVisibilityListener(get: () => ZustandAuthState, cfg?: AuthStoreConfig): void {
+    if (visibilityListenerAttached || typeof document === 'undefined') return;
+    visibilityListenerAttached = true;
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopProactiveRefresh();
+        } else if (get().isAuthenticated) {
+            scheduleProactiveRefresh(get, cfg);
+        }
+    });
+}
 
 /**
  * Create Zustand auth store
@@ -25,6 +65,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
         
         setCustomer: (customer: AuthenticatedCustomer | null) => {
             if (!customer) {
+                stopProactiveRefresh();
                 set({ 
                     customer: null, 
                     isAuthenticated: false,
@@ -38,9 +79,12 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 isAuthenticated: true,
                 isSuperAdmin: customer.isSuperAdmin || false,
             });
+            attachVisibilityListener(get, config);
+            scheduleProactiveRefresh(get, config);
         },
         
         logout: async () => {
+            stopProactiveRefresh();
             try {
                 const apiUrl = config?.authApiUrl || getAuthApiUrl(config);
                 const { createAPIClient } = await import('@strixun/api-framework/client');
@@ -88,6 +132,8 @@ export function createAuthStore(config?: AuthStoreConfig) {
                         isAuthenticated: true,
                         isSuperAdmin: customerInfo.isSuperAdmin,
                     });
+                    attachVisibilityListener(get, config);
+                    scheduleProactiveRefresh(get, config);
                     return true;
                 }
                 

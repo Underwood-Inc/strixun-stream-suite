@@ -233,7 +233,7 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
             customerId,
             email: stored.email,
             token: await hashEmail(accessToken),
-            expiresAt: expiresAt.toISOString(),
+            expiresAt: stored.absoluteExpiresAt, // Session valid until refresh token absolute expiry (not access token)
             createdAt: new Date().toISOString(),
             ipAddress: clientIP,
             userAgent,
