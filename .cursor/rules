@@ -75,6 +75,11 @@ The control panel uses a robust dual-storage system:
 - Test with OBS restart to verify persistence
 - Check both tiny dock (<250px) and normal dock widths
 
+## Shell / terminal
+- **Always prefer PowerShell syntax over Unix/bash** when writing or suggesting commands for this environment (Windows).
+- Use PowerShell-native syntax: `;` to chain commands, not `&&`. Use `Move-Item` not `mv`, `Copy-Item` not `cp`, `Remove-Item` not `rm`, `Set-Location` or `cd` (same), `Test-Path` for existence checks. Use `$env:VAR` for environment variables, not `$VAR`.
+- Do not use `&&`, `||`, `\` line continuation, or bash-only constructs in commands meant to run in the project shell.
+
 ## Do NOT
 - Run build/dev commands without explicit permission
 - Add features or refactor beyond what's requested

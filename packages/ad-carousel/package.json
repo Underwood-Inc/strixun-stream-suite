@@ -7,19 +7,12 @@
   "main": "./index.ts",
   "types": "./index.ts",
   "exports": {
-    ".": {
-      "types": "./index.ts",
-      "default": "./index.ts"
-    },
-    "./TwitchAdCarousel.svelte": "./TwitchAdCarousel.svelte"
+    ".": { "types": "./index.ts", "default": "./index.ts" },
+    "./TwitchAdCarousel.svelte": "./TwitchAdCarousel.svelte",
+    "./SupportAdCarousel.svelte": "./SupportAdCarousel.svelte"
   },
-  "files": [
-    "*.ts",
-    "*.svelte"
-  ],
-  "peerDependencies": {
-    "svelte": "^5.46.0"
-  },
+  "files": ["*.ts", "*.svelte"],
+  "peerDependencies": { "svelte": "^5.46.0" },
   "scripts": {
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
@@ -30,4 +23,3 @@
     "@vitest/coverage-v8": "^4.0.16"
   }
 }
-

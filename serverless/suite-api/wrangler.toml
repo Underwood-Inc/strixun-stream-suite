@@ -1,7 +1,7 @@
-# Twitch API Service - Cloudflare Worker Configuration
-# Twitch API proxy with cloud storage, authentication, and CDN endpoints
+# Suite API Service - Cloudflare Worker Configuration
+# Stream Suite backend: cloud storage, notes, OBS credentials, scrollbar CDN, legacy auth
 
-name = "strixun-twitch-api"
+name = "strixun-suite-api"
 main = "dist/worker.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
@@ -11,8 +11,6 @@ compatibility_flags = ["nodejs_compat"]
 
 # Environment variables (secrets should be set via wrangler secret put)
 # DO NOT put actual secrets here - use wrangler CLI:
-#   wrangler secret put TWITCH_CLIENT_ID          # REQUIRED: Twitch API client ID
-#   wrangler secret put TWITCH_CLIENT_SECRET      # REQUIRED: Twitch API client secret
 #   wrangler secret put JWT_SECRET                # REQUIRED: JWT signing secret (must match OTP auth service)
 #   wrangler secret put ALLOWED_ORIGINS            # OPTIONAL: Comma-separated CORS origins (recommended for production)
 #
@@ -24,7 +22,7 @@ vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", AUT
 
 # Production KV Namespace
 [[env.production.kv_namespaces]]
-binding = "TWITCH_CACHE"
+binding = "SUITE_CACHE"
 id = "66b9a4425cb7492fbae8f690780cd0ae"
 
 # Production routes
@@ -34,11 +32,11 @@ zone_name = "idling.app"
 
 # Development environment
 [env.development]
-vars = { ENVIRONMENT = "development", JWT_SECRET = "dev-jwt-secret-do-not-use-in-production-abc123", JWT_ISSUER = "http://localhost:8787", AUTH_SERVICE_URL = "http://localhost:8787", SERVICE_API_KEY = "dev-service-api-key-for-local-testing", TWITCH_CLIENT_ID = "dev-twitch-client-id", TWITCH_CLIENT_SECRET = "dev-twitch-client-secret", ALLOWED_ORIGINS = "http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5178,http://localhost:5180,http://localhost:8787,http://localhost:3000" }
+vars = { ENVIRONMENT = "development", JWT_SECRET = "dev-jwt-secret-do-not-use-in-production-abc123", JWT_ISSUER = "http://localhost:8787", AUTH_SERVICE_URL = "http://localhost:8787", SERVICE_API_KEY = "dev-service-api-key-for-local-testing", ALLOWED_ORIGINS = "http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5178,http://localhost:5180,http://localhost:8787,http://localhost:3000" }
 
 # Development KV Namespace (using same namespace for testing)
 [[env.development.kv_namespaces]]
-binding = "TWITCH_CACHE"
+binding = "SUITE_CACHE"
 id = "66b9a4425cb7492fbae8f690780cd0ae"
 
 # Default to production for backward compatibility
@@ -48,7 +46,7 @@ ALLOWED_ORIGINS = "https://streamkit.idling.app,https://mods.idling.app,https://
 
 # Default KV Namespace (required for routes configured in dashboard or when no environment is specified)
 [[kv_namespaces]]
-binding = "TWITCH_CACHE"
+binding = "SUITE_CACHE"
 id = "66b9a4425cb7492fbae8f690780cd0ae"
 
 # Service binding to auth Worker so JWKS fetch uses internal routing (avoids same-zone 522).
@@ -62,7 +60,7 @@ pattern = "api.idling.app/*"
 zone_name = "idling.app"
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
-# 1. Go to Cloudflare Dashboard ΓåÆ Workers & Pages ΓåÆ strixun-twitch-api
+# 1. Go to Cloudflare Dashboard → Workers & Pages → strixun-suite-api
 # 2. Go to Settings ΓåÆ Triggers ΓåÆ Routes
 # 3. Add custom domain route: api.idling.app/*
 # 4. DNS records are automatically managed by Cloudflare

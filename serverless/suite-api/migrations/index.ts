@@ -1,6 +1,6 @@
 /**
- * Twitch API Migrations
- * 
+ * Suite API Migrations
+ *
  * Import and export all migrations in order.
  * Add new migrations to this list as they're created.
  */

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CI Migration Runner for twitch-api
+ * CI Migration Runner for suite-api
  */
 
 import path from 'path';
@@ -10,8 +10,8 @@ import { runMigrations } from '../../../scripts/ci-migration-runner.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 runMigrations({
-    servicePrefix: 'twitch',
-    kvBinding: 'TWITCH_CACHE',
+    servicePrefix: 'suite',
+    kvBinding: 'SUITE_CACHE',
     wranglerPath: path.join(__dirname, '..', 'wrangler.toml'),
     migrations: []
 }).catch(err => {

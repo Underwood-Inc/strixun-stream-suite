@@ -22,7 +22,7 @@ const __dirname = dirname(__filename);
 const isDryRun = process.argv.includes('--dry-run') || process.argv.includes('-d');
 
 const services = [
-  { name: 'Twitch API', path: 'twitch-api', worker: 'strixun-twitch-api', command: 'wrangler deploy' },
+  { name: 'Suite API', path: 'suite-api', worker: 'strixun-suite-api', command: 'wrangler deploy' },
   { name: 'OTP Auth Service', path: 'otp-auth-service', worker: 'otp-auth-service', command: 'pnpm run deploy' },
   { name: 'Customer API', path: 'customer-api', worker: 'strixun-customer-api', command: 'wrangler deploy' },
   { name: 'Game API', path: 'game-api', worker: 'strixun-game-api', command: 'wrangler deploy' },

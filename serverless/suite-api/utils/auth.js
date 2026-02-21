@@ -1,7 +1,7 @@
 /**
  * Authentication Utilities
  * 
- * Shared authentication functions for Twitch API worker.
+ * Shared authentication functions for Suite API worker.
  * RS256 via JWKS only (OIDC).
  */
 

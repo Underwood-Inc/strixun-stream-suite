@@ -91,8 +91,8 @@ const services = [
     framework: 'Cloudflare Worker',
   },
   {
-    name: 'Twitch API',
-    location: 'serverless/twitch-api',
+    name: 'Suite API',
+    location: 'serverless/suite-api',
     port: 8789,
     type: 'Backend (Worker)',
     url: null,

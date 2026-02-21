@@ -66,7 +66,7 @@ const BASE_PORT = parseInt(process.env.E2E_LOCAL_WORKER_PORT || '8787', 10);
 const WORKER_URLS = {
   OTP_AUTH: process.env.E2E_OTP_AUTH_URL || `http://localhost:${BASE_PORT}`,
   MODS_API: process.env.E2E_MODS_API_URL || `http://localhost:${BASE_PORT + 1}`,
-  TWITCH_API: process.env.E2E_TWITCH_API_URL || `http://localhost:${BASE_PORT + 2}`,
+  SUITE_API: process.env.E2E_SUITE_API_URL || `http://localhost:${BASE_PORT + 2}`,
   CUSTOMER_API: process.env.E2E_CUSTOMER_API_URL || `http://localhost:${BASE_PORT + 3}`,
   GAME_API: process.env.E2E_GAME_API_URL || `http://localhost:${BASE_PORT + 4}`,
   CHAT_SIGNALING: process.env.E2E_CHAT_SIGNALING_URL || `http://localhost:${BASE_PORT + 5}`,
@@ -159,11 +159,11 @@ export default defineConfig({
         stdout: 'pipe' as const,
         stderr: 'pipe' as const,
       },
-      // Twitch API (port 8789)
+      // Suite API (port 8789)
       {
         command: process.platform === 'win32'
-          ? `cd serverless/twitch-api && set CI=true && set NO_INPUT=1 && node ../../scripts/start-worker-with-health-check.js serverless/twitch-api ${BASE_PORT + 2}`
-          : `cd serverless/twitch-api && CI=true NO_INPUT=1 node ../../scripts/start-worker-with-health-check.js serverless/twitch-api ${BASE_PORT + 2}`,
+          ? `cd serverless/suite-api && set CI=true && set NO_INPUT=1 && node ../../scripts/start-worker-with-health-check.js serverless/suite-api ${BASE_PORT + 2}`
+          : `cd serverless/suite-api && CI=true NO_INPUT=1 node ../../scripts/start-worker-with-health-check.js serverless/suite-api ${BASE_PORT + 2}`,
         port: BASE_PORT + 2,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,

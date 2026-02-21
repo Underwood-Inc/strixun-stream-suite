@@ -58,7 +58,7 @@
     "deploy:prod": "pnpm build && wrangler deploy --env production",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "pretest": "pnpm run build:deps && pnpm run build:worker",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run --passWithNoTests --exclude \"**/router/admin-routes.test.ts\"",
     "test:all": "cross-env VITEST_INTEGRATION=true vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests",

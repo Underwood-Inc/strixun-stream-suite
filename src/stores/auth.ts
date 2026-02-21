@@ -16,13 +16,6 @@ import type { AuthenticatedCustomer } from '@strixun/auth-store/core';
 import { secureFetch } from '../core/services/encryption';
 import { storage } from '../modules/storage';
 
-export interface TwitchAccount {
-  twitchUserId: string;
-  twitchUsername: string;
-  displayName?: string;
-  attachedAt: string;
-}
-
 export type { AuthenticatedCustomer };
 
 const authStore = createAuthStore(getDefaultAuthConfig());
@@ -65,7 +58,7 @@ export async function loadAuthState(): Promise<void> {
   }
 }
 
-/** Set authentication state (e.g. after Twitch attach). */
+/** Set authentication state (e.g. after login or profile update). */
 export function setAuth(customerData: AuthenticatedCustomer): void {
   authStore.setCustomer(customerData);
 }

@@ -12,7 +12,7 @@ import { join } from 'path';
 const workers = [
   { name: 'otp-auth-service', path: 'otp-auth-service' },
   { name: 'mods-api', path: 'mods-api' },
-  { name: 'twitch-api', path: 'twitch-api' },
+  { name: 'suite-api', path: 'suite-api' },
   { name: 'customer-api', path: 'customer-api' },
   { name: 'game-api', path: 'game-api' },
   { name: 'chat-signaling', path: 'chat-signaling' },

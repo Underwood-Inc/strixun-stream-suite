@@ -6,7 +6,7 @@
    * but user is not authenticated. The entire app is blocked until authentication.
    */
   
-  import { LoginModal, TwitchAdCarousel } from '@components';
+  import { LoginModal, SupportAdCarousel } from '@components';
   
   let showLoginModal = false;
   
@@ -57,7 +57,7 @@
   </div>
 </div>
 
-<TwitchAdCarousel
+<SupportAdCarousel
   position="bottom-left"
   supportUrl="https://sponsor.idling.app"
   storageKey="ui_auth_ad_carousel_state"

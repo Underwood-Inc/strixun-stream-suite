@@ -38,6 +38,10 @@ serverless/**/router.js
 serverless/**/handlers/**/*.js
 # Exception: display-name.js is a source file, not compiled output
 !serverless/url-shortener/handlers/display-name.js
+# Exception: suite-api uses JS handlers/utils and router as source
+!serverless/suite-api/router.js
+!serverless/suite-api/handlers/*.js
+!serverless/suite-api/utils/*.js
 serverless/**/services/**/*.js
 serverless/**/utils/**/*.js
 serverless/**/router/**/*.js

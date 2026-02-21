@@ -11,7 +11,7 @@
   import AuditLogs from '$dashboard/pages/AuditLogs.svelte';
   import Dashboard from '$dashboard/pages/Dashboard.svelte';
   import RolesPermissions from '$dashboard/pages/RolesPermissions.svelte';
-  import TwitchAdCarousel from '@strixun/ad-carousel/TwitchAdCarousel.svelte';
+  import SupportAdCarousel from '@strixun/ad-carousel/SupportAdCarousel.svelte';
 
   let customer: Customer | null = null;
   let isAuthenticated = false;
@@ -223,7 +223,7 @@
 </div>
 
 {#if isAuthenticated}
-  <TwitchAdCarousel
+  <SupportAdCarousel
     position="bottom-right"
     supportUrl="https://sponsor.idling.app"
     storageKey="ui_otp_auth_ad_carousel_state"

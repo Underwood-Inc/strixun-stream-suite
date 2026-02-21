@@ -49,7 +49,7 @@ export function useScrollbarCustomizer(workerUrl?: string | null) {
     }
     
     // Fallback to hardcoded URL
-    return 'https://strixun-twitch-api.strixuns-script-suite.workers.dev';
+    return 'https://strixun-suite-api.strixuns-script-suite.workers.dev';
   }, [workerUrl]);
 
   // Load the CDN script

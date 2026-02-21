@@ -1,22 +1,19 @@
 /**
- * Twitch API Health Check E2E Tests
- * 
- * Verifies the Twitch API worker is accessible and responding correctly
- * Co-located with the Twitch API worker
+ * Suite API Health Check E2E Tests
+ *
+ * Verifies the Suite API worker is accessible and responding correctly.
  */
 
 import { test, expect } from '@playwright/test';
 import { WORKER_URLS } from '@strixun/e2e-helpers';
 
-test.describe('Twitch API Health', () => {
+test.describe('Suite API Health', () => {
   test('should be healthy', async ({ request }) => {
-    // Health endpoints require JWT token for encryption
     const testJWTToken = process.env.E2E_TEST_JWT_TOKEN;
     if (!testJWTToken) {
       throw new Error('E2E_TEST_JWT_TOKEN not set. Run setup-test-secrets.js first.');
     }
-    
-    const response = await request.get(`${WORKER_URLS.TWITCH_API}/health`, {
+    const response = await request.get(`${WORKER_URLS.SUITE_API}/health`, {
       headers: {
         'Cookie': `auth_token=${testJWTToken}`,
       },

@@ -23,7 +23,7 @@ const workers = [
   { name: 'mods-api', path: 'mods-api', expectedKVs: ['MODS_KV', 'OTP_AUTH_KV'], expectedR2: ['MODS_R2'] },
   { name: 'customer-api', path: 'customer-api', expectedKVs: ['CUSTOMER_KV'] },
   { name: 'game-api', path: 'game-api', expectedKVs: ['GAME_KV'] },
-  { name: 'twitch-api', path: 'twitch-api', expectedKVs: ['TWITCH_CACHE'] },
+  { name: 'suite-api', path: 'suite-api', expectedKVs: ['SUITE_CACHE'] },
   { name: 'url-shortener', path: 'url-shortener', expectedKVs: ['URL_KV', 'ANALYTICS_KV'] },
   { name: 'chat-signaling', path: 'chat-signaling', expectedKVs: ['CHAT_KV'] },
 ];

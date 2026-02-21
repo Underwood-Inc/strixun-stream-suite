@@ -1,7 +1,7 @@
 /**
  * Test Handlers
  * 
- * Test and debug endpoints for Twitch API worker
+ * Test and debug endpoints for Suite API worker
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
@@ -142,7 +142,7 @@ export async function handleClearRateLimit(request, env) {
         }
         const emailHash = await hashEmail(email);
         const rateLimitKey = `ratelimit_otp_${emailHash}`;
-        await env.TWITCH_CACHE.delete(rateLimitKey);
+        await env.SUITE_CACHE.delete(rateLimitKey);
         return new Response(JSON.stringify({ success: true, message: 'Rate limit cleared' }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });

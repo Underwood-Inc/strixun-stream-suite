@@ -13,6 +13,5 @@ JWT_SECRET=your-jwt-secret-here-at-least-32-chars-long
 # Include localhost ports for local development
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5175,http://localhost:5178,http://localhost:3000,http://localhost:3001,http://localhost:8787,http://localhost:8788,http://localhost:8789,http://localhost:8790
 
-# Twitch API credentials (REQUIRED)
-TWITCH_CLIENT_ID=your-twitch-client-id
-TWITCH_CLIENT_SECRET=your-twitch-client-secret
+# Optional: SERVICE_API_KEY for server-to-server calls (e.g. from otp-auth-service)
+# SERVICE_API_KEY=your-service-api-key

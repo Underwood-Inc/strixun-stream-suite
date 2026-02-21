@@ -7,7 +7,7 @@
 
 window.STRIXUN_CONFIG = window.STRIXUN_CONFIG || {
     // Cloudflare Worker API URL (auto-injected during deployment)
-    // Format: https://strixun-twitch-api.YOUR_SUBDOMAIN.workers.dev
+    // Format: https://strixun-suite-api.YOUR_SUBDOMAIN.workers.dev
     WORKER_API_URL: '%%WORKER_API_URL%%',
     
     // URL Shortener API URL (auto-injected during deployment)
@@ -24,8 +24,6 @@ window.STRIXUN_CONFIG = window.STRIXUN_CONFIG || {
     // Storybook URL (auto-injected during deployment)
     STORYBOOK_URL: '%%STORYBOOK_URL%%',
     
-    // Twitch API Configuration (auto-injected during deployment)
-    TWITCH_CLIENT_ID: '%%TWITCH_CLIENT_ID%%',
     
     // Deployment info (for debugging)
     DEPLOYED_AT: '%%DEPLOYED_AT%%',
@@ -42,7 +40,7 @@ window.STRIXUN_CONFIG = window.STRIXUN_CONFIG || {
 /**
  * Get the Cloudflare Worker API URL
  * Priority:
- * 1. Manual override from localStorage (twitch_api_server)
+ * 1. Manual override from localStorage (suite_api_server)
  * 2. Auto-injected config from deployment
  * 3. Hardcoded fallback (for development/testing)
  * 4. Null (user must configure)
@@ -116,7 +114,7 @@ window.getWorkerApiUrl = function() {
     
     // Priority 1: Manual override from storage
     if (typeof storage !== 'undefined') {
-        const manualOverride = storage.get('twitch_api_server');
+        const manualOverride = storage.get('suite_api_server');
         if (manualOverride && typeof manualOverride === 'string' && manualOverride.trim() !== '') {
             const validated = validateAndNormalizeUrl(manualOverride);
             if (validated) {
@@ -166,7 +164,7 @@ window.getWorkerApiUrl = function() {
     
     if (isLocalhost) {
         // NEVER fall back to production when on localhost
-        // Twitch API worker runs on port 8789
+        // Suite API worker runs on port 8789
         if (!apiUrlLogged) {
             console.log('[Config] Using localhost Worker URL: http://localhost:8789');
             apiUrlLogged = true;
@@ -192,7 +190,7 @@ window.getWorkerApiUrl = function() {
         console.error('[Config] ERROR: No API server configured!');
         console.log('[Config] Solutions:');
         console.log('  1. Update HARDCODED_WORKER_URL in config.js with your actual Worker URL');
-        console.log('  2. OR manually configure in Setup  Twitch API Settings');
+        console.log('  2. OR manually configure in Setup → API Settings');
         console.log('  3. OR add WORKER_URL to GitHub Secrets for auto-injection');
         apiUrlLogged = true;
     }
@@ -406,7 +404,7 @@ window.testWorkerApi = async function() {
         return {
             success: false,
             error: 'No API server configured',
-            message: 'Configure API server URL in Setup  Twitch API Settings'
+            message: 'Configure API server URL in Setup → API Settings'
         };
     }
     

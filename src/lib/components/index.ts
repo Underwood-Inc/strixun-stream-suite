@@ -68,8 +68,6 @@ export { default as ProductCarousel } from './ProductCarousel.svelte';
 export type { Product, ProductStats } from './ProductCarousel.svelte';
 
 // Ad Carousels (reusable)
-export { TwitchAdCarousel } from '@strixun/ad-carousel';
-
-// Support Cards
+export { SupportAdCarousel } from '@strixun/ad-carousel';
 export { TwitchSupportCard } from '@strixun/ad-carousel';
 

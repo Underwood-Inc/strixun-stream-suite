@@ -15,7 +15,7 @@ import { Sources } from './sources';
 import { initIndexedDB, loadStorageCache, startAutoBackup } from './storage';
 import * as storageSync from './storage-sync';
 import * as textCyclerStore from '../stores/text-cycler';
-import { TwitchAPI } from './twitch-api';
+import { SuiteAPI } from './api-url';
 import { UIUtils } from './ui-utils';
 import { Version } from './version';
 import { loadCredentials, updateConnectionState, connect as wsConnect, hasStoredPassword } from './websocket';
@@ -339,11 +339,8 @@ async function initializeModules(): Promise<void> {
   // Expose to window for legacy compatibility
   (window as any).Layouts = Layouts;
   
-  // Initialize Twitch API (TypeScript module)
-  // (No initialization needed, functions are called on demand)
-  
-  // Expose to window for legacy compatibility
-  (window as any).TwitchAPI = TwitchAPI;
+  // Suite API URL (Worker URL for cloud save, auth, etc.)
+  (window as any).SuiteAPI = SuiteAPI;
   
   // Initialize Script Downloader (TypeScript module)
   // (No initialization needed, functions are called on demand)
@@ -446,9 +443,9 @@ export async function completeAppInitialization(): Promise<void> {
     App.updateTransitionMode();
     App.updateStorageStatus();
     
-    // Load Twitch settings
-    if (typeof TwitchAPI.loadTwitchSettings === 'function') {
-      TwitchAPI.loadTwitchSettings();
+    // Load API URL settings (Setup page form)
+    if (typeof SuiteAPI.loadApiSettings === 'function') {
+      SuiteAPI.loadApiSettings();
     }
     
     // Setup credential UI listeners

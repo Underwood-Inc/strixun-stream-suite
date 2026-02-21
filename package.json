@@ -1,7 +1,7 @@
 {
   "name": "strixun-stream-suite",
   "version": "1.4.0",
-  "description": "Strixun's Stream Suite - A comprehensive OBS Studio toolkit for animations, layouts, text cycling, and Twitch integration",
+  "description": "Strixun's Stream Suite - A comprehensive OBS Studio toolkit for animations, layouts, text cycling, and stream tools",
   "private": true,
   "packageManager": "pnpm@10.30.1",
   "type": "module",
@@ -22,7 +22,7 @@
     "test:all": "turbo run test",
     "test:otp": "turbo run test --filter=./serverless/otp-auth-service",
     "test:all:verbose": "turbo run test --output-logs=new-only",
-    "test:serverless": "turbo run test --filter=./serverless/otp-auth-service --filter=./serverless/mods-api --filter=./serverless/twitch-api",
+    "test:serverless": "turbo run test --filter=./serverless/otp-auth-service --filter=./serverless/mods-api --filter=./serverless/suite-api",
     "test:integration": "node scripts/run-all-integration-tests.js",
     "test:audit": "tsx scripts/test-audit.ts",
     "test:all:sequential": "turbo run test --concurrency=1",

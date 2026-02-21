@@ -18,7 +18,7 @@ const workers = [
   'mods-api',
   'customer-api',
   'game-api',
-  'twitch-api',
+  'suite-api',
   'url-shortener',
   'chat-signaling',
 ];

@@ -5,7 +5,7 @@
  *
  * Allows trusted services (identified by X-Service-Key) to request a
  * standard RS256 access token for a given customerId. Used by services like
- * twitch-api and game-api that authenticate users externally (e.g. Twitch OAuth)
+ * suite-api and game-api that authenticate users externally (e.g. OAuth)
  * and need to mint an OIDC-compliant JWT without going through the OTP flow.
  *
  * Returns `{ token, expires_in }` -- no cookies, no refresh token.

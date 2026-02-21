@@ -26,7 +26,7 @@ declare global {
     Sources?: any;
     StorageSync?: any;
     ScriptStatus?: any;
-    TwitchAPI?: any;
+    SuiteAPI?: any;
     Version?: any;
     UIUtils?: any;
     Installer?: any;

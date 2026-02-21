@@ -39,9 +39,9 @@ const workers = [
     expectedR2: [],
   },
   {
-    name: 'twitch-api',
-    path: 'twitch-api',
-    expectedKVs: ['TWITCH_CACHE'],
+    name: 'suite-api',
+    path: 'suite-api',
+    expectedKVs: ['SUITE_CACHE'],
     expectedR2: [],
   },
   {

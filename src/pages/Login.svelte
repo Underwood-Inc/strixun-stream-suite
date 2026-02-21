@@ -174,7 +174,7 @@
         <h1 class="login-page__title">Strixun's Stream Suite</h1>
         <p class="login-page__description">
           Your comprehensive OBS Studio toolkit for animations, layouts, 
-          text cycling, and Twitch integration.
+          text cycling, and stream tools.
         </p>
         <p class="login-page__subtext">
           Sign in with your email to access all features.

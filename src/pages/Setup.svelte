@@ -2,7 +2,7 @@
   /**
    * Setup Page
    * 
-   * OBS WebSocket connection, Twitch API settings, storage backup, and version info
+   * OBS WebSocket connection, Suite API (Worker) URL, storage backup, and version info
    */
   
   import { ConfirmationModal, LoginModal, Tooltip } from '@components';
@@ -30,11 +30,8 @@
   let securityWarning = '';
   let dockUrl = '';
   let copyStatus = '';
-  let twitchClientId = '';
-  let twitchApiServer = '';
-  let autoDetectedClientId = '';
-  let autoDetectedApiUrl = '';
-  let twitchApiStatus = '';
+  let apiServerUrl = '';
+  let apiStatus = '';
   let autoSyncOnConnect = true;
   let lastBackupInfo = '';
   let localVersion = '--';
@@ -91,11 +88,11 @@
     if (passwordEl) password = passwordEl.value;
     if (rememberEl) rememberCreds = rememberEl.checked;
     
-    // Load Twitch settings
-    if ((window as any).TwitchAPI?.loadTwitchSettings) {
-      (window as any).TwitchAPI.loadTwitchSettings();
+    // Load API URL settings
+    if ((window as any).SuiteAPI?.loadApiSettings) {
+      (window as any).SuiteAPI.loadApiSettings();
     }
-    setTimeout(updateTwitchDisplay, 100);
+    setTimeout(updateApiDisplay, 100);
     
     // Load auto-sync preference
     const savedAutoSync = storage.getRaw('autoSyncOnConnect') as boolean | null;
@@ -135,16 +132,11 @@
     if (rememberEl && rememberEl.checked !== rememberCreds) rememberEl.checked = rememberCreds;
   }
   
-  function updateTwitchDisplay(): void {
-    const clientIdEl = document.getElementById('twitchClientId') as HTMLInputElement;
-    const apiServerEl = document.getElementById('twitchApiServer') as HTMLInputElement;
-    const autoDetectedClientEl = document.getElementById('autoDetectedClientId');
-    const autoDetectedApiEl = document.getElementById('autoDetectedApiUrl');
-    
-    if (clientIdEl) twitchClientId = clientIdEl.value;
-    if (apiServerEl) twitchApiServer = apiServerEl.value;
-    if (autoDetectedClientEl) autoDetectedClientId = autoDetectedClientEl.innerHTML;
-    if (autoDetectedApiEl) autoDetectedApiUrl = autoDetectedApiEl.innerHTML;
+  function updateApiDisplay(): void {
+    const apiServerEl = document.getElementById('apiServerUrl') as HTMLInputElement;
+    const statusEl = document.getElementById('apiStatus');
+    if (apiServerEl) apiServerUrl = apiServerEl.value;
+    if (statusEl) apiStatus = statusEl.textContent || '';
   }
   
   function updateVersionDisplay(): void {
@@ -165,25 +157,21 @@
     setTimeout(() => { copyStatus = ''; }, 2000);
   }
   
-  function handleSaveTwitchSettings(): void {
-    if ((window as any).TwitchAPI?.saveTwitchSettings) {
-      (window as any).TwitchAPI.saveTwitchSettings();
+  function handleSaveApiSettings(): void {
+    if ((window as any).SuiteAPI?.saveApiSettings) {
+      (window as any).SuiteAPI.saveApiSettings();
     }
-    updateTwitchDisplay();
+    updateApiDisplay();
   }
-  
-  async function handleTestTwitchApi(): Promise<void> {
-    if ((window as any).TwitchAPI?.testTwitchApi) {
-      await (window as any).TwitchAPI.testTwitchApi();
+
+  async function handleTestApi(): Promise<void> {
+    if ((window as any).SuiteAPI?.testApiConnection) {
+      await (window as any).SuiteAPI.testApiConnection();
     }
-    const statusEl = document.getElementById('twitchApiStatus');
-    if (statusEl) twitchApiStatus = statusEl.innerHTML;
+    const statusEl = document.getElementById('apiStatus');
+    if (statusEl) apiStatus = statusEl.textContent || '';
   }
-  
-  function handleOpenTwitchConsole(): void {
-    openUrlOrCopy('https://dev.twitch.tv/console/apps', 'Twitch Developer Console');
-  }
-  
+
   function handleRequestStorageFromOBS(): void {
     if (!$connected) {
       if ((window as any).App?.log) {
@@ -457,45 +445,26 @@
     </ol>
   </div>
   
-  <!-- Twitch API Settings Card -->
+  <!-- Suite API (Worker URL) Settings Card -->
   <div class="card">
-    <h3> Twitch API Settings</h3>
+    <h3>Suite API / Worker URL</h3>
     <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px">
-      Get credentials from 
-      <button on:click={handleOpenTwitchConsole} class="btn-link">dev.twitch.tv/console</button>
+      Override the backend API URL if needed (cloud save, auth, notes). Leave empty to use auto-detected URL.
     </p>
-    
-    <label>Twitch Client ID <span style="color:var(--muted);font-weight:normal">(Optional - Auto-configured)</span></label>
-    <input type="text" id="twitchClientId" bind:value={twitchClientId} placeholder="Auto-configured from deployment">
+    <label>API Server URL <span style="color:var(--muted);font-weight:normal">(Optional - Auto-detected)</span></label>
+    <input type="text" id="apiServerUrl" bind:value={apiServerUrl} placeholder="Auto-detected from deployment config">
     <p class="hint" style="margin-top:4px;font-size:0.75em">
-      → Auto-configured during deployment. Only override if using a different Twitch app.
-      <span id="autoDetectedClientId" style="display:block;margin-top:4px;color:var(--success)"></span>
-    </p>
-    
-    <label style="margin-top:12px">API Server URL <span style="color:var(--muted);font-weight:normal">(Optional - Auto-detected)</span></label>
-    <input type="text" id="twitchApiServer" bind:value={twitchApiServer} placeholder="Auto-detected from deployment config">
-    <p class="hint" style="margin-top:4px;font-size:0.75em">
-      → Auto-configured during GitHub Pages deployment. Only override if using a custom Worker URL.
       <span id="autoDetectedApiUrl" style="display:block;margin-top:4px;color:var(--success)"></span>
     </p>
-    
-    <div style="margin-top:12px;padding:8px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:0.8em">
-      <strong style="color:var(--accent)">OAuth Redirect URI:</strong>
-      <code style="display:block;margin-top:4px;padding:6px;background:var(--bg);border-radius:4px;word-break:break-all;user-select:all">
-        https://streamkit.idling.app/twitch_auth_callback.html
-      </code>
-      <p style="color:var(--muted);margin-top:4px"> Add this URL to your Twitch app's OAuth Redirect URLs</p>
-    </div>
-    
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
-      <button on:click={handleSaveTwitchSettings} style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer">
-         Save Settings
+      <button on:click={handleSaveApiSettings} style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer">
+         Save
       </button>
-      <button on:click={handleTestTwitchApi} style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer">
+      <button on:click={handleTestApi} style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer">
          Test Connection
       </button>
     </div>
-    <div id="twitchApiStatus" style="margin-top:8px;font-size:0.8em;text-align:center;color:var(--muted)"></div>
+    <div id="apiStatus" style="margin-top:8px;font-size:0.8em;text-align:center;color:var(--muted)"></div>
   </div>
   
   <!-- Keyboard Shortcuts Card -->

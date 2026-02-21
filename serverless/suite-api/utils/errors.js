@@ -1,6 +1,6 @@
 /**
- * Twitch API - Error Utilities
- * 
+ * Suite API - Error Utilities
+ *
  * Re-exports from @strixun/error-utils for centralized error handling.
  * 
  * @deprecated Import directly from '@strixun/error-utils' in new code

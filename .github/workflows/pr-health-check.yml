@@ -234,7 +234,7 @@ jobs:
           WORKERS=(
             "serverless/otp-auth-service"
             "serverless/mods-api"
-            "serverless/twitch-api"
+            "serverless/suite-api"
             "serverless/customer-api"
             "serverless/game-api"
             "serverless/url-shortener"

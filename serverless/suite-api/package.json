@@ -1,7 +1,7 @@
 {
-  "name": "strixun-twitch-api",
+  "name": "strixun-suite-api",
   "version": "1.1.0",
-  "description": "Cloudflare Worker for Twitch API proxy with cloud storage, authentication, and CDN endpoints",
+  "description": "Cloudflare Worker for Stream Suite backend: cloud storage, notes, OBS credentials, scrollbar CDN, legacy auth",
   "private": true,
   "packageManager": "pnpm@9.15.1",
   "type": "module",

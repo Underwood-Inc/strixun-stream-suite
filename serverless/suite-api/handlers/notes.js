@@ -81,11 +81,11 @@ export async function handleNotesSave(request, env, authenticateRequest) {
         // Store in KV
         const key = getNotesKey(user.userId, notebookId);
         const dataStr = JSON.stringify(notebookData);
-        await env.TWITCH_CACHE.put(key, dataStr, { expirationTtl: 31536000 }); // 1 year
+        await env.SUITE_CACHE.put(key, dataStr, { expirationTtl: 31536000 }); // 1 year
         
         // Update notebook list
         const listKey = getNotebookListKey(user.userId);
-        let notebookList = await env.TWITCH_CACHE.get(listKey, { type: 'json' });
+        let notebookList = await env.SUITE_CACHE.get(listKey, { type: 'json' });
         if (!notebookList) {
             notebookList = [];
         }
@@ -105,7 +105,7 @@ export async function handleNotesSave(request, env, authenticateRequest) {
             notebookList.push(notebookInfo);
         }
         
-        await env.TWITCH_CACHE.put(listKey, JSON.stringify(notebookList), { expirationTtl: 31536000 });
+        await env.SUITE_CACHE.put(listKey, JSON.stringify(notebookList), { expirationTtl: 31536000 });
         
         return new Response(JSON.stringify({ 
             success: true,
@@ -153,7 +153,7 @@ export async function handleNotesLoad(request, env, authenticateRequest) {
         
         // Load from KV
         const key = getNotesKey(user.userId, notebookId);
-        const dataStr = await env.TWITCH_CACHE.get(key);
+        const dataStr = await env.SUITE_CACHE.get(key);
         
         if (!dataStr) {
             return new Response(JSON.stringify({ 
@@ -212,7 +212,7 @@ export async function handleNotesList(request, env, authenticateRequest) {
         
         // Load notebook list
         const listKey = getNotebookListKey(user.userId);
-        const notebookList = await env.TWITCH_CACHE.get(listKey, { type: 'json' }) || [];
+        const notebookList = await env.SUITE_CACHE.get(listKey, { type: 'json' }) || [];
         
         return new Response(JSON.stringify({ 
             success: true,
@@ -258,17 +258,17 @@ export async function handleNotesDelete(request, env, authenticateRequest) {
         
         // Delete notebook
         const key = getNotesKey(user.userId, notebookId);
-        await env.TWITCH_CACHE.delete(key);
+        await env.SUITE_CACHE.delete(key);
         
         // Update notebook list
         const listKey = getNotebookListKey(user.userId);
-        let notebookList = await env.TWITCH_CACHE.get(listKey, { type: 'json' });
+        let notebookList = await env.SUITE_CACHE.get(listKey, { type: 'json' });
         if (notebookList) {
             notebookList = notebookList.filter(n => n.id !== notebookId);
             if (notebookList.length > 0) {
-                await env.TWITCH_CACHE.put(listKey, JSON.stringify(notebookList), { expirationTtl: 31536000 });
+                await env.SUITE_CACHE.put(listKey, JSON.stringify(notebookList), { expirationTtl: 31536000 });
             } else {
-                await env.TWITCH_CACHE.delete(listKey);
+                await env.SUITE_CACHE.delete(listKey);
             }
         }
         

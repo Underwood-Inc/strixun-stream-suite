@@ -498,7 +498,7 @@ export async function verifyWorkersHealth(): Promise<void> {
   const workers = [
     { name: 'OTP Auth', url: WORKER_URLS.OTP_AUTH },
     { name: 'Mods API', url: WORKER_URLS.MODS_API },
-    { name: 'Twitch API', url: WORKER_URLS.TWITCH_API },
+    { name: 'Suite API', url: WORKER_URLS.SUITE_API },
     { name: 'Customer API', url: WORKER_URLS.CUSTOMER_API },
     { name: 'Game API', url: WORKER_URLS.GAME_API },
     { name: 'Chat Signaling', url: WORKER_URLS.CHAT_SIGNALING },
@@ -521,7 +521,7 @@ export async function verifyWorkersHealth(): Promise<void> {
       `If not, start manually:\n` +
       `  cd serverless/otp-auth-service && pnpm dev (port ${BASE_PORT})\n` +
       `  cd serverless/mods-api && pnpm dev (port ${BASE_PORT + 1})\n` +
-      `  cd serverless/twitch-api && pnpm dev (port ${BASE_PORT + 2})\n` +
+      `  cd serverless/suite-api && pnpm dev (port ${BASE_PORT + 2})\n` +
       `  cd serverless/customer-api && pnpm dev (port ${BASE_PORT + 3})\n` +
       `  cd serverless/game-api && pnpm dev (port ${BASE_PORT + 4})\n` +
       `  cd serverless/chat-signaling && pnpm dev (port ${BASE_PORT + 5})\n` +

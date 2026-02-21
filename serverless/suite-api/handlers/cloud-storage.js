@@ -19,7 +19,7 @@ function getCloudSaveKey(userId, slot = 'default') {
  */
 async function updateCloudSaveSlotList(env, userId, slot, metadata) {
     const slotListKey = `cloudsave_${userId}_slots`;
-    const slotsStr = await env.TWITCH_CACHE.get(slotListKey);
+    const slotsStr = await env.SUITE_CACHE.get(slotListKey);
     const slots = slotsStr ? JSON.parse(slotsStr) : [];
     
     // Add slot if not exists
@@ -28,7 +28,7 @@ async function updateCloudSaveSlotList(env, userId, slot, metadata) {
     }
     
     // Store updated list
-    await env.TWITCH_CACHE.put(slotListKey, JSON.stringify(slots), { expirationTtl: 31536000 });
+    await env.SUITE_CACHE.put(slotListKey, JSON.stringify(slots), { expirationTtl: 31536000 });
 }
 
 /**
@@ -95,7 +95,7 @@ export async function handleCloudSave(request, env, authenticateRequest) {
 
         // Save to KV with TTL of 1 year (31536000 seconds)
         const key = getCloudSaveKey(userId, slot);
-        await env.TWITCH_CACHE.put(key, saveDataStr, { expirationTtl: 31536000 });
+        await env.SUITE_CACHE.put(key, saveDataStr, { expirationTtl: 31536000 });
 
         // Also update the slot list for this user
         await updateCloudSaveSlotList(env, userId, slot, saveData.metadata);
@@ -140,7 +140,7 @@ export async function handleCloudLoad(request, env, authenticateRequest) {
         const slot = url.searchParams.get('slot') || 'default';
 
         const key = getCloudSaveKey(userId, slot);
-        const saveDataStr = await env.TWITCH_CACHE.get(key);
+        const saveDataStr = await env.SUITE_CACHE.get(key);
 
         if (!saveDataStr) {
             return new Response(JSON.stringify({ 
@@ -191,14 +191,14 @@ export async function handleCloudList(request, env, authenticateRequest) {
         
         const userId = user.userId;
         const slotListKey = `cloudsave_${userId}_slots`;
-        const slotsStr = await env.TWITCH_CACHE.get(slotListKey);
+        const slotsStr = await env.SUITE_CACHE.get(slotListKey);
         const slots = slotsStr ? JSON.parse(slotsStr) : [];
 
         // Load metadata for each slot
         const saveList = [];
         for (const slot of slots) {
             const key = getCloudSaveKey(userId, slot);
-            const saveDataStr = await env.TWITCH_CACHE.get(key);
+            const saveDataStr = await env.SUITE_CACHE.get(key);
             if (saveDataStr) {
                 try {
                     const saveData = JSON.parse(saveDataStr);
@@ -259,18 +259,18 @@ export async function handleCloudDelete(request, env, authenticateRequest) {
         const slot = url.searchParams.get('slot') || 'default';
 
         const key = getCloudSaveKey(userId, slot);
-        await env.TWITCH_CACHE.delete(key);
+        await env.SUITE_CACHE.delete(key);
 
         // Remove from slot list
         const slotListKey = `cloudsave_${userId}_slots`;
-        const slotsStr = await env.TWITCH_CACHE.get(slotListKey);
+        const slotsStr = await env.SUITE_CACHE.get(slotListKey);
         if (slotsStr) {
             const slots = JSON.parse(slotsStr);
             const filtered = slots.filter(s => s !== slot);
             if (filtered.length > 0) {
-                await env.TWITCH_CACHE.put(slotListKey, JSON.stringify(filtered), { expirationTtl: 31536000 });
+                await env.SUITE_CACHE.put(slotListKey, JSON.stringify(filtered), { expirationTtl: 31536000 });
             } else {
-                await env.TWITCH_CACHE.delete(slotListKey);
+                await env.SUITE_CACHE.delete(slotListKey);
             }
         }
 

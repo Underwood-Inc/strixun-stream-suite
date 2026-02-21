@@ -13,7 +13,8 @@
  */
 
 // ============ Configuration ============
-const CLOUD_API_URL = 'https://strixun-twitch-api.YOUR_SUBDOMAIN.workers.dev'; // UPDATE THIS
+// Dedicated API domain (api.idling.app). Override for self-hosted or custom Worker URL.
+const CLOUD_API_URL = 'https://api.idling.app';
 const DEVICE_ID_KEY = 'sss_device_id';
 const SHARED_KEY_KEY = 'sss_shared_key';
 const AUTO_SYNC_ENABLED_KEY = 'sss_auto_sync_enabled';

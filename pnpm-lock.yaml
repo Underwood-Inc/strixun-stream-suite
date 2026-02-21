@@ -1484,7 +1484,7 @@ importers:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
 
-  serverless/twitch-api:
+  serverless/suite-api:
     dependencies:
       '@strixun/api-framework':
         specifier: workspace:*

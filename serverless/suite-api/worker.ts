@@ -1,9 +1,9 @@
 /**
- * Twitch API Worker
- * 
- * Cloudflare Worker entry point for Twitch API proxy service
- * Wraps the router.js module to provide the fetch handler interface
- * 
+ * Suite API Worker
+ *
+ * Cloudflare Worker entry point for Stream Suite backend (cloud storage, notes, OBS, scrollbar CDN, legacy auth).
+ * Wraps the router.js module to provide the fetch handler interface.
+ *
  * @version 2.2.0 - Added migration architecture
  */
 
@@ -12,13 +12,11 @@ import { getCorsHeaders } from './utils/cors.js';
 import { route } from './router';
 
 /**
- * Environment interface for Twitch API Worker
+ * Environment interface for Suite API Worker
  */
 interface Env {
-  TWITCH_CACHE: KVNamespace;
+  SUITE_CACHE: KVNamespace;
   AUTH_SERVICE?: Fetcher;
-  TWITCH_CLIENT_ID?: string;
-  TWITCH_CLIENT_SECRET?: string;
   JWT_SECRET?: string;
   ALLOWED_ORIGINS?: string;
   ENVIRONMENT?: string;

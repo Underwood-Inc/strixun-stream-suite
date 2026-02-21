@@ -7,7 +7,6 @@
 import { getCorsHeaders, getCorsHeadersRecord } from '../utils/cors.js';
 import { verifyTokenOIDC, extractAuthToken } from '../utils/verify-token.js';
 import * as customerHandlers from '../handlers/customer/displayName.js';
-import * as twitchHandlers from '../handlers/customer/twitch.js';
 import * as profilePictureHandlers from '../handlers/customer/profilePicture.js';
 import * as preferencesHandlers from '../handlers/customer/preferences.js';
 import * as dataRequestHandlers from '../handlers/customer/data-requests.js';
@@ -141,19 +140,6 @@ export async function handleCustomerRoutes(
     
     if (path === '/customer/display-name/regenerate' && request.method === 'POST') {
         return await handleCustomerRoute(customerHandlers.handleRegenerateDisplayName, request, env, auth);
-    }
-    
-    // Twitch account attachment endpoints
-    if (path === '/customer/twitch/attach' && request.method === 'POST') {
-        return await handleCustomerRoute(twitchHandlers.handleAttachTwitchAccount, request, env, auth);
-    }
-    
-    if (path === '/customer/twitch' && request.method === 'GET') {
-        return await handleCustomerRoute(twitchHandlers.handleGetTwitchAccount, request, env, auth);
-    }
-    
-    if (path === '/customer/twitch/detach' && request.method === 'DELETE') {
-        return await handleCustomerRoute(twitchHandlers.handleDetachTwitchAccount, request, env, auth);
     }
     
     // Profile picture endpoints (post-MVP)

@@ -1,5 +1,5 @@
 /**
- * CORS Utilities for Twitch API
+ * CORS utilities for Suite API
  * 
  * Re-exports standardized CORS from API framework.
  * Uses env.ALLOWED_ORIGINS for production, no fallbacks.

@@ -6,7 +6,7 @@
    * The router handles auth guards, route protection, and page rendering.
    */
   
-  import { ActivityLog, DomInterferenceBanner, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ThemeSettings, ToastContainer, TwitchAdCarousel } from '@components';
+  import { ActivityLog, DomInterferenceBanner, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ThemeSettings, ToastContainer, SupportAdCarousel } from '@components';
   import { onMount } from 'svelte';
   
   import { initAnimationPreferences } from './core/animations/store';
@@ -121,7 +121,7 @@
     
     <ToastContainer />
     
-    <TwitchAdCarousel
+    <SupportAdCarousel
       position="bottom-right"
       supportUrl="https://sponsor.idling.app"
       storageKey="ui_main_ad_carousel_state"

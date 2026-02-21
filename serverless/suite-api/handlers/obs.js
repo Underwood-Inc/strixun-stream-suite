@@ -1,7 +1,7 @@
 /**
  * OBS Credentials Handlers
  *
- * This worker is the main Stream Suite backend (Twitch proxy, cloud storage, OBS credentials).
+ * Suite API worker: cloud storage, OBS credentials, notes, scrollbar CDN, legacy auth.
  * OBS credentials are stored here for historical reasons: one authenticated KV-backed API
  * used by streamkit.idling.app. 7 hour expiration to match token lifetime.
  */
@@ -51,7 +51,7 @@ export async function handleOBSCredentialsSave(request, env, authenticateRequest
         
         const key = getOBSCredentialsKey(user.userId);
         // Store with 7 hour expiration (matches token expiration)
-        await env.TWITCH_CACHE.put(key, JSON.stringify(credentials), { expirationTtl: 25200 });
+        await env.SUITE_CACHE.put(key, JSON.stringify(credentials), { expirationTtl: 25200 });
         
         return new Response(JSON.stringify({ 
             success: true,
@@ -86,7 +86,7 @@ export async function handleOBSCredentialsLoad(request, env, authenticateRequest
         }
         
         const key = getOBSCredentialsKey(user.userId);
-        const credentials = await env.TWITCH_CACHE.get(key, { type: 'json' });
+        const credentials = await env.SUITE_CACHE.get(key, { type: 'json' });
         
         if (!credentials) {
             return new Response(JSON.stringify({ 
@@ -134,7 +134,7 @@ export async function handleOBSCredentialsDelete(request, env, authenticateReque
         }
         
         const key = getOBSCredentialsKey(user.userId);
-        await env.TWITCH_CACHE.delete(key);
+        await env.SUITE_CACHE.delete(key);
         
         return new Response(JSON.stringify({ 
             success: true,

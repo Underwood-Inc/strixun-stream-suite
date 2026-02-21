@@ -1,7 +1,7 @@
 /**
- * Twitch API Upload File Size Limits Configuration
+ * Suite API upload file size limits configuration
  * 
- * This module provides service-specific upload limits for the twitch-api service.
+ * This module provides service-specific upload limits for the suite-api service.
  * It uses the base limits from the shared API framework (10 MB default).
  * 
  * Limits:

@@ -1,7 +1,7 @@
 /**
  * Authentication Handlers
  * 
- * OTP authentication endpoints for Twitch API worker.
+ * OTP authentication endpoints for Suite API worker.
  * Token creation is delegated to otp-auth-service (RS256 OIDC issuer).
  */
 
@@ -24,7 +24,7 @@ function generateOTP() {
 async function checkOTPRateLimit(emailHash, env) {
     try {
         const rateLimitKey = `ratelimit_otp_${emailHash}`;
-        const rateLimitData = await env.TWITCH_CACHE.get(rateLimitKey);
+        const rateLimitData = await env.SUITE_CACHE.get(rateLimitKey);
         let rateLimit = null;
         
         if (rateLimitData) {
@@ -53,7 +53,7 @@ async function checkOTPRateLimit(emailHash, env) {
         rateLimit.attempts++;
         rateLimit.lastAttempt = now;
         
-        await env.TWITCH_CACHE.put(rateLimitKey, JSON.stringify(rateLimit), {
+        await env.SUITE_CACHE.put(rateLimitKey, JSON.stringify(rateLimit), {
             expirationTtl: Math.ceil(RATE_LIMIT_WINDOW / 1000)
         });
         
@@ -185,7 +185,7 @@ export async function handleRequestOTP(request, env) {
         const otp = generateOTP();
         
         const otpKey = `otp_${emailHash}`;
-        await env.TWITCH_CACHE.put(otpKey, JSON.stringify({
+        await env.SUITE_CACHE.put(otpKey, JSON.stringify({
             otp, email, createdAt: Date.now(), attempts: 0
         }), { expirationTtl: 600 });
         
@@ -238,7 +238,7 @@ export async function handleVerifyOTP(request, env) {
         const emailHash = await hashEmail(email);
         const emailLower = email.toLowerCase().trim();
         
-        const latestOtpKey = await env.TWITCH_CACHE.get(`otp_latest_${emailHash}`);
+        const latestOtpKey = await env.SUITE_CACHE.get(`otp_latest_${emailHash}`);
         if (!latestOtpKey) {
             return new Response(JSON.stringify({ error: 'OTP not found or expired' }), {
                 status: 404,
@@ -246,7 +246,7 @@ export async function handleVerifyOTP(request, env) {
             });
         }
         
-        const otpDataStr = await env.TWITCH_CACHE.get(latestOtpKey);
+        const otpDataStr = await env.SUITE_CACHE.get(latestOtpKey);
         if (!otpDataStr) {
             return new Response(JSON.stringify({ error: 'OTP not found or expired' }), {
                 status: 404,
@@ -264,8 +264,8 @@ export async function handleVerifyOTP(request, env) {
         }
         
         if (new Date(otpData.expiresAt) < new Date()) {
-            await env.TWITCH_CACHE.delete(latestOtpKey);
-            await env.TWITCH_CACHE.delete(`otp_latest_${emailHash}`);
+            await env.SUITE_CACHE.delete(latestOtpKey);
+            await env.SUITE_CACHE.delete(`otp_latest_${emailHash}`);
             return new Response(JSON.stringify({ error: 'OTP expired' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -273,8 +273,8 @@ export async function handleVerifyOTP(request, env) {
         }
         
         if (otpData.attempts >= 5) {
-            await env.TWITCH_CACHE.delete(latestOtpKey);
-            await env.TWITCH_CACHE.delete(`otp_latest_${emailHash}`);
+            await env.SUITE_CACHE.delete(latestOtpKey);
+            await env.SUITE_CACHE.delete(`otp_latest_${emailHash}`);
             return new Response(JSON.stringify({ error: 'Too many failed attempts' }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -291,7 +291,7 @@ export async function handleVerifyOTP(request, env) {
         
         if (!isValid) {
             otpData.attempts++;
-            await env.TWITCH_CACHE.put(latestOtpKey, JSON.stringify(otpData), { expirationTtl: 600 });
+            await env.SUITE_CACHE.put(latestOtpKey, JSON.stringify(otpData), { expirationTtl: 600 });
             return new Response(JSON.stringify({ 
                 error: 'Invalid OTP', remainingAttempts: 5 - otpData.attempts
             }), {
@@ -300,12 +300,12 @@ export async function handleVerifyOTP(request, env) {
             });
         }
         
-        await env.TWITCH_CACHE.delete(latestOtpKey);
-        await env.TWITCH_CACHE.delete(`otp_latest_${emailHash}`);
+        await env.SUITE_CACHE.delete(latestOtpKey);
+        await env.SUITE_CACHE.delete(`otp_latest_${emailHash}`);
         
         const userId = await generateUserId(emailLower);
         const userKey = `user_${emailHash}`;
-        let user = await env.TWITCH_CACHE.get(userKey, { type: 'json' });
+        let user = await env.SUITE_CACHE.get(userKey, { type: 'json' });
         
         if (!user) {
             user = {
@@ -314,10 +314,10 @@ export async function handleVerifyOTP(request, env) {
                 createdAt: new Date().toISOString(),
                 lastLogin: new Date().toISOString(),
             };
-            await env.TWITCH_CACHE.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+            await env.SUITE_CACHE.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
         } else {
             user.lastLogin = new Date().toISOString();
-            await env.TWITCH_CACHE.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+            await env.SUITE_CACHE.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
         }
         
         // Delegate token creation to otp-auth-service (RS256 OIDC issuer)
@@ -326,7 +326,7 @@ export async function handleVerifyOTP(request, env) {
         
         // Store session keyed by customerId
         const sessionKey = `session_${customerId}`;
-        await env.TWITCH_CACHE.put(sessionKey, JSON.stringify({
+        await env.SUITE_CACHE.put(sessionKey, JSON.stringify({
             userId: customerId,
             tokenHash: await hashEmail(oidcResult.token),
             expiresAt: new Date(Date.now() + oidcResult.expires_in * 1000).toISOString(),
@@ -402,13 +402,13 @@ export async function handleLogout(request, env) {
         // Add token to blacklist
         const tokenHash = await hashEmail(auth.jwtToken);
         const blacklistKey = `blacklist_${tokenHash}`;
-        await env.TWITCH_CACHE.put(blacklistKey, JSON.stringify({
+        await env.SUITE_CACHE.put(blacklistKey, JSON.stringify({
             token: tokenHash,
             revokedAt: new Date().toISOString(),
         }), { expirationTtl: 25200 });
         
         const sessionKey = `session_${auth.customerId}`;
-        await env.TWITCH_CACHE.delete(sessionKey);
+        await env.SUITE_CACHE.delete(sessionKey);
         
         return new Response(JSON.stringify({ 
             success: true, message: 'Logged out successfully'
@@ -444,7 +444,7 @@ export async function handleRefresh(request, env) {
         // Check if token is blacklisted
         const tokenHash = await hashEmail(auth.jwtToken);
         const blacklistKey = `blacklist_${tokenHash}`;
-        const blacklisted = await env.TWITCH_CACHE.get(blacklistKey);
+        const blacklisted = await env.SUITE_CACHE.get(blacklistKey);
         if (blacklisted) {
             return new Response(JSON.stringify({ error: 'Token has been revoked' }), {
                 status: 401,
@@ -456,7 +456,7 @@ export async function handleRefresh(request, env) {
         const oidcResult = await requestOIDCToken(auth.customerId, env);
         
         const sessionKey = `session_${auth.customerId}`;
-        await env.TWITCH_CACHE.put(sessionKey, JSON.stringify({
+        await env.SUITE_CACHE.put(sessionKey, JSON.stringify({
             userId: auth.customerId,
             tokenHash: await hashEmail(oidcResult.token),
             expiresAt: new Date(Date.now() + oidcResult.expires_in * 1000).toISOString(),
