@@ -216,6 +216,7 @@ sequenceDiagram
                 <code>{ "success": true, "message": "OTP sent to email", "expiresIn": 600, "remaining": 4 }</code>
                 — <code>expiresIn</code> is the OTP validity in seconds (600 = 10 minutes),
                 <code>remaining</code> is how many more OTP requests are allowed before rate limiting kicks in.
+                One OTP request per 30 minutes is allowed without counting when that email had a successful login or refresh recently (recovery pass).
             </p>
         </div>
 
@@ -262,6 +263,7 @@ sequenceDiagram
                 detects the expired token, refreshes it behind the scenes, and retries the action.
                 This "reactive refresh" pattern continues for up to <strong>7 days</strong> from the original
                 login, after which the user must enter a new OTP.
+                <strong>POST /auth/refresh</strong> is not rate-limited. If refresh fails and the user requests an OTP again, one request is allowed without counting when they had a recent successful login or refresh (recovery pass).
             </p>
         </div>
 
@@ -444,7 +446,7 @@ sequenceDiagram
                 <tr id="error-429">
                     <td><span class="badge badge-warning">429</span></td>
                     <td>Too many OTP requests or too many failed verification attempts</td>
-                    <td>Rate limit or quota exceeded. Includes <code>retry_after</code> (seconds) and <code>remaining</code> count</td>
+                    <td>Rate limit or quota exceeded. Includes <code>retry_after</code> (seconds) and <code>remaining</code> count. One OTP request per 30 min is allowed without counting when the email had a recent successful login/refresh (recovery pass).</td>
                 </tr>
                 <tr id="error-500">
                     <td><span class="badge badge-danger">500</span></td>

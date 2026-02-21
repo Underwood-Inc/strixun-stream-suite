@@ -200,6 +200,7 @@
   <div class="rate-limit-info-card__content">
     <p class="rate-limit-info-card__description">
       Your rate limit adjusts based on your usage patterns. New and trusted users get more leeway, while suspicious activity gets restricted.
+      If you had a successful login or token refresh in the last 30 minutes, one OTP request is allowed without counting (recovery pass).
     </p>
 
     {#if currentScenario}

@@ -28,9 +28,10 @@
 
 <h5>Authentication Endpoints</h5>
 <ul>
-  <li><strong>POST /auth/request-otp</strong> - Request OTP code via email</li>
+  <li><strong>POST /auth/request-otp</strong> - Request OTP code via email (rate-limited; one recovery pass per 30 min when recent login/refresh)</li>
   <li><strong>POST /auth/verify-otp</strong> - Verify OTP and receive JWT token (sets HttpOnly cookie for SSO)</li>
   <li><strong>GET /auth/me</strong> - Get current customer info (uses HttpOnly cookie or Bearer token)</li>
+  <li><strong>POST /auth/refresh</strong> - Exchange refresh_token cookie for new tokens (not rate-limited; keeps session up to 7 days)</li>
   <li><strong>POST /auth/logout</strong> - Logout and revoke token</li>
 </ul>
 

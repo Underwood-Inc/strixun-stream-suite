@@ -3,11 +3,12 @@
 
   const rateLimitingDiagram = `graph TB
     REQUEST["Incoming OTP Request"] --> LAYER1["<strong>Layer 1: Plan Limits</strong><br/>Free: 3/hr | Pro: 10/hr | Enterprise: 100/hr"]
-    LAYER1 --> LAYER2["<strong>Layer 2: Email Rate Limit</strong><br/>Max 3 requests per 60min per email<br/>(prevents spam)"]
-    LAYER2 --> LAYER3["<strong>Layer 3: IP Rate Limit</strong><br/>Max 10 requests per hour per IP<br/>(prevents abuse)"]
-    LAYER3 --> LAYER4["<strong>Layer 4: Dynamic Adjustment</strong><br/>• Failed attempts tracking<br/>• Suspicious behavior detection<br/>• Gradually increase limits for good behavior"]
-    LAYER4 --> ALLOW["✓ Allow Request"]
-    LAYER4 --> BLOCK["✗ 429 Too Many Requests"]
+    LAYER1 --> LAYER2["<strong>Layer 2: Recovery Pass</strong><br/>1 OTP not counted per 30min<br/>when email had recent login/refresh"]
+    LAYER2 --> LAYER3["<strong>Layer 3: Email Rate Limit</strong><br/>Max 3 requests per 60min per email<br/>(prevents spam)"]
+    LAYER3 --> LAYER4["<strong>Layer 4: IP Rate Limit</strong><br/>Max 10 requests per hour per IP<br/>(prevents abuse)"]
+    LAYER4 --> LAYER5["<strong>Layer 5: Dynamic Adjustment</strong><br/>• Failed attempts tracking<br/>• Suspicious behavior detection<br/>• Gradually increase limits for good behavior"]
+    LAYER5 --> ALLOW["✓ Allow Request"]
+    LAYER5 --> BLOCK["✗ 429 Too Many Requests"]
     
     classDef requestStyle fill:#252017,stroke:#edae49,stroke-width:3px,color:#f9f9f9
     classDef layerStyle fill:#1a1611,stroke:#6495ed,stroke-width:2px,color:#f9f9f9
@@ -15,7 +16,7 @@
     classDef blockStyle fill:#1a1611,stroke:#dc3545,stroke-width:3px,color:#f9f9f9
     
     class REQUEST requestStyle
-    class LAYER1,LAYER2,LAYER3,LAYER4 layerStyle
+    class LAYER1,LAYER2,LAYER3,LAYER4,LAYER5 layerStyle
     class ALLOW allowStyle
     class BLOCK blockStyle`;
 </script>
@@ -43,7 +44,7 @@
   <li><strong><code>SameSite=Lax</code></strong> - CSRF protection while allowing navigation</li>
   <li><strong><code>Domain=.idling.app</code></strong> - Shared across all subdomains for SSO</li>
   <li><strong><code>Path=/</code></strong> - Available to all routes</li>
-  <li><strong><code>Max-Age=25200</code></strong> - 7-hour expiration (matches JWT)</li>
+  <li><strong><code>Max-Age</code></strong> - auth_token 15 min (900); refresh_token up to 7 days</li>
 </ul>
 <p>
   <strong>Implementation Note:</strong> Always use <code>credentials: 'include'</code> in fetch requests to send cookies automatically:
@@ -66,7 +67,7 @@ fetch('https://auth.idling.app/auth/me');</code></pre>
 <p>For additional security, configure IP allowlists in customer settings.</p>
 
 <h4>Session Management</h4>
-<p>JWT tokens are valid for 7 hours and are automatically sent via HttpOnly cookies for SSO across all subdomains. No manual token refresh is needed - the browser automatically includes the cookie with each request.</p>
+<p>Access tokens expire after 15 minutes; refresh tokens last up to 7 days. The app calls <code>POST /auth/refresh</code> (with the <code>refresh_token</code> HttpOnly cookie) when a request returns 401, so users stay logged in without re-entering an OTP. Refresh is <strong>not</strong> rate-limited. If refresh fails, the user must request an OTP again; one OTP request is allowed without counting when that email had a successful login or refresh in the last 30 minutes (recovery pass).</p>
 
 <h4>Logout and Session Invalidation</h4>
 <p>Calling <code>POST /auth/logout</code> (with <code>credentials: 'include'</code>) will:</p>

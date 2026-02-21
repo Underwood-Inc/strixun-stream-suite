@@ -69,6 +69,8 @@
           • Suspicious behavior detection<br>
           • IP-based tracking patterns<br>
           (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/master/serverless/otp-auth-service/services/rate-limit.ts#L92-L141' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see algorithm</a>)<br><br>
+          <strong>Recovery pass:</strong><br>
+          If the same email had a successful login or token refresh in the last 30 minutes, one OTP request is allowed without counting (avoids lockout when refresh fails). One recovery pass per email per 30-minute window.<br><br>
           <strong>Custom Configuration:</strong><br>
           Each customer can override with custom rate limits in their settings.<br><br>
           Super admins are exempt from all rate limits."
@@ -85,7 +87,7 @@
         <Tooltip
           text="<strong>JWT Structure (<a href='https://datatracker.ietf.org/doc/html/rfc7519' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>RFC 7519</a>):</strong><br><br>
           <strong>Algorithm:</strong> RS256 (RSA + SHA-256) via JWKS &mdash; HS256 fallback for backward compat<br>
-          <strong>Expiration:</strong> 7 hours from issuance<br>
+          <strong>Expiration:</strong> Access token 15 min; refresh token up to 7 days (rotation)<br>
           (<a href='https://github.com/Underwood-Inc/strixun-stream-suite/blob/master/serverless/otp-auth-service/handlers/auth/jwt-creation.ts#L148-L169' target='_blank' rel='noopener noreferrer' style='color: #6495ed;'>see code</a>)<br><br>
           <strong>Standard Claims Included:</strong><br>
           • sub (subject) - Customer ID<br>

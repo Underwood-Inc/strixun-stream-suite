@@ -1157,7 +1157,7 @@
                 </div>
                 <div class="security-item">
                     <h3>✓ Rate Limiting</h3>
-                    <p>3 OTP requests per email per hour. Prevents abuse and email spam while maintaining usability.</p>
+                    <p>3 OTP requests per email per hour (with dynamic adjustment). One OTP request per 30 minutes is allowed without counting when that email had a recent successful login or refresh (recovery pass).</p>
                 </div>
                 <div class="security-item">
                     <h3>✓ JWT Tokens</h3>
@@ -2038,7 +2038,7 @@ export default LoginForm;</code></pre>
             <ul>
                 <li>
                     <strong>Rate Limits</strong>
-                    <p>3 OTP requests per email address per hour to prevent abuse and email spam.</p>
+                    <p>3 OTP requests per email per hour to prevent abuse; one recovery pass per 30 min when the email had a recent login or refresh.</p>
                 </li>
                 <li>
                     <strong>OTP Expiration</strong>
@@ -2050,7 +2050,7 @@ export default LoginForm;</code></pre>
                 </li>
                 <li>
                     <strong>Token Expiration</strong>
-                    <p>JWT tokens expire after 7 hours. Use the refresh endpoint to extend sessions.</p>
+                    <p>Access tokens expire after 15 minutes; use <code>POST /auth/refresh</code> (with the refresh_token cookie) to get new tokens without re-entering OTP. Refresh tokens last up to 7 days.</p>
                 </li>
                 <li>
                     <strong>Email Delivery</strong>
@@ -2660,7 +2660,7 @@ fetch('https://auth.idling.app/auth/me');</code></pre>
                     <p>For additional security, configure IP allowlists in customer settings.</p>
 
                     <h4>Token Refresh</h4>
-                    <p>Implement automatic token refresh before expiration to maintain seamless customer experience. The <code>/auth/refresh</code> endpoint also sets a new HttpOnly cookie with the refreshed token.</p>
+                    <p>Implement automatic token refresh before expiration to maintain seamless customer experience. The <code>/auth/refresh</code> endpoint (not rate-limited) sets new HttpOnly cookies. If refresh fails and the user requests an OTP again, one request is allowed without counting when they had a recent login or refresh (recovery pass).</p>
 
                     <h4>Logout and Session Invalidation</h4>
                     <p>Calling <code>POST /auth/logout</code> (with <code>credentials: 'include'</code>) will:</p>
