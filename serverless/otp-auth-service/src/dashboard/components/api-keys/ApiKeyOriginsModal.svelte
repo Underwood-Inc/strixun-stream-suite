@@ -168,6 +168,18 @@
     border: 1px solid var(--border); border-radius: var(--radius-md);
     color: var(--text); font-size: 1rem;
   }
+  .modal__input:focus,
+  .modal__textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-color: var(--accent);
+  }
+  .modal__textarea {
+    flex: 1; padding: var(--spacing-md); background: var(--bg-dark);
+    border: 1px solid var(--border); border-radius: var(--radius-md);
+    color: var(--text); font-size: 1rem; font-family: inherit;
+    min-width: 0; resize: vertical; min-height: 4.5rem;
+  }
   .modal__btn {
     padding: var(--spacing-sm) var(--spacing-lg); font-weight: 600;
     font-size: 0.875rem; cursor: pointer; border-radius: var(--radius-sm);

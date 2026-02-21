@@ -151,6 +151,12 @@
     font-size: 1rem;
   }
 
+  .create-form__input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-color: var(--accent);
+  }
+
   .create-form__button {
     padding: var(--spacing-md) var(--spacing-lg);
     background: var(--accent);
