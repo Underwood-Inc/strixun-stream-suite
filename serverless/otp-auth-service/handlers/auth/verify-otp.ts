@@ -102,7 +102,7 @@ async function getOrCreateCustomerSession(
  * Supports both encrypted (using API framework) and plain JSON requests
  * Backend accepts both for backward compatibility
  */
-async function decryptRequestBody(request: Request, env: Env): Promise<{ email: string; otp: string }> {
+async function decryptRequestBody(request: Request, env: Env): Promise<{ email: string; otp: string; scope?: string }> {
     const bodyText = await request.text();
     let body: any;
     
@@ -112,9 +112,13 @@ async function decryptRequestBody(request: Request, env: Env): Promise<{ email: 
         throw new Error('Invalid JSON in request body');
     }
     
-    // Parse as plain JSON
+    // Parse as plain JSON; scope is optional (OIDC scope request)
     if (body.email && body.otp) {
-        return { email: body.email, otp: body.otp };
+        return {
+            email: body.email,
+            otp: body.otp,
+            scope: typeof body.scope === 'string' ? body.scope.trim() || undefined : undefined,
+        };
     }
     
     throw new Error('Missing email or otp in request body');
@@ -134,7 +138,7 @@ export async function handleVerifyOTP(request: Request, env: Env, tenantCustomer
     // The user's customerId is ALWAYS looked up by EMAIL via ensureCustomerAccount
     try {
         // Decrypt/parse request body
-        const { email, otp } = await decryptRequestBody(request, env);
+        const { email, otp, scope: requestedScope } = await decryptRequestBody(request, env);
         
         // Validate email
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -390,32 +394,33 @@ export async function handleVerifyOTP(request: Request, env: Env, tenantCustomer
             lastLogin: session.lastLogin,
         };
         
-        // Extract API key ID from request (for inter-tenant SSO scoping)
-        // API keys are in X-OTP-API-Key header
+        // Extract API key ID and allowed scopes from request (for inter-tenant SSO and scope restriction)
         let keyId: string | undefined = undefined;
+        let keyAllowedScopes: string[] | undefined = undefined;
         const apiKeyHeader = request.headers.get('X-OTP-API-Key');
         if (apiKeyHeader) {
             const apiKey = apiKeyHeader.trim();
-            // Verify and extract keyId from API key
             try {
                 const { verifyApiKey } = await import('../../services/api-key.js');
                 const apiKeyVerification = await verifyApiKey(apiKey, env);
                 if (apiKeyVerification && apiKeyVerification.customerId === session.customerId) {
                     keyId = apiKeyVerification.keyId;
+                    keyAllowedScopes = apiKeyVerification.allowedScopes;
                     console.log(`[OTP Verify] Using API key for SSO scoping:`, {
                         keyId,
-                        customerId: session.customerId
+                        customerId: session.customerId,
+                        allowedScopes: keyAllowedScopes?.length ? keyAllowedScopes : 'all',
                     });
                 }
             } catch (error) {
                 console.error('[OTP Verify] Failed to verify API key for SSO scoping:', error);
-                // Continue without keyId - SSO scoping is optional
             }
         }
         
-        // CRITICAL: This will NOT return OTP email in response body
-        // Pass keyId for inter-tenant SSO scoping
-        const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request, keyId);
+        const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request, keyId, {
+            requestedScope: requestedScope,
+            keyAllowedScopes: keyAllowedScopes,
+        });
         
         // Determine environment and cookie domains
         // NOTE: wrangler dev with [[routes]] rewrites request.url hostname to the

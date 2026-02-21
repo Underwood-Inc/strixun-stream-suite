@@ -319,7 +319,7 @@ export function Header() {
                                 <NavLink to="/admin" onClick={handleNavClick}>Admin</NavLink>
                             )}
                             <Tooltip 
-                                text={`Logout (${customer?.displayName || 'Customer'})`} 
+                                text={`Logout (${(customer?.displayName?.trim() && customer.displayName.toLowerCase() !== 'unknown') ? customer.displayName : 'Customer'})`} 
                                 detectTruncation 
                                 position="bottom"
                                 theme={tooltipTheme}
@@ -332,7 +332,7 @@ export function Header() {
                                         textOverflow: 'ellipsis',
                                         whiteSpace: 'nowrap'
                                     }}>
-                                        Logout ({customer?.displayName || 'Customer'})
+                                        Logout ({(customer?.displayName?.trim() && customer.displayName.toLowerCase() !== 'unknown') ? customer.displayName : 'Customer'})
                                     </span>
                                 </LogoutButton>
                             </Tooltip>

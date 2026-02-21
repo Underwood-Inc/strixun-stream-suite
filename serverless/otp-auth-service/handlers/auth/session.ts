@@ -178,37 +178,37 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             });
         }
         
-        // Parse scopes from token to control which claims are returned
+        // Parse scopes from token; use shared constants for scope-based claim filtering
         const scopeStr: string = (payload.scope as string) || 'openid';
-        const scopes = new Set(scopeStr.split(' '));
+        const scopes = new Set(scopeStr.split(/\s+/).filter(Boolean));
 
-        // OIDC UserInfo response (RFC 7662) with scope-based claim filtering
-        const responseData: Record<string, unknown> = {
+        const { CLAIMS_BY_SCOPE, SCOPE_OPENID } = await import('../../shared/oidc-constants.js');
+
+        const responseData: Record<string, unknown> = { sub: customerId };
+
+        // Apply claims per granted scope (openid always gets core identity)
+        const claimToValue: Record<string, unknown> = {
             sub: customerId,
+            id: customerId,
+            customerId: customerId,
+            iss: payload.iss,
+            aud: payload.aud,
+            isSuperAdmin: payload.isSuperAdmin ?? false,
+            csrf: payload.csrf ?? null,
+            email_verified: payload.email_verified ?? false,
+            name: payload.displayName ?? null,
+            preferred_username: payload.displayName ?? null,
+            displayName: payload.displayName ?? null,
         };
-
-        // 'openid' scope -- always present
-        responseData.id = customerId;
-        responseData.customerId = customerId;
-        responseData.iss = payload.iss;
-        responseData.aud = payload.aud;
-        responseData.isSuperAdmin = payload.isSuperAdmin ?? false;
-        responseData.csrf = payload.csrf || null;
-
-        // 'email' scope -- include email claims
-        if (scopes.has('email')) {
-            responseData.email_verified = payload.email_verified ?? false;
+        for (const scope of scopes) {
+            const claimNames = CLAIMS_BY_SCOPE[scope];
+            if (!claimNames) continue;
+            for (const claim of claimNames) {
+                const v = claimToValue[claim];
+                if (v !== undefined && v !== null) (responseData as any)[claim] = v;
+            }
         }
-
-        // 'profile' scope -- include profile claims
-        if (scopes.has('profile') && payload.displayName) {
-            responseData.name = payload.displayName;
-            responseData.preferred_username = payload.displayName;
-        }
-        // Always include displayName when in JWT (auth store uses it; avoids Customer API call)
-        if (payload.displayName) {
-            responseData.displayName = payload.displayName;
-        }
+        if (payload.displayName) responseData.displayName = payload.displayName;
 
         console.log('[handleGetMe] Returning SUCCESS 200 with customer data:', {
             customerId: responseData.customerId,

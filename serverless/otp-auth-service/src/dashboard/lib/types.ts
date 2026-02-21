@@ -39,6 +39,16 @@ export interface ApiKey {
   status: 'active' | 'revoked';
   /** Allowed origins for CORS when using this API key */
   allowedOrigins?: string[];
+  /** Allowed OIDC scopes for tokens issued with this key (e.g. openid, profile, email). Empty = all supported. */
+  allowedScopes?: string[];
+}
+
+/** OIDC metadata for dashboard and test page (scopes, claims, presets). */
+export interface OidcMetadataResponse {
+  scopesSupported: string[];
+  claimsSupported: string[];
+  claimsByScope: Record<string, string[]>;
+  presetScopes: { value: string; label: string }[];
 }
 
 export interface ApiKeyResponse {

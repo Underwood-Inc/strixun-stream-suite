@@ -80,7 +80,7 @@ export async function handleServiceIssueToken(request: Request, env: Env): Promi
             iat: now,
             jti: crypto.randomUUID(),
             email_verified: true,
-            scope: 'openid profile',
+            scope: (await import('../../shared/oidc-constants.js')).getDefaultScope(),
             customerId,
             client_id: null,
             isSuperAdmin,

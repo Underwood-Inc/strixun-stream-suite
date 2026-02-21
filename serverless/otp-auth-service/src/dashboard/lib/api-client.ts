@@ -15,6 +15,7 @@ import type {
   RealtimeAnalytics,
   ErrorAnalytics,
   UsageSummaryResponse,
+  OidcMetadataResponse,
 } from './types.js';
 
 // API base URL - uses current origin (works with Vite proxy in dev, or same origin in production)
@@ -155,8 +156,13 @@ export class ApiClient {
     return response.data;
   }
 
-  async createApiKey(customerId: string, name: string): Promise<ApiKeyResponse> {
-    const response = await this.api.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys`, { name });
+  async createApiKey(
+    customerId: string,
+    name: string,
+    options?: { allowedOrigins?: string[]; allowedScopes?: string[] }
+  ): Promise<ApiKeyResponse> {
+    const body = { name, ...(options?.allowedOrigins && { allowedOrigins: options.allowedOrigins }), ...(options?.allowedScopes && { allowedScopes: options.allowedScopes }) };
+    const response = await this.api.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys`, body);
     if (response.status !== 200 || !response.data) {
       const error = response.data as { detail?: string } | undefined;
       throw new Error(error?.detail || 'Failed to create API key');
@@ -316,17 +322,29 @@ export class ApiClient {
   }
 
   /**
-   * Update allowed origins for a specific API key
-   * Each key can have its own set of allowed origins for CORS
+   * Update allowed origins and/or allowed scopes for a specific API key
    */
-  async updateKeyOrigins(customerId: string, keyId: string, allowedOrigins: string[]): Promise<{ success: boolean; allowedOrigins: string[]; message: string }> {
-    const response = await this.api.put<{ success: boolean; allowedOrigins: string[]; message: string }>(
+  async updateKeyOrigins(
+    customerId: string,
+    keyId: string,
+    payload: { allowedOrigins: string[]; allowedScopes?: string[] }
+  ): Promise<{ success: boolean; allowedOrigins: string[]; allowedScopes?: string[]; message: string }> {
+    const response = await this.api.put<{ success: boolean; allowedOrigins: string[]; allowedScopes?: string[]; message: string }>(
       `/admin/customers/${customerId}/api-keys/${keyId}/origins`,
-      { allowedOrigins }
+      payload
     );
     if (response.status !== 200 || !response.data) {
       const error = response.data as { error?: string; message?: string } | undefined;
-      throw new Error(error?.message || error?.error || 'Failed to update allowed origins');
+      throw new Error(error?.message || error?.error || 'Failed to update key configuration');
+    }
+    return response.data;
+  }
+
+  async getOidcMetadata(): Promise<OidcMetadataResponse> {
+    const response = await this.api.get<OidcMetadataResponse>('/admin/oidc-metadata');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { error?: string } | undefined;
+      throw new Error(error?.error || 'Failed to load OIDC metadata');
     }
     return response.data;
   }

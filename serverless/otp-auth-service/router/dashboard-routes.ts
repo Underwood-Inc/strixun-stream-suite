@@ -53,6 +53,24 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
     const configResult = await handleConfigRoutes(path, request, env);
     if (configResult) return configResult;
 
+    // OIDC metadata for dashboard (scopes, claims, presets)
+    if (path === '/admin/oidc-metadata' && request.method === 'GET') {
+        const auth = await authenticateRequest(request, env);
+        if (!auth) {
+            return {
+                response: new Response(JSON.stringify({ error: 'Authentication required' }), {
+                    status: 401,
+                    headers: { ...getCorsHeadersRecord(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: null,
+            };
+        }
+        return {
+            response: await adminHandlers.handleGetOidcMetadata(request, env),
+            customerId: auth.customerId,
+        };
+    }
+
     // Legacy/deprecated routes
     if (path === '/admin/customers/me') {
         const corsHeaders = getCorsHeaders(env, request);
@@ -251,7 +269,7 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
         const keyId = updateOriginsMatch[2];
         const auth = await authenticateRequest(request, env);
         
-        if (!auth.authenticated) {
+        if (!auth) {
             return { response: createUnauthorizedResponse(request, env), customerId: null };
         }
 

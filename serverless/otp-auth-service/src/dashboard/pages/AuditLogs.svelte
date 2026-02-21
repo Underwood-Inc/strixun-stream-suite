@@ -167,8 +167,7 @@
     padding-left: var(--spacing-lg);
   }
   .audit-logs :global(.card + .card) {
-    margin-top: 0;
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: 0;
   }
 
   .audit-logs__title {

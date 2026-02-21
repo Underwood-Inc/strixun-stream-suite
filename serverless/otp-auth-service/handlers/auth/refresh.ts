@@ -150,10 +150,17 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         const now = Math.floor(nowMs / 1000);
         const expiresAt = new Date(nowMs + ACCESS_TOKEN_TTL_SECONDS * 1000);
 
-        // Retrieve customer display name for the token response
-        const customerKey = entityKey('otp-auth', 'customer', customerId).key;
-        const customerRaw = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as { displayName?: string } | null;
-        const displayName = customerRaw?.displayName || 'Unknown';
+        // Retrieve customer display name from customer-api (source of truth). Display name is NOT
+        // stored in OTP_AUTH_KV — same as verify-otp. If we read from KV we would always get
+        // null and show "Unknown" after the first token refresh.
+        let displayName: string = 'Unknown';
+        try {
+            const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
+            const fetched = await fetchDisplayNameByCustomerId(customerId, env);
+            if (fetched && fetched.trim() !== '') displayName = fetched;
+        } catch (error) {
+            console.error('[Refresh] Failed to fetch display name from customer-api:', error);
+        }
 
         // Check if customer is a super admin
         let isSuperAdmin = false;
@@ -176,7 +183,7 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
             iat: now,
             jti: generateJWTId(),
             email_verified: true,
-            scope: 'openid profile',
+            scope: (await import('../../shared/oidc-constants.js')).getDefaultScope(),
             customerId,
             client_id: stored.keyId || null,
             csrf: csrfToken,
@@ -245,7 +252,7 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
             token_type: 'Bearer',
             expires_in: ACCESS_TOKEN_TTL_SECONDS,
             refresh_expires_in: refreshTtlSeconds,
-            scope: 'openid profile',
+            scope: (await import('../../shared/oidc-constants.js')).getDefaultScope(),
             displayName,
             sub: customerId,
             email_verified: true,

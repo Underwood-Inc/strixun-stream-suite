@@ -109,12 +109,13 @@ function generateRefreshToken(): string {
 
 /**
  * Create JWT token and session for authenticated customer
- * 
+ *
  * @param customer - Customer data (NOT User - we only use Customer)
  * @param customerId - Customer ID (MANDATORY)
  * @param env - Worker environment
  * @param request - HTTP request (optional, for IP tracking)
  * @param keyId - API key ID (optional, for inter-tenant SSO scoping)
+ * @param scopeOptions - Optional requested scope and key-allowed scopes (intersection used)
  * @returns OAuth 2.0 token response (DOES NOT include OTP email)
  */
 export async function createAuthToken(
@@ -122,7 +123,8 @@ export async function createAuthToken(
     customerId: string,
     env: Env,
     request?: Request,
-    keyId?: string
+    keyId?: string,
+    scopeOptions?: { requestedScope?: string; keyAllowedScopes?: string[] }
 ): Promise<TokenResponse> {
     // FAIL-FAST: customerId is MANDATORY
     if (!customerId) {
@@ -209,6 +211,12 @@ export async function createAuthToken(
         }
     }
     
+    // Resolve scope: requested scope intersected with key's allowed scopes (if any)
+    const { resolveScopeForKey, getDefaultScope } = await import('../../shared/oidc-constants.js');
+    const resolvedScope = scopeOptions
+        ? resolveScopeForKey(scopeOptions.requestedScope, scopeOptions.keyAllowedScopes)
+        : getDefaultScope();
+
     // JWT Standard Claims (RFC 7519) + OAuth 2.0 + Custom
     // PRIVACY: email is NEVER included in JWT payloads -- customerId is the sole identifier
     const issuer = env.JWT_ISSUER || env.AUTH_SERVICE_URL || (env.ENVIRONMENT === 'production' ? 'https://auth.idling.app' : 'http://localhost:8787');
@@ -224,8 +232,8 @@ export async function createAuthToken(
         // OIDC Claims (email intentionally omitted -- customerId is the identifier)
         email_verified: true,
         
-        // Custom Claims
-        scope: 'openid profile',
+        // Custom Claims (scope from shared constants / per-key config)
+        scope: resolvedScope,
         customerId: customerId,
         client_id: keyId || null,
         csrf: csrfToken,
@@ -308,7 +316,7 @@ export async function createAuthToken(
         refresh_expires_in: refreshTtlSeconds,
         
         // Additional Standard Fields
-        scope: 'openid profile',
+        scope: resolvedScope,
         
         // Customer Information (NOT User - we only use Customer)
         displayName: customer.displayName, // MANDATORY - globally unique display name

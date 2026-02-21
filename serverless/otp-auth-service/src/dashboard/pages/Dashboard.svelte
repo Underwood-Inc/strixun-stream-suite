@@ -136,8 +136,7 @@
     padding-left: var(--spacing-lg);
   }
   .dashboard :global(.card + .card) {
-    margin-top: 0;
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: 0;
   }
 
   .dashboard__title {

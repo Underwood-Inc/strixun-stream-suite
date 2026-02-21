@@ -13,5 +13,9 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
   }
+  /* Dashboard norm: consistent vertical spacing between adjacent cards in all tabs */
+  :global(.card + .card) {
+    margin-top: var(--spacing-xl);
+  }
 </style>
 

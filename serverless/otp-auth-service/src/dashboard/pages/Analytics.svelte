@@ -216,8 +216,7 @@
     padding-left: var(--spacing-lg);
   }
   .analytics :global(.card + .card) {
-    margin-top: 0;
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: 0;
   }
 
   .analytics__title {

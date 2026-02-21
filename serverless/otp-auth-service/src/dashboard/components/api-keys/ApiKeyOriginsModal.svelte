@@ -4,6 +4,10 @@
   export let show = false;
   export let keyName = '';
   export let origins: string[] = [];
+  /** Allowed OIDC scopes for this key (e.g. openid, profile, email). Empty = all supported. */
+  export let allowedScopes: string[] = [];
+  /** Preset scope options for display (from GET /admin/oidc-metadata). */
+  export let presetScopes: { value: string; label: string }[] = [];
   export let saving = false;
   export let error: string | null = null;
   export let success: string | null = null;
@@ -11,9 +15,24 @@
   let newOrigin = '';
 
   const dispatch = createEventDispatcher<{
-    save: { origins: string[] };
+    save: { origins: string[]; allowedScopes?: string[] };
     close: void;
   }>();
+
+  function toggleScope(scopeValue: string) {
+    const scopes = scopeValue.trim().split(/\s+/);
+    const next = [...allowedScopes];
+    for (const s of scopes) {
+      if (next.includes(s)) next.splice(next.indexOf(s), 1);
+      else next.push(s);
+    }
+    allowedScopes = next.sort();
+  }
+
+  function isPresetSelected(preset: { value: string }) {
+    const set = new Set(allowedScopes);
+    return preset.value.trim().split(/\s+/).every(s => set.has(s));
+  }
 
   function addOrigin() {
     const text = newOrigin.trim();
@@ -88,9 +107,9 @@
             class="modal__textarea"
             placeholder="https://myapp.com&#10;http://localhost:3000&#10;null"
             bind:value={newOrigin}
-            rows="3"
+            rows="4"
             aria-label="Allowed origins (one per line or comma-separated)"
-          />
+          ></textarea>
           <button class="modal__btn modal__btn--add" onclick={addOrigin}>Add</button>
         </div>
 
@@ -109,12 +128,29 @@
             {/each}
           </ul>
         {/if}
+
+        <div class="modal__scopes">
+          <h3 class="modal__scopes-title">Allowed OIDC scopes</h3>
+          <p class="modal__text modal__text--info">
+            Limit which scopes (and thus claims) can be requested when using this key. Leave all unchecked to allow all supported scopes.
+          </p>
+          {#if presetScopes.length > 0}
+            <div class="modal__scopes-presets">
+              {#each presetScopes as preset}
+                <label class="modal__scopes-label">
+                  <input type="checkbox" checked={isPresetSelected(preset)} onchange={() => toggleScope(preset.value)} />
+                  <span><code class="modal__scope-code">{preset.value}</code> — {preset.label}</span>
+                </label>
+              {/each}
+            </div>
+          {/if}
+        </div>
       </div>
 
       <div class="modal__footer">
         <button class="modal__btn modal__btn--secondary" onclick={close}>Cancel</button>
-        <button class="modal__btn modal__btn--primary" onclick={() => dispatch('save', { origins })} disabled={saving}>
-          {saving ? 'Saving...' : 'Save Origins'}
+        <button class="modal__btn modal__btn--primary" onclick={() => dispatch('save', { origins, allowedScopes })} disabled={saving}>
+          {saving ? 'Saving...' : 'Save'}
         </button>
       </div>
     </div>
@@ -162,24 +198,41 @@
   .modal__alert--success {
     color: var(--success); background: rgba(0,210,106,0.1); border: 1px solid var(--success);
   }
-  .modal__add-row { display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-md); }
-  .modal__input {
-    flex: 1; padding: var(--spacing-md); background: var(--bg-dark);
-    border: 1px solid var(--border); border-radius: var(--radius-md);
-    color: var(--text); font-size: 1rem;
+  .modal__add-block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
   }
-  .modal__input:focus,
+  .modal__textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--spacing-md);
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-size: 0.9375rem;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    line-height: 1.5;
+    min-height: 6rem;
+    resize: vertical;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .modal__textarea::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.8;
+  }
+  .modal__textarea:hover {
+    border-color: var(--text-secondary);
+  }
   .modal__textarea:focus {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(234, 43, 31, 0.15);
   }
-  .modal__textarea {
-    flex: 1; padding: var(--spacing-md); background: var(--bg-dark);
-    border: 1px solid var(--border); border-radius: var(--radius-md);
-    color: var(--text); font-size: 1rem; font-family: inherit;
-    min-width: 0; resize: vertical; min-height: 4.5rem;
-  }
+
   .modal__btn {
     padding: var(--spacing-sm) var(--spacing-lg); font-weight: 600;
     font-size: 0.875rem; cursor: pointer; border-radius: var(--radius-sm);
@@ -195,13 +248,6 @@
     background: var(--success); border: none; color: #fff;
   }
   .modal__btn--primary:disabled { opacity: 0.5; cursor: not-allowed; }
-  .modal__help {
-    font-size: 0.75rem; color: var(--text-secondary); margin-bottom: var(--spacing-lg);
-  }
-  .modal__help code {
-    background: var(--bg-dark); padding: 2px var(--spacing-xs);
-    border-radius: var(--radius-sm); color: var(--accent); margin: 0 var(--spacing-xs);
-  }
   .modal__empty {
     text-align: center; padding: var(--spacing-xl); color: var(--text-secondary);
     background: var(--bg-dark); border-radius: var(--radius-md); border: 1px dashed var(--border);
@@ -221,4 +267,35 @@
     font-size: 1.25rem; cursor: pointer; padding: var(--spacing-xs); line-height: 1; opacity: 0.7;
   }
   .modal__origin-remove:hover { opacity: 1; }
+  .modal__scopes {
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border);
+  }
+  .modal__scopes-title {
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: 1rem;
+    color: var(--accent);
+  }
+  .modal__scopes-presets {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  .modal__scopes-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    cursor: pointer;
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+  }
+  .modal__scopes-label input { flex-shrink: 0; }
+  .modal__scope-code {
+    background: var(--bg-dark);
+    padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    font-size: 0.875rem;
+  }
 </style>

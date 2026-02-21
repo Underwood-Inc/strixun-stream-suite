@@ -78,6 +78,8 @@ interface ApiKeyData {
     lastUsed: string | null;
     status: 'active' | 'inactive' | 'revoked';
     encryptedKey: string;
+    /** Hash of the API key; stored so we can update the entity when origins/scopes change. */
+    apiKeyHash?: string;
     /**
      * SSO communication configuration
      * Controls inter-tenant session sharing for this API key
@@ -88,6 +90,11 @@ interface ApiKeyData {
      * Each key can have different origins for different apps/domains
      */
     allowedOrigins?: string[];
+    /**
+     * Allowed OIDC scopes for tokens issued when this key is used.
+     * If empty or undefined, all supported scopes are allowed.
+     */
+    allowedScopes?: string[];
 }
 
 interface ApiKeyResult {
@@ -106,6 +113,10 @@ interface ApiKeyVerification {
      * Allowed origins for CORS when using this API key
      */
     allowedOrigins?: string[];
+    /**
+     * Allowed OIDC scopes for tokens issued when this key is used.
+     */
+    allowedScopes?: string[];
 }
 
 /**
@@ -143,12 +154,14 @@ export async function hashApiKey(apiKey: string): Promise<string> {
  * @param customerId - Customer ID
  * @param name - API key name
  * @param env - Worker environment
+ * @param options - Optional allowedOrigins and allowedScopes for the new key
  * @returns API key and key ID
  */
 export async function createApiKeyForCustomer(
     customerId: string,
     name: string,
-    env: Env
+    env: Env,
+    options?: { allowedOrigins?: string[]; allowedScopes?: string[] }
 ): Promise<ApiKeyResult> {
     // Generate API key
     const apiKey = await generateApiKey('otp_live_sk_');
@@ -182,8 +195,11 @@ export async function createApiKeyForCustomer(
         createdAt: new Date().toISOString(),
         lastUsed: null,
         status: 'active',
-        encryptedKey, // Store encrypted key so we can decrypt and show it later
-        ssoConfig: defaultSsoConfig // Initialize with global SSO enabled
+        encryptedKey,
+        apiKeyHash,
+        ssoConfig: defaultSsoConfig,
+        ...(options?.allowedOrigins && options.allowedOrigins.length > 0 && { allowedOrigins: options.allowedOrigins }),
+        ...(options?.allowedScopes && options.allowedScopes.length > 0 && { allowedScopes: options.allowedScopes }),
     };
     
     // Store API key entity using hash as ID
@@ -276,8 +292,9 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     return {
         customerId: keyData.customerId,
         keyId: keyData.keyId,
-        ssoConfig: keyData.ssoConfig, // Return SSO config for session validation
-        allowedOrigins: keyData.allowedOrigins // Return per-key allowed origins for CORS
+        ssoConfig: keyData.ssoConfig,
+        allowedOrigins: keyData.allowedOrigins,
+        allowedScopes: keyData.allowedScopes,
     };
 }
 

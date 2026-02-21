@@ -31,16 +31,42 @@
   let showSnippetModal = false;
   let codeSnippet = '';
 
-  // Origins modal
+  // Origins + scopes modal
   let showOriginsModal = false;
   let editingKey: ApiKey | null = null;
   let editingOrigins: string[] = [];
+  let editingScopes: string[] = [];
   let originsSaving = false;
   let originsError: string | null = null;
   let originsSuccess: string | null = null;
 
+  // OIDC metadata for scopes/claims UI (presets and reference)
+  let oidcMetadata: {
+    presetScopes: { value: string; label: string }[];
+    scopesSupported: string[];
+    claimsSupported: string[];
+    claimsByScope: Record<string, string[]>;
+  } | null = null;
+  let oidcPresetScopes: { value: string; label: string }[] = [];
+
   onMount(async () => {
     await loadApiKeys();
+    try {
+      const meta = await apiClient.getOidcMetadata();
+      oidcMetadata = {
+        presetScopes: meta.presetScopes,
+        scopesSupported: meta.scopesSupported,
+        claimsSupported: meta.claimsSupported ?? [],
+        claimsByScope: meta.claimsByScope ?? {},
+      };
+      oidcPresetScopes = meta.presetScopes;
+    } catch {
+      oidcPresetScopes = [
+        { value: 'openid', label: 'Minimal (openid only)' },
+        { value: 'openid profile', label: 'Default (openid profile)' },
+        { value: 'openid profile email', label: 'With email (openid profile email)' },
+      ];
+    }
   });
 
   async function loadApiKeys() {
@@ -70,14 +96,14 @@
     }
   }
 
-  async function handleCreate(e: CustomEvent<{ name: string; allowedOrigins?: string[] }>) {
+  async function handleCreate(e: CustomEvent<{ name: string; allowedOrigins?: string[]; allowedScopes?: string[] }>) {
     if (!customer?.customerId) return;
     try {
-      const response: ApiKeyResponse = await apiClient.createApiKey(customer.customerId, e.detail.name);
+      const response: ApiKeyResponse = await apiClient.createApiKey(customer.customerId, e.detail.name, {
+        allowedOrigins: e.detail.allowedOrigins,
+        allowedScopes: e.detail.allowedScopes,
+      });
       newApiKey = response.apiKey;
-      if (e.detail.allowedOrigins?.length && response.keyId) {
-        await apiClient.updateKeyOrigins(customer.customerId, response.keyId, e.detail.allowedOrigins);
-      }
       showNewKeyModal = true;
       await loadApiKeys();
     } catch (err) {
@@ -150,22 +176,26 @@
   function openOrigins(key: ApiKey) {
     editingKey = key;
     editingOrigins = [...(key.allowedOrigins || [])];
+    editingScopes = [...(key.allowedScopes || [])];
     originsError = null;
     originsSuccess = null;
     showOriginsModal = true;
   }
 
-  async function handleSaveOrigins(e: CustomEvent<{ origins: string[] }>) {
+  async function handleSaveOrigins(e: CustomEvent<{ origins: string[]; allowedScopes?: string[] }>) {
     if (!customer?.customerId || !editingKey) return;
     originsSaving = true;
     originsError = null;
     originsSuccess = null;
     try {
-      await apiClient.updateKeyOrigins(customer.customerId, editingKey.keyId, e.detail.origins);
-      originsSuccess = 'Allowed origins saved!';
+      await apiClient.updateKeyOrigins(customer.customerId, editingKey.keyId, {
+        allowedOrigins: e.detail.origins,
+        allowedScopes: e.detail.allowedScopes,
+      });
+      originsSuccess = 'Configuration saved!';
       const idx = apiKeys.findIndex(k => k.keyId === editingKey!.keyId);
       if (idx >= 0) {
-        apiKeys[idx] = { ...apiKeys[idx], allowedOrigins: e.detail.origins };
+        apiKeys[idx] = { ...apiKeys[idx], allowedOrigins: e.detail.origins, allowedScopes: e.detail.allowedScopes };
         apiKeys = [...apiKeys];
       }
       setTimeout(() => { showOriginsModal = false; }, 1200);
@@ -188,7 +218,20 @@
   {:else}
     <ApiKeyUsageCard />
 
-    <ApiKeyCreateForm on:create={handleCreate} />
+    {#if oidcMetadata}
+      <ClaimsReference
+        scopesSupported={oidcMetadata.scopesSupported}
+        claimsSupported={oidcMetadata.claimsSupported ?? []}
+        claimsByScope={oidcMetadata.claimsByScope ?? {}}
+        presetScopes={oidcPresetScopes}
+      />
+    {/if}
+
+    <ApiKeyCreateForm
+      scopesSupported={oidcMetadata?.scopesSupported ?? []}
+      presetScopes={oidcPresetScopes}
+      on:create={handleCreate}
+    />
 
     <Card>
       <div class="api-keys__card-inner">
@@ -265,6 +308,8 @@
   bind:show={showOriginsModal}
   keyName={editingKey?.name || ''}
   bind:origins={editingOrigins}
+  bind:allowedScopes={editingScopes}
+  presetScopes={oidcPresetScopes}
   bind:saving={originsSaving}
   bind:error={originsError}
   bind:success={originsSuccess}
@@ -346,7 +391,7 @@
     vertical-align: middle;
   }
 
-  /* Match generated test page row hover (security-table tr:hover td) */
+  /* Table view: row hover on cells */
   .api-keys__row:hover td {
     background: rgba(234, 43, 31, 0.1);
   }
@@ -396,21 +441,30 @@
   .api-keys__btn--warning { background: var(--warning); border: 2px solid var(--warning); color: #000; }
   .api-keys__btn--danger { background: transparent; border: 2px solid var(--danger); color: var(--danger); }
 
-  /* Breakpoint: card layout when viewport is not wide enough (trigger sooner to avoid squishing) */
+  /* Condensed view: one card per row (proper list of rows with per-row hover) */
   @media (max-width: 1024px) {
     .api-keys__table { min-width: 0; display: block; }
     .api-keys__table thead { display: none; }
-    .api-keys__table tbody { display: block; }
+    .api-keys__table tbody {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-lg);
+    }
     .api-keys__row {
       display: block;
-      padding: 0 var(--spacing-lg) var(--spacing-lg) 0;
+      padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
       padding-top: var(--spacing-lg);
-      padding-left: var(--spacing-lg);
-      margin-bottom: var(--spacing-md);
-      margin-right: 0;
+      margin: 0;
       background: var(--bg-dark);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
+      isolation: isolate;
+    }
+    .api-keys__row:hover {
+      background: rgba(234, 43, 31, 0.1);
+    }
+    .api-keys__row:hover td {
+      background: transparent;
     }
     .api-keys__row td {
       display: flex;

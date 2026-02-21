@@ -11,6 +11,12 @@ import scripts from './scripts.tpl';
 import securityDocs from './security-docs.html';
 import testForm from './test-form.html';
 import mermaidInit from './mermaid-init.tpl';
+import {
+  SCOPES_SUPPORTED,
+  CLAIMS_SUPPORTED,
+  PRESET_SCOPES,
+  CLAIMS_BY_SCOPE,
+} from '../../shared/oidc-constants.js';
 
 /**
  * Replace template placeholders with actual values
@@ -30,14 +36,51 @@ function interpolate(template: string, vars: Record<string, string>): string {
  * @param baseUrl - The base URL for API calls (e.g., https://auth.idling.app)
  * @returns Complete HTML document as a string
  */
+function buildScopesClaimsSection(): string {
+    const scopesList = SCOPES_SUPPORTED.map((s) => `<code>${escapeHtml(s)}</code>`).join(', ');
+    const claimsList = CLAIMS_SUPPORTED.slice(0, 20).map((c) => `<code>${escapeHtml(c)}</code>`).join(', ');
+    const scopeClaimsRows = Object.entries(CLAIMS_BY_SCOPE)
+        .map(
+            ([scope, claims]) =>
+                `<tr><td><code>${escapeHtml(scope)}</code></td><td>${claims.map((c) => `<code>${escapeHtml(c)}</code>`).join(', ')}</td></tr>`
+        )
+        .join('');
+    const presetExamples = PRESET_SCOPES.map((p) => `<code>${escapeHtml(p.value)}</code> (${escapeHtml(p.label)})`).join('; ');
+    return `
+<section class="card searchable-doc" id="claims-scopes-ref" style="margin-top: 1rem;" role="region" aria-labelledby="sec-claims-scopes">
+    <h2 id="sec-claims-scopes">📋 Scopes &amp; Claims (Configure per API Key)</h2>
+    <p>Control which scopes (and thus claims) tokens can request. Configure <strong>allowed scopes</strong> per API key in the dashboard; then clients request scope in <code>POST /auth/verify-otp</code>.</p>
+
+    <h3 id="sec-claims-scopes-request">How to request scope</h3>
+    <p>Include <code>scope</code> in the verify-otp request body (space-separated). Example: <code>{ "email": "...", "otp": "...", "scope": "openid profile" }</code>. Per-key limits apply when the API key has allowed scopes set in the dashboard.</p>
+
+    <h3 id="sec-claims-presets">Presets</h3>
+    <p>Common combinations: ${presetExamples}.</p>
+
+    <h3 id="sec-claims-by-scope">Claims by scope</h3>
+    <p>Supported scopes: ${scopesList}. The table below lists which claims each scope unlocks (e.g. for UserInfo <code>/auth/me</code>).</p>
+    <table style="width:100%; border-collapse: collapse; font-size: 0.875rem;" id="sec-claims-by-scope-table">
+        <thead><tr><th style="text-align:left;">Scope</th><th style="text-align:left;">Claims</th></tr></thead>
+        <tbody>${scopeClaimsRows}</tbody>
+    </table>
+
+    <h3 id="sec-claims-full-list">All supported claims</h3>
+    <p>${claimsList}${CLAIMS_SUPPORTED.length > 20 ? ' …' : ''}.</p>
+</section>`;
+}
+function escapeHtml(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export function generateTestHtmlSnippet(apiKey: string, baseUrl: string): string {
     const generatedAt = new Date().toISOString();
-    
+    const scopesClaimsSection = buildScopesClaimsSection();
+
     const vars = {
         API_KEY: apiKey,
         BASE_URL: baseUrl
     };
-    
+
     // Interpolate all templates
     const interpolatedSecurityDocs = interpolate(securityDocs, vars);
     const interpolatedTestForm = interpolate(testForm, vars);
@@ -101,7 +144,9 @@ ${mermaidInit}
             </p>
             
             ${interpolatedSecurityDocs}
-            
+
+            ${scopesClaimsSection}
+
             ${interpolatedTestForm}
         </main>
     </div>

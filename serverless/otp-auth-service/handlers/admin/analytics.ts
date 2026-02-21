@@ -20,10 +20,21 @@ interface AnalyticsResponse {
     metrics: {
         otpRequests: number;
         otpVerifications: number;
+        successfulLogins: number;
+        failedAttempts: number;
         successRate: number;
         emailsSent: number;
         uniqueUsers: number;
         newUsers: number;
+    };
+    /** Today's snapshot for dashboard; always included so dashboard can show current-day metrics */
+    today?: {
+        otpRequests: number;
+        otpVerifications: number;
+        successfulLogins: number;
+        failedAttempts: number;
+        successRate: number;
+        emailsSent: number;
     };
     dailyBreakdown?: any;
 }
@@ -104,18 +115,27 @@ export async function handleGetAnalytics(request: Request, env: Env, customerId:
         const granularity = url.searchParams.get('granularity') || 'day';
         
         const usage = await getUsage(customerId, startDate, endDate, env);
-        
-        // Calculate metrics
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayUsage = (startDate === todayStr && endDate === todayStr)
+            ? usage
+            : await getUsage(customerId, todayStr, todayStr, env);
+
+        const successRateNum = parseFloat(usage.successRate);
+        const todaySuccessRate = todayUsage.otpRequests > 0
+            ? parseFloat(((todayUsage.otpVerifications / todayUsage.otpRequests) * 100).toFixed(2))
+            : 0;
+
         const metrics = {
             otpRequests: usage.otpRequests,
             otpVerifications: usage.otpVerifications,
-            successRate: parseFloat(usage.successRate),
+            successfulLogins: usage.successfulLogins,
+            failedAttempts: usage.failedAttempts,
+            successRate: successRateNum,
             emailsSent: usage.emailsSent,
             uniqueUsers: 0, // TODO: Track unique users
             newUsers: 0 // TODO: Track new users
         };
-        
-        // Format response based on granularity
+
         const response: AnalyticsResponse = {
             success: true,
             period: {
@@ -123,6 +143,14 @@ export async function handleGetAnalytics(request: Request, env: Env, customerId:
                 end: endDate
             },
             metrics,
+            today: {
+                otpRequests: todayUsage.otpRequests,
+                otpVerifications: todayUsage.otpVerifications,
+                successfulLogins: todayUsage.successfulLogins,
+                failedAttempts: todayUsage.failedAttempts,
+                successRate: todaySuccessRate,
+                emailsSent: todayUsage.emailsSent
+            },
             dailyBreakdown: granularity === 'day' ? usage.dailyBreakdown : undefined
         };
         

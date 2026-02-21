@@ -44,3 +44,6 @@ export {
 export {
     handleUpdateKeyOrigins
 } from './admin/api-keys.js';
+
+// OIDC metadata for dashboard and test page
+export { handleGetOidcMetadata } from './admin/oidc-metadata.js';

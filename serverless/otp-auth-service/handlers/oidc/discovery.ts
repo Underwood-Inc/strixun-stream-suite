@@ -9,6 +9,7 @@
  */
 
 import { getCorsHeadersRecord } from '../../utils/cors.js';
+import { SCOPES_SUPPORTED, CLAIMS_SUPPORTED } from '../../shared/oidc-constants.js';
 
 interface Env {
     AUTH_SERVICE_URL?: string;
@@ -54,18 +55,8 @@ export async function handleDiscovery(request: Request, env: Env): Promise<Respo
             'none',
         ],
 
-        scopes_supported: ['openid', 'profile'],
-        claims_supported: [
-            'sub',
-            'iss',
-            'aud',
-            'exp',
-            'iat',
-            'at_hash',
-            'email_verified',
-            'name',
-            'preferred_username',
-        ],
+        scopes_supported: [...SCOPES_SUPPORTED],
+        claims_supported: [...CLAIMS_SUPPORTED],
 
         service_documentation: `${issuer}/`,
     };

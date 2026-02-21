@@ -34,6 +34,8 @@ interface ApiKeyData {
     revokedAt?: string;
     /** Allowed origins for CORS when using this API key */
     allowedOrigins?: string[];
+    /** Allowed OIDC scopes for tokens issued with this key; empty = all supported */
+    allowedScopes?: string[];
 }
 
 interface EncryptedKeyData {
@@ -54,11 +56,14 @@ interface ApiKeyResponse {
     lastUsed: string | null;
     status: string;
     apiKey: EncryptedKeyData | null; // Double-encrypted (only customer can decrypt with their JWT)
-    allowedOrigins?: string[]; // Per-key CORS origins
+    allowedOrigins?: string[];
+    allowedScopes?: string[];
 }
 
 interface CreateApiKeyBody {
     name?: string;
+    allowedOrigins?: string[];
+    allowedScopes?: string[];
 }
 
 interface CreateApiKeyResponse {
@@ -132,7 +137,8 @@ export async function handleListApiKeys(
                             lastUsed: k.lastUsed,
                             status: k.status,
                             apiKey: null,
-                            allowedOrigins: k.allowedOrigins || []
+                            allowedOrigins: k.allowedOrigins || [],
+                            allowedScopes: k.allowedScopes
                         };
                     }
                     
@@ -150,9 +156,9 @@ export async function handleListApiKeys(
                         algorithm: encrypted.algorithm,
                         iv: encrypted.iv,
                         salt: encrypted.salt,
-                        tokenHash: encrypted.tokenHash,
+                        tokenHash: encrypted.tokenHash ?? '',
                         data: encrypted.data,
-                        timestamp: encrypted.timestamp
+                        timestamp: encrypted.timestamp ?? ''
                     };
                 } catch (error) {
                     console.error('Failed to double-encrypt API key:', error);
@@ -167,7 +173,8 @@ export async function handleListApiKeys(
                 lastUsed: k.lastUsed,
                 status: k.status,
                 apiKey: doubleEncryptedKey,
-                allowedOrigins: k.allowedOrigins || []
+                allowedOrigins: k.allowedOrigins || [],
+                allowedScopes: k.allowedScopes
             };
         }));
         
@@ -239,8 +246,24 @@ export async function handleCreateApiKey(
             });
         }
         
-        // Create API key
-        const { apiKey, keyId } = await createApiKeyForCustomer(customerId, name, env);
+        let allowedOrigins: string[] | undefined;
+        if (Array.isArray(body.allowedOrigins)) {
+            allowedOrigins = [];
+            for (const origin of body.allowedOrigins) {
+                if (typeof origin !== 'string') continue;
+                const trimmed = origin.trim();
+                if (!trimmed) continue;
+                if (trimmed === 'null' || trimmed.startsWith('http://') || trimmed.startsWith('https://')) allowedOrigins.push(trimmed);
+            }
+            if (allowedOrigins.length === 0) allowedOrigins = undefined;
+        }
+        let allowedScopes: string[] | undefined;
+        if (Array.isArray(body.allowedScopes)) {
+            const { SCOPES_SUPPORTED } = await import('../../shared/oidc-constants.js');
+            const supportedSet = new Set(SCOPES_SUPPORTED);
+            allowedScopes = body.allowedScopes.filter((s): s is string => typeof s === 'string' && supportedSet.has(s.trim()));
+        }
+        const { apiKey, keyId } = await createApiKeyForCustomer(customerId, name, env, { allowedOrigins, allowedScopes });
         
         const response: CreateApiKeyResponse = {
             success: true,
@@ -471,12 +494,15 @@ export async function handleRevokeApiKey(
 
 interface UpdateOriginsBody {
     allowedOrigins: string[];
+    /** Optional: allowed OIDC scopes for this key (e.g. ["openid", "profile", "email"]) */
+    allowedScopes?: string[];
 }
 
 interface UpdateOriginsResponse {
     success: boolean;
     keyId: string;
     allowedOrigins: string[];
+    allowedScopes?: string[];
     message: string;
 }
 
@@ -505,20 +531,22 @@ export async function handleUpdateKeyOrigins(
             });
         }
         
-        // Validate origins format
+        // Validate origins format: http(s) URLs or literal "null" for file:// (Origin: null)
         const validatedOrigins: string[] = [];
         for (const origin of body.allowedOrigins) {
             if (typeof origin !== 'string') continue;
             const trimmed = origin.trim();
             if (!trimmed) continue;
-            
-            // Basic validation - must be a URL or localhost pattern
+            if (trimmed === 'null') {
+                validatedOrigins.push('null');
+                continue;
+            }
             if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
                 validatedOrigins.push(trimmed);
             } else {
-                return new Response(JSON.stringify({ 
+                return new Response(JSON.stringify({
                     error: 'Invalid origin',
-                    message: `Origin "${trimmed}" must start with http:// or https://`
+                    message: `Origin "${trimmed}" must be http:// or https:// URL, or null (for file://).`
                 }), {
                     status: 400,
                     headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -538,15 +566,29 @@ export async function handleUpdateKeyOrigins(
             });
         }
         
-        // Update allowed origins - remove old entry, add updated entry
+        // Optional: validate and set allowedScopes
+        let validatedScopes: string[] | undefined;
+        if (body.allowedScopes !== undefined) {
+            const { SCOPES_SUPPORTED } = await import('../../shared/oidc-constants.js');
+            const supportedSet = new Set(SCOPES_SUPPORTED);
+            validatedScopes = Array.isArray(body.allowedScopes)
+                ? body.allowedScopes.filter((s: unknown) => typeof s === 'string' && supportedSet.has(s.trim()))
+                : [];
+        }
+
         const { indexRemove, indexAdd: indexAddEntry } = await import('@strixun/kv-entities');
         const oldKeyString = JSON.stringify(keyData);
         await indexRemove(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId, oldKeyString);
         
         keyData.allowedOrigins = validatedOrigins;
+        if (validatedScopes !== undefined) keyData.allowedScopes = validatedScopes.length > 0 ? validatedScopes : undefined;
         await indexAddEntry(env.OTP_AUTH_KV, 'auth', 'apikeys-for-customer', customerId, JSON.stringify(keyData));
+
+        if (keyData.apiKeyHash) {
+            const { putEntity } = await import('@strixun/kv-entities');
+            await putEntity(env.OTP_AUTH_KV, 'auth', 'apikey', keyData.apiKeyHash, keyData);
+        }
         
-        // Log security event
         await logSecurityEvent(customerId, 'api_key_origins_updated', {
             keyId: keyId,
             keyName: keyData.name,
@@ -557,6 +599,7 @@ export async function handleUpdateKeyOrigins(
             success: true,
             keyId,
             allowedOrigins: validatedOrigins,
+            ...(validatedScopes !== undefined && { allowedScopes: validatedScopes }),
             message: `Allowed origins updated successfully. ${validatedOrigins.length} origin(s) configured.`
         };
         

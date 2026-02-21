@@ -2,13 +2,26 @@
   import { createEventDispatcher } from 'svelte';
   import Card from '$dashboard/components/Card.svelte';
 
-  const dispatch = createEventDispatcher<{ create: { name: string; allowedOrigins?: string[] } }>();
+  const dispatch = createEventDispatcher<{ create: { name: string; allowedOrigins?: string[]; allowedScopes?: string[] } }>();
+
+  export let scopesSupported: string[] = [];
+  export let presetScopes: { value: string; label: string }[] = [];
 
   let newKeyName = '';
   let origins: string[] = [];
+  let selectedScopes: string[] = [];
   let newOrigin = '';
   let originsError: string | null = null;
   let showOrigins = false;
+  let showScopes = false;
+
+  function toggleScope(scope: string) {
+    if (selectedScopes.includes(scope)) {
+      selectedScopes = selectedScopes.filter((s) => s !== scope);
+    } else {
+      selectedScopes = [...selectedScopes, scope].sort();
+    }
+  }
 
   function addOrigin() {
     const text = newOrigin.trim();
@@ -47,9 +60,11 @@
     dispatch('create', {
       name,
       allowedOrigins: origins.length > 0 ? origins : undefined,
+      allowedScopes: selectedScopes.length > 0 ? selectedScopes : undefined,
     });
     newKeyName = '';
     origins = [];
+    selectedScopes = [];
     newOrigin = '';
     originsError = null;
   }
@@ -96,7 +111,7 @@
             bind:value={newOrigin}
             rows="3"
             aria-label="Allowed origins (one per line or comma-separated)"
-          />
+          ></textarea>
           <button type="button" class="create-form__cors-add-btn" onclick={addOrigin}>Add</button>
         </div>
         {#if origins.length > 0}
@@ -115,6 +130,58 @@
               </li>
             {/each}
           </ul>
+        {/if}
+      </div>
+    {/if}
+  </div>
+
+  <div class="create-form__scopes">
+    <button
+      type="button"
+      class="create-form__cors-toggle"
+      onclick={() => (showScopes = !showScopes)}
+      aria-expanded={showScopes}
+      aria-controls="create-form-scopes-panel"
+    >
+      {showScopes ? '▼' : '▶'} Allowed OIDC scopes (optional)
+    </button>
+    {#if showScopes}
+      <div id="create-form-scopes-panel" class="create-form__cors-panel" role="region" aria-label="Allowed scopes">
+        <p class="create-form__cors-hint">
+          Limit which scopes (and claims) can be requested when using this key. Leave none selected to allow all supported scopes.
+        </p>
+        {#if scopesSupported.length > 0}
+          <div class="create-form__scopes-list">
+            {#each scopesSupported as scope}
+              <label class="create-form__scopes-label">
+                <input type="checkbox" checked={selectedScopes.includes(scope)} onchange={() => toggleScope(scope)} />
+                <code class="create-form__scope-code">{scope}</code>
+              </label>
+            {/each}
+          </div>
+        {:else if presetScopes.length > 0}
+          <div class="create-form__scopes-list">
+            {#each presetScopes as preset}
+              {@const scopes = preset.value.trim().split(/\s+/)}
+              {@const presetChecked = scopes.every((s) => selectedScopes.includes(s))}
+              <label class="create-form__scopes-label">
+                <input
+                  type="checkbox"
+                  checked={presetChecked}
+                  onchange={() => {
+                    if (presetChecked) {
+                      selectedScopes = selectedScopes.filter((s) => !scopes.includes(s));
+                    } else {
+                      const set = new Set(selectedScopes);
+                      scopes.forEach((s) => set.add(s));
+                      selectedScopes = [...set].sort();
+                    }
+                  }}
+                />
+                <code class="create-form__scope-code">{preset.value}</code> — {preset.label}
+              </label>
+            {/each}
+          </div>
         {/if}
       </div>
     {/if}
@@ -294,5 +361,34 @@
 
   .create-form__cors-remove:hover {
     opacity: 1;
+  }
+
+  .create-form__scopes {
+    margin-top: 0;
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--border);
+  }
+  .create-form__scopes-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  .create-form__scopes-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    cursor: pointer;
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+  }
+  .create-form__scopes-label input {
+    flex-shrink: 0;
+  }
+  .create-form__scope-code {
+    background: var(--bg-dark);
+    padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    font-size: 0.875rem;
   }
 </style>
