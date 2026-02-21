@@ -202,14 +202,22 @@
 
   .dashboard__metrics {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: var(--spacing-lg);
     margin-top: var(--spacing-xl);
+  }
+
+  .dashboard__metrics :global(.card) {
+    min-height: 8rem;
+    display: flex;
+    flex-direction: column;
   }
 
   .dashboard__metric {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-height: 0;
   }
 
   .dashboard__metric-label {
