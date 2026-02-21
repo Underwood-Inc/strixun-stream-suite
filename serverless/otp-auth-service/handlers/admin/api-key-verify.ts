@@ -354,7 +354,7 @@ export async function handleGetTestSnippet(request: Request, env: Env): Promise<
         '1. Copy the HTML code below',
         '2. Save it as test-otp.html',
         '3. IMPORTANT: Serve it via local HTTP server (not file://)',
-        '   Run: python -m http.server 8080 OR npx serve',
+        '   Run: npx serve . or npx http-server -p 8080 (or use Live Server in VS Code/Cursor)',
         '4. Open http://localhost:8080/test-otp.html in browser',
         '5. Enter your email and test the full OTP flow',
         '6. The test page will call http://localhost:8787 (your local worker)'

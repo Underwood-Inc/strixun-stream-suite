@@ -146,8 +146,7 @@ ${mermaidInit}
 
         <main id="main-content" class="container">
             <div id="fileOriginBanner" class="file-origin-banner" style="display:none;">
-                <strong>⚠️ This page was opened from a local file (file://).</strong> The browser sends <code>Origin: null</code>; the auth server does not auto-allow null, so CORS will block requests (discovery, refresh, etc.).
-                <strong>To fix:</strong> (1) Serve this file from a local web server (e.g. <code>python -m http.server 8080</code> or <code>npx serve .</code>) and open the served URL, then add that origin (e.g. <code>http://localhost:8080</code>) to this key's allowed origins; or (2) Add the literal <code>null</code> to this key's allowed origins in the dashboard.
+                <strong>⚠️ This page was opened from a local file (file://).</strong> CORS will block requests from file://. <strong>To fix:</strong> Serve this file from a local web server (e.g. in this folder run <code>npx serve .</code> or <code>npx http-server -p 8080</code>, or use the Live Server extension in VS Code/Cursor), open the served URL, and add that origin (e.g. <code>http://localhost:3000</code> or <code>http://localhost:8080</code>) to this key's allowed origins in the dashboard.
             </div>
             <h1>🔐 OTP Auth API - Integration Test</h1>
             <p class="subtitle">Test your API key with a complete end-to-end OTP flow</p>
@@ -161,7 +160,7 @@ ${mermaidInit}
                 </span>
             </div>
             <p class="subtitle" style="margin-top: 0.5rem; font-size: 0.8rem;">
-                After downloading: either serve from a local web server (e.g. <code>python -m http.server 8080</code> or <code>npx serve .</code>) and add that origin to the key, or add the literal <code>null</code> to the key's allowed origins. Opening file:// directly sends <code>Origin: null</code>; the server does not auto-allow null, so CORS will block requests until you do one of the above.
+                After downloading: serve this file from a local web server (e.g. in the file’s folder run <code>npx serve .</code> or <code>npx http-server -p 8080</code>, or use Live Server in VS Code/Cursor), then add that origin (e.g. <code>http://localhost:3000</code> or <code>http://localhost:8080</code>) to this key’s allowed origins. Opening file:// directly is not supported.
             </p>
             
             ${interpolatedSecurityDocs}

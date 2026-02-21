@@ -56,7 +56,7 @@ export async function handleCreateApiKey(
                 if (typeof origin !== 'string') continue;
                 const trimmed = origin.trim();
                 if (!trimmed) continue;
-                if (trimmed === 'null' || trimmed.startsWith('http://') || trimmed.startsWith('https://')) allowedOrigins.push(trimmed);
+                if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) allowedOrigins.push(trimmed);
             }
             if (allowedOrigins.length === 0) allowedOrigins = undefined;
         }

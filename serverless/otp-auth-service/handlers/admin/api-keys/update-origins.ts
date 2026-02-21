@@ -35,15 +35,20 @@ export async function handleUpdateKeyOrigins(
             const trimmed = origin.trim();
             if (!trimmed) continue;
             if (trimmed === 'null') {
-                validatedOrigins.push('null');
-                continue;
+                return new Response(JSON.stringify({
+                    error: 'Invalid origin',
+                    message: 'The literal "null" (file:// origin) is not supported. Serve the test page from a local web server (e.g. npx serve . or npx http-server -p 8080) and add that origin (e.g. http://localhost:3000 or http://localhost:8080) instead.'
+                }), {
+                    status: 400,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                });
             }
             if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
                 validatedOrigins.push(trimmed);
             } else {
                 return new Response(JSON.stringify({
                     error: 'Invalid origin',
-                    message: `Origin "${trimmed}" must be http:// or https:// URL, or null (for file://).`
+                    message: `Origin "${trimmed}" must be an http:// or https:// URL.`
                 }), {
                     status: 400,
                     headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },

@@ -789,15 +789,14 @@ flowchart TD
                 </tr>
                 <tr>
                     <td><strong>This test page (opened from file)</strong></td>
-                    <td>Option A: Serve the file (e.g. <code>python -m http.server 8080</code>) and add <code>http://localhost:8080</code>.<br>Option B: Add the literal <code>null</code> to allowed origins.</td>
-                    <td>Pages opened as <code>file://</code> send <code>Origin: null</code>. The server does not auto-allow null. Use Option A (recommended) so the page has a real origin, or Option B to allow null explicitly for this key (all endpoints, including token responses).</td>
+                    <td>Serve the file from a local web server (e.g. <code>npx serve .</code> or <code>npx http-server -p 8080</code> in the file’s folder, or Live Server in VS Code/Cursor) and add that origin (e.g. <code>http://localhost:3000</code> or <code>http://localhost:8080</code>) to this key's allowed origins.</td>
+                    <td>Pages opened as <code>file://</code> send <code>Origin: null</code>, which is not supported. Serve the test page from a local server so it has a real origin.</td>
                 </tr>
             </tbody>
         </table>
 
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">
-            <strong>Null origin (file://):</strong> There is no server-side fallback that allows <code>null</code> automatically.
-            You must either serve this test page from a local web server (so the browser sends a real origin like <code>http://localhost:8080</code>) and add that origin to the key, or add the literal <code>null</code> to the key's allowed origins. Both are explicit choices.
+            <strong>File (file://):</strong> Opening the test page directly from the filesystem is not supported. Serve it from a local web server (e.g. <code>npx serve .</code> or <code>npx http-server -p 8080</code>, or Live Server in VS Code/Cursor) and add that origin to this key's allowed origins.
         </p>
 
         <h4 style="margin-top: 1rem;">What happens at runtime</h4>
@@ -877,7 +876,7 @@ flowchart LR
             <li><strong>API Base URL:</strong> <code>{{BASE_URL}}</code></li>
             <li><strong>No origin config?</strong> This page works from any <em>real</em> origin (e.g. <code>https://…</code>, <code>http://localhost:…</code>). Opened as <code>file://</code> it sends <code>Origin: null</code>, which is not allowed unless you add <code>null</code> or serve the page.</li>
             <li><strong>Origin config?</strong> Add this page's origin via Dashboard → API Keys → <strong>Origins</strong> button (e.g. <code>http://localhost:8080</code> if you serve the file locally).</li>
-            <li><strong>Opened from file (file://)?</strong> Either serve the file (e.g. <code>python -m http.server 8080</code>) and add that origin, or add the literal <code>null</code> to this key's allowed origins. No automatic allowance for null.</li>
+            <li><strong>Opened from file (file://)?</strong> Serve the file from a local web server and add that origin to this key. file:// is not supported.</li>
         </ul>
     </div>
 </div>

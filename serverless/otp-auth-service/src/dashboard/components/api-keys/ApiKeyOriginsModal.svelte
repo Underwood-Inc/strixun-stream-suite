@@ -42,15 +42,15 @@
     const invalid: string[] = [];
     const added: string[] = [];
     for (const token of tokens) {
-      const normalized = token === 'null' ? 'null' : (token.startsWith('http://') || token.startsWith('https://') ? token.replace(/\/$/, '') : null);
-      if (normalized === null) {
+      const normalized = (token.startsWith('http://') || token.startsWith('https://')) ? token.replace(/\/$/, '') : null;
+      if (normalized === null || token === 'null') {
         invalid.push(token);
         continue;
       }
       if (!origins.includes(normalized) && !added.includes(normalized)) added.push(normalized);
     }
     if (invalid.length > 0) {
-      error = `Invalid: ${invalid.join(', ')}. Use http:// or https:// URL, or null (no quotes needed).`;
+      error = `Invalid: ${invalid.join(', ')}. Use http:// or https:// URL only. For the downloaded test page, serve it from a local server (e.g. npx serve . or npx http-server -p 8080) and add that origin.`;
       return;
     }
     if (added.length === 0) {
@@ -92,7 +92,7 @@
           <strong>Origins configured</strong> = Key <em>only</em> works from those specific origins.
         </p>
         <p class="modal__text modal__text--info">
-          Add <code>null</code> (no quotes) to allow the downloadable test page when opened as file://. One origin per line or comma-separated.
+          One origin per line or comma-separated. For the downloadable test page, serve it from a local web server (e.g. <code>npx serve .</code> or <code>npx http-server -p 8080</code> in the file’s folder; or use the Live Server extension in VS Code/Cursor) and add that origin (e.g. <code>http://localhost:3000</code> or <code>http://localhost:8080</code>).
         </p>
 
         {#if error}
@@ -105,7 +105,7 @@
         <div class="modal__add-block">
           <textarea
             class="modal__textarea"
-            placeholder="https://myapp.com&#10;http://localhost:3000&#10;null"
+            placeholder="https://myapp.com&#10;http://localhost:8080"
             bind:value={newOrigin}
             rows="4"
             aria-label="Allowed origins (one per line or comma-separated)"
