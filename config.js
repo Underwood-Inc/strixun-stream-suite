@@ -430,8 +430,8 @@ window.testWorkerApi = async function() {
     }
     
     try {
-        // Skip health check if API URL is a placeholder or non-existent domain
-        if (apiUrl.includes('%%') || apiUrl.includes('idling.app')) {
+        // Skip health check only for placeholders (never configured)
+        if (apiUrl.includes('%%') || apiUrl.includes('{{')) {
             return {
                 success: false,
                 error: 'API not configured',
