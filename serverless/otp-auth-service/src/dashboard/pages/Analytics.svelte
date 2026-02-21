@@ -210,6 +210,16 @@
     width: 100%;
   }
 
+  .analytics :global(.card) {
+    padding: 0 var(--spacing-lg) var(--spacing-lg) 0;
+    padding-top: var(--spacing-lg);
+    padding-left: var(--spacing-lg);
+  }
+  .analytics :global(.card + .card) {
+    margin-top: 0;
+    margin-bottom: var(--spacing-lg);
+  }
+
   .analytics__title {
     font-size: 2rem;
     margin-bottom: var(--spacing-xl);

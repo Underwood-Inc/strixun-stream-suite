@@ -56,6 +56,7 @@
 </script>
 
 <Card>
+  <div class="create-form__inner">
   <h2 class="create-form__title">Create New API Key</h2>
   <div class="create-form__row">
     <input
@@ -118,12 +119,20 @@
       </div>
     {/if}
   </div>
+  </div>
 </Card>
 
 <style>
+  .create-form__inner {
+    padding: 0 var(--spacing-lg) var(--spacing-lg) 0;
+    padding-top: var(--spacing-lg);
+    padding-left: var(--spacing-lg);
+  }
+
   .create-form__title {
     font-size: 1.25rem;
     margin-bottom: var(--spacing-md);
+    margin-right: 0;
     color: var(--accent);
   }
 
@@ -160,7 +169,9 @@
   }
 
   .create-form__cors {
-    margin-top: var(--spacing-lg);
+    margin-bottom: 0;
+    margin-top: 0;
+    padding-bottom: var(--spacing-lg);
     padding-top: var(--spacing-lg);
     border-top: 1px solid var(--border);
   }
@@ -182,13 +193,15 @@
   }
 
   .create-form__cors-panel {
-    margin-top: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    margin-top: 0;
   }
 
   .create-form__cors-hint {
     font-size: 0.875rem;
     color: var(--text-secondary);
     margin-bottom: var(--spacing-md);
+    margin-right: 0;
   }
 
   .create-form__cors-hint code {
@@ -209,6 +222,7 @@
     flex-direction: column;
     gap: var(--spacing-sm);
     margin-bottom: var(--spacing-md);
+    margin-right: 0;
   }
 
   .create-form__cors-textarea {
@@ -245,11 +259,13 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 0;
+    padding-left: var(--spacing-md);
     background: var(--bg-dark);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     margin-bottom: var(--spacing-sm);
+    margin-right: 0;
   }
 
   .create-form__cors-value {

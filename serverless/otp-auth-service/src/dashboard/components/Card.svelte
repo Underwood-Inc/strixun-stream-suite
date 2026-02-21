@@ -7,15 +7,11 @@
 </div>
 
 <style>
+  /* Reusable: 0 spacing so consumers control layout (no opinionated margin/padding). */
   .card {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: var(--spacing-lg);
-  }
-
-  :global(.card + .card) {
-    margin-top: var(--spacing-lg);
   }
 </style>
 

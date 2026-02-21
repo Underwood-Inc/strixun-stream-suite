@@ -191,6 +191,7 @@
     <ApiKeyCreateForm on:create={handleCreate} />
 
     <Card>
+      <div class="api-keys__card-inner">
       <h2 class="api-keys__section-title">Your API Keys</h2>
       {#if apiKeys.length === 0}
         <div class="api-keys__empty">
@@ -244,6 +245,7 @@
           </table>
         </div>
       {/if}
+      </div>
     </Card>
   {/if}
 </div>
@@ -272,46 +274,75 @@
 
 <style>
   .api-keys { width: 100%; }
-  .api-keys :global(.card + .card) { margin-top: var(--spacing-xl); }
+  /* Spacing: bottom and right only to avoid wrap issues; parent controls gap between sections */
+  .api-keys > * { margin-bottom: var(--spacing-xl); margin-right: 0; }
+  .api-keys > *:last-child { margin-bottom: 0; }
+
+  .api-keys__card-inner {
+    padding: 0 var(--spacing-lg) var(--spacing-lg) 0;
+    padding-top: var(--spacing-lg);
+    padding-left: var(--spacing-lg);
+  }
 
   .api-keys__title {
     font-size: 2rem;
     margin-bottom: var(--spacing-xl);
+    margin-right: 0;
     color: var(--accent);
   }
 
   .api-keys__loading, .api-keys__error {
-    padding: var(--spacing-xl);
+    padding: 0 var(--spacing-xl) var(--spacing-xl) 0;
+    padding-top: var(--spacing-xl);
+    padding-left: var(--spacing-xl);
     text-align: center;
   }
   .api-keys__error {
     color: var(--danger); background: var(--card);
     border: 1px solid var(--danger); border-left: 4px solid var(--danger);
-    border-radius: var(--radius-md); padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    padding: 0 var(--spacing-lg) var(--spacing-lg) 0;
+    padding-top: var(--spacing-lg);
+    padding-left: var(--spacing-lg);
   }
 
   .api-keys__section-title {
     font-size: 1.25rem;
     margin-bottom: var(--spacing-md);
+    margin-right: 0;
     color: var(--accent);
   }
 
   .api-keys__empty {
-    text-align: center; padding: var(--spacing-3xl); color: var(--text-secondary);
+    text-align: center;
+    padding: 0 var(--spacing-3xl) var(--spacing-3xl) 0;
+    padding-top: var(--spacing-3xl);
+    padding-left: var(--spacing-3xl);
+    color: var(--text-secondary);
   }
   .api-keys__empty-hint {
-    margin-top: var(--spacing-sm); font-size: 0.875rem; color: var(--muted);
+    margin-bottom: var(--spacing-sm);
+    margin-top: 0;
+    margin-right: 0;
+    font-size: 0.875rem;
+    color: var(--muted);
   }
 
   .api-keys__list { overflow-x: auto; }
   .api-keys__table { width: 100%; border-collapse: collapse; min-width: 640px; }
   .api-keys__table th {
-    text-align: left; padding: var(--spacing-md);
+    text-align: left;
+    padding: 0 var(--spacing-md) var(--spacing-md) 0;
+    padding-top: var(--spacing-md);
+    padding-left: var(--spacing-md);
     color: var(--text-secondary); font-weight: 600;
     border-bottom: 1px solid var(--border);
   }
   .api-keys__table td {
-    padding: var(--spacing-md); border-bottom: 1px solid var(--border);
+    padding: 0 var(--spacing-md) var(--spacing-md) 0;
+    padding-top: var(--spacing-md);
+    padding-left: var(--spacing-md);
+    border-bottom: 1px solid var(--border);
     vertical-align: middle;
   }
 
@@ -360,15 +391,18 @@
   .api-keys__btn--warning { background: var(--warning); border: 2px solid var(--warning); color: #000; }
   .api-keys__btn--danger { background: transparent; border: 2px solid var(--danger); color: var(--danger); }
 
-  /* Breakpoint: card layout on narrow viewports to avoid squishing */
-  @media (max-width: 900px) {
+  /* Breakpoint: card layout when viewport is not wide enough (trigger sooner to avoid squishing) */
+  @media (max-width: 1024px) {
     .api-keys__table { min-width: 0; display: block; }
     .api-keys__table thead { display: none; }
     .api-keys__table tbody { display: block; }
     .api-keys__row {
       display: block;
-      padding: var(--spacing-lg);
+      padding: 0 var(--spacing-lg) var(--spacing-lg) 0;
+      padding-top: var(--spacing-lg);
+      padding-left: var(--spacing-lg);
       margin-bottom: var(--spacing-md);
+      margin-right: 0;
       background: var(--bg-dark);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
@@ -379,6 +413,7 @@
       justify-content: space-between;
       gap: var(--spacing-md);
       padding: var(--spacing-sm) 0;
+      padding-right: 0;
       border-bottom: 1px solid var(--border);
     }
     .api-keys__row td:last-child { border-bottom: none; padding-bottom: 0; }

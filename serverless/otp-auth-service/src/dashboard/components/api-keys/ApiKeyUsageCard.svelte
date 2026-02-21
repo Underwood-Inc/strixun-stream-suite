@@ -32,6 +32,7 @@
 </script>
 
 <Card>
+  <div class="usage__inner">
   <h2 class="usage__title">API Key Usage &amp; Quota</h2>
 
   {#if loading}
@@ -125,12 +126,20 @@
       </div>
     {/if}
   {/if}
+  </div>
 </Card>
 
 <style>
+  .usage__inner {
+    padding: 0 var(--spacing-lg) var(--spacing-lg) 0;
+    padding-top: var(--spacing-lg);
+    padding-left: var(--spacing-lg);
+  }
+
   .usage__title {
     font-size: 1.25rem;
     margin-bottom: var(--spacing-md);
+    margin-right: 0;
     color: var(--accent);
   }
 

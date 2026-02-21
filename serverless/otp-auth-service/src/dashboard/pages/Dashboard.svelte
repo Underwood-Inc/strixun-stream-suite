@@ -130,6 +130,16 @@
     pointer-events: auto;
   }
 
+  .dashboard :global(.card) {
+    padding: 0 var(--spacing-lg) var(--spacing-lg) 0;
+    padding-top: var(--spacing-lg);
+    padding-left: var(--spacing-lg);
+  }
+  .dashboard :global(.card + .card) {
+    margin-top: 0;
+    margin-bottom: var(--spacing-lg);
+  }
+
   .dashboard__title {
     font-size: 2rem;
     margin-bottom: var(--spacing-xl);

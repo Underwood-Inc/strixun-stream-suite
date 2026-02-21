@@ -161,6 +161,16 @@
 <style>
   .audit-logs { width: 100%; }
 
+  .audit-logs :global(.card) {
+    padding: 0 var(--spacing-lg) var(--spacing-lg) 0;
+    padding-top: var(--spacing-lg);
+    padding-left: var(--spacing-lg);
+  }
+  .audit-logs :global(.card + .card) {
+    margin-top: 0;
+    margin-bottom: var(--spacing-lg);
+  }
+
   .audit-logs__title {
     font-size: 2rem;
     margin-bottom: var(--spacing-xl);
