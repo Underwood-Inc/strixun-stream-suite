@@ -53,7 +53,7 @@
           {:else}
             <div class="modal__loading">
               <div class="modal__spinner"></div>
-              <p>Generating code snippet...</p>
+              <p>Generating test page...</p>
             </div>
           {/if}
         </div>

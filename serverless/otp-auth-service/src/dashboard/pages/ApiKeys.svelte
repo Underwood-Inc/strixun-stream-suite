@@ -232,7 +232,7 @@
                         <button class="api-keys__btn api-keys__btn--test" onclick={() => handleTest(key.keyId)} disabled={testingKeyId === key.keyId}>
                           {testingKeyId === key.keyId ? '...' : 'Test'}
                         </button>
-                        <button class="api-keys__btn api-keys__btn--code" onclick={() => handleShowSnippet(key.keyId)} title="Get HTML+JS code for end-to-end testing">Snippet</button>
+                        <button class="api-keys__btn api-keys__btn--code" onclick={() => handleShowSnippet(key.keyId)} title="Get HTML+JS test page for end-to-end testing">Test Page</button>
                         <button class="api-keys__btn api-keys__btn--origins" onclick={() => openOrigins(key)} title="Configure allowed origins (CORS)">Origins ({key.allowedOrigins?.length || 0})</button>
                         <button class="api-keys__btn api-keys__btn--warning" onclick={() => handleRotate(key.keyId)}>Rotate</button>
                         <button class="api-keys__btn api-keys__btn--danger" onclick={() => handleRevoke(key.keyId)}>Revoke</button>
