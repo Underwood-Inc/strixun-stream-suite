@@ -10,6 +10,7 @@
   import ApiKeySnippetModal from '$dashboard/components/api-keys/ApiKeySnippetModal.svelte';
   import ApiKeyOriginsModal from '$dashboard/components/api-keys/ApiKeyOriginsModal.svelte';
   import ApiKeyUsageCard from '$dashboard/components/api-keys/ApiKeyUsageCard.svelte';
+  import ClaimsReference from '$dashboard/components/api-keys/ClaimsReference.svelte';
 
   export let customer: Customer | null = null;
 
