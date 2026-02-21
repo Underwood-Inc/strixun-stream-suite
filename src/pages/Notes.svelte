@@ -45,9 +45,10 @@
   });
   
   /**
-   * Handle session expiry - redirect to login with return URL
+   * Handle session expiry - clear auth so redirectIfAuthenticated doesn't bounce back, then redirect.
    */
-  function handleUnauthorized(): void {
+  async function handleUnauthorized(): Promise<void> {
+    await logout();
     showToast({ message: 'Session expired. Please log in again.', type: 'warning' });
     navigate('/login', { query: { redirect: '/notes' } });
   }
@@ -78,7 +79,7 @@
       console.error('[Notes] Failed to load notebooks:', error);
       showToast({ message: 'Failed to load notebooks', type: 'error' });
       if (error instanceof Error && error.message.includes('Not authenticated')) {
-        handleUnauthorized();
+        await handleUnauthorized();
       }
     } finally {
       isLoading = false;
@@ -109,7 +110,7 @@
       console.error('[Notes] Failed to load notebook:', error);
       showToast({ message: 'Failed to load notebook', type: 'error' });
       if (error instanceof Error && error.message.includes('Not authenticated')) {
-        handleUnauthorized();
+        await handleUnauthorized();
       }
     } finally {
       isLoading = false;
@@ -145,7 +146,7 @@
       console.error('[Notes] Failed to create notebook:', error);
       showToast({ message: 'Failed to create notebook', type: 'error' });
       if (error instanceof Error && error.message.includes('Not authenticated')) {
-        handleUnauthorized();
+        await handleUnauthorized();
       }
     }
   }
@@ -201,7 +202,7 @@
       saveStatus = 'Save failed';
       showToast({ message: 'Failed to save notebook', type: 'error' });
       if (error instanceof Error && error.message.includes('Not authenticated')) {
-        handleUnauthorized();
+        await handleUnauthorized();
       }
       setTimeout(() => saveStatus = '', 3000);
     } finally {
@@ -267,7 +268,7 @@
       console.error('[Notes] Failed to delete notebook:', error);
       showToast({ message: 'Failed to delete notebook', type: 'error' });
       if (error instanceof Error && error.message.includes('Not authenticated')) {
-        handleUnauthorized();
+        await handleUnauthorized();
       }
     }
   }

@@ -1,7 +1,9 @@
 /**
  * OBS Credentials Handlers
- * 
- * Handles OBS WebSocket credentials storage (7 hour expiration)
+ *
+ * This worker is the main Stream Suite backend (Twitch proxy, cloud storage, OBS credentials).
+ * OBS credentials are stored here for historical reasons: one authenticated KV-backed API
+ * used by streamkit.idling.app. 7 hour expiration to match token lifetime.
  */
 
 import { getCorsHeaders } from '../utils/cors.js';

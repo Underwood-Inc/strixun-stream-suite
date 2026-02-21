@@ -64,11 +64,14 @@
   }
 
   /**
-   * Handle 401 response - session expired, redirect to login
+   * Handle 401 when refresh failed - clear session so we don't get bounced back by redirectIfAuthenticated.
+   * Redirect to dashboard (not back here) so after re-login the user can use Notes etc.; coming back to
+   * URL Shortener would just 401 again until the underlying auth/cookie issue is fixed.
    */
-  function handleUnauthorized(): void {
+  async function handleUnauthorized(): Promise<void> {
+    await logout();
     showToast({ message: 'Session expired. Please log in again.', type: 'warning' });
-    navigate('/login', { query: { redirect: '/url-shortener' } });
+    navigate('/login', { query: { redirect: '/dashboard' } });
   }
 
   /**
@@ -97,7 +100,7 @@
             await loadUrls();
             return;
           }
-          handleUnauthorized();
+          await handleUnauthorized();
           return;
         }
         throw new Error(`Failed to load URLs: ${response.statusText}`);
@@ -171,7 +174,7 @@
             await createShortUrl();
             return;
           }
-          handleUnauthorized();
+          await handleUnauthorized();
           return;
         }
         const errorData = await response.json().catch(() => ({ error: response.statusText }));
@@ -229,7 +232,7 @@
             await deleteUrl(shortCode);
             return;
           }
-          handleUnauthorized();
+          await handleUnauthorized();
           return;
         }
         throw new Error(`Failed to delete URL: ${response.statusText}`);

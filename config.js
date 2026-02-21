@@ -132,18 +132,28 @@ window.getWorkerApiUrl = function() {
         }
     }
     
-    // Priority 2: Auto-injected during deployment
+    // Priority 2: Auto-injected during deployment (skip workers.dev when on idling.app - CORS fails)
     const injected = window.STRIXUN_CONFIG.WORKER_API_URL;
+    const isIdlingAppOrigin = typeof window !== 'undefined' && window.location.hostname.endsWith('idling.app');
     if (injected && typeof injected === 'string') {
         const validated = validateAndNormalizeUrl(injected);
         if (validated) {
-            if (!apiUrlLogged) {
-                console.log('[Config] Using auto-injected API server:', validated);
-                apiUrlLogged = true;
+            // When app is on streamkit.idling.app etc., workers.dev does not send CORS for that origin
+            if (isIdlingAppOrigin && validated.includes('workers.dev')) {
+                if (!apiUrlLogged) {
+                    console.warn('[Config] On idling.app origin: ignoring injected workers.dev URL (use api.idling.app for CORS)');
+                    apiUrlLogged = true;
+                }
+                // Fall through to hardcoded api.idling.app
+            } else {
+                if (!apiUrlLogged) {
+                    console.log('[Config] Using auto-injected API server:', validated);
+                    apiUrlLogged = true;
+                }
+                cachedApiUrl = validated;
+                return cachedApiUrl;
             }
-            cachedApiUrl = validated;
-            return cachedApiUrl;
-        } else {
+        } else if (!validated && !(isIdlingAppOrigin && injected.includes('workers.dev'))) {
             console.warn('[Config] Injected URL is invalid, ignoring:', injected);
         }
     }
@@ -165,8 +175,7 @@ window.getWorkerApiUrl = function() {
         return cachedApiUrl;
     }
     
-    // Priority 4: Hardcoded fallback for production
-    // Using custom domain: api.idling.app
+    // Priority 4: Hardcoded fallback for production (idling.app custom domain has CORS for streamkit)
     const HARDCODED_WORKER_URL = 'https://api.idling.app';
     if (HARDCODED_WORKER_URL && !HARDCODED_WORKER_URL.includes('UPDATE-ME')) {
         if (!apiUrlLogged) {
