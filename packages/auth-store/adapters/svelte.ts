@@ -1,15 +1,54 @@
 /**
  * Svelte adapter for auth store - HttpOnly Cookie SSO
  * Use this in Svelte projects
- * 
+ *
  * CRITICAL: We ONLY have Customer entities - NO "User" entity exists
  * CRITICAL: Tokens are stored in HttpOnly cookies, NOT localStorage
+ * Proactive refresh: while tab is visible, refresh access token every 14 min (same as Zustand).
  */
 
 import { writable, derived, get, type Writable, type Readable } from 'svelte/store';
 import type { AuthenticatedCustomer, AuthStoreConfig } from '../core/types';
 import { fetchCustomerInfo, decodeJWTPayload, refreshAuth } from '../core/api';
 import { deleteCookie } from '../core/utils';
+
+const PROACTIVE_REFRESH_MS = 14 * 60 * 1000;
+
+let refreshTimerId: ReturnType<typeof setTimeout> | null = null;
+let visibilityListenerAttached = false;
+
+function stopProactiveRefresh(): void {
+  if (refreshTimerId !== null) {
+    clearTimeout(refreshTimerId);
+    refreshTimerId = null;
+  }
+}
+
+function scheduleProactiveRefresh(
+  getIsAuthenticated: () => boolean,
+  cfg?: AuthStoreConfig
+): void {
+  stopProactiveRefresh();
+  if (typeof document === 'undefined' || document.visibilityState === 'hidden') return;
+  refreshTimerId = setTimeout(async () => {
+    refreshTimerId = null;
+    if (document.visibilityState !== 'visible' || !getIsAuthenticated()) return;
+    const ok = await refreshAuth(cfg);
+    if (ok && getIsAuthenticated()) scheduleProactiveRefresh(getIsAuthenticated, cfg);
+  }, PROACTIVE_REFRESH_MS);
+}
+
+function attachVisibilityListener(getIsAuthenticated: () => boolean, cfg?: AuthStoreConfig): void {
+  if (visibilityListenerAttached || typeof document === 'undefined') return;
+  visibilityListenerAttached = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopProactiveRefresh();
+    } else if (getIsAuthenticated()) {
+      scheduleProactiveRefresh(getIsAuthenticated, cfg);
+    }
+  });
+}
 
 /**
  * Create Svelte auth stores with HttpOnly cookie SSO
@@ -51,18 +90,27 @@ export function createAuthStore(config?: AuthStoreConfig) {
             csrfToken.set(csrf || null);
             isSuperAdmin.set(isSuperAdminValue);
         } else {
+            stopProactiveRefresh();
             isAuthenticated.set(false);
             customer.set(null);
             csrfToken.set(null);
             isSuperAdmin.set(false);
         }
     }
-    
+
+    function getIsAuthenticated(): boolean {
+      return get(isAuthenticated);
+    }
+
     /**
      * Set customer authentication state
      */
     function setCustomer(customerData: AuthenticatedCustomer | null): void {
         saveAuthState(customerData);
+        if (customerData) {
+          attachVisibilityListener(getIsAuthenticated, config);
+          scheduleProactiveRefresh(getIsAuthenticated, config);
+        }
     }
     
     /**
@@ -85,12 +133,15 @@ export function createAuthStore(config?: AuthStoreConfig) {
         };
         
         saveAuthState(customerData);
+        attachVisibilityListener(getIsAuthenticated, config);
+        scheduleProactiveRefresh(getIsAuthenticated, config);
     }
-    
+
     /**
      * Logout - clear HttpOnly cookie via API call
      */
     async function logout(): Promise<void> {
+        stopProactiveRefresh();
         try {
             const apiUrl = config?.authApiUrl || 'https://auth.idling.app';
             
@@ -140,6 +191,8 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 };
 
                 saveAuthState(authenticatedCustomer);
+                attachVisibilityListener(getIsAuthenticated, config);
+                scheduleProactiveRefresh(getIsAuthenticated, config);
                 return true;
             }
 

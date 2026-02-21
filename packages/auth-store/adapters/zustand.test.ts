@@ -22,6 +22,7 @@ vi.mock('../core/api.js', async (importOriginal) => {
         ...original,
         fetchCustomerInfo: vi.fn(),
         getAuthApiUrl: vi.fn(() => 'https://auth.idling.app'),
+        refreshAuth: vi.fn().mockResolvedValue(false),
     };
 });
 
@@ -260,17 +261,36 @@ describe('Zustand Auth Store Adapter', () => {
             };
             store.getState().setCustomer(customer);
 
-            // Mock no customer info available
-            const { fetchCustomerInfo } = await import('../core/api.js');
+            // Mock no customer info; refresh also fails so we stay logged out
+            const { fetchCustomerInfo, refreshAuth } = await import('../core/api.js');
             vi.mocked(fetchCustomerInfo).mockResolvedValue(null);
+            vi.mocked(refreshAuth).mockResolvedValue(false);
 
             const result = await store.getState().checkAuth();
 
             expect(result).toBe(false);
+            expect(refreshAuth).toHaveBeenCalled();
             const state = store.getState();
             expect(state.customer).toBeNull();
             expect(state.isAuthenticated).toBe(false);
             expect(state.isSuperAdmin).toBe(false);
+        });
+
+        it('should re-authenticate when fetch returns null but refresh succeeds (silent refresh)', async () => {
+            const { fetchCustomerInfo, refreshAuth } = await import('../core/api.js');
+            vi.mocked(fetchCustomerInfo)
+                .mockResolvedValueOnce(null)   // first call: expired access token
+                .mockResolvedValueOnce({ customerId: 'cust_123', displayName: 'User', isSuperAdmin: false });
+            vi.mocked(refreshAuth).mockResolvedValue(true);
+
+            const result = await store.getState().checkAuth();
+
+            expect(result).toBe(true);
+            expect(refreshAuth).toHaveBeenCalledTimes(1);
+            expect(fetchCustomerInfo).toHaveBeenCalledTimes(2);
+            const state = store.getState();
+            expect(state.customer?.customerId).toBe('cust_123');
+            expect(state.isAuthenticated).toBe(true);
         });
 
         it('should clear auth state on fetch error', async () => {
@@ -282,13 +302,11 @@ describe('Zustand Auth Store Adapter', () => {
             };
             store.getState().setCustomer(customer);
 
-            // Mock fetch error
+            // Mock fetch error (checkAuth throws on critical errors)
             const { fetchCustomerInfo } = await import('../core/api.js');
             vi.mocked(fetchCustomerInfo).mockRejectedValue(new Error('Network error'));
 
-            const result = await store.getState().checkAuth();
-
-            expect(result).toBe(false);
+            await expect(store.getState().checkAuth()).rejects.toThrow(/Authentication check failed/);
             const state = store.getState();
             expect(state.customer).toBeNull();
             expect(state.isAuthenticated).toBe(false);

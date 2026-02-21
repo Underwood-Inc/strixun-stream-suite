@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getAuthApiUrl, decodeJWTPayload } from './api.js';
+import { getAuthApiUrl, decodeJWTPayload, refreshAuth } from './api.js';
 import type { AuthStoreConfig } from './types.js';
 
 // Save original values
@@ -279,6 +279,68 @@ describe('Auth Store Core API', () => {
             const payload = decodeJWTPayload(jwtWithNumbers);
             
             expect(payload?.count).toBe(42);
+        });
+    });
+
+    describe('refreshAuth', () => {
+        const config: AuthStoreConfig = { authApiUrl: 'https://auth.test' };
+        let fetchMock: ReturnType<typeof vi.fn>;
+
+        beforeEach(() => {
+            fetchMock = vi.fn();
+            vi.stubGlobal('fetch', fetchMock);
+        });
+
+        afterEach(() => {
+            vi.unstubAllGlobals();
+        });
+
+        it('should return true when POST /auth/refresh returns 200', async () => {
+            fetchMock.mockResolvedValue({ ok: true, status: 200 });
+            const result = await refreshAuth(config);
+            expect(result).toBe(true);
+            expect(fetchMock).toHaveBeenCalledWith('https://auth.test/auth/refresh', {
+                method: 'POST',
+                credentials: 'include',
+            });
+        });
+
+        it('should return false when POST /auth/refresh returns 401', async () => {
+            fetchMock.mockResolvedValue({ ok: false, status: 401 });
+            const result = await refreshAuth(config);
+            expect(result).toBe(false);
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('should retry once on non-401 failure then return true if retry succeeds', async () => {
+            fetchMock
+                .mockResolvedValueOnce({ ok: false, status: 502 })
+                .mockResolvedValueOnce({ ok: true, status: 200 });
+            const result = await refreshAuth(config);
+            expect(result).toBe(true);
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        it('should retry once on network error then return false if retry fails', async () => {
+            fetchMock
+                .mockRejectedValueOnce(new Error('Network error'))
+                .mockResolvedValueOnce({ ok: false, status: 401 });
+            const result = await refreshAuth(config);
+            expect(result).toBe(false);
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        it('should deduplicate concurrent refresh calls', async () => {
+            let resolveFirst: () => void;
+            const firstPromise = new Promise<Response>((r) => { resolveFirst = () => r({ ok: true, status: 200 }); });
+            fetchMock.mockReturnValue(firstPromise);
+            const a = refreshAuth(config);
+            const b = refreshAuth(config);
+            resolveFirst!();
+            const [ra, rb] = await Promise.all([a, b]);
+            expect(ra).toBe(true);
+            expect(rb).toBe(true);
+            expect(fetchMock).toHaveBeenCalledTimes(1);
         });
     });
 });

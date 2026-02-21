@@ -74,6 +74,7 @@ describe('Session Management - Integration Tests (Miniflare)', () => {
   let customerAPI: Miniflare;
   let cleanup: () => Promise<void>;
   let jwtToken: string | null = null;
+  let refreshToken: string | null = null;
   let customerId: string | null = null;
   let apiKey: string | null = null;
 
@@ -118,6 +119,7 @@ describe('Session Management - Integration Tests (Miniflare)', () => {
     
     const verifyData = await verifyResponse.json();
     jwtToken = verifyData.access_token || verifyData.token;
+    refreshToken = verifyData.refresh_token ?? null;
     customerId = verifyData.customerId;
     apiKey = verifyData.apiKey || null;
 
@@ -304,6 +306,26 @@ describe('Session Management - Integration Tests (Miniflare)', () => {
       
       expect(data.expiresAt).toBeDefined();
     }, 30000);
+
+    it('should refresh when using refresh_token cookie (browser-style)', async () => {
+      if (!refreshToken) {
+        throw new Error('Refresh token not available from verify-otp');
+      }
+      const refreshRequest = new Request('http://example.com/auth/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `refresh_token=${refreshToken}`,
+        },
+      });
+      const refreshResponse = await otpAuthService.dispatchFetch(refreshRequest);
+      expect(refreshResponse.status).toBe(200);
+      const setCookie = refreshResponse.headers.get('Set-Cookie');
+      expect(setCookie).toBeTruthy();
+      expect(setCookie).toContain('auth_token=');
+      const body = await refreshResponse.json().catch(() => ({}));
+      expect(body.expiresAt ?? body.token ?? body.access_token).toBeDefined();
+    }, 15000);
   });
 
   describe('Customer-API Integration', () => {

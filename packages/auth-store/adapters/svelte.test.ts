@@ -8,9 +8,13 @@ import { get } from 'svelte/store';
 import type { AuthenticatedCustomer } from '../core/types.js';
 
 // Mock modules BEFORE importing
-vi.mock('../core/api.js', () => ({
-    fetchCustomerInfo: vi.fn(),
-    decodeJWTPayload: vi.fn((token: string) => {
+vi.mock('../core/api.js', async (importOriginal) => {
+    const original = await importOriginal<typeof import('../core/api.js')>();
+    return {
+        ...original,
+        fetchCustomerInfo: vi.fn(),
+        refreshAuth: vi.fn().mockResolvedValue(false),
+        decodeJWTPayload: vi.fn((token: string) => {
         // Simple mock decoder for testing
         if (token === 'valid_jwt_token') {
             return {
@@ -35,7 +39,8 @@ vi.mock('../core/api.js', () => ({
         }
         return null;
     }),
-}));
+    };
+});
 
 vi.mock('../core/utils.js', () => ({
     getCookie: vi.fn(),
