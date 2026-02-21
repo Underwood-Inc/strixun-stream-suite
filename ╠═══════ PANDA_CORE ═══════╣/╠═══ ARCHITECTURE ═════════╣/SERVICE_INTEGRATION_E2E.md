@@ -221,26 +221,27 @@ sequenceDiagram
     Note over Store: This happens silently.<br/>The user sees no interruption.
 ```
 
-The auth store implementations (`zustand.ts` for React, `svelte.ts` for Svelte) both follow this pattern:
-1. Call `/auth/me` (or any API).
-2. If it returns `null` / 401, call `refreshAuth()`.
-3. If refresh succeeds, retry the original call.
-4. If refresh fails (7-day max reached), the user is logged out.
+The auth store implementations (`zustand.ts` for React, `svelte.ts` for Svelte) use **both** proactive and reactive refresh:
 
-**Important: there is no heartbeat or polling.** The refresh is entirely **reactive** -- it only fires when the user does something that triggers an API call after the 15-minute access token has expired. If the user is idle, zero network requests are made. Here is what the browser's network tab looks like in practice:
+**1. Proactive refresh (prevents logouts while the app is open)**  
+While the tab is **visible** and the user is logged in, the client calls `POST /auth/refresh` every **14 minutes** (1 minute before the 15-minute access token expires). The access token is renewed before it expires, so the user does not see 401s or logouts as long as the tab stays active. When the tab is hidden, the timer is stopped; when the user brings the tab back, the 14-minute timer is rescheduled. This is the early session refresh that keeps the session alive when the application is still open/active.
+
+**2. Reactive refresh (fallback when a request gets 401)**  
+If any request returns 401 (e.g. tab was in background past 15 min, or first load after expiry), the store calls `refreshAuth()`, then retries the original call. If refresh fails (e.g. 7-day max reached), the user is logged out.
+
+Example with tab kept visible:
 
 ```
 [page load]     GET  /auth/me           → 200  (you're logged in)
 [user action]   GET  /some-api          → 200
-[user action]   GET  /some-api          → 200
-                ... 15 minutes pass, user clicks something ...
-[user action]   GET  /some-api          → 401  (access token expired)
-[auto]          POST /auth/refresh      → 200  (new tokens issued)
-[auto retry]    GET  /some-api          → 200  (succeeds with new token)
-                ... pattern repeats for up to 7 days from original login ...
+                ... 14 min, tab still visible ...
+[proactive]     POST /auth/refresh      → 200  (new tokens; no user action)
+                ... 14 min ...
+[proactive]     POST /auth/refresh      → 200
+                ... continues for up to 7 days from login ...
 ```
 
-No timers, no intervals, no wasted bandwidth. The `auth_token` HttpOnly cookie is sent automatically with every request by the browser, and the auth store handles the 401 → refresh → retry cycle transparently. Refresh is deduped (one in-flight refresh shared by concurrent callers) and retried once on transient failure. If refresh fails and the user must request an OTP again, the server allows one OTP request without counting toward the rate limit when that email had a successful login or refresh in the last 30 minutes (recovery pass), so users are not locked out. See [OIDC_ARCHITECTURE.md](./OIDC_ARCHITECTURE.md) "Critical: Refresh reliability and OTP rate limiting."
+The `auth_token` HttpOnly cookie is sent automatically with every request. Refresh is deduped (one in-flight refresh shared by concurrent callers) and retried once on transient failure. If refresh fails and the user must request an OTP again, the server allows one OTP request without counting toward the rate limit when that email had a successful login or refresh in the last 30 minutes (recovery pass). See [OIDC_ARCHITECTURE.md](./OIDC_ARCHITECTURE.md) "Critical: Refresh reliability and OTP rate limiting."
 
 ### Logout Flow
 

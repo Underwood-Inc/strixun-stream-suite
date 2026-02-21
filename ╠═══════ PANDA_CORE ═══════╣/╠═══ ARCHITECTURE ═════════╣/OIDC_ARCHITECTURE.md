@@ -769,14 +769,13 @@ sequenceDiagram
 
 **How the client handles it (automatic, transparent):**
 
-Both the Zustand (React) and Svelte auth store adapters follow the same pattern:
+Both the Zustand (React) and Svelte auth store adapters use **proactive** and **reactive** refresh:
 
-1. Call `/auth/me` to check authentication status.
-2. If `/auth/me` returns null (401 -- token expired), call `POST /auth/refresh`.
-3. If refresh succeeds (server sets new cookies), retry `/auth/me`.
-4. If refresh fails (token expired or invalid), treat the user as logged out.
+1. **Proactive:** While the tab is **visible** and the user is logged in, the client calls `POST /auth/refresh` every **14 minutes** (1 minute before the 15-minute access token expires). This early session refresh prevents logouts while the application is still open/active. When the tab is hidden, the timer stops; when the tab becomes visible again, the timer is rescheduled.
+2. **Reactive:** If any request returns 401 (e.g. token expired while tab was in background), call `POST /auth/refresh`, then retry the request. If refresh fails, treat the user as logged out.
 
-This means the user stays logged in silently for up to 7 days without ever re-entering an OTP code, as long as they visit the app at least once every 7 hours (the session inactive-cleanup window). After 7 days from the original login, the refresh token itself expires and the user must log in again.
+**Extended use — what to expect:**  
+The user stays logged in for up to **7 days** from the original login without re-entering an OTP. While the tab is **open and visible**, the 14-minute proactive refresh keeps the session alive so you should not be logged out. If the tab was in the background for longer than 15 minutes, the next API call may 401 and trigger one reactive refresh; if that succeeds, you stay in. After 7 days from login, the refresh token expires and the user must log in again.
 
 **Critical: Refresh reliability and OTP rate limiting**
 

@@ -22,6 +22,12 @@ name: Deploy Service(s)
 on:
   push:
     branches: [master]
+    # Skip deploy when the only changes are docs/markdown (no code or config)
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.mdx'
+      - '*.md'
+      - '*.mdx'
   workflow_dispatch:
     inputs:
       environment:
