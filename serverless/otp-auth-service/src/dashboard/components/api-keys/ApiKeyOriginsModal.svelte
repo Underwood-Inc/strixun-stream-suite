@@ -4,10 +4,6 @@
   export let show = false;
   export let keyName = '';
   export let origins: string[] = [];
-  /** Allowed OIDC scopes for this key (e.g. openid, profile, email). Empty = all supported. */
-  export let allowedScopes: string[] = [];
-  /** Preset scope options for display (from GET /admin/oidc-metadata). */
-  export let presetScopes: { value: string; label: string }[] = [];
   export let saving = false;
   export let error: string | null = null;
   export let success: string | null = null;
@@ -15,24 +11,9 @@
   let newOrigin = '';
 
   const dispatch = createEventDispatcher<{
-    save: { origins: string[]; allowedScopes?: string[] };
+    save: { origins: string[] };
     close: void;
   }>();
-
-  function toggleScope(scopeValue: string) {
-    const scopes = scopeValue.trim().split(/\s+/);
-    const next = [...allowedScopes];
-    for (const s of scopes) {
-      if (next.includes(s)) next.splice(next.indexOf(s), 1);
-      else next.push(s);
-    }
-    allowedScopes = next.sort();
-  }
-
-  function isPresetSelected(preset: { value: string }) {
-    const set = new Set(allowedScopes);
-    return preset.value.trim().split(/\s+/).every(s => set.has(s));
-  }
 
   function addOrigin() {
     const text = newOrigin.trim();
@@ -128,28 +109,11 @@
             {/each}
           </ul>
         {/if}
-
-        <div class="modal__scopes">
-          <h3 class="modal__scopes-title">Allowed OIDC scopes</h3>
-          <p class="modal__text modal__text--info">
-            Limit which scopes (and thus claims) can be requested when using this key. Leave all unchecked to allow all supported scopes.
-          </p>
-          {#if presetScopes.length > 0}
-            <div class="modal__scopes-presets">
-              {#each presetScopes as preset}
-                <label class="modal__scopes-label">
-                  <input type="checkbox" checked={isPresetSelected(preset)} onchange={() => toggleScope(preset.value)} />
-                  <span><code class="modal__scope-code">{preset.value}</code> — {preset.label}</span>
-                </label>
-              {/each}
-            </div>
-          {/if}
-        </div>
       </div>
 
       <div class="modal__footer">
         <button class="modal__btn modal__btn--secondary" onclick={close}>Cancel</button>
-        <button class="modal__btn modal__btn--primary" onclick={() => dispatch('save', { origins, allowedScopes })} disabled={saving}>
+        <button class="modal__btn modal__btn--primary" onclick={() => dispatch('save', { origins })} disabled={saving}>
           {saving ? 'Saving...' : 'Save'}
         </button>
       </div>
@@ -267,35 +231,4 @@
     font-size: 1.25rem; cursor: pointer; padding: var(--spacing-xs); line-height: 1; opacity: 0.7;
   }
   .modal__origin-remove:hover { opacity: 1; }
-  .modal__scopes {
-    margin-top: var(--spacing-xl);
-    padding-top: var(--spacing-md);
-    border-top: 1px solid var(--border);
-  }
-  .modal__scopes-title {
-    margin: 0 0 var(--spacing-sm) 0;
-    font-size: 1rem;
-    color: var(--accent);
-  }
-  .modal__scopes-presets {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-  }
-  .modal__scopes-label {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    cursor: pointer;
-    font-size: 0.9375rem;
-    color: var(--text-secondary);
-  }
-  .modal__scopes-label input { flex-shrink: 0; }
-  .modal__scope-code {
-    background: var(--bg-dark);
-    padding: 2px var(--spacing-xs);
-    border-radius: var(--radius-sm);
-    color: var(--accent);
-    font-size: 0.875rem;
-  }
 </style>

@@ -9,6 +9,7 @@
   import ApiKeyTestModal from '$dashboard/components/api-keys/ApiKeyTestModal.svelte';
   import ApiKeySnippetModal from '$dashboard/components/api-keys/ApiKeySnippetModal.svelte';
   import ApiKeyOriginsModal from '$dashboard/components/api-keys/ApiKeyOriginsModal.svelte';
+  import ApiKeyScopesModal from '$dashboard/components/api-keys/ApiKeyScopesModal.svelte';
   import ApiKeyUsageCard from '$dashboard/components/api-keys/ApiKeyUsageCard.svelte';
   import ClaimsReference from '$dashboard/components/api-keys/ClaimsReference.svelte';
 
@@ -32,14 +33,20 @@
   let showSnippetModal = false;
   let codeSnippet = '';
 
-  // Origins + scopes modal
+  // Origins modal
   let showOriginsModal = false;
   let editingKey: ApiKey | null = null;
   let editingOrigins: string[] = [];
-  let editingScopes: string[] = [];
   let originsSaving = false;
   let originsError: string | null = null;
   let originsSuccess: string | null = null;
+
+  // Scopes modal (post-creation)
+  let showScopesModal = false;
+  let editingScopes: string[] = [];
+  let scopesSaving = false;
+  let scopesError: string | null = null;
+  let scopesSuccess: string | null = null;
 
   // OIDC metadata for scopes/claims UI (presets and reference)
   let oidcMetadata: {
@@ -177,13 +184,12 @@
   function openOrigins(key: ApiKey) {
     editingKey = key;
     editingOrigins = [...(key.allowedOrigins || [])];
-    editingScopes = [...(key.allowedScopes || [])];
     originsError = null;
     originsSuccess = null;
     showOriginsModal = true;
   }
 
-  async function handleSaveOrigins(e: CustomEvent<{ origins: string[]; allowedScopes?: string[] }>) {
+  async function handleSaveOrigins(e: CustomEvent<{ origins: string[] }>) {
     if (!customer?.customerId || !editingKey) return;
     originsSaving = true;
     originsError = null;
@@ -191,12 +197,12 @@
     try {
       await apiClient.updateKeyOrigins(customer.customerId, editingKey.keyId, {
         allowedOrigins: e.detail.origins,
-        allowedScopes: e.detail.allowedScopes,
+        allowedScopes: editingKey.allowedScopes,
       });
       originsSuccess = 'Configuration saved!';
       const idx = apiKeys.findIndex(k => k.keyId === editingKey!.keyId);
       if (idx >= 0) {
-        apiKeys[idx] = { ...apiKeys[idx], allowedOrigins: e.detail.origins, allowedScopes: e.detail.allowedScopes };
+        apiKeys[idx] = { ...apiKeys[idx], allowedOrigins: e.detail.origins };
         apiKeys = [...apiKeys];
       }
       setTimeout(() => { showOriginsModal = false; }, 1200);
@@ -204,6 +210,38 @@
       originsError = err instanceof Error ? err.message : 'Failed to save';
     } finally {
       originsSaving = false;
+    }
+  }
+
+  function openScopes(key: ApiKey) {
+    editingKey = key;
+    editingScopes = [...(key.allowedScopes || [])];
+    scopesError = null;
+    scopesSuccess = null;
+    showScopesModal = true;
+  }
+
+  async function handleSaveScopes(e: CustomEvent<{ allowedScopes: string[] }>) {
+    if (!customer?.customerId || !editingKey) return;
+    scopesSaving = true;
+    scopesError = null;
+    scopesSuccess = null;
+    try {
+      await apiClient.updateKeyOrigins(customer.customerId, editingKey.keyId, {
+        allowedOrigins: editingKey.allowedOrigins || [],
+        allowedScopes: e.detail.allowedScopes,
+      });
+      scopesSuccess = 'Scopes saved!';
+      const idx = apiKeys.findIndex(k => k.keyId === editingKey!.keyId);
+      if (idx >= 0) {
+        apiKeys[idx] = { ...apiKeys[idx], allowedScopes: e.detail.allowedScopes };
+        apiKeys = [...apiKeys];
+      }
+      setTimeout(() => { showScopesModal = false; }, 1200);
+    } catch (err) {
+      scopesError = err instanceof Error ? err.message : 'Failed to save';
+    } finally {
+      scopesSaving = false;
     }
   }
 
@@ -278,6 +316,7 @@
                         </button>
                         <button class="api-keys__btn api-keys__btn--code" onclick={() => handleShowSnippet(key.keyId)} title="Get HTML+JS test page for end-to-end testing">Test Page</button>
                         <button class="api-keys__btn api-keys__btn--origins" onclick={() => openOrigins(key)} title="Configure allowed origins (CORS)">Origins ({key.allowedOrigins?.length || 0})</button>
+                        <button class="api-keys__btn api-keys__btn--scopes" onclick={() => openScopes(key)} title="Configure allowed OIDC scopes">Scopes</button>
                         <button class="api-keys__btn api-keys__btn--warning" onclick={() => handleRotate(key.keyId)}>Rotate</button>
                         <button class="api-keys__btn api-keys__btn--danger" onclick={() => handleRevoke(key.keyId)}>Revoke</button>
                       </div>
@@ -309,13 +348,24 @@
   bind:show={showOriginsModal}
   keyName={editingKey?.name || ''}
   bind:origins={editingOrigins}
-  bind:allowedScopes={editingScopes}
-  presetScopes={oidcPresetScopes}
   bind:saving={originsSaving}
   bind:error={originsError}
   bind:success={originsSuccess}
   on:save={handleSaveOrigins}
   on:close={() => (showOriginsModal = false)}
+/>
+
+<ApiKeyScopesModal
+  bind:show={showScopesModal}
+  keyName={editingKey?.name || ''}
+  bind:allowedScopes={editingScopes}
+  presetScopes={oidcPresetScopes}
+  claimsByScope={oidcMetadata?.claimsByScope ?? {}}
+  bind:saving={scopesSaving}
+  bind:error={scopesError}
+  bind:success={scopesSuccess}
+  on:save={handleSaveScopes}
+  on:close={() => (showScopesModal = false)}
 />
 
 <style>
@@ -439,6 +489,10 @@
     background: var(--bg-dark); border: 2px solid var(--info); color: var(--info);
   }
   .api-keys__btn--origins:hover { background: var(--info); color: #000; }
+  .api-keys__btn--scopes {
+    background: var(--bg-dark); border: 2px solid var(--accent); color: var(--accent);
+  }
+  .api-keys__btn--scopes:hover { background: var(--accent); color: #000; }
   .api-keys__btn--warning { background: var(--warning); border: 2px solid var(--warning); color: #000; }
   .api-keys__btn--danger { background: transparent; border: 2px solid var(--danger); color: var(--danger); }
 

@@ -24,7 +24,7 @@
     {#if expanded}
       <div id="claims-ref-panel" class="claims-ref__panel" role="region">
         <p class="claims-ref__intro">
-          Configure which scopes (and thus claims) each API key can request. In <code>POST /auth/verify-otp</code>, send <code>scope</code> in the body (e.g. <code>"openid profile"</code>). Per-key allowed scopes are set in the key create form or in the key’s configuration (origins modal).
+          Configure which scopes (and thus claims) each API key can request. In <code>POST /auth/verify-otp</code>, send <code>scope</code> in the body (e.g. <code>"openid profile"</code>). Per-key allowed scopes are set in the key create form or in the key’s configuration (Scopes button, post-creation).
         </p>
 
         <div class="claims-ref__behavior" role="region" aria-labelledby="claims-ref-behavior-heading">
