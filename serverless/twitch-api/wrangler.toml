@@ -20,7 +20,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # Production environment
 [env.production]
-vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", AUTH_SERVICE_URL = "https://auth.idling.app" }
+vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", AUTH_SERVICE_URL = "https://auth.idling.app", ALLOWED_ORIGINS = "https://streamkit.idling.app,https://mods.idling.app,https://www.idling.app,https://idling.app,https://api.idling.app" }
 
 # Production KV Namespace
 [[env.production.kv_namespaces]]
@@ -44,6 +44,7 @@ id = "66b9a4425cb7492fbae8f690780cd0ae"
 # Default to production for backward compatibility
 [vars]
 ENVIRONMENT = "production"
+ALLOWED_ORIGINS = "https://streamkit.idling.app,https://mods.idling.app,https://www.idling.app,https://idling.app,https://api.idling.app"
 
 # Default KV Namespace (required for routes configured in dashboard or when no environment is specified)
 [[kv_namespaces]]
