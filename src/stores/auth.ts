@@ -70,14 +70,14 @@ export function setAuth(customerData: AuthenticatedCustomer): void {
   authStore.setCustomer(customerData);
 }
 
-/** Login with JWT after OTP verification; then sync with /auth/me. */
+/**
+ * Login with JWT after OTP verification.
+ * We do NOT call checkAuth() after this: the adapter already set state from the JWT.
+ * Calling checkAuth() can clear that state if /auth/me fails (e.g. cookie not yet sent),
+ * which would leave the user stuck on the login page after a successful OTP.
+ */
 export async function login(jwtToken: string): Promise<void> {
   authStore.login(jwtToken);
-  try {
-    await authStore.checkAuth();
-  } catch (error) {
-    console.warn('[Auth] Failed to fetch full customer data after login:', error);
-  }
 }
 
 /** Check authentication status (uses package: /auth/me + silent refresh on expiry). */
