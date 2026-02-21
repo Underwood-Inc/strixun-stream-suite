@@ -54,6 +54,9 @@ interface RateLimitResult {
 
 type GetCustomerFn = (customerId: string) => Promise<CustomerData | null>;
 
+/** Time window in ms during which one OTP request is allowed without counting (recovery after refresh failure). */
+const RECOVERY_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
  * Get plan limits for customer
  * @param plan - Plan name ('free', 'pro', 'enterprise')
@@ -338,6 +341,32 @@ export async function checkOTPRateLimit(
         const adjustment = calculateDynamicAdjustment(emailStats, ipStats);
         const adjustedRateLimit = Math.max(1, rateLimitPerHour + adjustment);
         
+        const now = Date.now();
+        const oneHour = 60 * 60 * 1000;
+
+        // Recovery pass: if this email had a successful auth (login or refresh) recently,
+        // allow one OTP request without counting toward rate limit (avoids lockout when
+        // refresh fails and user re-requests OTP).
+        if (emailStats.lastSuccessfulLogin) {
+            const lastAuth = new Date(emailStats.lastSuccessfulLogin).getTime();
+            if (now - lastAuth < RECOVERY_WINDOW_MS) {
+                const recoveryKey = customerId
+                    ? `cust_${customerId}_recovery_${emailHash}`
+                    : `recovery_${emailHash}`;
+                const recoveryData = await env.OTP_AUTH_KV.get(recoveryKey, { type: 'json' }) as { lastAt: string } | null;
+                const lastRecovery = recoveryData?.lastAt ? new Date(recoveryData.lastAt).getTime() : 0;
+                if (now - lastRecovery >= RECOVERY_WINDOW_MS) {
+                    await env.OTP_AUTH_KV.put(recoveryKey, JSON.stringify({ lastAt: new Date().toISOString() }), { expirationTtl: 1800 });
+                    const resetAt = new Date(now + oneHour).toISOString();
+                    return {
+                        allowed: true,
+                        remaining: Math.max(0, adjustedRateLimit - 1),
+                        resetAt,
+                    };
+                }
+            }
+        }
+        
         // Check IP-based rate limit (hard cap)
         const ipRateLimitKey = customerId 
             ? `cust_${customerId}_ratelimit_ip_${ipHash}`
@@ -354,10 +383,7 @@ export async function checkOTPRateLimit(
             }
         }
         
-        const now = Date.now();
-        const oneHour = 60 * 60 * 1000;
-        
-        // Check IP rate limit
+        // Check IP rate limit (now, oneHour from recovery block above)
         const ipRequests = ipRateLimit ? (ipRateLimit.requests || 0) : 0;
         if (ipRateLimit && ipRateLimit.resetAt && now <= new Date(ipRateLimit.resetAt).getTime()) {
             if (ipRequests >= planLimits.ipRequestsPerHour) {
@@ -399,7 +425,6 @@ export async function checkOTPRateLimit(
             }
         }
         
-        // Check if rate limit exists and is still valid
         const emailRequests = rateLimit ? (rateLimit.otpRequests || 0) : 0;
         if (rateLimit && rateLimit.resetAt && now <= new Date(rateLimit.resetAt).getTime()) {
             // Rate limit exists and is valid
@@ -485,6 +510,35 @@ export async function recordOTPRequest(emailHash: string, ipAddress: string, cus
  * @param customerId - Customer ID
  * @param env - Worker environment
  */
+/**
+ * Update lastSuccessfulLogin for an email (e.g. after successful refresh).
+ * Used so the recovery pass can allow one OTP request without counting when
+ * the user had a valid session recently and refresh failed.
+ *
+ * @param emailHash - Hashed email
+ * @param customerId - Customer ID (for multi-tenant isolation)
+ * @param env - Worker environment
+ */
+export async function setLastSuccessfulAuth(emailHash: string, customerId: string | null, env: Env): Promise<void> {
+    try {
+        const emailStatsKey = customerId
+            ? `cust_${customerId}_stats_email_${emailHash}`
+            : `stats_email_${emailHash}`;
+        const existing = await env.OTP_AUTH_KV.get(emailStatsKey, { type: 'json' }) as EmailStats | null;
+        const stats: EmailStats = existing || {
+            totalRequests: 0,
+            requestsLast24h: 0,
+            failedAttempts: 0,
+            lastSuccessfulLogin: null,
+            requestTimestamps: [],
+        };
+        stats.lastSuccessfulLogin = new Date().toISOString();
+        await env.OTP_AUTH_KV.put(emailStatsKey, JSON.stringify(stats), { expirationTtl: 2592000 });
+    } catch (error) {
+        console.error('Failed to set lastSuccessfulAuth:', error);
+    }
+}
+
 export async function recordOTPFailure(emailHash: string, ipAddress: string, customerId: string | null, env: Env): Promise<void> {
     try {
         const ipHash = await hashIP(ipAddress || 'unknown');

@@ -778,6 +778,32 @@ Both the Zustand (React) and Svelte auth store adapters follow the same pattern:
 
 This means the user stays logged in silently for up to 7 days without ever re-entering an OTP code, as long as they visit the app at least once every 7 hours (the session inactive-cleanup window). After 7 days from the original login, the refresh token itself expires and the user must log in again.
 
+**Critical: Refresh reliability and OTP rate limiting**
+
+If refresh fails (e.g. cookie not sent, rotation race with another tab, or network error), the client treats the user as logged out. The only way back in is to request an OTP again. **OTP request is rate-limited** (e.g. free tier: 3 requests per email per hour, with dynamic adjustment). So:
+
+- Every unnecessary "logout" due to a flaky or failed refresh consumes one OTP request when the user tries to log back in.
+- After only a few such cycles in an hour, the user hits the rate limit and **cannot log in at all** until the window resets.
+
+For this reason:
+
+1. **Refresh must be reliable.** Ensure `POST /auth/refresh` is called with `credentials: 'include'`, the auth API URL is correct (same-origin or CORS + correct cookie domain), and cookies use `SameSite=None; Secure` in production for cross-origin requests. `POST /auth/refresh` is **not** rate-limited so repeated refresh attempts do not consume OTP quota.
+2. **Client should deduplicate and retry refresh.** Multiple concurrent 401s (e.g. from several API calls or tabs) can each trigger a refresh; only one should run, and the rest should wait on the same promise. One transient failure should trigger a single retry with short backoff before treating the user as logged out.
+3. **Operational monitoring.** Monitor refresh failure rate and 401s after refresh; if high, investigate cookie domain, CORS, and SameSite before users hit OTP rate limits.
+4. **Recovery pass (server-side).** If this email had a successful login or refresh in the last 30 minutes, the next OTP request is allowed **once** without counting toward the hourly rate limit. So after a refresh failure, the user can request OTP again to get back in without burning their quota. Only one such “recovery” pass is granted per 30-minute window per email. Successful refresh updates the “last successful auth” timestamp so the recovery pass remains available.
+
+```mermaid
+flowchart LR
+    subgraph Risk
+        A["Refresh fails<br/>(cookie/network/race)"] --> B["User shown<br/>logged out"]
+        B --> C["User requests OTP<br/>to log in again"]
+        C --> D["OTP rate limit<br/>3/hour free tier"]
+        D --> E["After few cycles:<br/>locked out"]
+    end
+    style A fill:#ea2b1f,stroke:#252017,stroke-width:2px,color:#f9f9f9
+    style E fill:#ea2b1f,stroke:#252017,stroke-width:2px,color:#f9f9f9
+```
+
 **Stolen token mitigation:**
 
 Because each refresh token is single-use (deleted from KV after one exchange), an attacker who steals a refresh token can only use it once. If the legitimate user refreshes first, the attacker's token becomes invalid. If the attacker refreshes first, the legitimate user's next refresh fails, alerting them to log in again (which invalidates the attacker's new token via session replacement).

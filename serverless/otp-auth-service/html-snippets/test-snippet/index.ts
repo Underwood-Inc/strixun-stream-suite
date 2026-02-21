@@ -7,7 +7,16 @@
 
 // Import static assets as text (esbuild --loader:.ext=text)
 import styles from './styles.css';
-import scripts from './scripts.tpl';
+import scriptsCore from './scripts-core.tpl';
+import scriptsVerify from './scripts-verify.tpl';
+import scriptsOtp from './scripts-otp.tpl';
+import scriptsTokens from './scripts-tokens.tpl';
+import scriptsDiscovery from './scripts-discovery.tpl';
+import scriptsIntrospect from './scripts-introspect.tpl';
+import scriptsGlossary from './scripts-glossary.tpl';
+import scriptsSearch from './scripts-search.tpl';
+import scriptsToc from './scripts-toc.tpl';
+import scriptsInit from './scripts-init.tpl';
 import securityDocs from './security-docs.html';
 import testForm from './test-form.html';
 import mermaidInit from './mermaid-init.tpl';
@@ -81,7 +90,19 @@ export function generateTestHtmlSnippet(apiKey: string, baseUrl: string): string
         BASE_URL: baseUrl
     };
 
-    // Interpolate all templates
+    // Assemble script fragments (order matters: core → verify → otp → tokens → discovery → introspect → glossary → search → toc → init)
+    const scripts = [
+        scriptsCore,
+        scriptsVerify,
+        scriptsOtp,
+        scriptsTokens,
+        scriptsDiscovery,
+        scriptsIntrospect,
+        scriptsGlossary,
+        scriptsSearch,
+        scriptsToc,
+        scriptsInit,
+    ].join('\n\n');
     const interpolatedSecurityDocs = interpolate(securityDocs, vars);
     const interpolatedTestForm = interpolate(testForm, vars);
     const interpolatedScripts = interpolate(scripts, vars);

@@ -16,6 +16,7 @@ import { createFingerprintHash } from '@strixun/api-framework';
 import { getSigningContext, signJWT, computeHashClaim } from '../../utils/asymmetric-jwt.js';
 import { getCorsHeadersRecord } from '../../utils/cors.js';
 import { getCookieDomains } from '../../utils/cookie-domains.js';
+import { setLastSuccessfulAuth } from '../../services/rate-limit.js';
 import { ACCESS_TOKEN_TTL_SECONDS, SESSION_TTL_SECONDS } from './jwt-creation.js';
 
 interface Env {
@@ -243,6 +244,12 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(sessionData), { expirationTtl: SESSION_TTL_SECONDS });
 
         console.log(`[Refresh] ✓ Rotated tokens for customer: ${customerId} from IP: ${clientIP}`);
+
+        // Mark successful auth for rate-limit recovery pass (so one OTP request doesn't count if refresh later fails)
+        const emailHash = await hashEmail(stored.email);
+        setLastSuccessfulAuth(emailHash, customerId, env).catch((err) =>
+            console.warn('[Refresh] setLastSuccessfulAuth failed:', err?.message)
+        );
 
         // 8. Build token response body
         const tokenResponse = {
