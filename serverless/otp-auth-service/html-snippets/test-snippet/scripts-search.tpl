@@ -270,11 +270,20 @@ function updateActiveItem(items) {
 }
 
 document.addEventListener('keydown', function(e) {
+    var overlay = document.getElementById('searchOverlay');
+    var overlayOpen = overlay && overlay.classList.contains('open');
+
     if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'f')) {
         e.preventDefault();
         openSearch();
+        return;
     }
     if (e.key === 'Escape') {
-        closeSearch();
+        if (overlayOpen) closeSearch();
+        return;
+    }
+    if (overlayOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter')) {
+        e.preventDefault();
+        handleSearchKeydown(e);
     }
 });

@@ -178,8 +178,7 @@ ${mermaidInit}
             <input id="searchInput" type="text"
                    placeholder="Search... &quot;exact phrase&quot;, term1 | term2, prefix*"
                    autocomplete="off"
-                   oninput="renderSearchResults(this.value)"
-                   onkeydown="handleSearchKeydown(event)" />
+                   oninput="renderSearchResults(this.value)" />
             <div class="search-results" id="searchResults" role="listbox" aria-label="Search results">
                 <div class="sr-empty" role="status">Type to search — supports &quot;exact phrases&quot;, OR with |, prefix*</div>
             </div>
