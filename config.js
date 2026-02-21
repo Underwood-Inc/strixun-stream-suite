@@ -11,7 +11,7 @@ window.STRIXUN_CONFIG = window.STRIXUN_CONFIG || {
     WORKER_API_URL: '%%WORKER_API_URL%%',
     
     // URL Shortener API URL (auto-injected during deployment)
-    // Format: https://strixun-url-shortener.YOUR_SUBDOMAIN.workers.dev
+    // Format: https://strixun-url-shortener-production.YOUR_SUBDOMAIN.workers.dev
     URL_SHORTENER_API_URL: '%%URL_SHORTENER_API_URL%%',
     
     // OTP Auth Service API URL (auto-injected during deployment)
@@ -259,7 +259,7 @@ window.getUrlShortenerApiUrl = function() {
     
     // Priority 4: Hardcoded fallback for production - use custom domain (s.idling.app)
     const CUSTOM_DOMAIN_URL = 'https://s.idling.app';
-    const WORKERS_DEV_URL = 'https://strixun-url-shortener.strixuns-script-suite.workers.dev';
+    const WORKERS_DEV_URL = 'https://strixun-url-shortener-production.strixuns-script-suite.workers.dev';
     
     // Use custom domain as primary (s.idling.app)
     const HARDCODED_URL_SHORTENER_URL = CUSTOM_DOMAIN_URL;

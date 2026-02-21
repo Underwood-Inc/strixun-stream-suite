@@ -1,4 +1,5 @@
-name = "strixun-url-shortener"
+# Production traffic (s.idling.app, etc.) uses this worker. Do not deploy to strixun-url-shortener.
+name = "strixun-url-shortener-production"
 main = "dist/worker.js"
 compatibility_date = "2024-12-01"
 
@@ -74,7 +75,7 @@ service = "otp-auth-service"
 #   wrangler secret put ALLOWED_ORIGINS (optional, comma-separated)
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
-# 1. Go to Cloudflare Dashboard ΓåÆ Workers & Pages ΓåÆ strixun-url-shortener
+# 1. Go to Cloudflare Dashboard -> Workers & Pages -> strixun-url-shortener-production
 # 2. Go to Settings ΓåÆ Triggers ΓåÆ Routes
 # 3. Add custom domain route: s.idling.app/*
 # 4. DNS records are automatically managed by Cloudflare
