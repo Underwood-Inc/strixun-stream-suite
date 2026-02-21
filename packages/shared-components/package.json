@@ -72,6 +72,10 @@
     "./react/ErrorDisplay": {
       "types": "./react/ErrorDisplay.tsx",
       "default": "./react/ErrorDisplay.tsx"
+    },
+    "./svelte/charts/HorizontalBar": {
+      "types": "./svelte/charts/HorizontalBar.svelte",
+      "default": "./svelte/charts/HorizontalBar.svelte"
     }
   },
   "scripts": {

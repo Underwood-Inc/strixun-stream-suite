@@ -3,6 +3,7 @@
   import { apiClient } from '$dashboard/lib/api-client';
   import type { UsageSummaryResponse } from '$dashboard/lib/types';
   import Card from '$dashboard/components/Card.svelte';
+  import HorizontalBar from '@shared-components/svelte/charts/HorizontalBar.svelte';
 
   let loading = true;
   let error: string | null = null;
@@ -24,10 +25,11 @@
     }
   }
 
-  function barColor(pct: number): string {
-    if (pct >= 90) return 'var(--danger)';
-    if (pct >= 80) return 'var(--warning)';
-    return 'var(--success)';
+  /** Chooses bar variant from percent; all logic lives in consumer, not the chart. */
+  function barVariant(pct: number): 'success' | 'warning' | 'danger' {
+    if (pct >= 90) return 'danger';
+    if (pct >= 80) return 'warning';
+    return 'success';
   }
 </script>
 
@@ -55,31 +57,20 @@
     {/if}
 
     <div class="usage__bars">
-      <div class="usage__bar-group">
-        <div class="usage__bar-label">
-          <span>Today</span>
-          <span class="usage__bar-pct">{data.dailyUsagePercent}%</span>
-        </div>
-        <div class="usage__bar-track">
-          <div class="usage__bar-fill" style="width: {Math.min(data.dailyUsagePercent, 100)}%; background: {barColor(data.dailyUsagePercent)}"></div>
-        </div>
-        <span class="usage__bar-count">
-          {data.customerTotal.todayRequests.toLocaleString()} / {data.quota.dailyLimit.toLocaleString()}
-        </span>
-      </div>
-
-      <div class="usage__bar-group">
-        <div class="usage__bar-label">
-          <span>This Month</span>
-          <span class="usage__bar-pct">{data.monthlyUsagePercent}%</span>
-        </div>
-        <div class="usage__bar-track">
-          <div class="usage__bar-fill" style="width: {Math.min(data.monthlyUsagePercent, 100)}%; background: {barColor(data.monthlyUsagePercent)}"></div>
-        </div>
-        <span class="usage__bar-count">
-          {data.customerTotal.monthRequests.toLocaleString()} / {data.quota.monthlyLimit.toLocaleString()}
-        </span>
-      </div>
+      <HorizontalBar
+        label="Today"
+        value={data.customerTotal.todayRequests}
+        max={data.quota.dailyLimit}
+        valueLabel={`${data.customerTotal.todayRequests.toLocaleString()} / ${data.quota.dailyLimit.toLocaleString()}`}
+        variant={barVariant(data.dailyUsagePercent)}
+      />
+      <HorizontalBar
+        label="This Month"
+        value={data.customerTotal.monthRequests}
+        max={data.quota.monthlyLimit}
+        valueLabel={`${data.customerTotal.monthRequests.toLocaleString()} / ${data.quota.monthlyLimit.toLocaleString()}`}
+        variant={barVariant(data.monthlyUsagePercent)}
+      />
     </div>
 
     {#if data.keys.length > 0}
@@ -187,41 +178,6 @@
     flex-direction: column;
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
-  }
-
-  .usage__bar-group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xs);
-  }
-
-  .usage__bar-label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-  }
-
-  .usage__bar-pct { font-weight: 600; color: var(--text); }
-
-  .usage__bar-track {
-    height: 10px;
-    background: var(--bg-dark);
-    border-radius: 5px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-  }
-
-  .usage__bar-fill {
-    height: 100%;
-    border-radius: 5px;
-    transition: width 0.4s ease;
-  }
-
-  .usage__bar-count {
-    font-size: 0.75rem;
-    color: var(--muted);
-    text-align: right;
   }
 
   .usage__subtitle {
