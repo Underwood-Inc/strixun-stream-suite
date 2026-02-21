@@ -320,7 +320,7 @@ export class ApiClient {
    * Each key can have its own set of allowed origins for CORS
    */
   async updateKeyOrigins(customerId: string, keyId: string, allowedOrigins: string[]): Promise<{ success: boolean; allowedOrigins: string[]; message: string }> {
-    const response = await this.client.put<{ success: boolean; allowedOrigins: string[]; message: string }>(
+    const response = await this.api.put<{ success: boolean; allowedOrigins: string[]; message: string }>(
       `/admin/customers/${customerId}/api-keys/${keyId}/origins`,
       { allowedOrigins }
     );
