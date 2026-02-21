@@ -240,7 +240,7 @@ The auth store implementations (`zustand.ts` for React, `svelte.ts` for Svelte) 
                 ... pattern repeats for up to 7 days from original login ...
 ```
 
-No timers, no intervals, no wasted bandwidth. The `auth_token` HttpOnly cookie is sent automatically with every request by the browser, and the auth store handles the 401 → refresh → retry cycle transparently.
+No timers, no intervals, no wasted bandwidth. The `auth_token` HttpOnly cookie is sent automatically with every request by the browser, and the auth store handles the 401 → refresh → retry cycle transparently. Refresh is deduped (one in-flight refresh shared by concurrent callers) and retried once on transient failure. If refresh fails and the user must request an OTP again, the server allows one OTP request without counting toward the rate limit when that email had a successful login or refresh in the last 30 minutes (recovery pass), so users are not locked out. See [OIDC_ARCHITECTURE.md](./OIDC_ARCHITECTURE.md) "Critical: Refresh reliability and OTP rate limiting."
 
 ### Logout Flow
 

@@ -6,7 +6,7 @@
 // API Key Management
 export {
     handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleRotateApiKey, handleRevealApiKey
-} from './admin/api-keys.js';
+} from './admin/api-keys/index.js';
 
 // Configuration Management
 export {
@@ -43,7 +43,7 @@ export {
 // API Key Origins
 export {
     handleUpdateKeyOrigins
-} from './admin/api-keys.js';
+} from './admin/api-keys/index.js';
 
 // OIDC metadata for dashboard and test page
 export { handleGetOidcMetadata } from './admin/oidc-metadata.js';

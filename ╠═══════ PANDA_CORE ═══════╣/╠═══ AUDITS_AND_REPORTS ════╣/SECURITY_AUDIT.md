@@ -186,7 +186,7 @@ if (otpData.otp !== otp) {
 - ✓ 10-minute expiration
 - ✓ Single-use (deleted after verification)
 - ✓ 5 attempt limit per OTP
-- ✓ Rate limiting (3 requests per email per hour)
+- ✓ Rate limiting (3 requests per email per hour; recovery pass when recent login/refresh)
 
 ### 2. **JWT Implementation** ✓
 - ✓ HMAC-SHA256 signing (strong algorithm)

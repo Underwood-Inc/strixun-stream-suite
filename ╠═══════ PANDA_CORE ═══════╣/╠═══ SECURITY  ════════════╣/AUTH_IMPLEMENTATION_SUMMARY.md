@@ -13,7 +13,7 @@
    - Generates secure 9-digit OTP
    - Stores OTP in KV (10-minute expiration)
    - Sends email via Resend
-   - Rate limiting (3 requests per email per hour)
+   - Rate limiting (3 requests per email per hour; recovery pass when recent login/refresh)
 
 2. **POST `/auth/verify-otp`** - Verify OTP and get JWT token
    - Validates OTP code
@@ -50,6 +50,7 @@
 
 ### Rate Limiting
 - ✓ **3 OTP requests per email per hour** (prevents spam)
+- ✓ **Recovery pass**: one OTP request per 30 min not counted when email had recent successful login/refresh (avoids lockout when refresh fails)
 - ✓ **Automatic reset** after 1 hour
 - ✓ **Stored in KV** with TTL
 

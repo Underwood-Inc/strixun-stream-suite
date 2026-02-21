@@ -134,6 +134,8 @@ Request an OTP code to be sent to an email address.
 - `429` - Rate limit exceeded or quota exceeded
 - `500` - Email sending failed
 
+**Rate limiting and recovery:** OTP requests are rate-limited per email and per IP (e.g. free tier: 3 per email per hour, with dynamic adjustment). If the same email had a successful login or token refresh in the last 30 minutes, one OTP request is allowed without counting toward the limit (recovery pass), so users are not locked out when refresh fails and they request OTP again. Only one recovery pass per email per 30-minute window.
+
 ### POST `/auth/verify-otp`
 Verify an OTP code and get a JWT token.
 
@@ -197,23 +199,13 @@ Logout and revoke the current token.
 ```
 
 ### POST `/auth/refresh`
-Refresh an expiring JWT token.
+Exchange the HttpOnly `refresh_token` cookie for a new access token and rotated refresh token (token rotation). Used when the access token has expired so the user stays logged in without re-entering an OTP.
 
-**Request:**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
+**Request:** Send the `refresh_token` cookie (browser sends automatically with `credentials: 'include'`). Body fallback for non-browser clients: `{ "refresh_token": "..." }`.
 
-**Response:**
-```json
-{
-  "success": true,
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expiresAt": "2025-01-01T07:00:00.000Z"
-}
-```
+**Response:** `200` with new tokens in body and `Set-Cookie` for `auth_token` and `refresh_token` (HttpOnly, same domain/SSO behavior as login). On invalid or expired refresh token: `401` with `error: "invalid_grant"`.
+
+**Not rate-limited.** Repeated refresh attempts do not count toward OTP rate limits. Successful refresh updates "last successful auth" for the account so the next OTP request (if the user has to re-login) may use the recovery pass (one request without counting) within 30 minutes.
 
 ---
 

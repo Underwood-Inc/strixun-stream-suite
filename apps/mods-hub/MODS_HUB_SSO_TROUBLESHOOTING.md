@@ -39,6 +39,8 @@ If `ALLOWED_ORIGINS` is wrong or missing, the cookie is scoped to `auth.idling.a
 3. **Re-login** – Clear cookies and log in again so a new cookie is set with `Domain=.idling.app`
 4. **Service worker** – SW skips `/api/*` and `/auth-api/*` (network-only) so cookies are sent. Unregister old SW (DevTools → Application → Service Workers → Unregister) or hard refresh (Ctrl+Shift+R)
 
+**If you get logged out after refresh fails:** The auth store retries refresh once; if it still fails, you must log in again (request OTP). The server allows one OTP request without counting toward the rate limit when your email had a successful login or refresh in the last 30 minutes (recovery pass), so you are not locked out. See OIDC_ARCHITECTURE.md "Critical: Refresh reliability and OTP rate limiting."
+
 ### 1. Verify GitHub Secret `ALLOWED_ORIGINS`
 
 **GitHub Secrets override wrangler vars.** If `ALLOWED_ORIGINS` is set in GitHub, that value is used for both the auth service (cookie domain) and mods-api (CORS).

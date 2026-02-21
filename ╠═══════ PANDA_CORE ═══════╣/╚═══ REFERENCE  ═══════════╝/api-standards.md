@@ -309,7 +309,7 @@ curl https://auth.idling.app/auth/me \
 
 - **JWT Tokens**: HMAC-SHA256 signed, 7-hour expiration
 - **OTP Codes**: 9-digit, cryptographically secure, 10-minute expiration
-- **Rate Limiting**: 3 OTP requests per email per hour
+- **Rate Limiting**: 3 OTP requests per email per hour; one recovery pass (not counted) per 30 min when email had recent login/refresh
 - **Attempt Limits**: 5 attempts per OTP code
 - **CSRF Protection**: CSRF token included in JWT
 - **CORS**: Configurable allowed origins

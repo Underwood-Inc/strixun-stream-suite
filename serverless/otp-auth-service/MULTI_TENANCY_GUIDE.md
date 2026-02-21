@@ -12,7 +12,7 @@ The OTP Auth Service supports multi-tenant usage via API keys. Third-party devel
 |---------|-------------|
 | **Tenant Identification** | Identifies which customer account the request belongs to |
 | **Per-Key CORS Control** | Each key can have its own allowed origins (or none for any origin) |
-| **Rate Limiting** | Applies the customer's rate limits to requests |
+| **Rate Limiting** | Applies the customer's rate limits to requests; one OTP "recovery pass" (not counted) per 30 min when the email had a recent successful login/refresh |
 | **Billing/Usage Tracking** | Tracks usage per customer for billing |
 
 ### Security Model - How It Actually Works

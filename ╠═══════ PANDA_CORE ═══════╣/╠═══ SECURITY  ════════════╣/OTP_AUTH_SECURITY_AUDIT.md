@@ -117,7 +117,7 @@ This audit reviews the OTP authentication service for security vulnerabilities, 
 
 ### Current Implementation
 
-- **Email-based rate limiting:** 3 requests per email per hour (default)
+- **Email-based rate limiting:** 3 requests per email per hour (default); one recovery pass per 30 min when email had recent login/refresh
 - **OTP attempt limiting:** 5 attempts per OTP code
 - **Quota checking:** Daily and monthly quotas per customer
 - **No IP-based rate limiting:** ⚠ Missing

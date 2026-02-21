@@ -136,58 +136,17 @@ The authentication system consists of:
 
 #### 2.3.3 `/auth/refresh` Endpoint
 
-**Implementation:** ⚠️ **INCONSISTENT WITH SSO ARCHITECTURE**
+**Implementation:** ✓ **CORRECT** (updated from prior audit)
 
-**Issues Found:**
+**Current behavior:**
+- Extracts `refresh_token` from HttpOnly cookie first, then falls back to request body `{ refresh_token?: string }` for non-browser clients.
+- Sets HttpOnly cookies in response (`auth_token`, `refresh_token`) for all configured cookie domains (same as verify-otp); preserves SSO.
+- Preserves `ssoScope` and `keyId` from the stored refresh token metadata; token rotation issues new access and refresh tokens with same scope.
+- On success, updates "last successful auth" for the email (via `setLastSuccessfulAuth`) so OTP rate-limit recovery pass applies if the user must re-login within 30 minutes.
 
-1. **Token Source Inconsistency**
-   - Currently expects token in request body: `{ token: string }`
-   - Should extract from HttpOnly cookie (like `/auth/me` and `/auth/logout`)
-   - Documentation says it "sets a new HttpOnly cookie" but doesn't actually set cookies
+**Refresh and OTP rate limiting:** If refresh fails (e.g. cookie not sent, rotation race, network), the client treats the user as logged out; the only way back in is to request an OTP. OTP request is rate-limited (e.g. 3 per email per hour on free tier). To avoid lockout after repeated refresh failures, the server allows one OTP request without counting (recovery pass) when the email had a successful login or refresh in the last 30 minutes. See OIDC_ARCHITECTURE.md "Refresh Tokens and Token Rotation" and "Critical: Refresh reliability and OTP rate limiting."
 
-2. **Missing Cookie Setting**
-   - Does NOT set HttpOnly cookies in response
-   - Only returns token in JSON body
-   - Breaks SSO flow (other apps won't get refreshed token)
-
-3. **SSO Scope Preservation**
-   - Does NOT preserve `ssoScope` from original token
-   - Does NOT preserve `keyId` from original token
-   - May break inter-tenant SSO after refresh
-
-**Location:** `serverless/otp-auth-service/handlers/auth/session.ts:394-502`
-
-**Recommendation:**
-```typescript
-// Should extract token from cookie first, then fall back to body
-const cookieHeader = request.headers.get('Cookie');
-let token: string | null = null;
-if (cookieHeader) {
-    const cookies = cookieHeader.split(';').map(c => c.trim());
-    const authCookie = cookies.find(c => c.startsWith('auth_token='));
-    if (authCookie) {
-        token = authCookie.substring('auth_token='.length).trim();
-    }
-}
-// Fall back to body if no cookie
-if (!token) {
-    const body = await request.json() as { token?: string };
-    token = body.token;
-}
-
-// After creating new token, preserve SSO scope and keyId
-const newTokenPayload = {
-    // ... existing fields ...
-    keyId: payload.keyId, // PRESERVE
-    ssoScope: payload.ssoScope, // PRESERVE
-};
-
-// Set HttpOnly cookies (like verify-otp does)
-const setCookieHeaders = createCookieHeaders(newToken, env, request);
-for (const cookieValue of setCookieHeaders) {
-    response.headers.append('Set-Cookie', cookieValue);
-}
-```
+**Location:** `serverless/otp-auth-service/handlers/auth/refresh.ts`
 
 ---
 

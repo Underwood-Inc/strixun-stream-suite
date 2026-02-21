@@ -33,7 +33,7 @@ const response = await fetch(`${API_URL}/auth/request-otp`, {
 
 **Server-Side:**
 1. ✓ Validates email format
-2. ✓ Checks rate limit (3 requests per email per hour)
+2. ✓ Checks rate limit (3 requests per email per hour; one recovery pass per 30 min when email had recent login/refresh)
 3. ✓ Generates secure 9-digit OTP
 4. ✓ Stores OTP in KV (10-minute expiration)
 5. ✓ Sends email via Resend with OTP code
@@ -288,8 +288,9 @@ loadAuthState(); // Loads token from localStorage/IndexedDB
 - ✓ 5 attempt limit per OTP
 
 ### **Rate Limiting:**
-- ✓ 3 OTP requests per email per hour
-- ✓ Prevents spam/abuse
+- ✓ 3 OTP requests per email per hour (with dynamic adjustment)
+- ✓ One OTP request per 30 min allowed without counting when the email had a recent successful login or refresh (recovery pass)
+- ✓ Prevents spam/abuse; avoids lockout when refresh fails
 - ✓ Automatic reset after 1 hour
 
 ### **Token Security:**

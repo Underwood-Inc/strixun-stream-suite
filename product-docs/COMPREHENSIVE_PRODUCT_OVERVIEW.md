@@ -287,7 +287,7 @@ graph TB
 | Passwordless Login | No passwords required | ✓ Implemented |
 | JWT Tokens | 30-day expiration tokens | ✓ Implemented |
 | Token Refresh | Automatic token refresh | ✓ Implemented |
-| Rate Limiting | 3 requests per email per hour | ✓ Implemented |
+| Rate Limiting | 3 requests per email per hour; 1 recovery pass/30 min when recent auth | ✓ Implemented |
 | Attempt Limits | 5 attempts per OTP | ✓ Implemented |
 | OTP Expiration | 10-minute OTP validity | ✓ Implemented |
 | Token Blacklist | Logout/revocation support | ✓ Implemented |
@@ -300,7 +300,7 @@ graph TB
 - OTP codes: 9 digits, cryptographically random
 - OTP expiration: 10 minutes
 - OTP attempts: Maximum 5 attempts
-- Rate limit: 3 OTP requests per email per hour
+- Rate limit: 3 OTP requests per email per hour (plus one recovery pass per 30 min when recent login/refresh)
 - JWT expiration: 30 days
 - JWT algorithm: HMAC-SHA256
 - Display names: Adjective + Noun + Number (unique)
@@ -475,7 +475,7 @@ graph TB
 | OTP Format | 9 digits, numeric only | Generation logic |
 | OTP Expiration | 10 minutes | KV TTL |
 | OTP Attempts | Maximum 5 attempts | Counter tracking |
-| Rate Limiting | 3 requests per email per hour | KV counter |
+| Rate Limiting | 3 requests per email per hour; 1 recovery pass/30 min when recent auth | KV counter |
 | JWT Expiration | 30 days | Token generation |
 | Token Refresh | Requires valid current token | Validation |
 | Display Name Uniqueness | Guaranteed unique via KV | KV lookup |

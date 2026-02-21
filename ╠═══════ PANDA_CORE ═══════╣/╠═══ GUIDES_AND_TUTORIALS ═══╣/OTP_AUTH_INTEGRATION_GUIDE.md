@@ -243,6 +243,10 @@ Rate limit and quota information is also in response headers:
 - `X-Quota-Limit`
 - `X-Quota-Remaining`
 
+### Recovery pass (re-login after refresh failure)
+
+If a user had a successful login or token refresh in the last 30 minutes and then must request an OTP again (e.g. because refresh failed), one OTP request is allowed without counting toward the hourly limit. This avoids lockout when refresh is flaky. Only one such recovery pass per email per 30-minute window. See **OIDC_ARCHITECTURE.md** (section "Refresh Tokens and Token Rotation" / "Critical: Refresh reliability and OTP rate limiting") for full details.
+
 ---
 
 ## Error Handling

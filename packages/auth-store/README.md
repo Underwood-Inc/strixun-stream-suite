@@ -204,7 +204,7 @@ export const authStore = createAuthStore();
 
 ## Notes
 
-- The store automatically validates tokens on hydration to detect blacklisted tokens from logout on other domains
-- Session restoration is IP-based and enables cross-application session sharing
-- User info (displayName, customerId, isSuperAdmin) is automatically fetched from `/auth/me` endpoint
-- All API calls use `@strixun/api-framework/client` for consistent error handling and encryption support
+- The store uses HttpOnly cookies for auth; `checkAuth` calls `/auth/me` and, on 401, calls `POST /auth/refresh` (with `credentials: 'include'`) then retries `/auth/me`. Refresh is deduped (one in-flight refresh shared by concurrent callers) and retried once on transient failure before treating the user as logged out.
+- If refresh fails and the user must request an OTP again, the server allows one OTP request without counting toward the rate limit when that email had a successful login or refresh in the last 30 minutes (recovery pass). See OIDC_ARCHITECTURE.md for details.
+- User info (displayName, customerId, isSuperAdmin) is automatically fetched from `/auth/me` endpoint.
+- All API calls use `@strixun/api-framework/client` for consistent error handling and encryption support.

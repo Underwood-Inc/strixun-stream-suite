@@ -133,7 +133,12 @@ This document summarizes the security improvements implemented based on the comp
    - Dynamic adjustment based on usage patterns
    - Applied after IP-based limits
 
-3. **Customer Quota Limits** (Third Layer)
+3. **Recovery Pass** (When Recent Session Exists)
+   - If the same email had a successful login or token refresh in the last 30 minutes, one OTP request is allowed without counting toward the hourly limit.
+   - Prevents lockout when refresh fails and the user requests OTP again; only one such pass per email per 30-minute window.
+   - Successful refresh updates the "last successful auth" timestamp (see `setLastSuccessfulAuth` in `services/rate-limit.ts`).
+
+4. **Customer Quota Limits** (Fourth Layer)
    - Daily and monthly quotas per customer
    - Plan-based limits
    - Hard caps for free tier
