@@ -392,8 +392,8 @@
     vertical-align: middle;
   }
 
-  /* Table view: row hover on cells */
-  .api-keys__row:hover td {
+  /* Table view: per-cell hover (only the cell under the cursor highlights) */
+  .api-keys__row td:hover {
     background: rgba(234, 43, 31, 0.1);
   }
 
@@ -469,6 +469,8 @@
       padding: var(--spacing-sm) 0;
       padding-right: 0;
       border-bottom: 1px solid var(--border);
+      width: fit-content;
+      max-width: 100%;
     }
     .api-keys__row td:hover {
       background: rgba(234, 43, 31, 0.1);
