@@ -393,12 +393,21 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId, sel
         setDownloadError(null);
         
         try {
-            // PESSIMISTIC UPDATE: Wait for download to complete before updating UI
             await downloadVersion(modSlug, version.versionId, version.fileName || `mod-${modSlug}-v${version.version}.jar`);
             
-            // Download successful - refetch mod data to get updated download counts
-            console.log('[ModVersionList] Download completed, refetching mod data for updated counts');
-            await queryClient.refetchQueries({ queryKey: modKeys.detail(modSlug) });
+            // Optimistic UI: immediately increment counts in the cache
+            queryClient.setQueryData(modKeys.detail(modSlug), (old: any) => {
+                if (!old) return old;
+                return {
+                    ...old,
+                    mod: { ...old.mod, downloadCount: (old.mod.downloadCount || 0) + 1 },
+                    versions: old.versions.map((v: any) =>
+                        v.versionId === version.versionId
+                            ? { ...v, downloads: (v.downloads || 0) + 1 }
+                            : v
+                    ),
+                };
+            });
         } catch (error: any) {
             console.error('[ModVersionList] Download failed:', error);
             setDownloadError(error.message || 'Failed to download file');
@@ -413,7 +422,7 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId, sel
         }
     };
 
-    const handleVariantDownload = async (variant: ModVariant) => {
+    const handleVariantDownload = async (variant: ModVariant, parentVersionId: string) => {
         // SECURITY: Prevent unauthenticated download attempts
         if (!isAuthenticated) {
             setDownloadError('Please log in to download files');
@@ -434,13 +443,42 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId, sel
         setDownloadError(null);
 
         try {
-            // Download variant - filename is automatically extracted from Content-Disposition header
-            // This preserves the exact filename that was originally uploaded
             await downloadVariant(modSlug, variant.variantId);
             
-            // Download successful - refetch mod data to get updated download counts
-            console.log('[ModVersionList] Variant download completed, refetching mod data for updated counts');
-            await queryClient.refetchQueries({ queryKey: modKeys.detail(modSlug) });
+            // Optimistic UI: immediately increment counts in the cache
+            queryClient.setQueryData(modKeys.detail(modSlug), (old: any) => {
+                if (!old) return old;
+                return {
+                    ...old,
+                    mod: {
+                        ...old.mod,
+                        downloadCount: (old.mod.downloadCount || 0) + 1,
+                        variants: old.mod.variants?.map((v: any) =>
+                            v.variantId === variant.variantId
+                                ? { ...v, totalDownloads: (v.totalDownloads || 0) + 1 }
+                                : v
+                        ),
+                    },
+                    versions: old.versions.map((v: any) =>
+                        v.versionId === parentVersionId
+                            ? { ...v, downloads: (v.downloads || 0) + 1 }
+                            : v
+                    ),
+                };
+            });
+            if (variant.currentVersionId) {
+                queryClient.setQueryData(modKeys.variantVersions(modSlug, variant.variantId), (old: any) => {
+                    if (!old?.versions) return old;
+                    return {
+                        ...old,
+                        versions: old.versions.map((v: any) =>
+                            v.variantVersionId === variant.currentVersionId
+                                ? { ...v, downloads: (v.downloads || 0) + 1 }
+                                : v
+                        ),
+                    };
+                });
+            }
         } catch (error: any) {
             console.error('[ModVersionList] Variant download failed:', error);
             setDownloadError(error.message || 'Failed to download variant');
@@ -620,7 +658,7 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId, sel
                                             <VariantDownloadButton
                                                 onClick={(e) => {
                                                     celebrateClick(e.currentTarget);
-                                                    handleVariantDownload(variant);
+                                                    handleVariantDownload(variant, version.versionId);
                                                 }}
                                                 disabled={downloadingVariants.has(variant.variantId) || !variant.variantId || !isAuthenticated}
                                                 title={!isAuthenticated ? 'Please log in to download' : undefined}

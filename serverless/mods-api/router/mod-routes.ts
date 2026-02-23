@@ -685,6 +685,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // Normalized pathSegments = [slug, 'variants', variantId, 'versions', versionId, 'download']
         if (pathSegments.length === 6 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && pathSegments[5] === 'download' && request.method === 'GET') {
             const slugOrModId = pathSegments[0];
+            const variantId = pathSegments[2];
             const versionId = pathSegments[4];
             
             // Resolve slug to modId

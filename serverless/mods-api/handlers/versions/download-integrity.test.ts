@@ -25,10 +25,17 @@ vi.mock('@strixun/api-framework', () => ({
 }));
 
 describe('File Download Integrity', () => {
+    const mockCounterStub = {
+        increment: vi.fn().mockResolvedValue(undefined),
+    };
     const mockEnv = {
         MODS_KV: {} as any,
         MODS_R2: {} as any,
         ALLOWED_ORIGINS: 'https://example.com',
+        DOWNLOAD_COUNTER: {
+            idFromName: vi.fn().mockReturnValue('mock-do-id'),
+            get: vi.fn().mockReturnValue(mockCounterStub),
+        } as any,
     };
 
     const mockMod = {

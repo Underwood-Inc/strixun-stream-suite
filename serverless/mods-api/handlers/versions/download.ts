@@ -8,7 +8,6 @@ import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import {
     getEntity,
-    putEntity,
 } from '@strixun/kv-entities';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
@@ -18,6 +17,7 @@ interface Env {
     MODS_ENCRYPTION_KEY?: string;
     ENVIRONMENT?: string;
     ALLOWED_ORIGINS?: string;
+    DOWNLOAD_COUNTER: DurableObjectNamespace;
     [key: string]: any;
 }
 
@@ -26,7 +26,7 @@ export async function handleDownloadVersion(
     env: Env,
     modId: string,
     versionId: string,
-    auth: { customerId: string } | null
+    auth: { customerId: string } | null,
 ): Promise<Response> {
     try {
         const mod = await getEntity<ModMetadata>(env.MODS_KV, 'mods', 'mod', modId);
@@ -79,8 +79,15 @@ export async function handleDownloadVersion(
             return errorResponse(request, env, 500, 'Internal Server Error', 'File name not found');
         }
 
-        // Increment download counters (fire and forget)
-        incrementDownloads(env, mod, modId, version).catch(console.error);
+        // Increment download counters via Durable Object (race-condition-free)
+        // version.variantId is the source of truth for whether this is a variant download
+        try {
+            const counterId = env.DOWNLOAD_COUNTER.idFromName(modId);
+            const counter = env.DOWNLOAD_COUNTER.get(counterId);
+            await (counter as any).increment(modId, versionId, version.variantId || null);
+        } catch (counterErr) {
+            console.error('[VersionDownload] Counter increment failed:', counterErr);
+        }
 
         // Build exposed headers list - include hash headers if available
         const exposedHeaders = ['Content-Disposition', 'Content-Type', 'Content-Length'];
@@ -119,19 +126,6 @@ export async function handleDownloadVersion(
             env.ENVIRONMENT === 'development' ? error.message : 'Failed to download file'
         );
     }
-}
-
-async function incrementDownloads(
-    env: Env,
-    mod: ModMetadata,
-    modId: string,
-    version: ModVersion
-): Promise<void> {
-    version.downloads = (version.downloads || 0) + 1;
-    await putEntity(env.MODS_KV, 'mods', 'version', version.versionId, version);
-    
-    mod.downloadCount = (mod.downloadCount || 0) + 1;
-    await putEntity(env.MODS_KV, 'mods', 'mod', modId, mod);
 }
 
 function errorResponse(request: Request, env: Env, status: number, title: string, detail: string): Response {

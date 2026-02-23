@@ -269,6 +269,7 @@ export function VariantManagement({ modSlug, modId, variants }: VariantManagemen
                                     modSlug={modSlug}
                                     variantId={variant.variantId}
                                     variantName={variant.name}
+                                    parentVersionId={variant.parentVersionId}
                                     onDeleteVersion={(version) => handleDeleteVersion(variant.variantId, version)}
                                 />
                             </ExpandedContent>
@@ -287,11 +288,13 @@ function VariantVersionsLoader({
     modSlug, 
     variantId, 
     variantName,
+    parentVersionId,
     onDeleteVersion
 }: { 
     modSlug: string;
     variantId: string; 
     variantName: string;
+    parentVersionId: string;
     onDeleteVersion: (version: VariantVersion) => void;
 }) {
     const { data, isLoading, error } = useVariantVersions(modSlug, variantId);
@@ -318,6 +321,7 @@ function VariantVersionsLoader({
             modSlug={modSlug}
             variantId={variantId}
             variantName={variantName}
+            parentVersionId={parentVersionId}
             versions={data?.versions || []}
             canManage={true}
             onDelete={onDeleteVersion}

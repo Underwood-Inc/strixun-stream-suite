@@ -10,6 +10,9 @@ import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import { API_BASE_URL } from '../../services/mods';
+import { ConcurrencyPool } from '@strixun/api-framework';
+
+const badgePool = new ConcurrencyPool(3);
 import { Tooltip } from '@strixun/shared-components/react';
 import type { TooltipTheme } from '@strixun/shared-components/react';
 
@@ -220,13 +223,13 @@ export function IntegrityBadge({ modId, slug, versionId, style = 'flat' }: Integ
                     'Accept': 'image/svg+xml',
                 };
                 
-                // Fetch badge - always returns unencrypted SVG (public API)
-                // HttpOnly cookie is sent automatically with credentials: 'include'
-                const response = await fetch(badgeEndpoint, {
-                    method: 'GET',
-                    headers,
-                    credentials: 'include', // Send HttpOnly auth_token cookie if available
-                });
+                const response = await badgePool.enqueue(() =>
+                    fetch(badgeEndpoint, {
+                        method: 'GET',
+                        headers,
+                        credentials: 'include',
+                    })
+                );
                 
                 if (!response.ok) {
                     throw new Error(`Badge fetch failed: ${response.status} ${response.statusText}`);

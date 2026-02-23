@@ -35,6 +35,7 @@ export type {
 export {
   RequestDeduplicator,
   RequestQueue,
+  ConcurrencyPool,
   CancellationManager,
   comparePriority,
   getDefaultPriority,
