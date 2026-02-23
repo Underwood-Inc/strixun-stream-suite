@@ -99,6 +99,12 @@ export class DownloadCounter extends DurableObject<Env> {
         // Sync version
         try {
             const freshVersion = await getEntity<ModVersion>(this.env.MODS_KV, 'mods', 'version', versionId);
+            console.log('[DownloadCounter] Version sync:', {
+                versionId,
+                found: !!freshVersion,
+                oldDownloads: freshVersion?.downloads,
+                newDownloads: versionCount,
+            });
             if (freshVersion) {
                 freshVersion.downloads = versionCount;
                 await putEntity(this.env.MODS_KV, 'mods', 'version', versionId, freshVersion);
@@ -110,6 +116,14 @@ export class DownloadCounter extends DurableObject<Env> {
         // Sync mod (and variant if applicable)
         try {
             const freshMod = await getEntity<ModMetadata>(this.env.MODS_KV, 'mods', 'mod', modId);
+            console.log('[DownloadCounter] Mod sync:', {
+                modId,
+                found: !!freshMod,
+                oldDownloadCount: freshMod?.downloadCount,
+                newDownloadCount: modCount,
+                variantId,
+                variantCount,
+            });
             if (freshMod) {
                 freshMod.downloadCount = modCount;
 
