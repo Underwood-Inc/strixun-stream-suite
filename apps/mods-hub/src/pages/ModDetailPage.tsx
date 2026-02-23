@@ -5,7 +5,8 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useModDetail, useModRatings, useSubmitModRating } from '../hooks/useMods';
+import { useModDetail, useModRatings, useSubmitModRating, modKeys } from '../hooks/useMods';
+import { useQueryClient } from '@tanstack/react-query';
 import { ModVersionList } from '../components/mod/ModVersionList';
 import { ModAnalytics } from '../components/mod/ModAnalytics';
 import { ModRatings } from '../components/mod/ModRatings';
@@ -285,7 +286,8 @@ const DownloadButton = styled.button`
 export function ModDetailPage() {
     const { slug, version: versionParam } = useParams<{ slug: string; version?: string }>();
     const navigate = useNavigate();
-    const { data, isLoading, error, refetch } = useModDetail(slug || '');
+    const queryClient = useQueryClient();
+    const { data, isLoading, error } = useModDetail(slug || '');
     const { customer, isAuthenticated } = useAuthStore();
     const isUploader = customer?.customerId === data?.mod.authorId;
     const [downloading, setDownloading] = useState(false);
@@ -385,12 +387,21 @@ export function ModDetailPage() {
         
         try {
             const fileName = selectedVersion.fileName || `mod-${slug}-v${selectedVersion.version}.jar`;
-            // PESSIMISTIC UPDATE: Wait for download to complete before updating UI
             await downloadVersion(slug, selectedVersion.versionId, fileName);
             
-            // Download successful - refetch mod data to get updated download counts
-            console.log('[ModDetailPage] Download completed, refetching mod data for updated counts');
-            await refetch();
+            // Optimistic UI: immediately increment counts in the cache
+            queryClient.setQueryData(modKeys.detail(slug), (old: any) => {
+                if (!old) return old;
+                return {
+                    ...old,
+                    mod: { ...old.mod, downloadCount: (old.mod.downloadCount || 0) + 1 },
+                    versions: old.versions.map((v: any) =>
+                        v.versionId === selectedVersion.versionId
+                            ? { ...v, downloads: (v.downloads || 0) + 1 }
+                            : v
+                    ),
+                };
+            });
         } catch (error) {
             console.error('[ModDetailPage] Download failed:', error);
             setDownloadError(getUserFriendlyErrorMessage(error));

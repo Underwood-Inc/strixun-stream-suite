@@ -149,16 +149,41 @@ export function VariantVersionList({
             if (!version.fileName) {
                 throw new Error('Variant version file name not found');
             }
-            // UNIFIED SYSTEM: Variant versions are stored as ModVersion, use regular download
             await downloadVersion(
                 modSlug, 
                 version.variantVersionId, 
                 version.fileName
             );
             
-            // Refetch to update download counts
-            await queryClient.refetchQueries({ queryKey: modKeys.variantVersions(modSlug, variantId) });
-            await queryClient.refetchQueries({ queryKey: modKeys.detail(modSlug) });
+            // Optimistic UI: immediately increment counts in the cache
+            queryClient.setQueryData(modKeys.detail(modSlug), (old: any) => {
+                if (!old) return old;
+                return {
+                    ...old,
+                    mod: {
+                        ...old.mod,
+                        downloadCount: (old.mod.downloadCount || 0) + 1,
+                        variants: old.mod.variants?.map((v: any) =>
+                            v.variantId === variantId
+                                ? { ...v, totalDownloads: (v.totalDownloads || 0) + 1 }
+                                : v
+                        ),
+                    },
+                    versions: old.versions.map((v: any) =>
+                        v.versionId === version.variantVersionId
+                            ? { ...v, downloads: (v.downloads || 0) + 1 }
+                            : v
+                    ),
+                };
+            });
+            queryClient.setQueryData(modKeys.variantVersions(modSlug, variantId), (old: any) => {
+                if (!old) return old;
+                return old.map((v: any) =>
+                    v.variantVersionId === version.variantVersionId
+                        ? { ...v, downloads: (v.downloads || 0) + 1 }
+                        : v
+                );
+            });
         } catch (error: any) {
             console.error('[VariantVersionList] Download failed:', error);
             setDownloadError(error.message || 'Failed to download file');
