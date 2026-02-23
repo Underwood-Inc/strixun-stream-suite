@@ -13,6 +13,8 @@ import { getCorsHeadersRecord } from './utils/cors.js';
 import { handleModRoutes } from './router/mod-routes.js';
 import { handleAdminRoutes } from './router/admin-routes.js';
 import { handleR2Cleanup } from './handlers/admin/r2-cleanup.js';
+
+export { DownloadCounter } from './durable-objects/download-counter.js';
 // Worker version for deployment verification
 const WORKER_VERSION = '2.2.0';
 console.log(`[ModsAPI] Worker loaded: v${WORKER_VERSION}`);
@@ -294,6 +296,9 @@ export interface Env {
     
     // R2 Buckets
     MODS_R2: R2Bucket;
+    
+    // Durable Objects
+    DOWNLOAD_COUNTER: DurableObjectNamespace;
     
     // Service binding to otp-auth-service (for JWKS fetch; avoids same-zone 522)
     AUTH_SERVICE?: Fetcher;

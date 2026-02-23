@@ -685,6 +685,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // Normalized pathSegments = [slug, 'variants', variantId, 'versions', versionId, 'download']
         if (pathSegments.length === 6 && pathSegments[1] === 'variants' && pathSegments[3] === 'versions' && pathSegments[5] === 'download' && request.method === 'GET') {
             const slugOrModId = pathSegments[0];
+            const variantId = pathSegments[2];
             const versionId = pathSegments[4];
             
             // Resolve slug to modId
@@ -700,9 +701,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 }
             }
             
-            // Use standard version download handler (variant versions are just versions with variantId field)
+            // Use standard version download handler with variantId so the variant counter is also incremented
             const { handleDownloadVersion } = await import('../handlers/versions/download.js');
-            const response = await handleDownloadVersion(request, env, modId, versionId, auth);
+            const response = await handleDownloadVersion(request, env, modId, versionId, auth, variantId);
             // Downloads are public - no encryption required
             return { response, customerId: auth?.customerId || null };
         }

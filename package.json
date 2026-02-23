@@ -12,7 +12,7 @@
     "build:all": "turbo run build --filter=./packages/* --filter=./apps/* --filter=./serverless/*/app --filter=./serverless/*/dashboard --filter=.",
     "build:clean": "turbo run build --force",
     "dev": "pnpm build:packages && vite",
-    "dev:turbo": "turbo run dev --concurrency=26",
+    "dev:turbo": "turbo run dev --concurrency=27",
     "dev:ports": "node scripts/show-dev-ports.js",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",

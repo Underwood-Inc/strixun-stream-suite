@@ -8,7 +8,6 @@ import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import {
     getEntity,
-    putEntity,
 } from '@strixun/kv-entities';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
@@ -18,6 +17,7 @@ interface Env {
     MODS_ENCRYPTION_KEY?: string;
     ENVIRONMENT?: string;
     ALLOWED_ORIGINS?: string;
+    DOWNLOAD_COUNTER: DurableObjectNamespace;
     [key: string]: any;
 }
 
@@ -88,8 +88,10 @@ export async function handleDownloadVariant(
             return errorResponse(request, env, 500, 'Internal Server Error', 'File metadata not found');
         }
 
-        // Increment download counters (fire and forget)
-        incrementDownloads(env, mod, modId, variant, variantVersion).catch(console.error);
+        // Increment download counters via Durable Object (race-condition-free)
+        const counterId = env.DOWNLOAD_COUNTER.idFromName(modId);
+        const counter = env.DOWNLOAD_COUNTER.get(counterId);
+        (counter as any).increment(modId, variantVersion.versionId, variantId).catch(console.error);
 
         const corsHeaders = createCORSHeaders(request, { 
             credentials: true, 
@@ -113,25 +115,6 @@ export async function handleDownloadVariant(
             env.ENVIRONMENT === 'development' ? error.message : 'Failed to download variant file'
         );
     }
-}
-
-async function incrementDownloads(
-    env: Env,
-    mod: ModMetadata,
-    modId: string,
-    variant: any,
-    variantVersion: ModVersion
-): Promise<void> {
-    // Increment version downloads
-    variantVersion.downloads = (variantVersion.downloads || 0) + 1;
-    await putEntity(env.MODS_KV, 'mods', 'version', variantVersion.versionId, variantVersion);
-    
-    // Increment variant totalDownloads
-    variant.totalDownloads = (variant.totalDownloads || 0) + 1;
-    
-    // Increment mod downloadCount
-    mod.downloadCount = (mod.downloadCount || 0) + 1;
-    await putEntity(env.MODS_KV, 'mods', 'mod', modId, mod);
 }
 
 function errorResponse(request: Request, env: Env, status: number, title: string, detail: string): Response {
