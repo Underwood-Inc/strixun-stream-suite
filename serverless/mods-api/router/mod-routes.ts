@@ -701,9 +701,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 }
             }
             
-            // Use standard version download handler with variantId so the variant counter is also incremented
+            // Use standard version download handler (variant versions are just versions with variantId field)
             const { handleDownloadVersion } = await import('../handlers/versions/download.js');
-            const response = await handleDownloadVersion(request, env, modId, versionId, auth, variantId);
+            const response = await handleDownloadVersion(request, env, modId, versionId, auth);
             // Downloads are public - no encryption required
             return { response, customerId: auth?.customerId || null };
         }

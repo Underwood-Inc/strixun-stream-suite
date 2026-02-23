@@ -89,9 +89,13 @@ export async function handleDownloadVariant(
         }
 
         // Increment download counters via Durable Object (race-condition-free)
-        const counterId = env.DOWNLOAD_COUNTER.idFromName(modId);
-        const counter = env.DOWNLOAD_COUNTER.get(counterId);
-        (counter as any).increment(modId, variantVersion.versionId, variantId).catch(console.error);
+        try {
+            const counterId = env.DOWNLOAD_COUNTER.idFromName(modId);
+            const counter = env.DOWNLOAD_COUNTER.get(counterId);
+            await (counter as any).increment(modId, variantVersion.versionId, variantId);
+        } catch (counterErr) {
+            console.error('[VariantDownload] Counter increment failed:', counterErr);
+        }
 
         const corsHeaders = createCORSHeaders(request, { 
             credentials: true, 

@@ -27,7 +27,6 @@ export async function handleDownloadVersion(
     modId: string,
     versionId: string,
     auth: { customerId: string } | null,
-    variantId?: string | null,
 ): Promise<Response> {
     try {
         const mod = await getEntity<ModMetadata>(env.MODS_KV, 'mods', 'mod', modId);
@@ -81,9 +80,14 @@ export async function handleDownloadVersion(
         }
 
         // Increment download counters via Durable Object (race-condition-free)
-        const counterId = env.DOWNLOAD_COUNTER.idFromName(modId);
-        const counter = env.DOWNLOAD_COUNTER.get(counterId);
-        (counter as any).increment(modId, versionId, variantId ?? null).catch(console.error);
+        // version.variantId is the source of truth for whether this is a variant download
+        try {
+            const counterId = env.DOWNLOAD_COUNTER.idFromName(modId);
+            const counter = env.DOWNLOAD_COUNTER.get(counterId);
+            await (counter as any).increment(modId, versionId, version.variantId || null);
+        } catch (counterErr) {
+            console.error('[VersionDownload] Counter increment failed:', counterErr);
+        }
 
         // Build exposed headers list - include hash headers if available
         const exposedHeaders = ['Content-Disposition', 'Content-Type', 'Content-Length'];
