@@ -459,6 +459,11 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId, sel
                                 : v
                         ),
                     },
+                    versions: old.versions.map((v: any) =>
+                        v.versionId === variant.currentVersionId
+                            ? { ...v, downloads: (v.downloads || 0) + 1 }
+                            : v
+                    ),
                 };
             });
         } catch (error: any) {
