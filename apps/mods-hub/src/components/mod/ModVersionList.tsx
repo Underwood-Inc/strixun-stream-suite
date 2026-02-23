@@ -459,13 +459,22 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId, sel
                                 : v
                         ),
                     },
-                    versions: old.versions.map((v: any) =>
-                        v.versionId === variant.currentVersionId
-                            ? { ...v, downloads: (v.downloads || 0) + 1 }
-                            : v
-                    ),
                 };
             });
+            // Also bump the variant version's own download count in the variant-versions cache
+            if (variant.currentVersionId) {
+                queryClient.setQueryData(modKeys.variantVersions(modSlug, variant.variantId), (old: any) => {
+                    if (!old?.versions) return old;
+                    return {
+                        ...old,
+                        versions: old.versions.map((v: any) =>
+                            v.variantVersionId === variant.currentVersionId
+                                ? { ...v, downloads: (v.downloads || 0) + 1 }
+                                : v
+                        ),
+                    };
+                });
+            }
         } catch (error: any) {
             console.error('[ModVersionList] Variant download failed:', error);
             setDownloadError(error.message || 'Failed to download variant');

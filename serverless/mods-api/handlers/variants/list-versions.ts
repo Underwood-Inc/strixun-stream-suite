@@ -31,7 +31,7 @@ export async function handleListVariantVersions(
         if (versionIds.length === 0) {
             return new Response(JSON.stringify({ versions: [] }), {
                 status: 200,
-                headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
+                headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...corsHeaders(request, env) },
             });
         }
 
@@ -40,7 +40,7 @@ export async function handleListVariantVersions(
 
         return new Response(JSON.stringify({ versions }), {
             status: 200,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders(request, env) },
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...corsHeaders(request, env) },
         });
     } catch (error) {
         console.error('[ListVariantVersions] Error:', error);

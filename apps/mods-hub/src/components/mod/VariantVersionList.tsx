@@ -169,20 +169,18 @@ export function VariantVersionList({
                                 : v
                         ),
                     },
+                };
+            });
+            queryClient.setQueryData(modKeys.variantVersions(modSlug, variantId), (old: any) => {
+                if (!old?.versions) return old;
+                return {
+                    ...old,
                     versions: old.versions.map((v: any) =>
-                        v.versionId === version.variantVersionId
+                        v.variantVersionId === version.variantVersionId
                             ? { ...v, downloads: (v.downloads || 0) + 1 }
                             : v
                     ),
                 };
-            });
-            queryClient.setQueryData(modKeys.variantVersions(modSlug, variantId), (old: any) => {
-                if (!old) return old;
-                return old.map((v: any) =>
-                    v.variantVersionId === version.variantVersionId
-                        ? { ...v, downloads: (v.downloads || 0) + 1 }
-                        : v
-                );
             });
         } catch (error: any) {
             console.error('[VariantVersionList] Download failed:', error);

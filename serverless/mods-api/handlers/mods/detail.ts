@@ -92,6 +92,7 @@ export async function handleGetModDetail(
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
+                'Cache-Control': 'no-store',
                 ...corsHeaders(request, env),
             },
         });
