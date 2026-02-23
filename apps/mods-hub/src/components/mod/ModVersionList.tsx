@@ -422,7 +422,7 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId, sel
         }
     };
 
-    const handleVariantDownload = async (variant: ModVariant) => {
+    const handleVariantDownload = async (variant: ModVariant, parentVersionId: string) => {
         // SECURITY: Prevent unauthenticated download attempts
         if (!isAuthenticated) {
             setDownloadError('Please log in to download files');
@@ -459,9 +459,13 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId, sel
                                 : v
                         ),
                     },
+                    versions: old.versions.map((v: any) =>
+                        v.versionId === parentVersionId
+                            ? { ...v, downloads: (v.downloads || 0) + 1 }
+                            : v
+                    ),
                 };
             });
-            // Also bump the variant version's own download count in the variant-versions cache
             if (variant.currentVersionId) {
                 queryClient.setQueryData(modKeys.variantVersions(modSlug, variant.variantId), (old: any) => {
                     if (!old?.versions) return old;
@@ -654,7 +658,7 @@ export function ModVersionList({ modSlug, versions, variants = [], authorId, sel
                                             <VariantDownloadButton
                                                 onClick={(e) => {
                                                     celebrateClick(e.currentTarget);
-                                                    handleVariantDownload(variant);
+                                                    handleVariantDownload(variant, version.versionId);
                                                 }}
                                                 disabled={downloadingVariants.has(variant.variantId) || !variant.variantId || !isAuthenticated}
                                                 title={!isAuthenticated ? 'Please log in to download' : undefined}

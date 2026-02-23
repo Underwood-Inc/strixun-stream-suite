@@ -108,6 +108,7 @@ interface VariantVersionListProps {
     modSlug: string;
     variantId: string;
     variantName: string;
+    parentVersionId: string;
     versions: VariantVersion[];
     canManage?: boolean;
     onEdit?: (version: VariantVersion) => void;
@@ -118,6 +119,7 @@ export function VariantVersionList({
     modSlug,
     variantId,
     variantName,
+    parentVersionId,
     versions,
     canManage = false,
     onEdit,
@@ -169,6 +171,11 @@ export function VariantVersionList({
                                 : v
                         ),
                     },
+                    versions: old.versions.map((v: any) =>
+                        v.versionId === parentVersionId
+                            ? { ...v, downloads: (v.downloads || 0) + 1 }
+                            : v
+                    ),
                 };
             });
             queryClient.setQueryData(modKeys.variantVersions(modSlug, variantId), (old: any) => {
