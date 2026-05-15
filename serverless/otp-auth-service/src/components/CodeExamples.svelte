@@ -1,6 +1,5 @@
 <script lang="ts">
   import MultiFileViewer from '@shared-components/svelte/MultiFileViewer.svelte';
-  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
   import { 
     reactMultiFileExample,
     svelteMultiFileExample,
@@ -21,7 +20,7 @@
   </p>
   
   <div class="info-box">
-    <strong>◆ API Key Required:</strong> All integrations require an API key. <StatusFlair status="in-testing"><strong>Free tier available!</strong></StatusFlair> Get your API key from the <a href="/dashboard">dashboard</a> after signing up. Includes free tier with 1,000 OTP requests/month.
+    <strong>◆ API Key Required:</strong> All integrations require an API key. <strong>Free tier available!</strong> Get your API key from the <a href="/dashboard">dashboard</a> after signing up. Includes free tier with 1,000 OTP requests/month.
   </div>
   
   <div class="code-tabs">

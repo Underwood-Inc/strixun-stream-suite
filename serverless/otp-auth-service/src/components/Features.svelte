@@ -1,8 +1,4 @@
 <script lang="ts">
-  import Tooltip from '@shared-components/svelte/Tooltip.svelte';
-  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
-  import InTestingTooltip from './InTestingTooltip.svelte';
-  
   export let dashboardLink: string = '/dashboard';
 </script>
 
@@ -25,24 +21,10 @@
       <h3><span class="feature-icon">◐</span> True Single Sign-On</h3>
       <p>Login once, authenticated everywhere. HttpOnly cookies provide seamless SSO across all subdomains with enterprise-grade XSS protection.</p>
     </div>
-    <Tooltip 
-      component={InTestingTooltip} 
-      componentProps={{
-        featureName: "Multi-Tenant Ready",
-        icon: "▣",
-        description: "This feature is currently being tested and refined. Some functionality may be limited or subject to change.",
-        additionalInfo: "Expected stable release: Q2 2026"
-      }}
-      level="info" 
-      position="top"
-    >
-      <StatusFlair status="in-testing">
-        <div class="feature-card">
-          <h3><span class="feature-icon">▣</span> Multi-Tenant Ready</h3>
-          <p>Built for SaaS applications. Complete customer isolation, per-tenant rate limiting, and usage analytics.</p>
-        </div>
-      </StatusFlair>
-    </Tooltip>
+    <div class="feature-card">
+      <h3><span class="feature-icon">▣</span> Multi-Tenant Ready</h3>
+      <p>Built for SaaS applications. Complete customer isolation, per-tenant rate limiting, and usage analytics.</p>
+    </div>
     <div class="feature-card">
       <h3><span class="feature-icon">$</span> Cost Effective</h3>
       <p>Pay only for what you use. No infrastructure to manage, no servers to maintain.</p>
@@ -55,27 +37,13 @@
       <h3><span class="feature-icon">▣</span> Open Source & Self-Hostable</h3>
       <p>Completely open-source on GitHub. Self-host with unlimited rate limits or wait for subscription tiers. </p>
     </div>
-    <Tooltip 
-      component={InTestingTooltip} 
-      componentProps={{
-        featureName: "Developer Dashboard",
-        icon: "◈",
-        description: "The dashboard is functional but still being refined. Advanced analytics and custom reporting features coming soon.",
-        additionalInfo: "Current features: API keys, audit logs, basic analytics"
-      }}
-      level="info" 
-      position="top"
-    >
-      <StatusFlair status="in-testing">
-        <div class="feature-card">
-          <h3><span class="feature-icon">◈</span> Developer Dashboard</h3>
-          <p>Manage API keys, view audit logs, monitor analytics, and track usage—all from a beautiful, intuitive dashboard.</p>
-          <div class="feature-cta">
-            <a href={dashboardLink} class="btn btn-secondary">Open Dashboard </a>
-          </div>
-        </div>
-      </StatusFlair>
-    </Tooltip>
+    <div class="feature-card">
+      <h3><span class="feature-icon">◈</span> Developer Dashboard</h3>
+      <p>Manage API keys, view audit logs, monitor analytics, and track usage—all from a beautiful, intuitive dashboard.</p>
+      <div class="feature-cta">
+        <a href={dashboardLink} class="btn btn-secondary">Open Dashboard </a>
+      </div>
+    </div>
   </div>
 </section>
 

@@ -1,6 +1,7 @@
 <script lang="ts">
-  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
+  import { StatusFlair } from '@strixun/status-flair';
   import Tooltip from '@shared-components/svelte/Tooltip.svelte';
+  import FreeTierLiveTooltip from './FreeTierLiveTooltip.svelte';
   import InDevelopmentTooltip from './InDevelopmentTooltip.svelte';
 </script>
 
@@ -11,21 +12,14 @@
   </p>
   
   <div class="dev-notice">
-    <strong>▸ Note:</strong> Paid subscription tiers are currently in development. 
-    <Tooltip 
-      component={InDevelopmentTooltip}
-      componentProps={{
-        featureName: "Free Tier Status",
-        icon: "⚠",
-        description: "The free tier is currently under active development and testing. Full functionality is not yet available.",
-        additionalInfo: "Expected to be production-ready: Q3 2026"
-      }}
-      level="warning"
+    <strong>▸ Note:</strong> Paid subscription tiers are currently in development.
+    <Tooltip
+      component={FreeTierLiveTooltip}
+      componentProps={{ headline: 'Free tier', icon: '✓' }}
+      level="info"
       position="top"
     >
-      <StatusFlair status="in-testing">
-        <span class="testing-text">The <strong>Free tier is fully functional</strong> and ready to use now!</span>
-      </StatusFlair>
+      <span class="free-tier-notice-link">The <strong>Free tier is fully functional</strong> and ready to use now!</span>
     </Tooltip>
   </div>
 
@@ -123,7 +117,7 @@
               <li>✓ SSO support</li>
               <li>✓ SLA 99.9%</li>
             </ul>
-            <button class="btn btn-primary" disabled>Coming Soon</button>
+            <button class="btn btn-secondary" disabled>Coming Soon</button>
           </div>
         </div>
       </StatusFlair>
@@ -300,12 +294,13 @@
     color: #000;
   }
 
-  .dev-notice .testing-text {
+  .dev-notice .free-tier-notice-link {
     display: inline-block;
-    text-decoration: underline orange 2px;
-    border: dashed solid orange;
+    text-decoration: underline;
+    text-decoration-color: #c77b00;
+    text-underline-offset: 3px;
     border-radius: var(--radius-sm);
-    background: transparent;
+    cursor: help;
   }
 
   .pricing-card.disabled {
