@@ -1,6 +1,5 @@
 <script lang="ts">
   import Tooltip from '@shared-components/svelte/Tooltip.svelte';
-  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
 </script>
 
 <section class="security" id="security">
@@ -289,9 +288,7 @@
           maxWidth="450px"
           maxHeight="400px"
         >
-          <StatusFlair status="done">
-            <h3 style="cursor: help; text-decoration: underline dotted;">🌐 OIDC-Compliant Token Issuance</h3>
-          </StatusFlair>
+          <h3 style="cursor: help; text-decoration: underline dotted;">🌐 OIDC-Compliant Token Issuance</h3>
         </Tooltip>
         <p><strong>Complete:</strong> OIDC-compliant RS256-signed access tokens and ID tokens, JWKS-based verification, Discovery endpoint, scope-based UserInfo, and token introspection. API keys serve as OIDC clients (no redirect-based authorization code flow needed — OTP is the auth method).</p>
       </div>

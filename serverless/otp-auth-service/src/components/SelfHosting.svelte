@@ -1,10 +1,10 @@
 <script lang="ts">
-  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
+  import { StatusFlair } from '@strixun/status-flair';
 </script>
 
 <section class="self-hosting" id="self-hosting">
   <div class="self-hosting-content">
-    <h2>Outgrown the <StatusFlair status="in-testing">Free Tier</StatusFlair>? We've Got You Covered </h2>
+    <h2>Outgrown the Free Tier? We've Got You Covered </h2>
     <p class="self-hosting-subtitle">
       Great news! This application is completely open-source on GitHub, so you can self-host with unlimited rate limits. 
       Or sit tight—<StatusFlair status="wip">subscription tiers with enhanced limits</StatusFlair> are coming soon.
@@ -81,11 +81,9 @@
         </svg>
         Star on GitHub
       </a>
-      <StatusFlair status="in-testing">
-        <a href="#code-examples" class="btn btn-secondary">
-          Continue with Free Tier
-        </a>
-      </StatusFlair>
+      <a href="#code-examples" class="btn btn-secondary">
+        Continue with Free Tier
+      </a>
     </div>
   </div>
 </section>

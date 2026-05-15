@@ -1,35 +1,20 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
-  import Tooltip from '@shared-components/svelte/Tooltip.svelte';
 
   export let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' | 'roles-permissions' = 'dashboard';
   export let userRoles: string[] = [];
 
   const dispatch = createEventDispatcher();
 
-  // Status tooltip content - rich HTML descriptions
-  const statusTooltips: Record<string, { content: string; level: 'info' | 'warning' }> = {
-    'in-testing': {
-      content: `<strong>In Testing</strong><br/><br/>This feature is currently undergoing testing and may have bugs or incomplete functionality. Your feedback is appreciated!`,
-      level: 'info'
-    },
-    'wip': {
-      content: `<strong>Work In Progress</strong><br/><br/>This feature is still being developed. Some functionality may not work as expected or may change without notice.`,
-      level: 'warning'
-    }
-  };
-
   const allPages = [
-    { id: 'dashboard', label: 'Dashboard', status: null as 'wip' | 'in-testing' | null, requiresRole: null },
-    { id: 'api-keys', label: 'API Keys', status: null as 'wip' | 'in-testing' | null, requiresRole: null },
-    { id: 'audit-logs', label: 'Audit Logs', status: 'in-testing' as 'wip' | 'in-testing' | null, requiresRole: null },
-    { id: 'analytics', label: 'Analytics', status: 'in-testing' as 'wip' | 'in-testing' | null, requiresRole: null },
-    { id: 'roles-permissions', label: 'Roles & Permissions', status: null as 'wip' | 'in-testing' | null, requiresRole: 'super-admin' }
+    { id: 'dashboard' as const, label: 'Dashboard', requiresRole: null as string | null },
+    { id: 'api-keys' as const, label: 'API Keys', requiresRole: null },
+    { id: 'audit-logs' as const, label: 'Audit Logs', requiresRole: null },
+    { id: 'analytics' as const, label: 'Analytics', requiresRole: null },
+    { id: 'roles-permissions' as const, label: 'Roles & Permissions', requiresRole: 'super-admin' as const }
   ] as const;
 
-  // Filter pages based on user roles
-  $: pages = allPages.filter(page => {
+  $: pages = allPages.filter((page) => {
     if (!page.requiresRole) return true;
     return userRoles.includes(page.requiresRole);
   });
@@ -43,33 +28,13 @@
   <ul class="app-nav__list">
     {#each pages as page}
       <li class="app-nav__item">
-        {#if page.status && statusTooltips[page.status]}
-          <Tooltip 
-            content={statusTooltips[page.status].content}
-            level={statusTooltips[page.status].level}
-            position="bottom"
-          >
-            <StatusFlair status={page.status}>
-              <button
-                class="app-nav__link"
-                class:active={currentPage === page.id}
-                onclick={() => handleClick(page.id)}
-              >
-                {page.label}
-              </button>
-            </StatusFlair>
-          </Tooltip>
-        {:else}
-          <StatusFlair status={page.status}>
-            <button
-              class="app-nav__link"
-              class:active={currentPage === page.id}
-              onclick={() => handleClick(page.id)}
-            >
-              {page.label}
-            </button>
-          </StatusFlair>
-        {/if}
+        <button
+          class="app-nav__link"
+          class:active={currentPage === page.id}
+          onclick={() => handleClick(page.id)}
+        >
+          {page.label}
+        </button>
       </li>
     {/each}
   </ul>
@@ -155,4 +120,3 @@
     }
   }
 </style>
-

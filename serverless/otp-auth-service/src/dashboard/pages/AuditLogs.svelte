@@ -3,7 +3,6 @@
   import { apiClient } from '$dashboard/lib/api-client';
   import type { Customer, AuditLog } from '$dashboard/lib/types';
   import Card from '$dashboard/components/Card.svelte';
-  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
   import Pagination from '@shared-components/svelte/Pagination.svelte';
 
   export let customer: Customer | null = null;
@@ -67,8 +66,7 @@
 <div class="audit-logs">
   <h1 class="audit-logs__title">Audit Logs</h1>
 
-  <StatusFlair status="in-testing">
-    <Card>
+  <Card>
     <h2 class="audit-logs__section-title">Filters</h2>
     <div class="audit-logs__filters">
       <div class="audit-logs__filter">
@@ -155,7 +153,6 @@
       />
     {/if}
     </Card>
-  </StatusFlair>
 </div>
 
 <style>

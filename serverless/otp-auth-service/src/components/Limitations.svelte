@@ -1,6 +1,5 @@
 <script lang="ts">
-  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
-  import Tooltip from '@shared-components/svelte/Tooltip.svelte';
+  import { StatusFlair } from '@strixun/status-flair';
 </script>
 
 <section class="limitations">
@@ -28,14 +27,7 @@
         <p>OTP delivery depends on email provider reliability. Check spam folders if code doesn't arrive.</p>
       </li>
       <li>
-        <Tooltip 
-          content="Multi-tenancy is currently in testing. Features are functional but undergoing validation before general release."
-          position="top"
-        >
-          <StatusFlair status="in-testing">
         <strong>Multi-Tenancy</strong>
-          </StatusFlair>
-        </Tooltip>
         <p>API key authentication required for multi-tenant features. Contact us for enterprise setup.</p>
       </li>
       <li>

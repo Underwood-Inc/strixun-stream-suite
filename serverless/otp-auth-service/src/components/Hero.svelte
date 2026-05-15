@@ -1,6 +1,4 @@
 <script lang="ts">
-  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
-  
   export let title: string = 'Passwordless Authentication Made Simple';
   export let description: string = 'Secure, scalable OTP authentication API built for modern applications. No passwords, no complexity—just email verification that works.';
   export let dashboardLink: string = '/dashboard';
@@ -12,9 +10,7 @@
   <h1>{title}</h1>
   <p>
     {description}
-    <StatusFlair status="in-testing">
-      <strong style="color: var(--accent);">Free tier available. Start with 1,000 OTP requests/month.</strong>
-    </StatusFlair>
+    <strong style="color: var(--accent);">Free tier available. Start with 1,000 OTP requests/month.</strong>
   </p>
   <div class="hero-cta">
     <a href={dashboardLink} class="btn btn-primary">Get Started Free</a>
