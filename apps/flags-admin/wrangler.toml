@@ -1,6 +1,6 @@
 # Cloudflare Pages — flags-admin SPA at https://flags.idling.app
 # Deploy from this directory: pnpm run deploy:prod
-# Production deploy: use `pnpm run deploy:prod` — pages-deploy.mjs matches Production branch (PATCH to `main` when API creds set).
+# Production deploy: use `pnpm run deploy:prod` — pages-deploy.mjs matches Production branch (PATCH to `flags-admin` when API creds set).
 # Custom domains are not configurable here; bind flags.idling.app via CI (Pages API) or dashboard once.
 
 name = "flags-admin"

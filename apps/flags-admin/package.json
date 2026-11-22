@@ -8,7 +8,7 @@
     "prebuild": "pnpm --filter @strixun/auth-store build && pnpm --filter @strixun/otp-login build",
     "build": "vite build",
     "preview": "vite preview",
-    "pages:ensure-project": "wrangler pages project create flags-admin --production-branch main || exit 0",
+    "pages:ensure-project": "wrangler pages project create flags-admin --production-branch flags-admin || exit 0",
     "pages:patch-production-branch": "node scripts/patch-pages-production-branch.mjs",
     "pages:deploy": "node scripts/pages-deploy.mjs",
     "deploy:prod": "pnpm run build && pnpm run pages:ensure-project && pnpm run pages:deploy"

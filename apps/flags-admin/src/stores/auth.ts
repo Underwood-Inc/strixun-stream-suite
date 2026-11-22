@@ -16,6 +16,8 @@ export function getFlagsAdminAuthApiUrl(): string {
   return '/auth-api';
 }
 
-export const useAuthStore = createAuthStore({ authApiUrl: getFlagsAdminAuthApiUrl() });
+export const flagsAdminAuthConfig = { authApiUrl: getFlagsAdminAuthApiUrl() } as const;
+
+export const useAuthStore = createAuthStore(flagsAdminAuthConfig);
 
 export type { AuthenticatedCustomer, AuthState, AuthStore } from '@strixun/auth-store/core';

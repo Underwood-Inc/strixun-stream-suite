@@ -10,7 +10,7 @@ import {
 } from './pages-production-branch.mjs';
 
 const project = 'flags-admin';
-const targetBranch = process.env.PAGES_PRODUCTION_BRANCH ?? 'main';
+const targetBranch = process.env.PAGES_PRODUCTION_BRANCH ?? 'flags-admin';
 const appRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const assets = '../../dist/flags-admin';
 

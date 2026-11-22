@@ -5,7 +5,7 @@ import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
 import '@strixun/otp-login/dist/react/otp-login.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getFlagsAdminAuthApiUrl, useAuthStore } from './stores/auth';
+import { flagsAdminAuthConfig, getFlagsAdminAuthApiUrl, useAuthStore } from './stores/auth';
 
 function flagsBaseUrl(): string {
   if (import.meta.env.VITE_FLAGS_API_URL) return String(import.meta.env.VITE_FLAGS_API_URL);
@@ -34,7 +34,7 @@ export default function App() {
         defaultHeaders: { 'Content-Type': 'application/json' },
         auth: {
           onTokenExpired: async () => {
-            const ok = await refreshAuth();
+            const ok = await refreshAuth(flagsAdminAuthConfig);
             if (!ok) {
               await useAuthStore.getState().logout();
             }

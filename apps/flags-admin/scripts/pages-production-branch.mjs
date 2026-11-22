@@ -2,7 +2,7 @@
  * Pages Direct Upload: sync and read production_branch (Wrangler has no project update).
  */
 const project = 'flags-admin';
-const targetBranch = process.env.PAGES_PRODUCTION_BRANCH ?? 'main';
+const targetBranch = process.env.PAGES_PRODUCTION_BRANCH ?? 'flags-admin';
 
 export function pagesProjectApiUrl(accountId) {
   return `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${project}`;

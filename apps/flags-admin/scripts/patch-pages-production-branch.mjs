@@ -5,7 +5,7 @@
 import { patchProductionBranch } from './pages-production-branch.mjs';
 
 const project = 'flags-admin';
-const branch = process.env.PAGES_PRODUCTION_BRANCH ?? 'main';
+const branch = process.env.PAGES_PRODUCTION_BRANCH ?? 'flags-admin';
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 const token = process.env.CLOUDFLARE_API_TOKEN;
 
