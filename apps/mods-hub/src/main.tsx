@@ -2,9 +2,12 @@ import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
+import { installFeatureFlagsFetchHook } from '@strixun/api-framework/client';
 import { App } from './App';
 import { GlobalStyle } from './theme';
 import './app.scss';
+
+installFeatureFlagsFetchHook();
 
 // Create a query client with sane defaults to prevent infinite refetch loops
 const queryClient = new QueryClient({

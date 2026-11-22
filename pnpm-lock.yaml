@@ -176,6 +176,9 @@ importers:
 
   apps/access-hub:
     dependencies:
+      '@strixun/api-framework':
+        specifier: workspace:*
+        version: link:../../packages/api-framework
       '@strixun/shared-components':
         specifier: workspace:*
         version: link:../../packages/shared-components
@@ -228,6 +231,9 @@ importers:
 
   apps/chat-hub:
     dependencies:
+      '@strixun/api-framework':
+        specifier: workspace:*
+        version: link:../../packages/api-framework
       '@strixun/auth-store':
         specifier: workspace:*
         version: link:../../packages/auth-store

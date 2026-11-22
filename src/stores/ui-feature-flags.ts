@@ -3,11 +3,11 @@
  */
 import { writable, get } from "svelte/store";
 import { FEATURE_FLAG_CANON_ROWS, type EvaluatedFeatureFlagsEnvelope } from "@strixun/feature-flags";
+import { installFeatureFlagsFetchHook as installGlobalFeatureFlagsFetchHook } from "@strixun/api-framework/client";
 
 export type UiFlagSnapshot = Record<string, boolean | number | null>;
 
 let lastMergedSnapshotId: string | null = null;
-let fetchHookInstalled = false;
 
 const defaults = (): UiFlagSnapshot => {
   const snap: UiFlagSnapshot = {};
@@ -84,57 +84,9 @@ export async function refreshUiFeatureFlags(): Promise<void> {
 }
 
 export function installFeatureFlagsFetchHook(): void {
-  if (fetchHookInstalled || typeof window === "undefined" || typeof window.fetch !== "function") {
-    return;
-  }
-  fetchHookInstalled = true;
-
   (globalThis as { __strixunMergeFeatureFlags?: typeof mergeFeatureFlagsEnvelope }).__strixunMergeFeatureFlags =
     mergeFeatureFlagsEnvelope;
-  const originalFetch = window.fetch.bind(window);
-
-  window.fetch = async (...args: Parameters<typeof fetch>): Promise<Response> => {
-    const response = await originalFetch(...args);
-  void (async () => {
-      try {
-        const snapshotId =
-          response.headers.get("X-Feature-Flags-Revision") ??
-          response.headers.get("X-Feature-Flags-Snapshot-Id");
-        if (!snapshotId) return;
-
-        const contentType = response.headers.get("Content-Type") ?? "";
-        let envelope: EvaluatedFeatureFlagsEnvelope | null = null;
-
-        if (contentType.includes("json")) {
-          const clone = response.clone();
-          const data = await clone.json();
-          const { parseFeatureFlagsEnvelope } = await import("@strixun/api-framework/client");
-          envelope = parseFeatureFlagsEnvelope(response.headers, data);
-        }
-
-        if (!envelope) {
-          const flagsJson = response.headers.get("X-Feature-Flags");
-          if (flagsJson) {
-            const flags = JSON.parse(flagsJson) as EvaluatedFeatureFlagsEnvelope["flags"];
-            envelope = {
-              snapshotId,
-              product: "stream-suite",
-              environment: "production",
-              catalogRevision: "",
-              evaluatedAt: new Date().toISOString(),
-              flags,
-            };
-          }
-        }
-
-        if (envelope) mergeFeatureFlagsEnvelope(envelope);
-      } catch {
-        // non-blocking
-      }
-    })();
-
-    return response;
-  };
+  installGlobalFeatureFlagsFetchHook();
 }
 
 export function isRouteEnabled(path: string, flags = get(uiFlags)): boolean {

@@ -46,5 +46,7 @@ export {
   FEATURE_FLAGS_JSON_HEADER,
 } from './feature-flags-response';
 
+export { installFeatureFlagsFetchHook } from './feature-flags-fetch-hook';
+
 export type { EvaluatedFeatureFlagsEnvelope, FlagValueMap } from './feature-flags-response';
 
