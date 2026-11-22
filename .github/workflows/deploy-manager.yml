@@ -1964,6 +1964,7 @@ jobs:
           pnpm --filter "@strixun/oidc-jwt" run build
           pnpm --filter "@strixun/api-framework" run build
           pnpm --filter "@strixun/auth-store" run build
+          pnpm --filter "@strixun/feature-flags" run build
           pnpm --filter "@strixun/otp-login" run build:react
 
       - name: Build Svelte app
