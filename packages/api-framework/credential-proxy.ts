@@ -14,6 +14,8 @@ const CREDENTIAL_HEADERS = new Set(['cookie', 'authorization', 'content-type', '
 export interface CredentialProxyOptions {
   /** Forward Set-Cookie headers from upstream (required for auth/login/refresh) */
   forwardSetCookie?: boolean;
+  /** Use Worker service binding fetch (avoids same-zone 522 to auth.idling.app) */
+  fetch?: typeof fetch;
 }
 
 /**
@@ -28,7 +30,7 @@ export async function proxyRequestWithCredentials(
   targetUrl: string,
   options: CredentialProxyOptions = {}
 ): Promise<Response> {
-  const { forwardSetCookie = false } = options;
+  const { forwardSetCookie = false, fetch: fetchImpl = fetch } = options;
 
   const headers = new Headers();
   let hasCookie = false;
@@ -39,7 +41,7 @@ export async function proxyRequestWithCredentials(
     }
   });
 
-  const response = await fetch(targetUrl, {
+  const response = await fetchImpl(targetUrl, {
     method: request.method,
     headers,
     body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,

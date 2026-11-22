@@ -13,8 +13,14 @@ import { handleOtpCoreScript } from '../handlers/otp-core-script.js';
 import { handleAppAssets } from '../handlers/app-assets.js';
 import { handleGetDisplayName } from '../handlers/display-name.js';
 
+interface Fetcher {
+  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+}
+
 interface Env {
   ENVIRONMENT?: string;
+  AUTH_SERVICE?: Fetcher;
+  AUTH_API_URL?: string;
   [key: string]: unknown;
 }
 
@@ -74,7 +80,11 @@ export function createRouter() {
         const subpath = path.replace(/^\/auth-api\/?/, '');
         const authBase = (env.AUTH_API_URL as string | undefined) ?? 'https://auth.idling.app';
         const targetUrl = `${String(authBase).replace(/\/+$/, '')}/${subpath}${url.search}`;
-        return proxyRequestWithCredentials(request, targetUrl, { forwardSetCookie: true });
+        const authFetch = env.AUTH_SERVICE ? env.AUTH_SERVICE.fetch.bind(env.AUTH_SERVICE) : undefined;
+        return proxyRequestWithCredentials(request, targetUrl, {
+          forwardSetCookie: true,
+          fetch: authFetch,
+        });
       }
 
       // Serve ads.txt for Google AdSense verification (MUST be publicly accessible)
