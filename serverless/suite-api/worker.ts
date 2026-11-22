@@ -8,6 +8,7 @@
  */
 
 import type { ExecutionContext } from '@strixun/types';
+import { attachFeatureFlagsToResponse } from '@strixun/api-framework';
 import { getCorsHeaders } from './utils/cors.js';
 import { route } from './router';
 
@@ -16,6 +17,7 @@ import { route } from './router';
  */
 interface Env {
   SUITE_CACHE: KVNamespace;
+  FLAGS_DB?: D1Database;
   AUTH_SERVICE?: Fetcher;
   JWT_SECRET?: string;
   ALLOWED_ORIGINS?: string;
@@ -62,6 +64,10 @@ export default {
       ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE!.fetch(url) }
       : env;
     const response = await route(request, envForRequest);
-    return ensureCORSHeaders(response, corsHeaders);
+    const withCors = ensureCORSHeaders(response, corsHeaders);
+  return attachFeatureFlagsToResponse(request, withCors, envForRequest, {
+      product: 'stream-suite',
+      includeAnonymous: true,
+    });
   },
 };

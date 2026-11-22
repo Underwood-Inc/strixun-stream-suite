@@ -12,6 +12,8 @@ declare module '*.html' {
 }
 
 export interface Env {
+  FLAGS_DB?: D1Database;
+
   // KV Namespaces
   STREAMKIT_KV: KVNamespace;
   /** Service binding to otp-auth-service (for JWKS fetch; avoids same-zone 522) */

@@ -5,7 +5,7 @@
  */
 
 import { navigateTo, restorePage } from '../stores/navigation';
-import { refreshUiFeatureFlags } from '../stores/ui-feature-flags';
+import { bootstrapUiFeatureFlags } from '../stores/ui-feature-flags';
 import { setPhase, setSubstatus, setReady, setError } from '../stores/initialization';
 import * as App from './app';
 import { Layouts } from './layouts';
@@ -218,7 +218,7 @@ export async function initializeApp(): Promise<void> {
       addLogEntry('Customer authenticated - encryption enabled', 'success', 'AUTH');
     }
 
-    await refreshUiFeatureFlags();
+    bootstrapUiFeatureFlags();
     
     // Initialize modules
     setPhase('modules', 'Initializing modules...', 'Loading application components');
@@ -507,7 +507,7 @@ export async function completeAppInitialization(): Promise<void> {
  */
 
 export async function completeInitializationAfterAuth(): Promise<void> {
-  await refreshUiFeatureFlags();
+  bootstrapUiFeatureFlags();
   const { addLogEntry } = await import('../stores/activity-log');
   try {
     addLogEntry('Completing initialization after authentication...', 'info', 'AUTH');

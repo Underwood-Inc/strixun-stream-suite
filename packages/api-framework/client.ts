@@ -36,3 +36,12 @@ export {
   decryptWithJWT,
 } from './encryption/index';
 
+export {
+  parseFeatureFlagsEnvelope,
+  FEATURE_FLAGS_SNAPSHOT_HEADER,
+  FEATURE_FLAGS_PRODUCT_HEADER,
+  FEATURE_FLAGS_JSON_HEADER,
+} from './feature-flags-response';
+
+export type { EvaluatedFeatureFlagsEnvelope, FlagValueMap } from './feature-flags-response';
+

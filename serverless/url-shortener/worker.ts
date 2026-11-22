@@ -8,6 +8,7 @@
  */
 
 import { initializeServiceTypes, type ExecutionContext } from '@strixun/types';
+import { attachFeatureFlagsToResponse } from '@strixun/api-framework';
 import { getCorsHeaders } from './utils/cors.js';
 import { createRouter } from './router/routes.js';
 
@@ -38,6 +39,10 @@ export default {
     const envForRequest = env.AUTH_SERVICE
       ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE.fetch(url) }
       : env;
-    return handleRequest(request, envForRequest, ctx);
+    const response = await handleRequest(request, envForRequest, ctx);
+    return attachFeatureFlagsToResponse(request, response, envForRequest, {
+      product: 'stream-suite',
+      includeAnonymous: true,
+    });
   },
 };

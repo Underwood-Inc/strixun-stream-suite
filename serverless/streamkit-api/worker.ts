@@ -9,6 +9,7 @@
  */
 
 import type { ExecutionContext } from '@cloudflare/workers-types';
+import { attachFeatureFlagsToResponse } from '@strixun/api-framework';
 import { getCorsHeaders } from '@strixun/api-framework/enhanced';
 import type { Env } from './src/env.d.js';
 import { createConfig, listConfigs, getConfig, updateConfig, deleteConfig } from './handlers/configs/index.js';
@@ -185,7 +186,11 @@ export default {
       ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE.fetch(url) }
       : env;
     try {
-      return await handleRequest(request, envForRequest, ctx);
+      const response = await handleRequest(request, envForRequest, ctx);
+      return attachFeatureFlagsToResponse(request, response, envForRequest, {
+        product: 'stream-suite',
+        includeAnonymous: true,
+      });
     } catch (error) {
       console.error('[StreamkitAPI] Unhandled error:', error);
       

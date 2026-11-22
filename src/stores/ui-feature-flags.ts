@@ -1,10 +1,13 @@
 /**
- * UI feature flags for Stream Suite — snapshot from flags-api with canon fallbacks.
+ * UI feature flags for Stream Suite — refreshed from any API response carrying featureFlags.
  */
 import { writable, get } from "svelte/store";
-import { FEATURE_FLAG_CANON_ROWS } from "@strixun/feature-flags";
+import { FEATURE_FLAG_CANON_ROWS, type EvaluatedFeatureFlagsEnvelope } from "@strixun/feature-flags";
 
 export type UiFlagSnapshot = Record<string, boolean | number | null>;
+
+let lastMergedSnapshotId: string | null = null;
+let fetchHookInstalled = false;
 
 const defaults = (): UiFlagSnapshot => {
   const snap: UiFlagSnapshot = {};
@@ -51,24 +54,86 @@ function applySnapshot(snap: UiFlagSnapshot) {
   });
 }
 
-export async function refreshUiFeatureFlags(): Promise<void> {
-  const base =
-    typeof import.meta !== "undefined" && import.meta.env?.VITE_FLAGS_API_URL
-      ? String(import.meta.env.VITE_FLAGS_API_URL)
-      : typeof window !== "undefined" &&
-          (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-        ? "/flags-api"
-        : "https://flags-api.idling.app";
-
-  try {
-    const url = `${base.replace(/\/$/, "")}/v1/snapshot?product=stream-suite&environment=production`;
-    const res = await fetch(url, { credentials: "include" });
-    if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as { flags?: UiFlagSnapshot };
-    applySnapshot({ ...defaults(), ...(data.flags ?? {}) });
-  } catch {
-    applySnapshot(defaults());
+function envelopeToSnapshot(envelope: EvaluatedFeatureFlagsEnvelope): UiFlagSnapshot {
+  const snap = defaults();
+  for (const [id, value] of Object.entries(envelope.flags)) {
+    if (typeof value === "boolean" || typeof value === "number" || value === null) {
+      snap[id] = value;
+    }
   }
+  return snap;
+}
+
+/** Apply canon defaults until the first API response supplies featureFlags. */
+export function bootstrapUiFeatureFlags(): void {
+  applySnapshot(defaults());
+}
+
+/** Merge flags from a parsed API envelope (idempotent per snapshotId). */
+export function mergeFeatureFlagsEnvelope(envelope: EvaluatedFeatureFlagsEnvelope | null | undefined): void {
+  if (!envelope?.flags) return;
+  if (envelope.snapshotId && envelope.snapshotId === lastMergedSnapshotId) return;
+  lastMergedSnapshotId = envelope.snapshotId ?? lastMergedSnapshotId;
+  const current = get(uiFeatureFlags);
+  applySnapshot({ ...current, ...envelopeToSnapshot(envelope) });
+}
+
+/** @deprecated Use bootstrapUiFeatureFlags — flags refresh via API activity, not polling. */
+export async function refreshUiFeatureFlags(): Promise<void> {
+  bootstrapUiFeatureFlags();
+}
+
+export function installFeatureFlagsFetchHook(): void {
+  if (fetchHookInstalled || typeof window === "undefined" || typeof window.fetch !== "function") {
+    return;
+  }
+  fetchHookInstalled = true;
+
+  (globalThis as { __strixunMergeFeatureFlags?: typeof mergeFeatureFlagsEnvelope }).__strixunMergeFeatureFlags =
+    mergeFeatureFlagsEnvelope;
+  const originalFetch = window.fetch.bind(window);
+
+  window.fetch = async (...args: Parameters<typeof fetch>): Promise<Response> => {
+    const response = await originalFetch(...args);
+  void (async () => {
+      try {
+        const snapshotId = response.headers.get("X-Feature-Flags-Snapshot-Id");
+        if (!snapshotId) return;
+
+        const contentType = response.headers.get("Content-Type") ?? "";
+        let envelope: EvaluatedFeatureFlagsEnvelope | null = null;
+
+        if (contentType.includes("json")) {
+          const clone = response.clone();
+          const data = (await clone.json()) as { featureFlags?: EvaluatedFeatureFlagsEnvelope };
+          if (data?.featureFlags?.flags) {
+            envelope = data.featureFlags;
+          }
+        }
+
+        if (!envelope) {
+          const flagsJson = response.headers.get("X-Feature-Flags");
+          if (flagsJson) {
+            const flags = JSON.parse(flagsJson) as EvaluatedFeatureFlagsEnvelope["flags"];
+            envelope = {
+              snapshotId,
+              product: "stream-suite",
+              environment: "production",
+              catalogRevision: "",
+              evaluatedAt: new Date().toISOString(),
+              flags,
+            };
+          }
+        }
+
+        mergeFeatureFlagsEnvelope(envelope);
+      } catch {
+        // non-blocking
+      }
+    })();
+
+    return response;
+  };
 }
 
 export function isRouteEnabled(path: string, flags = get(uiFlags)): boolean {

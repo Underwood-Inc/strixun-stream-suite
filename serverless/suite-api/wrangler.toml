@@ -25,6 +25,11 @@ vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", AUT
 binding = "SUITE_CACHE"
 id = "66b9a4425cb7492fbae8f690780cd0ae"
 
+[[env.production.d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+
 # Production routes
 [[env.production.routes]]
 pattern = "api.idling.app/*"
@@ -48,6 +53,11 @@ ALLOWED_ORIGINS = "https://streamkit.idling.app,https://mods.idling.app,https://
 [[kv_namespaces]]
 binding = "SUITE_CACHE"
 id = "66b9a4425cb7492fbae8f690780cd0ae"
+
+[[d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
 
 # Service binding to auth Worker so JWKS fetch uses internal routing (avoids same-zone 522).
 [[services]]

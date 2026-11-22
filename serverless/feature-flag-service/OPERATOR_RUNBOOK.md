@@ -866,3 +866,20 @@ These workers bind the **same** D1 `idling-feature-flags` / `6308b314-36c4-45c5-
 - `serverless/feature-flag-service/wrangler.toml` → `FLAGS_DB`
 - `serverless/access-service/wrangler.toml` → `FLAGS_DB`
 - `serverless/otp-auth-service/wrangler.toml` → `FLAGS_DB` (development + production sections)
+- `serverless/suite-api/wrangler.toml` → `FLAGS_DB`
+- `serverless/streamkit-api/wrangler.toml` → `FLAGS_DB`
+- `serverless/mods-api/wrangler.toml` → `FLAGS_DB`
+- `serverless/url-shortener/wrangler.toml` → `FLAGS_DB`
+
+### 13.1 Response piggyback (runtime clients)
+
+Stream Suite **does not poll** `GET /v1/snapshot`. Workers call `attachFeatureFlagsToResponse` from `@strixun/api-framework` so JSON responses include:
+
+| Surface | Value |
+|---------|--------|
+| Header | `X-Feature-Flags-Snapshot-Id` — `catalogRevision:environment:flagsFingerprint` |
+| Header | `X-Feature-Flags-Product` — usually `stream-suite` |
+| JSON body | `featureFlags` — `{ snapshotId, product, environment, catalogRevision, evaluatedAt, flags }` |
+| Non-JSON fallback | Header `X-Feature-Flags` — compact `flags` JSON only |
+
+The SPA installs `installFeatureFlagsFetchHook()` (see `src/main.ts`) and merges into `ui-feature-flags` stores on every `fetch`. **flags-admin** may still call snapshot APIs for editing.

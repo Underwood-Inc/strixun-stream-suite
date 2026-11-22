@@ -66,6 +66,11 @@ tag = "v1"
 new_classes = ["DownloadCounter"]
 
 # Default KV Namespaces
+[[d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+
 [[kv_namespaces]]
 binding = "MODS_KV"
 id = "0d3dafe0994046c6a47146c6bd082ad3"

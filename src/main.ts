@@ -60,6 +60,10 @@ if (typeof window !== 'undefined') {
   (window as any).CHAT_SIGNALING_URL = 'https://chat-api.idling.app';
 }
 
+import { installFeatureFlagsFetchHook } from './stores/ui-feature-flags';
+
+installFeatureFlagsFetchHook();
+
 import { mount } from 'svelte';
 import App from './App.svelte';
 import './styles/main.scss';

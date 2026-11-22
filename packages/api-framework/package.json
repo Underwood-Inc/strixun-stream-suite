@@ -46,6 +46,7 @@
     "test:coverage": "vitest run --coverage --passWithNoTests"
   },
   "dependencies": {
+    "@strixun/feature-flags": "workspace:*",
     "@strixun/error-utils": "workspace:*",
     "@strixun/oidc-jwt": "workspace:*",
     "@strixun/service-client": "workspace:*",

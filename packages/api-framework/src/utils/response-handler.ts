@@ -232,6 +232,16 @@ export async function handleResponse<T = unknown>(
     timestamp: Date.now(),
   };
 
+  if (typeof globalThis !== 'undefined') {
+    const mergeHook = (globalThis as { __strixunMergeFeatureFlags?: (envelope: unknown) => void })
+      .__strixunMergeFeatureFlags;
+    if (mergeHook) {
+      const { parseFeatureFlagsEnvelope } = await import('../../feature-flags-response.js');
+      const envelope = parseFeatureFlagsEnvelope(response.headers, data);
+      if (envelope) mergeHook(envelope);
+    }
+  }
+
   return apiResponse;
 }
 

@@ -11,6 +11,7 @@ import type {
   FlagValue,
   IdentityOverride,
 } from "@strixun/feature-flags";
+import { attachFeatureFlagsToResponse } from "@strixun/api-framework";
 import {
   authenticateRequest,
   callerCanManageFlags,
@@ -130,15 +131,10 @@ async function writeAuditEvent(
     .run();
 }
 
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+async function handleFeatureFlagRequest(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin");
     const cors = corsHeaders(origin, env);
-
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: cors });
-    }
 
     if (url.pathname === "/health") {
       return json({ ok: true, revision: FEATURE_FLAG_CATALOG_REVISION }, 200, cors);
@@ -323,5 +319,21 @@ export default {
     }
 
     return json({ error: "not found" }, 404, cors);
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const origin = request.headers.get("Origin");
+    const cors = corsHeaders(origin, env);
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: cors });
+    }
+
+    const response = await handleFeatureFlagRequest(request, env);
+    return attachFeatureFlagsToResponse(request, withCors(response, cors), env, {
+      product: "stream-suite",
+      includeAnonymous: true,
+    });
   },
 };

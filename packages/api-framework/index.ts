@@ -186,3 +186,21 @@ export type {
   ServiceUrlConfig,
 } from './src/utils/service-url';
 
+export {
+  attachFeatureFlagsToResponse,
+  resolveFeatureFlagsEnvelope,
+  parseFeatureFlagsEnvelope,
+  FEATURE_FLAGS_SNAPSHOT_HEADER,
+  FEATURE_FLAGS_PRODUCT_HEADER,
+  FEATURE_FLAGS_JSON_HEADER,
+} from './feature-flags-response';
+
+export type {
+  AttachFeatureFlagsEnv,
+  AttachFeatureFlagsOptions,
+  EvaluatedFeatureFlagsEnvelope,
+  FeatureFlagProductId,
+  FeatureFlagsD1Env,
+  FlagValueMap,
+} from './feature-flags-response';
+

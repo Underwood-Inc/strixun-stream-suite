@@ -8,6 +8,7 @@
  */
 
 import type { ExecutionContext } from '@cloudflare/workers-types';
+import { attachFeatureFlagsToResponse } from '@strixun/api-framework';
 import { createError } from './utils/errors.js';
 import { getCorsHeadersRecord } from './utils/cors.js';
 import { handleModRoutes } from './router/mod-routes.js';
@@ -266,7 +267,11 @@ export default {
         const envForRequest = env.AUTH_SERVICE
             ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE.fetch(url) }
             : env;
-        return handleRequest(request, envForRequest, ctx);
+        const response = await handleRequest(request, envForRequest, ctx);
+        return attachFeatureFlagsToResponse(request, response, envForRequest, {
+            product: 'stream-suite',
+            includeAnonymous: true,
+        });
     },
     
     /**
@@ -291,6 +296,8 @@ export default {
  * Environment interface for TypeScript
  */
 export interface Env {
+    FLAGS_DB?: D1Database;
+
     // KV Namespaces
     MODS_KV: KVNamespace;
     

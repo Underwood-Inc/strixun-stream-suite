@@ -49,6 +49,11 @@ CUSTOMER_API_URL = "https://customer-api.idling.app"
 ALLOWED_ORIGINS = "https://short.army,https://short.idling.app,https://shorten.idling.app,https://sss.idling.app,https://streamkit.idling.app,https://mods.idling.app,https://www.idling.app,https://idling.app,https://s.idling.app,https://auth.idling.app"
 
 # Default KV Namespaces (required for routes configured in dashboard or when no environment is specified)
+[[d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+
 [[kv_namespaces]]
 binding = "URL_KV"
 id = "aed413a5133e445fbe4d91c1a080369e"
