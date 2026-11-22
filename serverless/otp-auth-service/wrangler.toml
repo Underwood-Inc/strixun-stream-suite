@@ -38,6 +38,9 @@ watch_dir = ["handlers", "html-snippets", "router", "services", "utils", "shared
 # Verify health: curl https://otp-auth-service.strixuns-script-suite.workers.dev/health/ready
 
 # Production environment
+# OPERATOR: Do NOT `wrangler deploy --env production` for auth.idling.app.
+# Secrets live on the default worker only (`wrangler secret list` ≠ `wrangler secret list --env production`).
+# Custom domain route is [[routes]] + `pnpm exec wrangler deploy` (see package.json deploy:prod).
 [env.production]
 
 [env.production.vars]
