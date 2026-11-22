@@ -151,6 +151,18 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build workspace dependencies for root tests
+        working-directory: .
+        run: |
+          # Vitest resolves @strixun/feature-flags / api-framework dist (ui-feature-flags tests).
+          pnpm --filter "@strixun/types" run build
+          pnpm --filter "@strixun/error-utils" run build
+          pnpm --filter "@strixun/service-client" run build
+          pnpm --filter "@strixun/oidc-jwt" run build
+          pnpm --filter "@strixun/feature-flags" run test
+          pnpm --filter "@strixun/feature-flags" run build
+          pnpm --filter "@strixun/api-framework" run build
+
       - name: Run Root/Client Tests
         working-directory: .
         run: pnpm test
