@@ -3,6 +3,7 @@ import {
   FEATURE_FLAGS_BODY_KEY,
   FEATURE_FLAGS_REVISION_HEADER,
   FEATURE_FLAGS_SNAPSHOT_HEADER,
+  attachFeatureFlagsEnvelope,
   attachFeatureFlagsToResponse,
   mergeFlagsFromResponse,
   parseFeatureFlagsEnvelope,
@@ -89,4 +90,72 @@ test("[FR-FLAG-014] OPTIONS requests pass through unchanged", async () => {
     FLAGS_DB: {} as import("@strixun/feature-flags").FeatureFlagsD1Database,
   });
   expect(out.status).toBe(204);
+});
+
+test("[FR-FLAG-028] piggyback failures never replace the handler response", async () => {
+  const { evaluateProductFlagsFromD1 } = await import("@strixun/feature-flags");
+  vi.mocked(evaluateProductFlagsFromD1).mockRejectedValueOnce(new Error("D1 unavailable"));
+
+  const request = new Request("https://auth.idling.app/auth/verify-otp", { method: "POST" });
+  const response = new Response(JSON.stringify({ access_token: "tok" }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+
+  const out = await attachFeatureFlagsToResponse(request, response, {
+    FLAGS_DB: {} as import("@strixun/feature-flags").FeatureFlagsD1Database,
+    ENVIRONMENT: "production",
+  });
+
+  expect(out.status).toBe(200);
+  const body = (await out.json()) as { access_token?: string; _featureFlags?: unknown };
+  expect(body.access_token).toBe("tok");
+  expect(body._featureFlags).toBeUndefined();
+});
+
+test("[FR-FLAG-029] skipPathPatterns bypasses piggyback on verify-otp", async () => {
+  const request = new Request("https://auth.idling.app/auth/verify-otp", { method: "POST" });
+  const response = new Response(JSON.stringify({ access_token: "tok" }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+
+  const out = await attachFeatureFlagsToResponse(request, response, {
+    FLAGS_DB: {} as import("@strixun/feature-flags").FeatureFlagsD1Database,
+    ENVIRONMENT: "production",
+  }, {
+    includeAnonymous: true,
+    skipPathPatterns: [/^\/auth\/verify-otp$/],
+  });
+
+  expect(out.headers.get(FEATURE_FLAGS_REVISION_HEADER)).toBeNull();
+  const body = (await out.json()) as Record<string, unknown>;
+  expect(body.access_token).toBe("tok");
+  expect(body[FEATURE_FLAGS_BODY_KEY]).toBeUndefined();
+});
+
+test("[FR-FLAG-030] attachFeatureFlagsEnvelope keeps multiple Set-Cookie headers", async () => {
+  const response = new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: [
+      ["Content-Type", "application/json"],
+      ["Set-Cookie", "auth_token=a; Path=/; HttpOnly"],
+      ["Set-Cookie", "refresh_token=r; Path=/; HttpOnly"],
+    ],
+  });
+
+  const out = await attachFeatureFlagsEnvelope(response, {
+    product: "auth",
+    environment: "production",
+    revision: "1.0.0:production:abc",
+    flags: { "auth.route.login": true },
+  });
+
+  const cookies =
+    typeof out.headers.getSetCookie === "function"
+      ? out.headers.getSetCookie()
+      : (out.headers.get("Set-Cookie") ?? "").split(/,(?=\s*\w+=)/);
+  expect(cookies.length).toBeGreaterThanOrEqual(2);
+  expect(cookies.some((c) => c.startsWith("auth_token="))).toBe(true);
+  expect(cookies.some((c) => c.startsWith("refresh_token="))).toBe(true);
 });

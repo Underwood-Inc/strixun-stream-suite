@@ -166,6 +166,38 @@ function shouldSkipPath(pathname: string, patterns?: RegExp[]): boolean {
   return patterns.some((p) => p.test(pathname));
 }
 
+/** Preserve multiple Set-Cookie values when cloning a Response (Headers() collapses them). */
+function copyOutgoingHeaderTuples(
+  headers: Headers,
+  extra?: Record<string, string>,
+): [string, string][] {
+  const tuples: [string, string][] = [];
+  headers.forEach((value, name) => {
+    if (name.toLowerCase() !== "set-cookie") {
+      tuples.push([name, value]);
+    }
+  });
+
+  let setCookies: string[] = [];
+  if (typeof headers.getSetCookie === "function") {
+    setCookies = headers.getSetCookie();
+  } else {
+    headers.forEach((value, name) => {
+      if (name.toLowerCase() === "set-cookie") setCookies.push(value);
+    });
+  }
+  for (const cookie of setCookies) {
+    tuples.push(["Set-Cookie", cookie]);
+  }
+
+  if (extra) {
+    for (const [k, v] of Object.entries(extra)) {
+      tuples.push([k, v]);
+    }
+  }
+  return tuples;
+}
+
 /**
  * Attach evaluated feature flags to an outgoing Response (JSON body merge + headers).
  */
@@ -173,17 +205,18 @@ export async function attachFeatureFlagsEnvelope(
   response: Response,
   flagsSlice: FeatureFlagsWireEnvelope,
 ): Promise<Response> {
-  const headers = new Headers(response.headers);
-  headers.set(FEATURE_FLAGS_REVISION_HEADER, flagsSlice.revision);
-  headers.set(FEATURE_FLAGS_PRODUCT_HEADER, flagsSlice.product);
+  const flagHeaderExtras: Record<string, string> = {
+    [FEATURE_FLAGS_REVISION_HEADER]: flagsSlice.revision,
+    [FEATURE_FLAGS_PRODUCT_HEADER]: flagsSlice.product,
+  };
 
   const contentType = response.headers.get("Content-Type") ?? "";
   const isJson =
     contentType.includes("application/json") || contentType.includes("application/problem+json");
 
   if (isJson) {
+    const text = await response.text();
     try {
-      const text = await response.text();
       const parsed = JSON.parse(text) as unknown;
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         const merged = {
@@ -193,19 +226,30 @@ export async function attachFeatureFlagsEnvelope(
         return new Response(JSON.stringify(merged), {
           status: response.status,
           statusText: response.statusText,
-          headers,
+          headers: copyOutgoingHeaderTuples(response.headers, flagHeaderExtras),
         });
       }
     } catch {
-      // fall through to header-only
+      // fall through to header-only with original body text
     }
+
+    return new Response(text, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: copyOutgoingHeaderTuples(response.headers, {
+        ...flagHeaderExtras,
+        [FEATURE_FLAGS_JSON_HEADER]: JSON.stringify(flagsSlice.flags),
+      }),
+    });
   }
 
-  headers.set(FEATURE_FLAGS_JSON_HEADER, JSON.stringify(flagsSlice.flags));
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
-    headers,
+    headers: copyOutgoingHeaderTuples(response.headers, {
+      ...flagHeaderExtras,
+      [FEATURE_FLAGS_JSON_HEADER]: JSON.stringify(flagsSlice.flags),
+    }),
   });
 }
 
@@ -222,10 +266,15 @@ export async function attachFeatureFlagsToResponse(
     return response;
   }
 
-  const envelope = await resolveFeatureFlagsEnvelope(request, env, options);
-  if (!envelope) return response;
+  try {
+    const envelope = await resolveFeatureFlagsEnvelope(request, env, options);
+    if (!envelope) return response;
 
-  return attachFeatureFlagsEnvelope(response, envelope);
+    return await attachFeatureFlagsEnvelope(response, envelope);
+  } catch (error) {
+    console.warn("[feature-flags] piggyback attach failed; returning original response", error);
+    return response;
+  }
 }
 
 export type FlagValueMap = Record<string, FlagValue>;
