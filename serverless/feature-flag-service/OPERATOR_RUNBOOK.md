@@ -795,6 +795,51 @@ pnpm exec vitest run utils/rate-limit.test.ts
 
 **Not fixable with a single cookie domain:** `.idling.app` and `.short.army` are different registrable domains — SSO requires **dual cookies** or a shared token strategy, not one `Domain=` for both.
 
+### Session bridge (cross-TLD without leaking idling cookies to short.army JS)
+
+When a user already has a valid **`*.idling.app`** session and opens **`https://short.army`**, OTP is not required if the SPA runs the bridge flow:
+
+| Step | Endpoint | Notes |
+|------|----------|--------|
+| 1 | `POST https://auth.idling.app/auth/session/bridge-code` body `{ "target_host": "short.army" }` | Credentialed (`credentials: 'include'`). Validates idling session server-side; returns opaque single-use `bridge_code` (~120s). |
+| 2 | `POST https://short.army/auth-api/auth/session/from-idling` body `{ "bridge_code": "…" }` | Same-origin on short.army; worker proxies to otp-auth. Response `Set-Cookie` filtered to **`.short.army` only**. |
+
+**Trace doc (request tables, proxy invariants):** [`serverless/url-shortener/docs/SHORT_ARMY_SSO_TRACE.md`](../url-shortener/docs/SHORT_ARMY_SSO_TRACE.md)
+
+### `ALLOWED_ORIGINS` (otp-auth, url-shortener, access)
+
+Merge **never replace** — all three must include at least:
+
+- `https://short.army`
+- `https://s.idling.app`, `https://short.idling.app`, `https://shorten.idling.app`
+- `https://auth.idling.app` (OTP / bridge / verify)
+
+**otp-auth:** prefer `[vars]` in `serverless/otp-auth-service/wrangler.toml` when `wrangler secret list` shows **no** `ALLOWED_ORIGINS` secret.  
+**url-shortener:** `serverless/url-shortener/wrangler.toml` `[vars]`.  
+**access-service:** often has an `ALLOWED_ORIGINS` **secret** — decrypt in dashboard and append missing hosts (§6).
+
+### Domain-scoped `Set-Cookie` proxy
+
+Shared helper: `packages/api-framework/credential-proxy.ts` (`proxyRequestWithCredentials`, `forwardSetCookie: true` on auth proxies).
+
+- Forwards **only** upstream `Set-Cookie` lines whose `Domain=` matches the **browser request host** (e.g. `short.army` → `.short.army`; `flags.idling.app` → `.idling.app`).
+- Prevents cross-TLD cookie leak and fixes collapsed multi-cookie responses from worker service bindings (see SHORT_ARMY_SSO_TRACE §6).
+
+**flags.idling.app:** Pages functions `apps/flags-admin/functions/auth-api/[[path]].ts` and `flags-api/[[path]].ts` use the same helper. Production SPA must call **`/auth-api`** and **`/flags-api`** (baked in `apps/flags-admin/.env.production`), not direct `auth.idling.app` / `flags-api.idling.app`, or toggle `PUT /v1/flags/.../state` returns **401 Authentication required** while `/v1/snapshot` still loads (snapshot is unauthenticated).
+
+**Super-admin toggle smoke (after OTP on flags.idling.app):**
+
+```powershell
+# DevTools → Network: Toggle must hit https://flags.idling.app/flags-api/v1/flags/.../state (not flags-api.idling.app).
+# Response headers should include X-Proxy-Cookie-Received: yes
+```
+
+### Deploy notes (short.army + SSO)
+
+1. **Order:** deploy **otp-auth-service** and **url-shortener** after any `ALLOWED_ORIGINS` or bridge-handler change; users may need re-login on **`short.army`**.
+2. **Never** `wrangler deploy --env production` on **otp-auth** without matching secrets — that targets a different worker name and leaves live custom domains on the default deploy.
+3. Use default `pnpm run deploy` from each package directory (same as deploy-manager `deploy_otp_auth` / `deploy_url_shortener`).
+
 ### Deploy log (2026-11-22, task 78673cb2 follow-up)
 
 | Worker | Command | Version ID | Notes |

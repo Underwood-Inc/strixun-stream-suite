@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "pnpm --filter @strixun/auth-store build && pnpm --filter @strixun/otp-login build",
+    "prebuild": "pnpm --filter @strixun/api-framework build && pnpm --filter @strixun/auth-store build && pnpm --filter @strixun/otp-login build",
     "build": "vite build",
     "preview": "vite preview",
     "pages:ensure-project": "wrangler pages project create flags-admin --production-branch flags-admin || exit 0",

@@ -9,7 +9,7 @@ import { flagsAdminAuthConfig, getFlagsAdminAuthApiUrl, useAuthStore } from './s
 
 function flagsBaseUrl(): string {
   if (import.meta.env.VITE_FLAGS_API_URL) return String(import.meta.env.VITE_FLAGS_API_URL);
-  // Same-origin Pages proxy forwards auth_token (cross-origin flags-api.idling.app returns 401 on PUT).
+  // Same-origin Pages proxy forwards Cookie (direct flags-api.idling.app cross-origin often 401 on PUT).
   return '/flags-api';
 }
 

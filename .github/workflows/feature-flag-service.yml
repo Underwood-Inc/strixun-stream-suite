@@ -89,9 +89,9 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/flags-admin
-          command: pages project create flags-admin --production-branch main
+          command: pages project create flags-admin --production-branch flags-admin
         continue-on-error: true
-      - name: Sync Pages production branch to main
+      - name: Sync Pages production branch to flags-admin
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
