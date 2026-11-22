@@ -12,33 +12,43 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock customer-lookup module BEFORE imports
-const mockFetchCustomerByCustomerId = vi.fn();
+const { mockVerifyJWT, mockFetchCustomerByCustomerId, mockGetCustomerRoles } = vi.hoisted(() => ({
+    mockVerifyJWT: vi.fn(),
+    mockFetchCustomerByCustomerId: vi.fn(),
+    mockGetCustomerRoles: vi.fn(),
+}));
+
+vi.mock('@strixun/oidc-jwt', async () => {
+    const actual = await vi.importActual<typeof import('@strixun/oidc-jwt')>('@strixun/oidc-jwt');
+    return {
+        ...actual,
+        verifyWithJWKS: (token: string, env: unknown) => mockVerifyJWT(token, env),
+    };
+});
 
 vi.mock('./customer-lookup.js', async () => {
-    const actual = await vi.importActual('./customer-lookup.js') as any;
-    // Create a wrapper that uses our mock
-    const mockFetch = (...args: any[]) => mockFetchCustomerByCustomerId(...args);
-    
-    // For isSuperAdminByCustomerId, we need to create a version that uses our mock
-    const mockIsSuperAdmin = async (customerId: string | null, env: any) => {
+    const actual = await vi.importActual('./customer-lookup.js') as Record<string, unknown>;
+    const mockFetch = (...args: unknown[]) => mockFetchCustomerByCustomerId(...args);
+
+    const mockIsSuperAdmin = async (customerId: string | null, env: { SUPER_ADMIN_EMAILS?: string }) => {
         if (!customerId) return false;
         try {
             const customer = await mockFetch(customerId, env);
-            if (!customer || !customer.email) return false;
+            if (!customer || !(customer as { email?: string }).email) return false;
             if (!env.SUPER_ADMIN_EMAILS) return false;
             const superAdminEmails = env.SUPER_ADMIN_EMAILS.split(',').map((e: string) => e.trim().toLowerCase());
-            const normalizedEmail = customer.email.trim().toLowerCase();
+            const normalizedEmail = (customer as { email: string }).email.trim().toLowerCase();
             return superAdminEmails.includes(normalizedEmail);
         } catch {
             return false;
         }
     };
-    
+
     return {
         ...actual,
         fetchCustomerByCustomerId: mockFetch,
         isSuperAdminByCustomerId: mockIsSuperAdmin,
+        getCustomerRoles: (...args: unknown[]) => mockGetCustomerRoles(...args),
     };
 });
 
@@ -52,9 +62,6 @@ import {
 } from './route-protection.js';
 import { isSuperAdminByCustomerId } from './customer-lookup.js';
 
-// Mock JWT verification
-const mockVerifyJWT = vi.fn();
-
 describe('Route Protection System', () => {
     const mockEnv: RouteProtectionEnv = {
         SUPER_ADMIN_EMAILS: 'superadmin@example.com,admin2@example.com',
@@ -66,8 +73,7 @@ describe('Route Protection System', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        mockVerifyJWT.mockClear();
-        mockFetchCustomerByCustomerId.mockClear();
+        mockGetCustomerRoles.mockResolvedValue([]);
     });
 
     // Tests removed - functions deleted (now using Access Service instead of email-based checks)
@@ -98,7 +104,7 @@ describe('Route Protection System', () => {
 
             mockVerifyJWT.mockResolvedValue(null);
 
-            const result = await protectAdminRoute(request, mockEnv, 'super-admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, mockEnv, 'super-admin');
 
             expect(result.allowed).toBe(false);
             expect(result.error).toBeDefined();
@@ -115,7 +121,7 @@ describe('Route Protection System', () => {
 
             mockVerifyJWT.mockResolvedValue(null);
 
-            const result = await protectAdminRoute(request, mockEnv, 'super-admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, mockEnv, 'super-admin');
 
             expect(result.allowed).toBe(false);
             expect(result.error).toBeDefined();
@@ -136,7 +142,7 @@ describe('Route Protection System', () => {
                 customerId: 'cust_123',
             });
 
-            const result = await protectAdminRoute(request, mockEnv, 'super-admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, mockEnv, 'super-admin');
 
             expect(result.allowed).toBe(false);
             expect(result.error).toBeDefined();
@@ -157,7 +163,7 @@ describe('Route Protection System', () => {
                 customerId: 'cust_123',
             });
 
-            const result = await protectAdminRoute(request, mockEnv, 'super-admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, mockEnv, 'super-admin');
 
             expect(result.allowed).toBe(false);
             expect(result.error).toBeDefined();
@@ -194,7 +200,7 @@ describe('Route Protection System', () => {
                 // email not in JWT - should be looked up from customer record
             });
 
-            const result = await protectAdminRoute(request, envWithCustomerApi, 'super-admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, envWithCustomerApi, 'super-admin');
 
             expect(result.allowed).toBe(true);
             expect(result.auth).toBeDefined();
@@ -202,7 +208,7 @@ describe('Route Protection System', () => {
             expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', envWithCustomerApi);
         });
 
-        it('should allow super admin with API key', async () => {
+        it('should reject super-admin route when JWT verification fails (API key is not JWT)', async () => {
             const request = new Request('https://api.example.com/admin/settings', {
                 method: 'GET',
                 headers: {
@@ -212,10 +218,10 @@ describe('Route Protection System', () => {
 
             mockVerifyJWT.mockResolvedValue(null);
 
-            const result = await protectAdminRoute(request, mockEnv, 'super-admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, mockEnv, 'super-admin');
 
-            expect(result.allowed).toBe(true);
-            expect(result.level).toBe('super-admin');
+            expect(result.allowed).toBe(false);
+            expect(result.error?.status).toBe(401);
         });
 
         it('should allow regular admin for admin-level route', async () => {
@@ -231,8 +237,9 @@ describe('Route Protection System', () => {
                 email: 'regularadmin@example.com',
                 customerId: 'cust_123',
             });
+            mockGetCustomerRoles.mockResolvedValue(['admin']);
 
-            const result = await protectAdminRoute(request, mockEnv, 'admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, mockEnv, 'admin');
 
             expect(result.allowed).toBe(true);
             expect(result.auth).toBeDefined();
@@ -252,8 +259,9 @@ describe('Route Protection System', () => {
                 email: 'superadmin@example.com',
                 customerId: 'cust_123',
             });
+            mockGetCustomerRoles.mockResolvedValue(['super-admin']);
 
-            const result = await protectAdminRoute(request, mockEnv, 'admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, mockEnv, 'admin');
 
             expect(result.allowed).toBe(true);
             expect(result.auth).toBeDefined();
@@ -454,7 +462,7 @@ describe('Route Protection System', () => {
                 // email not in JWT - should lookup from customer
             });
 
-            const result = await protectAdminRoute(request, envWithCustomerApi, 'super-admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, envWithCustomerApi, 'super-admin');
 
             expect(result.allowed).toBe(true);
             expect(result.auth).toBeDefined();
@@ -489,7 +497,7 @@ describe('Route Protection System', () => {
                 customerId: 'cust_456',
             });
 
-            const result = await protectAdminRoute(request, envWithCustomerApi, 'super-admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, envWithCustomerApi, 'super-admin');
 
             expect(result.allowed).toBe(false);
             expect(result.error).toBeDefined();
@@ -520,7 +528,7 @@ describe('Route Protection System', () => {
                 // No email in JWT
             });
 
-            const result = await protectAdminRoute(request, envWithCustomerApi, 'super-admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, envWithCustomerApi, 'super-admin');
 
             expect(result.allowed).toBe(false);
             expect(result.error?.status).toBe(403);
@@ -543,7 +551,7 @@ describe('Route Protection System', () => {
 
             mockVerifyJWT.mockResolvedValue(null);
 
-            const result = await protectAdminRoute(request, envWithoutSecret, 'super-admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, envWithoutSecret, 'super-admin');
 
             expect(result.allowed).toBe(false);
         });
@@ -568,7 +576,7 @@ describe('Route Protection System', () => {
                 customerId: 'cust_123',
             });
 
-            const result = await protectAdminRoute(request, envWithEmptyLists, 'super-admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, envWithEmptyLists, 'super-admin');
 
             expect(result.allowed).toBe(false);
         });
