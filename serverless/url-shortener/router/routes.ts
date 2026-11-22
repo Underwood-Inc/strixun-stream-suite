@@ -92,7 +92,8 @@ export function createRouter() {
         const subpath = path.replace(/^\/auth-api\/?/, '');
         const authBase = (env.AUTH_API_URL as string | undefined) ?? 'https://auth.idling.app';
         const targetUrl = `${String(authBase).replace(/\/+$/, '')}/${subpath}${url.search}`;
-        // short.army: public fetch preserves 4× Set-Cookie on verify-otp (binding can collapse cookies).
+        // short.army: public fetch preserves multi Set-Cookie (binding can collapse cookies).
+        // Proxy forwards only Domain= matching the request host (.short.army vs .idling.app).
         // *.idling.app shortener hosts: AUTH_SERVICE binding — public fetch to auth.idling.app 522s same-zone.
         const useBinding = Boolean(env.AUTH_SERVICE && hostnameUsesAuthServiceBinding(url.hostname));
         const fetchImpl = useBinding ? authServiceAsFetch(env.AUTH_SERVICE!) : fetch;

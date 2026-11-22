@@ -11,34 +11,89 @@
 
 const CREDENTIAL_HEADERS = new Set(['cookie', 'authorization', 'content-type', 'accept']);
 
-/** Forward every upstream Set-Cookie (verify-otp emits 4: auth + refresh × .idling.app + .short.army). */
-function appendAllSetCookies(source: Headers, target: Headers): void {
+/** Registrable cookie domain for a request host (e.g. short.army → .short.army). */
+export function registrableDomainForHost(hostname: string): string {
+  const host = hostname.toLowerCase().split(':')[0];
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return 'localhost';
+  }
+  const parts = host.split('.');
+  if (parts.length === 1) {
+    return host;
+  }
+  return `.${parts.slice(-2).join('.')}`;
+}
+
+/** Parse Domain= from a Set-Cookie header value (case-insensitive). */
+export function parseSetCookieDomain(setCookie: string): string | null {
+  const match = setCookie.match(/;\s*Domain=([^;]+)/i);
+  return match ? match[1].trim().toLowerCase() : null;
+}
+
+/** True when the cookie's Domain= matches the requester's registrable domain. */
+export function setCookieMatchesRequester(setCookie: string, requesterRegistrable: string): boolean {
+  const cookieDomain = parseSetCookieDomain(setCookie);
+  if (!cookieDomain) {
+    return requesterRegistrable === 'localhost';
+  }
+  const normalizedCookie = cookieDomain.startsWith('.') ? cookieDomain : `.${cookieDomain}`;
+  const normalizedRequester = requesterRegistrable.startsWith('.')
+    ? requesterRegistrable.toLowerCase()
+    : `.${requesterRegistrable.toLowerCase()}`;
+  return normalizedCookie === normalizedRequester;
+}
+
+function collectUpstreamSetCookies(source: Headers): string[] {
   if (typeof source.getSetCookie === 'function') {
     const cookies = source.getSetCookie();
-    for (const cookie of cookies) {
-      target.append('Set-Cookie', cookie);
-    }
     if (cookies.length > 0) {
-      return;
+      return cookies;
     }
   }
   if (typeof (source as Headers & { getAll?: (name: string) => string[] }).getAll === 'function') {
-    for (const cookie of (source as Headers & { getAll: (name: string) => string[] }).getAll('Set-Cookie')) {
-      target.append('Set-Cookie', cookie);
-    }
-    return;
+    return (source as Headers & { getAll: (name: string) => string[] }).getAll('Set-Cookie');
   }
   const combined = source.get('Set-Cookie');
   if (!combined) {
-    return;
+    return [];
   }
-  const parts = combined.includes('\n') ? combined.split('\n') : [combined];
-  for (const part of parts) {
-    const trimmed = part.trim();
-    if (trimmed) {
-      target.append('Set-Cookie', trimmed);
+  return combined.includes('\n')
+    ? combined.split('\n').map((part) => part.trim()).filter(Boolean)
+    : [combined.trim()].filter(Boolean);
+}
+
+function getRequesterHostname(request: Request): string {
+  const host = request.headers.get('Host');
+  if (host) {
+    return host.split(':')[0].toLowerCase();
+  }
+  const origin = request.headers.get('Origin');
+  if (origin) {
+    try {
+      return new URL(origin).hostname.toLowerCase();
+    } catch {
+      // ignore
     }
   }
+  try {
+    return new URL(request.url).hostname.toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+/** Forward only Set-Cookie lines whose Domain= matches the browser requester's registrable domain. */
+function appendSetCookiesForRequester(source: Headers, target: Headers, request: Request): number {
+  const requesterRoot = registrableDomainForHost(getRequesterHostname(request));
+  const upstream = collectUpstreamSetCookies(source);
+  let forwarded = 0;
+  for (const cookie of upstream) {
+    if (setCookieMatchesRequester(cookie, requesterRoot)) {
+      target.append('Set-Cookie', cookie);
+      forwarded += 1;
+    }
+  }
+  return forwarded;
 }
 
 export interface CredentialProxyOptions {
@@ -89,13 +144,7 @@ export async function proxyRequestWithCredentials(
   responseHeaders.set('X-Proxy-Cookie-Received', hasCookie ? 'yes' : 'no');
 
   if (forwardSetCookie) {
-    appendAllSetCookies(response.headers, responseHeaders);
-    const count =
-      typeof responseHeaders.getSetCookie === 'function'
-        ? responseHeaders.getSetCookie().length
-        : typeof response.headers.getSetCookie === 'function'
-          ? response.headers.getSetCookie().length
-          : 0;
+    const count = appendSetCookiesForRequester(response.headers, responseHeaders, request);
     responseHeaders.set('X-Proxy-Set-Cookie-Count', String(count));
   }
 
