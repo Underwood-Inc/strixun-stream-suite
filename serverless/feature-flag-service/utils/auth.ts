@@ -30,6 +30,17 @@ function decodeJWTPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+/** Match url-shortener / mods-api: JWKS via service binding (avoids same-zone 522 to auth.idling.app). */
+export function routeProtectionEnv(env: FlagServiceEnv): Parameters<typeof extractAuth>[1] {
+  if (env.AUTH_SERVICE) {
+    return {
+      ...env,
+      JWKS_FETCH: (url: string) => env.AUTH_SERVICE!.fetch(url),
+    };
+  }
+  return env as Parameters<typeof extractAuth>[1];
+}
+
 export async function authenticateRequest(request: Request, env: FlagServiceEnv): Promise<FlagAuth | null> {
   const serviceKey = request.headers.get("X-Service-Key");
   if (serviceKey && env.SERVICE_API_KEY && serviceKey === env.SERVICE_API_KEY) {
@@ -42,7 +53,7 @@ export async function authenticateRequest(request: Request, env: FlagServiceEnv)
   }
 
   try {
-    const auth = await extractAuth(request, env as Parameters<typeof extractAuth>[1]);
+    const auth = await extractAuth(request, routeProtectionEnv(env));
     if (!auth?.customerId) return null;
     const jwtToken = auth.jwtToken;
     const payload = jwtToken ? decodeJWTPayload(jwtToken) : null;
