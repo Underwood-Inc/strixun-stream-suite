@@ -18,6 +18,7 @@ export function getShortenerAuthApiUrl(): string {
   return getAuthApiUrl();
 }
 
-export const useAuthStore = createAuthStore({ authApiUrl: getShortenerAuthApiUrl() });
+/** Pin same-origin proxy in prod and dev (Vite proxies /auth-api locally). */
+export const useAuthStore = createAuthStore({ authApiUrl: '/auth-api' });
 
 export type { AuthenticatedCustomer, AuthState, AuthStore } from '@strixun/auth-store/core';

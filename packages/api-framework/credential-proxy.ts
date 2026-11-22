@@ -11,6 +11,36 @@
 
 const CREDENTIAL_HEADERS = new Set(['cookie', 'authorization', 'content-type', 'accept']);
 
+/** Forward every upstream Set-Cookie (verify-otp emits 4: auth + refresh × .idling.app + .short.army). */
+function appendAllSetCookies(source: Headers, target: Headers): void {
+  if (typeof source.getSetCookie === 'function') {
+    const cookies = source.getSetCookie();
+    for (const cookie of cookies) {
+      target.append('Set-Cookie', cookie);
+    }
+    if (cookies.length > 0) {
+      return;
+    }
+  }
+  if (typeof (source as Headers & { getAll?: (name: string) => string[] }).getAll === 'function') {
+    for (const cookie of (source as Headers & { getAll: (name: string) => string[] }).getAll('Set-Cookie')) {
+      target.append('Set-Cookie', cookie);
+    }
+    return;
+  }
+  const combined = source.get('Set-Cookie');
+  if (!combined) {
+    return;
+  }
+  const parts = combined.includes('\n') ? combined.split('\n') : [combined];
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (trimmed) {
+      target.append('Set-Cookie', trimmed);
+    }
+  }
+}
+
 export interface CredentialProxyOptions {
   /** Forward Set-Cookie headers from upstream (required for auth/login/refresh) */
   forwardSetCookie?: boolean;
@@ -59,14 +89,12 @@ export async function proxyRequestWithCredentials(
   responseHeaders.set('X-Proxy-Cookie-Received', hasCookie ? 'yes' : 'no');
 
   if (forwardSetCookie) {
-    if (typeof response.headers.getSetCookie === 'function') {
-      for (const cookie of response.headers.getSetCookie()) {
-        responseHeaders.append('Set-Cookie', cookie);
-      }
-    } else {
-      const setCookie = response.headers.get('Set-Cookie');
-      if (setCookie) responseHeaders.set('Set-Cookie', setCookie);
-    }
+    appendAllSetCookies(response.headers, responseHeaders);
+    const count =
+      typeof response.headers.getSetCookie === 'function'
+        ? response.headers.getSetCookie().length
+        : responseHeaders.getSetCookie?.()?.length ?? 0;
+    responseHeaders.set('X-Proxy-Set-Cookie-Count', String(count));
   }
 
   return new Response(response.body, {
