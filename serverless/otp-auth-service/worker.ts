@@ -8,19 +8,14 @@
  * - API key management
  * - JWT token generation and validation
  * 
- * @version 2.2.3 - Skip feature-flag piggyback on cookie-setting auth mutations
+ * @version 2.2.4 - Auth worker does not piggyback _featureFlags (breaks Set-Cookie / login)
  */
 
-import { attachFeatureFlagsToResponse } from '@strixun/api-framework';
 import { initializeServiceTypes, type ExecutionContext } from '@strixun/types';
 import { route } from './router.js';
-import { AUTH_FLAG_PIGGYBACK_SKIP_PATHS } from './feature-flag-piggyback.js';
-
-export { AUTH_FLAG_PIGGYBACK_SKIP_PATHS } from './feature-flag-piggyback.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
-    FLAGS_DB?: D1Database;
     AUTH_SERVICE?: Fetcher;
     ENVIRONMENT?: string;
     ALLOWED_ORIGINS?: string;
@@ -40,15 +35,6 @@ export default {
         const envForRequest = env.AUTH_SERVICE
             ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE!.fetch(url) }
             : env;
-        const response = await route(request, envForRequest, ctx);
-        try {
-            return await attachFeatureFlagsToResponse(request, response, envForRequest, {
-                includeAnonymous: true,
-                skipPathPatterns: AUTH_FLAG_PIGGYBACK_SKIP_PATHS,
-            });
-        } catch (flagError) {
-            console.warn('[otp-auth] feature flag piggyback skipped', flagError);
-            return response;
-        }
+        return route(request, envForRequest, ctx);
     }
 };

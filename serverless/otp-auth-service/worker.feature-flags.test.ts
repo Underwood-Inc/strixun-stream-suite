@@ -1,37 +1,33 @@
-import { describe, expect, test } from "vitest";
-import { attachFeatureFlagsToResponse } from "@strixun/api-framework";
-import { AUTH_FLAG_PIGGYBACK_SKIP_PATHS } from "./feature-flag-piggyback.js";
+import { describe, expect, test, vi, beforeEach } from "vitest";
 
-describe("otp-auth worker feature-flag piggyback", () => {
-  test("[FR-AUTH-052] verify-otp response shape unchanged when FLAGS_DB is bound", async () => {
+vi.mock("./router.js", () => ({
+  route: vi.fn(),
+}));
+
+describe("otp-auth worker", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  test("[FR-AUTH-052] does not attach _featureFlags — responses pass through from router", async () => {
+    const { route } = await import("./router.js");
+    const worker = (await import("./worker.js")).default;
+
+    const expected = new Response(JSON.stringify({ access_token: "jwt" }), {
+      status: 200,
+      headers: [
+        ["Content-Type", "application/json"],
+        ["Set-Cookie", "auth_token=jwt; HttpOnly"],
+      ],
+    });
+    vi.mocked(route).mockResolvedValue(expected);
+
     const request = new Request("https://auth.idling.app/auth/verify-otp", { method: "POST" });
-    const response = new Response(
-      JSON.stringify({ token_type: "Bearer", access_token: "jwt-body-token" }),
-      {
-        status: 200,
-        headers: [
-          ["Content-Type", "application/json"],
-          ["Set-Cookie", "auth_token=cookie-jwt; Path=/; HttpOnly"],
-          ["Set-Cookie", "refresh_token=refresh; Path=/; HttpOnly"],
-        ],
-      },
-    );
+    const out = await worker.fetch(request, { OTP_AUTH_KV: {} as KVNamespace }, {} as ExecutionContext);
 
-    const out = await attachFeatureFlagsToResponse(
-      request,
-      response,
-      { FLAGS_DB: {} as import("@strixun/feature-flags").FeatureFlagsD1Database, ENVIRONMENT: "production" },
-      { includeAnonymous: true, skipPathPatterns: AUTH_FLAG_PIGGYBACK_SKIP_PATHS },
-    );
-
-    const body = (await out.json()) as { access_token?: string; _featureFlags?: unknown };
-    expect(body.access_token).toBe("jwt-body-token");
+    expect(out).toBe(expected);
+    const body = (await out.json()) as { _featureFlags?: unknown };
     expect(body._featureFlags).toBeUndefined();
-
-    const cookies =
-      typeof out.headers.getSetCookie === "function"
-        ? out.headers.getSetCookie()
-        : (out.headers.get("Set-Cookie") ?? "").split(/,(?=\s*\w+=)/);
-    expect(cookies.some((c) => c.includes("auth_token=cookie-jwt"))).toBe(true);
   });
 });
