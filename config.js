@@ -27,6 +27,7 @@ window.STRIXUN_CONFIG = window.STRIXUN_CONFIG || {
     
     // Deployment info (for debugging)
     DEPLOYED_AT: '%%DEPLOYED_AT%%',
+    GIT_SHA: '%%GIT_SHA%%',
     DEPLOYMENT_ENV: '%%DEPLOYMENT_ENV%%',
     
     // Feature flags
@@ -498,6 +499,9 @@ window.initStrixunConfig = async function() {
     console.log('OTP Auth API URL:', window.getOtpAuthApiUrl() || 'Not configured');
     console.log('GitHub Pages URL:', window.getGitHubPagesUrl());
     console.log('Deployed At:', window.STRIXUN_CONFIG.DEPLOYED_AT);
+    if (window.STRIXUN_CONFIG.GIT_SHA && !String(window.STRIXUN_CONFIG.GIT_SHA).startsWith('%%')) {
+        console.log('Git SHA:', window.STRIXUN_CONFIG.GIT_SHA);
+    }
     console.log('Environment:', window.STRIXUN_CONFIG.DEPLOYMENT_ENV);
     
     if (window.STRIXUN_CONFIG.FEATURES.WORKER_HEALTH_CHECK) {

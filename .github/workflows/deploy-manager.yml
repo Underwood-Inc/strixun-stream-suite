@@ -1917,12 +1917,12 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Build Storybook
-        working-directory: shared-components
+        working-directory: packages/shared-components
         run: pnpm build-storybook
       
       - name: Deploy to Cloudflare Pages
         id: deploy
-        working-directory: shared-components
+        working-directory: packages/shared-components
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
@@ -2077,6 +2077,7 @@ jobs:
           sed -i "s|%%GITHUB_PAGES_URL%%|${PAGES_URL}|g" dist/config.js
           sed -i "s|%%STORYBOOK_URL%%|${STORYBOOK_URL}|g" dist/config.js
           sed -i "s|%%DEPLOYED_AT%%|${DEPLOYED_AT}|g" dist/config.js
+          sed -i "s|%%GIT_SHA%%|${{ github.sha }}|g" dist/config.js
           sed -i "s|%%DEPLOYMENT_ENV%%|github-pages|g" dist/config.js
           
           # Verify injection succeeded
