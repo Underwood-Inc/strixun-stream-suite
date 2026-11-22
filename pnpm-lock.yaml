@@ -28,6 +28,9 @@ importers:
       '@strixun/ad-carousel':
         specifier: workspace:*
         version: link:packages/ad-carousel
+      '@strixun/api-framework':
+        specifier: workspace:*
+        version: link:packages/api-framework
       '@strixun/auth-store':
         specifier: workspace:*
         version: link:packages/auth-store

@@ -778,6 +778,7 @@ jobs:
           pnpm --filter "@strixun/error-utils" run build
           pnpm --filter "@strixun/service-client" run build
           pnpm --filter "@strixun/oidc-jwt" run build
+          pnpm --filter "@strixun/feature-flags" run build
           pnpm --filter "@strixun/api-framework" run build
           pnpm --filter "@strixun/auth-store" run build
           pnpm --filter "@strixun/otp-login" run build:react
@@ -1704,6 +1705,7 @@ jobs:
           pnpm --filter "@strixun/error-utils" run build
           pnpm --filter "@strixun/service-client" run build
           pnpm --filter "@strixun/oidc-jwt" run build
+          pnpm --filter "@strixun/feature-flags" run build
           pnpm --filter "@strixun/api-framework" run build
           pnpm --filter "@strixun/auth-store" run build
           pnpm --filter "@strixun/otp-login" run build:react
@@ -1856,6 +1858,7 @@ jobs:
           pnpm --filter "@strixun/error-utils" run build
           pnpm --filter "@strixun/service-client" run build
           pnpm --filter "@strixun/oidc-jwt" run build
+          pnpm --filter "@strixun/feature-flags" run build
           pnpm --filter "@strixun/api-framework" run build
           pnpm --filter "@strixun/auth-store" run build
           pnpm --filter "@strixun/p2p-storage" run build
@@ -1967,9 +1970,10 @@ jobs:
           pnpm --filter "@strixun/error-utils" run build
           pnpm --filter "@strixun/service-client" run build
           pnpm --filter "@strixun/oidc-jwt" run build
+          pnpm --filter "@strixun/feature-flags" run test
+          pnpm --filter "@strixun/feature-flags" run build
           pnpm --filter "@strixun/api-framework" run build
           pnpm --filter "@strixun/auth-store" run build
-          pnpm --filter "@strixun/feature-flags" run build
           pnpm --filter "@strixun/otp-login" run build:react
 
       - name: Build Svelte app
