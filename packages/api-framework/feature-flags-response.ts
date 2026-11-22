@@ -253,6 +253,13 @@ export async function attachFeatureFlagsEnvelope(
   });
 }
 
+function isServiceToServiceRequest(request: Request): boolean {
+  if (request.headers.get("X-Service-Key")) return true;
+  if (request.headers.get("X-Strixun-Request-Integrity")) return true;
+  if (request.headers.get("X-Service-Request") === "true") return true;
+  return false;
+}
+
 export async function attachFeatureFlagsToResponse(
   request: Request,
   response: Response,
@@ -260,6 +267,12 @@ export async function attachFeatureFlagsToResponse(
   options: AttachFeatureFlagsOptions = {},
 ): Promise<Response> {
   if (request.method === "OPTIONS") return response;
+
+  // Piggyback must not run after wrapWithEncryption / response-integrity signing.
+  // Login (otp-auth → customer-api by email) is service-to-service and breaks if the body changes.
+  if (isServiceToServiceRequest(request)) {
+    return response;
+  }
 
   const url = new URL(request.url);
   if (shouldSkipPath(url.pathname, options.skipPathPatterns)) {

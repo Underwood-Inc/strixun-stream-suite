@@ -299,7 +299,7 @@ export async function handleVerifyOTP(request: Request, env: Env, tenantCustomer
                 type: 'https://tools.ietf.org/html/rfc7231#section-6.6.1',
                 title: 'Internal Server Error',
                 status: 500,
-                detail: 'Failed to create customer account. Please try again or contact support.',
+                detail: 'Login could not be completed. Please try again or contact support.',
                 instance: request.url,
             }), {
                 status: 500,

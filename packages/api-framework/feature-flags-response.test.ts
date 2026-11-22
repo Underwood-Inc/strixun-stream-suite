@@ -44,6 +44,28 @@ describe("attachFeatureFlagsToResponse", () => {
     expect("featureFlags" in body).toBe(false);
   });
 
+  test("[FR-FLAG-012b] service-to-service (X-Service-Key) responses pass through unchanged", async () => {
+    const request = new Request("https://customer-api.idling.app/customer/by-email/u%40x.com", {
+      method: "GET",
+      headers: { "X-Service-Key": "svc-key", "X-Strixun-Request-Integrity": "deadbeef" },
+    });
+    const response = new Response(JSON.stringify({ customerId: "cust_old" }), {
+      headers: {
+        "Content-Type": "application/json",
+        "X-Strixun-Response-Integrity": "signed-body-hash",
+      },
+    });
+
+    const env = { FLAGS_DB: {} as import("@strixun/feature-flags").FeatureFlagsD1Database, ENVIRONMENT: "production" };
+    const out = await attachFeatureFlagsToResponse(request, response, env, { includeAnonymous: true });
+
+    expect(out.headers.get(FEATURE_FLAGS_REVISION_HEADER)).toBeNull();
+    expect(out.headers.get("X-Strixun-Response-Integrity")).toBe("signed-body-hash");
+    const body = (await out.json()) as Record<string, unknown>;
+    expect(body.customerId).toBe("cust_old");
+    expect(body[FEATURE_FLAGS_BODY_KEY]).toBeUndefined();
+  });
+
   test("[FR-FLAG-013] parseFeatureFlagsEnvelope reads wire envelope", () => {
     const headers = new Headers({ [FEATURE_FLAGS_REVISION_HEADER]: "1.0.0:production:abc" });
     const envelope = parseFeatureFlagsEnvelope(headers, {
