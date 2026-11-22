@@ -11,7 +11,7 @@ import type { ExecutionContext } from '@strixun/types';
 import { createError } from './utils/errors.js';
 import { getCorsHeaders } from './utils/cors.js';
 import { handleGameRoutes } from './router/game-routes.js';
-import { wrapWithEncryption } from '@strixun/api-framework';
+import { attachFeatureFlagsToResponse, wrapWithEncryption } from '@strixun/api-framework';
 
 /**
  * Health check endpoint
@@ -98,6 +98,13 @@ async function handleHealth(env: any, request: Request): Promise<Response> {
 /**
  * Main request handler
  */
+async function withFeatureFlags(request: Request, response: Response, env: any): Promise<Response> {
+    const envForRequest = env.AUTH_SERVICE
+        ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE.fetch(url) }
+        : env;
+    return attachFeatureFlagsToResponse(request, response, envForRequest, { includeAnonymous: true });
+}
+
 export default {
     async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
         const corsHeaders = getCorsHeaders(env, request);
@@ -122,24 +129,24 @@ export default {
         try {
             // Health check
             if (path === '/health' || path === '/') {
-                return await handleHealth(env, request);
+                return withFeatureFlags(request, await handleHealth(env, request), env);
             }
 
             // Handle game routes
             const gameResult = await handleGameRoutes(request, path, envForRequest);
             if (gameResult) {
-                return gameResult.response;
+                return withFeatureFlags(request, gameResult.response, env);
             }
 
             // 404 for unknown routes
             const rfcError = createError(request, 404, 'Not Found', 'The requested endpoint was not found');
-            return new Response(JSON.stringify(rfcError), {
+            return withFeatureFlags(request, new Response(JSON.stringify(rfcError), {
                 status: 404,
                 headers: {
                     'Content-Type': 'application/problem+json',
                     ...corsHeaders,
                 },
-            });
+            }), env);
         } catch (error: any) {
             console.error('Request handler error:', error);
             
@@ -151,13 +158,13 @@ export default {
                     'Server Configuration Error',
                     'JWT_SECRET environment variable is required. Please contact the administrator.'
                 );
-                return new Response(JSON.stringify(rfcError), {
+                return withFeatureFlags(request, new Response(JSON.stringify(rfcError), {
                     status: 500,
                     headers: {
                         'Content-Type': 'application/problem+json',
                         ...corsHeaders,
                     },
-                });
+                }), env);
             }
             
             const rfcError = createError(
@@ -166,13 +173,13 @@ export default {
                 'Internal Server Error',
                 env.ENVIRONMENT === 'development' ? error.message : 'An internal server error occurred'
             );
-            return new Response(JSON.stringify(rfcError), {
+            return withFeatureFlags(request, new Response(JSON.stringify(rfcError), {
                 status: 500,
                 headers: {
                     'Content-Type': 'application/problem+json',
                     ...corsHeaders,
                 },
-            });
+            }), env);
         }
     },
 };

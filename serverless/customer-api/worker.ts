@@ -11,12 +11,13 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import type { ExecutionContext } from '@strixun/types';
 import { createError } from './utils/errors.js';
 import { handleCustomerRoutes } from './router/customer-routes.js';
-import { wrapWithEncryption } from '@strixun/api-framework';
+import { attachFeatureFlagsToResponse, wrapWithEncryption } from '@strixun/api-framework';
 import { authenticateRequest } from './utils/auth.js';
 
 interface Env {
     CUSTOMER_KV: KVNamespace;
     OTP_AUTH_KV?: KVNamespace;
+    FLAGS_DB?: D1Database;
     /** Service binding to otp-auth-service (for JWKS fetch; avoids same-zone 522) */
     AUTH_SERVICE?: Fetcher;
     JWT_SECRET?: string;
@@ -24,6 +25,13 @@ interface Env {
     ENVIRONMENT?: string;
     NETWORK_INTEGRITY_KEYPHRASE?: string;
     [key: string]: any;
+}
+
+async function withFeatureFlags(request: Request, response: Response, env: Env): Promise<Response> {
+    const envForRequest = env.AUTH_SERVICE
+        ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE!.fetch(url) }
+        : env;
+    return attachFeatureFlagsToResponse(request, response, envForRequest, { includeAnonymous: true });
 }
 
 /**
@@ -130,13 +138,13 @@ export default {
         try {
             // Health check
             if (path === '/health' || path === '/') {
-                return await handleHealth(env, request);
+                return withFeatureFlags(request, await handleHealth(env, request), env);
             }
 
             // Handle customer routes (they authenticate internally)
             const customerResult = await handleCustomerRoutes(request, path, envForRequest);
             if (customerResult) {
-                return customerResult.response;
+                return withFeatureFlags(request, customerResult.response, env);
             }
 
             // 404 for unknown routes
@@ -169,7 +177,7 @@ export default {
                 allowServiceCallsWithoutJWT: true,
                 requireJWT: authForEncryption ? true : false
             });
-            return wrappedResult.response;
+            return withFeatureFlags(request, wrappedResult.response, env);
         } catch (error: any) {
             console.error('[Customer API Worker] Request handler error:', error);
             console.error('[Customer API Worker] Error stack:', error?.stack);
@@ -197,7 +205,7 @@ export default {
             const wrappedResult = await wrapWithEncryption(errorResponse, null, request, env, {
                 allowServiceCallsWithoutJWT: true
             });
-            return wrappedResult.response;
+            return withFeatureFlags(request, wrappedResult.response, env);
         }
     },
 };

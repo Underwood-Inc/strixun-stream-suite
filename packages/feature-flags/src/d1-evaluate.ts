@@ -1,8 +1,9 @@
 import { FEATURE_FLAG_CATALOG_REVISION, rowsForProduct } from "./canon/index.js";
+import type { FlagProduct } from "./types.js";
 import { evaluateProductSnapshot } from "./evaluate.js";
 import type { EvaluationContext, FlagState, FlagValue, IdentityOverride } from "./types.js";
 
-export type FeatureFlagProductId = "stream-suite" | "auth" | "access";
+export type FeatureFlagProductId = FlagProduct;
 
 /** Minimal D1 surface — Workers bind `D1Database` at runtime. */
 export interface FeatureFlagsD1Database {

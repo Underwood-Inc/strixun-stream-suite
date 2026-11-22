@@ -7,6 +7,7 @@
  * @version 1.1.0 - Added migration architecture
  */
 
+import { attachFeatureFlagsToResponse } from '@strixun/api-framework';
 import type { ExecutionContext } from '@cloudflare/workers-types';
 import { getCorsHeaders } from './utils/cors.js';
 import { createError } from './utils/errors.js';
@@ -95,6 +96,10 @@ export default {
       });
     }
     
-    return handleRequest(request, env, ctx);
+    const envForRequest = env.AUTH_SERVICE
+      ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE!.fetch(url) }
+      : env;
+    const response = await handleRequest(request, envForRequest, ctx);
+    return attachFeatureFlagsToResponse(request, response, envForRequest, { includeAnonymous: true });
   },
 };

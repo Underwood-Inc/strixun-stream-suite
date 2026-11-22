@@ -38,7 +38,10 @@ export {
 
 export {
   parseFeatureFlagsEnvelope,
+  mergeFlagsFromResponse,
+  FEATURE_FLAGS_BODY_KEY,
   FEATURE_FLAGS_SNAPSHOT_HEADER,
+  FEATURE_FLAGS_REVISION_HEADER,
   FEATURE_FLAGS_PRODUCT_HEADER,
   FEATURE_FLAGS_JSON_HEADER,
 } from './feature-flags-response';

@@ -66,7 +66,6 @@ export default {
     const response = await route(request, envForRequest);
     const withCors = ensureCORSHeaders(response, corsHeaders);
   return attachFeatureFlagsToResponse(request, withCors, envForRequest, {
-      product: 'stream-suite',
       includeAnonymous: true,
     });
   },

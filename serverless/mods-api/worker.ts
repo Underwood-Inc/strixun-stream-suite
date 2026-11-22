@@ -269,7 +269,6 @@ export default {
             : env;
         const response = await handleRequest(request, envForRequest, ctx);
         return attachFeatureFlagsToResponse(request, response, envForRequest, {
-            product: 'stream-suite',
             includeAnonymous: true,
         });
     },

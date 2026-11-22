@@ -25,6 +25,11 @@ vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", AUT
 binding = "GAME_KV"
 id = "cc95b32546e14dfbb6c36f8e3d96f13f"
 
+[[env.production.d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+
 # Production routes
 [[env.production.routes]]
 pattern = "game.idling.app/*"

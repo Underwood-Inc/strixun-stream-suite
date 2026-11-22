@@ -7,6 +7,7 @@
  * @version 2.1.0 - Added migration architecture
  */
 
+import { attachFeatureFlagsToResponse } from '@strixun/api-framework';
 import { createCORSMiddleware } from '@strixun/api-framework/enhanced';
 import { initializeServiceTypes } from '@strixun/types';
 import { route } from './router/routes.js';
@@ -39,7 +40,8 @@ export default {
       ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE.fetch(url) }
       : env;
     // Handle request with CORS
-    return corsMiddleware(request, async (req) => handleRequest(req, envForRequest, ctx));
+    const response = await corsMiddleware(request, async (req) => handleRequest(req, envForRequest, ctx));
+    return attachFeatureFlagsToResponse(request, response, envForRequest, { includeAnonymous: true });
   },
 };
 

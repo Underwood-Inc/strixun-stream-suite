@@ -97,7 +97,9 @@ export function installFeatureFlagsFetchHook(): void {
     const response = await originalFetch(...args);
   void (async () => {
       try {
-        const snapshotId = response.headers.get("X-Feature-Flags-Snapshot-Id");
+        const snapshotId =
+          response.headers.get("X-Feature-Flags-Revision") ??
+          response.headers.get("X-Feature-Flags-Snapshot-Id");
         if (!snapshotId) return;
 
         const contentType = response.headers.get("Content-Type") ?? "";
@@ -105,10 +107,9 @@ export function installFeatureFlagsFetchHook(): void {
 
         if (contentType.includes("json")) {
           const clone = response.clone();
-          const data = (await clone.json()) as { featureFlags?: EvaluatedFeatureFlagsEnvelope };
-          if (data?.featureFlags?.flags) {
-            envelope = data.featureFlags;
-          }
+          const data = await clone.json();
+          const { parseFeatureFlagsEnvelope } = await import("@strixun/api-framework/client");
+          envelope = parseFeatureFlagsEnvelope(response.headers, data);
         }
 
         if (!envelope) {
@@ -126,7 +127,7 @@ export function installFeatureFlagsFetchHook(): void {
           }
         }
 
-        mergeFeatureFlagsEnvelope(envelope);
+        if (envelope) mergeFeatureFlagsEnvelope(envelope);
       } catch {
         // non-blocking
       }

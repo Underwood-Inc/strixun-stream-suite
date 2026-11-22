@@ -25,6 +25,11 @@ vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", ACC
 binding = "CUSTOMER_KV"
 id = "86ef5ab4419b40eab3fe65b75f052789"
 
+[[env.production.d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+
 # Production routes
 [[env.production.routes]]
 pattern = "customer-api.idling.app/*"

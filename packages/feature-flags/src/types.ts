@@ -1,7 +1,15 @@
 export type FlagSensitivity = "ui" | "security";
 export type FlagKind = "boolean" | "number" | "json";
 export type FlagValue = boolean | number | null | Record<string, unknown>;
-export type FlagProduct = "auth" | "stream-suite" | "access" | "mappy";
+export type FlagProduct =
+  | "auth"
+  | "stream-suite"
+  | "access"
+  | "mods-hub"
+  | "chat-hub"
+  | "url-shortener"
+  | "flags-admin"
+  | "mappy";
 export type FlagId = string;
 
 export interface CanonRow {

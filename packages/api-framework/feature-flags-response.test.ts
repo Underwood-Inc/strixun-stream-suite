@@ -1,7 +1,10 @@
 import { describe, expect, test, vi } from "vitest";
 import {
+  FEATURE_FLAGS_BODY_KEY,
+  FEATURE_FLAGS_REVISION_HEADER,
   FEATURE_FLAGS_SNAPSHOT_HEADER,
   attachFeatureFlagsToResponse,
+  mergeFlagsFromResponse,
   parseFeatureFlagsEnvelope,
 } from "./feature-flags-response.js";
 
@@ -21,37 +24,49 @@ vi.mock("@strixun/feature-flags", async () => {
 });
 
 describe("attachFeatureFlagsToResponse", () => {
-  test("[FR-FLAG-012] merges featureFlags into JSON body", async () => {
-    const request = new Request("https://api.example/health", { method: "GET" });
+  test("[FR-FLAG-012] merges _featureFlags into JSON body", async () => {
+    const request = new Request("https://streamkit.idling.app/health", { method: "GET" });
     const response = new Response(JSON.stringify({ ok: true }), {
       headers: { "Content-Type": "application/json" },
     });
 
     const env = { FLAGS_DB: {} as import("@strixun/feature-flags").FeatureFlagsD1Database, ENVIRONMENT: "production" };
     const out = await attachFeatureFlagsToResponse(request, response, env, {
-      product: "stream-suite",
       includeAnonymous: true,
     });
 
+    expect(out.headers.get(FEATURE_FLAGS_REVISION_HEADER)).toBe("1.0.0:production:abc");
     expect(out.headers.get(FEATURE_FLAGS_SNAPSHOT_HEADER)).toBe("1.0.0:production:abc");
     const body = await out.json();
     expect(body.ok).toBe(true);
+    expect(body[FEATURE_FLAGS_BODY_KEY].flags["stream-suite.route.chat"]).toBe(true);
     expect(body.featureFlags.flags["stream-suite.route.chat"]).toBe(true);
   });
 
-  test("[FR-FLAG-013] parseFeatureFlagsEnvelope reads body envelope", () => {
-    const headers = new Headers({ [FEATURE_FLAGS_SNAPSHOT_HEADER]: "1.0.0:production:abc" });
+  test("[FR-FLAG-013] parseFeatureFlagsEnvelope reads wire envelope", () => {
+    const headers = new Headers({ [FEATURE_FLAGS_REVISION_HEADER]: "1.0.0:production:abc" });
     const envelope = parseFeatureFlagsEnvelope(headers, {
-      featureFlags: {
-        snapshotId: "1.0.0:production:abc",
+      [FEATURE_FLAGS_BODY_KEY]: {
         product: "stream-suite",
         environment: "production",
-        catalogRevision: "1.0.0",
-        evaluatedAt: "t",
+        revision: "1.0.0:production:abc",
         flags: { "stream-suite.ui.sidebar": true },
       },
     });
     expect(envelope?.flags["stream-suite.ui.sidebar"]).toBe(true);
+  });
+
+  test("[FR-FLAG-027] mergeFlagsFromResponse returns envelope", () => {
+    const body = {
+      [FEATURE_FLAGS_BODY_KEY]: {
+        product: "mods-hub",
+        environment: "production",
+        revision: "1.0.0:production:xyz",
+        flags: { "stream-suite.route.chat": false },
+      },
+    };
+    const merged = mergeFlagsFromResponse(body, new Headers({ [FEATURE_FLAGS_REVISION_HEADER]: "1.0.0:production:xyz" }));
+    expect(merged?.product).toBe("mods-hub");
   });
 });
 

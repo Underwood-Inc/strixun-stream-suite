@@ -12,6 +12,11 @@ binding = "CHAT_KV"
 id = "78a1bd4cd5dc468780de442aacc9d1ee"
 preview_id = "78a1bd4cd5dc468780de442aacc9d1ee"
 
+[[env.production.d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+
 # Development environment
 [env.development]
 vars = { ENVIRONMENT = "development", JWT_ISSUER = "http://localhost:8787", NETWORK_INTEGRITY_KEYPHRASE = "test-integrity-keyphrase-for-local-development", JWT_SECRET = "dev-jwt-secret-do-not-use-in-production-abc123", ALLOWED_ORIGINS = "http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5178,http://localhost:5180,http://localhost:8787,http://localhost:3000" }

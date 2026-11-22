@@ -870,16 +870,26 @@ These workers bind the **same** D1 `idling-feature-flags` / `6308b314-36c4-45c5-
 - `serverless/streamkit-api/wrangler.toml` → `FLAGS_DB`
 - `serverless/mods-api/wrangler.toml` → `FLAGS_DB`
 - `serverless/url-shortener/wrangler.toml` → `FLAGS_DB`
+- `serverless/customer-api/wrangler.toml` → `FLAGS_DB`
+- `serverless/chat-signaling/wrangler.toml` → `FLAGS_DB`
+- `serverless/game-api/wrangler.toml` → `FLAGS_DB`
+- `serverless/music-api/wrangler.toml` → `FLAGS_DB`
 
-### 13.1 Response piggyback (runtime clients)
+### 13.1 Response piggyback (suite-wide, product-scoped)
 
-Stream Suite **does not poll** `GET /v1/snapshot`. Workers call `attachFeatureFlagsToResponse` from `@strixun/api-framework` so JSON responses include:
+Runtime apps **do not poll** `GET /v1/snapshot` on an interval. Every primary JSON worker calls `attachFeatureFlagsToResponse` from `@strixun/api-framework`, which:
+
+1. Resolves **product** via `resolveProductForRequest` (host/path/`X-Strixun-Product`)
+2. Evaluates from **FLAGS_DB** (30s in-isolate cache per caller fingerprint)
+3. Slices with **RBAC** (`sliceSnapshotForCaller`: anonymous → UI flags only; authenticated → product canon; super-admin → full product slice)
 
 | Surface | Value |
 |---------|--------|
-| Header | `X-Feature-Flags-Snapshot-Id` — `catalogRevision:environment:flagsFingerprint` |
-| Header | `X-Feature-Flags-Product` — usually `stream-suite` |
-| JSON body | `featureFlags` — `{ snapshotId, product, environment, catalogRevision, evaluatedAt, flags }` |
+| Header | `X-Feature-Flags-Revision` — `catalogRevision:environment:flagsFingerprint` |
+| Header | `X-Feature-Flags-Product` — canon product for the caller |
+| Header | `X-Feature-Flags-Snapshot-Id` — legacy alias of revision |
+| JSON body | `_featureFlags` — `{ product, environment, revision, flags }` |
+| JSON body (compat) | `featureFlags` — legacy evaluated envelope |
 | Non-JSON fallback | Header `X-Feature-Flags` — compact `flags` JSON only |
 
-The SPA installs `installFeatureFlagsFetchHook()` (see `src/main.ts`) and merges into `ui-feature-flags` stores on every `fetch`. **flags-admin** may still call snapshot APIs for editing.
+Clients use `mergeFlagsFromResponse(body, headers)` (`@strixun/api-framework/client`) or `installFeatureFlagsFetchHook()` (Stream Suite `src/main.ts`). **flags-admin** still uses write APIs; reads piggyback on flags-api traffic.

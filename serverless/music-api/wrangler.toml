@@ -15,6 +15,11 @@ vars = { ENVIRONMENT = "development", ALLOWED_ORIGINS = "http://localhost:3001,h
 ENVIRONMENT = "production"
 ROUTES = '[{"pattern":"music-api.idling.app/*","zone_name":"idling.app"}]'
 
+[[d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+
 # Observability Configuration
 [observability]
 enabled = true

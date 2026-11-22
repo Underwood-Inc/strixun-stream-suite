@@ -11,6 +11,7 @@
  * - Service-agnostic (resource types are generic strings)
  */
 
+import { attachFeatureFlagsToResponse } from '@strixun/api-framework';
 import type { Env, CustomerAuthorization } from './types/authorization.js';
 import { DEFAULT_ROLES, DEFAULT_PERMISSIONS } from './types/authorization.js';
 import { handleAccessRoutes } from './router/access-routes.js';
@@ -180,6 +181,19 @@ let hasAttemptedInit = false;
 /**
  * Main worker entry point
  */
+async function withFeatureFlags(
+    request: Request,
+    response: Response,
+    env: Env,
+): Promise<Response> {
+    const envForRequest = env.AUTH_SERVICE
+        ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE!.fetch(url) }
+        : env;
+    return attachFeatureFlagsToResponse(request, response, envForRequest, {
+        includeAnonymous: true,
+    });
+}
+
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         // Auto-initialize on first request (all environments)
@@ -203,18 +217,22 @@ export default {
 
         // Health check endpoint
         if (path === '/health' || path === '/health/ready') {
-            return new Response(JSON.stringify({
-                status: 'healthy',
-                service: 'access-service',
-                timestamp: new Date().toISOString(),
-                environment: env.ENVIRONMENT || 'production',
-            }), {
-                status: 200,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
-                },
-            });
+            return withFeatureFlags(
+                request,
+                new Response(JSON.stringify({
+                    status: 'healthy',
+                    service: 'access-service',
+                    timestamp: new Date().toISOString(),
+                    environment: env.ENVIRONMENT || 'production',
+                }), {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    },
+                }),
+                env,
+            );
         }
 
         // CORS preflight
@@ -235,35 +253,43 @@ export default {
             const result = await handleAccessRoutes(request, path, envForRequest);
             
             if (result) {
-                return result.response;
+                return withFeatureFlags(request, result.response, env);
             }
 
             // 404: Route not found
-            return new Response(JSON.stringify({
-                error: 'Not Found',
-                message: `Route ${path} not found`,
-                code: 'ROUTE_NOT_FOUND',
-            }), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
-                },
-            });
+            return withFeatureFlags(
+                request,
+                new Response(JSON.stringify({
+                    error: 'Not Found',
+                    message: `Route ${path} not found`,
+                    code: 'ROUTE_NOT_FOUND',
+                }), {
+                    status: 404,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    },
+                }),
+                env,
+            );
         } catch (error) {
             console.error('[AccessWorker] Unhandled error:', error);
             
-            return new Response(JSON.stringify({
-                error: 'Internal Server Error',
-                message: error instanceof Error ? error.message : 'Unknown error',
-                code: 'INTERNAL_ERROR',
-            }), {
-                status: 500,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...Object.fromEntries(createCORSHeaders(request, env).entries()),
-                },
-            });
+            return withFeatureFlags(
+                request,
+                new Response(JSON.stringify({
+                    error: 'Internal Server Error',
+                    message: error instanceof Error ? error.message : 'Unknown error',
+                    code: 'INTERNAL_ERROR',
+                }), {
+                    status: 500,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...Object.fromEntries(createCORSHeaders(request, env).entries()),
+                    },
+                }),
+                env,
+            );
         }
     },
 };

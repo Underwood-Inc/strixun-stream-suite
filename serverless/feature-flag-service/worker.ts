@@ -7,6 +7,7 @@ import {
 } from "@strixun/feature-flags";
 import type {
   EvaluationContext,
+  FlagProduct,
   FlagState,
   FlagValue,
   IdentityOverride,
@@ -27,7 +28,7 @@ export interface Env extends FlagServiceEnv {
   ENVIRONMENT?: string;
 }
 
-type ProductId = "stream-suite" | "auth" | "access";
+type ProductId = FlagProduct;
 
 function corsHeaders(origin: string | null, env: Env): HeadersInit {
   const allowed = (env.ALLOWED_ORIGINS ?? "")
@@ -332,7 +333,6 @@ export default {
 
     const response = await handleFeatureFlagRequest(request, env);
     return attachFeatureFlagsToResponse(request, withCors(response, cors), env, {
-      product: "stream-suite",
       includeAnonymous: true,
     });
   },
