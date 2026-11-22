@@ -2,15 +2,16 @@
  * Auth store using shared @strixun/auth-store package
  */
 import { createAuthStore } from '@strixun/auth-store/zustand';
-import { getAuthApiUrl, getDefaultAuthConfig } from '@strixun/auth-store/core';
-
-function isShortArmyHost(hostname: string): boolean {
-  return hostname === 'short.army' || hostname.endsWith('.short.army');
-}
+import { getAuthApiUrl } from '@strixun/auth-store/core';
+import type { AuthStoreConfig } from '@strixun/auth-store/core';
 
 /**
- * OTP login URL only (not checkAuth).
- * short.army uses same-origin /auth-api so verify-otp can set HttpOnly cookies on .short.army + .idling.app.
+ * Auth API base for OTP, checkAuth, logout, and refresh.
+ *
+ * Production url-shortener hosts (short.army, s.idling.app, …) all expose same-origin `/auth-api`
+ * on the worker so verify-otp Set-Cookie reaches the registrable domain the browser will send
+ * on `https://short.army/api/*` (Domain=.short.army). Cross-origin auth.idling.app must NOT be
+ * used for checkAuth on short.army — `.idling.app` cookies are not sent to short.army.
  */
 export function getShortenerAuthApiUrl(): string {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
@@ -19,13 +20,17 @@ export function getShortenerAuthApiUrl(): string {
   if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
     return getAuthApiUrl();
   }
-  if (typeof window !== 'undefined' && isShortArmyHost(window.location.hostname)) {
+  if (typeof window !== 'undefined') {
     return '/auth-api';
   }
   return getAuthApiUrl();
 }
 
-/** checkAuth/logout/refresh → auth.idling.app in prod (SSO path that worked before list routing changes). */
-export const useAuthStore = createAuthStore(getDefaultAuthConfig());
+/** Single config: OTP + checkAuth + logout + refresh share the same base URL. */
+export const shortenerAuthConfig: AuthStoreConfig = {
+  authApiUrl: getShortenerAuthApiUrl(),
+};
+
+export const useAuthStore = createAuthStore(shortenerAuthConfig);
 
 export type { AuthenticatedCustomer, AuthState, AuthStore } from '@strixun/auth-store/core';

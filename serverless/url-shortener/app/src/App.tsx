@@ -19,6 +19,8 @@ export default function App() {
   const { isAuthenticated, customer, checkAuth, logout } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** Bumped after OTP + checkAuth so UrlManager reloads /api/list with fresh .short.army cookies. */
+  const [urlsRefreshKey, setUrlsRefreshKey] = useState(0);
 
   useEffect(() => {
     async function init() {
@@ -42,6 +44,7 @@ export default function App() {
         setError('Session validation failed. Please try again.');
       } else {
         setError(null);
+        setUrlsRefreshKey((key) => key + 1);
       }
     } catch (err) {
       const errorMessage = getAuthErrorMessage(err);
@@ -105,7 +108,11 @@ export default function App() {
 
   return (
     <div className="app-container">
-      <UrlManager userDisplayName={customer.displayName || null} onLogout={handleLogout} />
+      <UrlManager
+        userDisplayName={customer.displayName || null}
+        onLogout={handleLogout}
+        urlsRefreshKey={urlsRefreshKey}
+      />
     </div>
   );
 }

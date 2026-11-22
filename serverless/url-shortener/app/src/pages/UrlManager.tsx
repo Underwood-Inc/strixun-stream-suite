@@ -13,9 +13,11 @@ import StrixunSuiteLink from '@shared-components/react/StrixunSuiteLink';
 interface UrlManagerProps {
   userDisplayName: string | null;
   onLogout: () => void;
+  /** Increment after OTP login to force list reload once short.army cookies are set. */
+  urlsRefreshKey?: number;
 }
 
-export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProps) {
+export default function UrlManager({ userDisplayName, onLogout, urlsRefreshKey = 0 }: UrlManagerProps) {
   const [urls, setUrls] = useState<ShortUrl[]>([]);
   const [loading, setLoading] = useState(false);
   const [urlInput, setUrlInput] = useState('');
@@ -31,7 +33,7 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
   useEffect(() => {
     loadUrls();
     loadStats();
-  }, []);
+  }, [urlsRefreshKey]);
 
   async function loadUrls(): Promise<void> {
     setLoading(true);

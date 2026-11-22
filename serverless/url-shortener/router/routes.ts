@@ -214,8 +214,14 @@ export function createRouter() {
             }
           }
           
-          // If no token but response is OK, return unencrypted (shouldn't happen - auth should fail first)
-          return response;
+          // Never return /api/list without a host cookie — avoids false success when only .idling.app SSO exists
+          return new Response(JSON.stringify({
+            error: 'Authentication required',
+            detail: 'Session cookie for this host missing. Sign in via OTP on this domain.',
+          }), {
+            status: 401,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+          });
         } catch (routeError) {
           console.error('[URL Shortener] Route handler error for /api/list:', routeError);
           const errorMessage = routeError instanceof Error ? routeError.message : String(routeError);
