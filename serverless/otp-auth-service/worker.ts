@@ -38,6 +38,13 @@ export default {
             ? { ...env, JWKS_FETCH: (url: string) => env.AUTH_SERVICE!.fetch(url) }
             : env;
         const response = await route(request, envForRequest, ctx);
-        return attachFeatureFlagsToResponse(request, response, envForRequest, { includeAnonymous: true });
+        try {
+            return await attachFeatureFlagsToResponse(request, response, envForRequest, {
+                includeAnonymous: true,
+            });
+        } catch (flagError) {
+            console.warn('[otp-auth] feature flag piggyback skipped', flagError);
+            return response;
+        }
     }
 };

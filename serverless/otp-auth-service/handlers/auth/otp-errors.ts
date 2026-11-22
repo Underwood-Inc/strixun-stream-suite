@@ -221,8 +221,18 @@ export function createInternalErrorResponse(request: Request, error: any, env: E
     let httpStatusCode = 500;
     let errorCode = 'internal_error';
     
-    // Check for JSON parsing errors
-    if (errorName === 'SyntaxError' && errorMessage.includes('JSON')) {
+    // Client request shape / parsing (verify-otp, request-otp body validation)
+    if (
+        errorMessage.includes('Missing email or otp') ||
+        errorMessage.includes('Invalid JSON in request body')
+    ) {
+        userMessage =
+            errorMessage.includes('Missing email or otp')
+                ? 'Valid email address and OTP are required.'
+                : 'Invalid request: The request data is malformed. Please try again.';
+        errorCode = 'invalid_request_format';
+        httpStatusCode = 400;
+    } else if (errorName === 'SyntaxError' && errorMessage.includes('JSON')) {
         userMessage = 'Invalid request: The request data is malformed. Please try again.';
         errorCode = 'invalid_request_format';
         httpStatusCode = 400;
