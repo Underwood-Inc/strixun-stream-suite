@@ -6,7 +6,9 @@
 # Required GitHub Secrets:
 #   - CF_API_TOKEN: Cloudflare API token with Workers and Pages permissions
 #   - CF_ACCOUNT_ID: Your Cloudflare account ID
-#   - JWT_SECRET: Secure random secret for JWT token signing
+#   - JWT_SECRET: Used by CI for otp-auth, mods-api, access-service, etc. (wrangler secret put).
+#     url-shortener JWT_SECRET is NOT overwritten by CI — must match otp-auth worker secret
+#     (set once via `wrangler secret put JWT_SECRET` in serverless/url-shortener; see wrangler.toml).
 #   - RESEND_API_KEY: Resend API key for OTP email functionality
 #   - RESEND_FROM_EMAIL: Verified domain email for sending OTP emails
 #   - ALLOWED_ORIGINS: Optional - Comma-separated CORS origins. MUST include https://mods.idling.app
@@ -1057,7 +1059,8 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
+            # Custom domains (short.army, s.idling.app, …) bind the TOP-LEVEL worker only.
+            # Do NOT use --env production (legacy workers.dev alias strixun-url-shortener-production-production).
             pnpm exec wrangler deploy
           fi
       
@@ -1078,9 +1081,10 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             ENV_FLAG="--env development"
           fi
-          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
-          fi
+          # JWT_SECRET: never `wrangler secret put` here — GitHub JWT_SECRET often differs from the
+          # live otp-auth/url-shortener worker secret and overwrites break SSO. Bootstrap or rotate manually:
+          #   cd serverless/url-shortener && wrangler secret put JWT_SECRET
+          # Production value MUST match strixun-otp-auth-service (env JWT_SECRET).
           # CRITICAL: ALLOWED_ORIGINS is required for CORS - must be set in GitHub Secrets
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
