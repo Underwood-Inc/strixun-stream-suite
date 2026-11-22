@@ -32,6 +32,12 @@ export {
     handleIntrospect
 } from './auth/introspect.js';
 
+// Cross-TLD session bridge (idling.app → short.army)
+export {
+    handleIssueSessionBridge,
+    handleRedeemSessionBridge,
+} from './auth/session-bridge.js';
+
 // Debug handlers
 export {
     handleClearRateLimit

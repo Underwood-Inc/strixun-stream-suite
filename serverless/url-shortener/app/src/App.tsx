@@ -10,18 +10,14 @@ import UrlManager from './pages/UrlManager';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
 import { useAuthStore } from './stores/auth';
-import { getShortenerAuthApiUrl } from './stores/auth';
+import {
+  bootstrapShortArmySessionFromIdling,
+  getShortenerAuthApiUrl,
+  isShortArmyBrowserHost,
+} from './stores/auth';
 import { getAuthErrorMessage } from '@strixun/otp-auth-service/shared';
 import '@strixun/otp-login/dist/react/otp-login.css';
 import './app.scss';
-
-function isShortArmyHost(): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  const hostname = window.location.hostname;
-  return hostname === 'short.army' || hostname.endsWith('.short.army');
-}
 
 export default function App() {
   const { isAuthenticated, customer, checkAuth, logout } = useAuthStore();
@@ -33,7 +29,16 @@ export default function App() {
   useEffect(() => {
     async function init() {
       try {
-        await checkAuth();
+        let authed = await checkAuth();
+        if (!authed && isShortArmyBrowserHost()) {
+          const bridged = await bootstrapShortArmySessionFromIdling();
+          if (bridged) {
+            authed = await checkAuth();
+            if (authed) {
+              setUrlsRefreshKey((key) => key + 1);
+            }
+          }
+        }
       } catch (err) {
         const errorMessage = getAuthErrorMessage(err);
         console.error('[URL Shortener] Critical auth error:', errorMessage);
@@ -107,8 +112,8 @@ export default function App() {
           onError={handleLoginError}
           title="Sign In"
           subtitle={
-            isShortArmyHost()
-              ? 'Enter your email for a verification code. Already signed in on s.idling.app or another idling app? Refresh — your links load from the shared session.'
+            isShortArmyBrowserHost()
+              ? 'Enter your email for a verification code — or open this page while signed in on s.idling.app and we will connect your session automatically.'
               : 'Enter your email to receive a verification code'
           }
           showAsModal={true}

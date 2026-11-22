@@ -14,6 +14,7 @@ import { handleRequestOTP } from '../handlers/auth/request-otp.js';
 import { handleVerifyOTP } from '../handlers/auth/verify-otp.js';
 import { handleRefresh } from '../handlers/auth/refresh.js';
 import { handleServiceIssueToken } from '../handlers/auth/service-issue.js';
+import { handleIssueSessionBridge, handleRedeemSessionBridge } from '../handlers/auth/session-bridge.js';
 import { trackApiKeyRequest } from '../services/api-key-usage.js';
 // CRITICAL: user-lookup removed - we ONLY use customerId, NO userId
 // CRITICAL: wrapWithEncryption removed - main router handles ALL encryption (avoids double-encryption)
@@ -596,6 +597,18 @@ export async function handleAuthRoutes(
     if (path === '/auth/service/issue-token' && request.method === 'POST') {
         const handlerResponse = await handleServiceIssueToken(request, env);
         return { response: handlerResponse, customerId: null };
+    }
+    if (path === '/auth/session/bridge-code' && request.method === 'POST') {
+        const handlerResponse = await handleIssueSessionBridge(request, env);
+        const corsHeaders = getCorsHeaders(env, request);
+        const responseWithCors = wrapWithCors(handlerResponse, corsHeaders);
+        return { response: responseWithCors, customerId: null };
+    }
+    if (path === '/auth/session/from-idling' && request.method === 'POST') {
+        const handlerResponse = await handleRedeemSessionBridge(request, env);
+        const corsHeaders = getCorsHeaders(env, request);
+        const responseWithCors = wrapWithCors(handlerResponse, corsHeaders);
+        return { response: responseWithCors, customerId: null };
     }
     if (path === '/auth/logout' && request.method === 'POST') {
         const handlerResponse = await authHandlers.handleLogout(request, env);

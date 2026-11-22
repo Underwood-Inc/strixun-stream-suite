@@ -30,6 +30,8 @@ const NO_JWT_REQUIRED_PATHS = [
     '/auth/verify-otp',      // ⚠ CRITICAL - Returns JWT token
     '/auth/refresh',         // Exchanges refresh_token cookie for new tokens - must work when access token expired
     '/auth/me',              // Reads HttpOnly cookie for SSO
+    '/auth/session/bridge-code',  // Opaque bridge code from existing idling session (CORS + cookies)
+    '/auth/session/from-idling',  // Redeem bridge code → host-scoped Set-Cookie
     '/signup',
     '/signup/verify',
     '/track/email-open',     // Email clients can't send headers
@@ -110,7 +112,9 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             '/auth/verify-otp',
             '/auth/me',
             '/auth/logout',
-            '/auth/introspect'
+            '/auth/introspect',
+            '/auth/session/bridge-code',
+            '/auth/session/from-idling',
         ];
         
         const isApiKeyEndpoint = apiKeyEndpoints.some(ep => path === ep || path.startsWith(ep));

@@ -131,3 +131,22 @@ Proxy diagnostics: `X-Proxy-Set-Cookie-Count: 2` on successful verify-otp per ho
 
 - `strixun-url-shortener-production` version: `cdd5607b-e999-4ac6-9335-bc7365532e6f`
 - `otp-auth-service` version: `cc3418b4-71bb-41de-b3aa-c425be639ae1` (`ALLOWED_ORIGINS` in `[vars]` includes `https://short.army`; no `ALLOWED_ORIGINS` secret override)
+
+## 7. Cross-TLD SSO bridge (2026-11-22)
+
+**Why separate login:** `.idling.app` HttpOnly cookies are never sent on `short.army` requests; the auth proxy forwards only `Domain=.short.army` `Set-Cookie` lines, so an idling-only session cannot satisfy `/auth-api/auth/me` on short.army.
+
+**Bridge (no JWT in JS, no idling cookie leak to short.army client):**
+
+| Step | Call | Credentials | Result |
+|------|------|-------------|--------|
+| 1 | `POST https://auth.idling.app/auth/session/bridge-code` body `{ target_host: "short.army" }` | `include` (sends `.idling.app` cookies) | `{ bridge_code }` opaque, 120s, single-use |
+| 2 | `POST https://short.army/auth-api/auth/session/from-idling` body `{ bridge_code }` | `include` | Worker proxies; upstream sets **only** `.short.army` cookies (proxy filter) |
+| 3 | `GET https://short.army/auth-api/auth/me` | `include` | 200; `/api/list` works same-origin |
+
+SPA: `app/src/stores/auth.ts` `bootstrapShortArmySessionFromIdling()` runs after failed `checkAuth` on short.army only.
+
+**Deploy (bridge):**
+
+- `otp-auth-service` version: `111f7245-7f8f-4e9c-ae03-e394cb622af6` (`@strixun/otp-auth-service` 1.1.1)
+- `strixun-url-shortener-production` version: `079aad65-cb37-4338-b7d5-0d0bd619f46b`

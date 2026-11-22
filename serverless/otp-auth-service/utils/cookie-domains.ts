@@ -40,6 +40,55 @@ function extractRootDomain(hostname: string): string {
     return `.${rootDomain}`;
 }
 
+/** Public helper for session bridge target validation. */
+export function extractRootDomainFromHostname(hostname: string): string {
+    const host = hostname.toLowerCase().split(':')[0];
+    if (host === 'localhost' || host === '127.0.0.1') {
+        return 'localhost';
+    }
+    return extractRootDomain(host);
+}
+
+function requestHostname(request: Request): string {
+    const host = request.headers.get('Host');
+    if (host) {
+        return host.split(':')[0].toLowerCase();
+    }
+    const origin = request.headers.get('Origin');
+    if (origin) {
+        try {
+            return new URL(origin).hostname.toLowerCase();
+        } catch {
+            // ignore
+        }
+    }
+    try {
+        return new URL(request.url).hostname.toLowerCase();
+    } catch {
+        return '';
+    }
+}
+
+/**
+ * Cookie Domain= for the browser host that invoked this request (single TLD only).
+ * Used when minting cookies on short.army without leaking .idling.app Set-Cookie lines.
+ */
+export function getCookieDomainForRequestHost(request: Request, env: Env): string {
+    if (env.ENVIRONMENT === 'development') {
+        return 'localhost';
+    }
+    const hostname = requestHostname(request);
+    if (!hostname) {
+        throw new Error('Cannot resolve request hostname');
+    }
+    const domain = extractRootDomainFromHostname(hostname);
+    const allowed = new Set(getCookieDomains(env, null));
+    if (!allowed.has(domain)) {
+        throw new Error(`Host ${hostname} is not in ALLOWED_ORIGINS cookie domains`);
+    }
+    return domain;
+}
+
 /**
  * Get all unique root domains from ALLOWED_ORIGINS
  * 
