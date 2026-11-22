@@ -801,7 +801,8 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
-            # NOTE: Must use NO flag (not --env="") to match where secrets are stored
+            # auth.idling.app/* routes to worker otp-auth-service only (matches package.json deploy:prod).
+            # Do NOT use --env production — otp-auth-service-production has zero Worker secrets.
             pnpm exec wrangler deploy
           fi
       
