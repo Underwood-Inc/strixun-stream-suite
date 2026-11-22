@@ -80,10 +80,10 @@ export function createRouter() {
         const subpath = path.replace(/^\/auth-api\/?/, '');
         const authBase = (env.AUTH_API_URL as string | undefined) ?? 'https://auth.idling.app';
         const targetUrl = `${String(authBase).replace(/\/+$/, '')}/${subpath}${url.search}`;
-        const authFetch = env.AUTH_SERVICE ? env.AUTH_SERVICE.fetch.bind(env.AUTH_SERVICE) : undefined;
+        // Public fetch (not AUTH_SERVICE binding): verify-otp emits 4× Set-Cookie and service
+        // bindings can collapse them so getSetCookie/forwarding fails — browsers never get .short.army cookies.
         return proxyRequestWithCredentials(request, targetUrl, {
           forwardSetCookie: true,
-          fetch: authFetch,
         });
       }
 

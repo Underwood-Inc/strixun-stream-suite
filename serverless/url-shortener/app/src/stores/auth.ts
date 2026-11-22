@@ -2,7 +2,6 @@
  * Auth store using shared @strixun/auth-store package
  */
 import { createAuthStore } from '@strixun/auth-store/zustand';
-import { getAuthApiUrl } from '@strixun/auth-store/core';
 import type { AuthStoreConfig } from '@strixun/auth-store/core';
 
 /**
@@ -17,13 +16,8 @@ export function getShortenerAuthApiUrl(): string {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
     return String(import.meta.env.VITE_AUTH_API_URL);
   }
-  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
-    return getAuthApiUrl();
-  }
-  if (typeof window !== 'undefined') {
-    return '/auth-api';
-  }
-  return getAuthApiUrl();
+  // Build-safe default: Vite evaluates modules without `window`; never bake auth.idling.app here.
+  return '/auth-api';
 }
 
 /** Single config: OTP + checkAuth + logout + refresh share the same base URL. */

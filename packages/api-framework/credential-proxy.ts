@@ -91,9 +91,11 @@ export async function proxyRequestWithCredentials(
   if (forwardSetCookie) {
     appendAllSetCookies(response.headers, responseHeaders);
     const count =
-      typeof response.headers.getSetCookie === 'function'
-        ? response.headers.getSetCookie().length
-        : responseHeaders.getSetCookie?.()?.length ?? 0;
+      typeof responseHeaders.getSetCookie === 'function'
+        ? responseHeaders.getSetCookie().length
+        : typeof response.headers.getSetCookie === 'function'
+          ? response.headers.getSetCookie().length
+          : 0;
     responseHeaders.set('X-Proxy-Set-Cookie-Count', String(count));
   }
 
