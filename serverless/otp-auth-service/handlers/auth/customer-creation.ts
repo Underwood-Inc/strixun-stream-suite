@@ -98,19 +98,9 @@ async function upsertCustomerAccount(
                 // console.log(`[Customer Creation] No customer found by email: ${emailLower} - will create new customer`);
             }
         } catch (error) {
-            // If it's a 500 error, the customer API might be having issues
-            // Log the error but continue - we'll try to create the customer anyway
-            // If customer already exists, creation will fail and we can handle that
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            const isServerError = errorMessage.includes('internal error') || errorMessage.includes('Internal Server Error');
-            
-            if (isServerError) {
-                console.warn(`[Customer Creation] Customer API returned server error when fetching by email ${emailLower}. Will attempt to create customer if it doesn't exist. Error:`, errorMessage);
-            } else {
-                console.warn(`[Customer Creation] Error fetching customer by email ${emailLower}. Will attempt to create customer if it doesn't exist. Error:`, error);
-            }
-            // Continue - if customer exists, creation will fail and we'll handle it in retry logic
-            // existingCustomer remains null, so we'll proceed to create
+            // Regression guard (a790bdd7): do not create when lookup failed — existing users would hit create errors.
+            console.error(`[Customer Creation] Email lookup failed for ${emailLower}; refusing create path:`, error);
+            throw error;
         }
     }
     
@@ -277,11 +267,21 @@ async function upsertCustomerAccount(
         }
     };
     
-    // Create customer via customer-api with retry
-    await retryWithBackoff(async () => {
-        await createCustomer(customerData, env);
-    });
-    // console.log(`[Customer Creation] Customer account created via customer-api: ${resolvedCustomerId} for ${emailLower}`);
+    // Create customer via customer-api with retry; recover existing account if create conflicts
+    try {
+        await retryWithBackoff(async () => {
+            await createCustomer(customerData, env);
+        });
+    } catch (createError) {
+        const existing = await getCustomerByEmailService(emailLower, env);
+        if (existing?.customerId) {
+            console.log(
+                `[Customer Creation] Using existing customer after create failure: ${emailLower} → ${existing.customerId}`,
+            );
+            return existing.customerId;
+        }
+        throw createError;
+    }
     
     // Verify the customer was stored correctly (with retry for eventual consistency)
     let verifyCustomer = await retryWithBackoff(async () => {
