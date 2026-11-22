@@ -35,6 +35,7 @@ id = "680c9dbe86854c369dd23e278abb41f9"
 binding = "FLAGS_DB"
 database_name = "idling-feature-flags"
 database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+migrations_dir = "../feature-flag-service/migrations"
 
 # Service binding to auth Worker so JWKS fetch uses internal routing (avoids same-zone 522).
 # If you deploy otp-auth-service with --env production, set service = "otp-auth-service-production".
@@ -75,6 +76,7 @@ id = "680c9dbe86854c369dd23e278abb41f9"
 binding = "FLAGS_DB"
 database_name = "idling-feature-flags"
 database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+migrations_dir = "../feature-flag-service/migrations"
 
 # Observability Configuration
 [observability]

@@ -44,4 +44,27 @@ describe("evaluateProductFlagsFromD1", () => {
     expect(envelope!.flags["stream-suite.route.chat"]).toBe(true);
     expect(envelope!.snapshotId).toContain("production");
   });
+
+  test("[FR-FLAG-011b] unmigrated D1 falls back to catalog defaults", async () => {
+    const brokenDb = {
+      prepare() {
+        return {
+          bind: () => ({
+            async all() {
+              throw new Error("no such table: flag_state: SQLITE_ERROR");
+            },
+          }),
+        };
+      },
+    } as unknown as import("./d1-evaluate.js").FeatureFlagsD1Database;
+
+    const envelope = await evaluateProductFlagsFromD1(
+      { FLAGS_DB: brokenDb, ENVIRONMENT: "test" },
+      "stream-suite",
+      { roles: [], environment: "test" },
+    );
+
+    expect(envelope).not.toBeNull();
+    expect(envelope!.flags["stream-suite.route.chat"]).toBe(false);
+  });
 });

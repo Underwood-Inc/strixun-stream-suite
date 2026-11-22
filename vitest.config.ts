@@ -2,6 +2,8 @@ import { defineConfig } from 'vitest/config';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
 
+const workspacePackageRoot = resolve(__dirname, 'packages');
+
 export default defineConfig({
   plugins: [svelte({ 
     hot: !process.env.VITEST,
@@ -51,15 +53,37 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
-      '@': resolve(__dirname, './src'),
-      '@components': resolve(__dirname, './src/lib/components'),
-      '@modules': resolve(__dirname, './src/modules'),
-      '@stores': resolve(__dirname, './src/stores'),
-      '@styles': resolve(__dirname, './src/styles'),
-      '@shared-components': resolve(__dirname, './shared-components'),
-      '@shared-styles': resolve(__dirname, './shared-styles')
-    }
+    // Workspace packages export dist/* only; alias to TypeScript sources so root vitest
+    // resolves the same locally and in CI without a separate package build step.
+    alias: [
+      {
+        find: '@strixun/feature-flags',
+        replacement: resolve(workspacePackageRoot, 'feature-flags/src/index.ts'),
+      },
+      {
+        find: '@strixun/api-framework/client',
+        replacement: resolve(workspacePackageRoot, 'api-framework/client.ts'),
+      },
+      {
+        find: '@strixun/api-framework/enhanced',
+        replacement: resolve(workspacePackageRoot, 'api-framework/enhanced.ts'),
+      },
+      {
+        find: '@strixun/api-framework/jwt',
+        replacement: resolve(workspacePackageRoot, 'api-framework/jwt.ts'),
+      },
+      {
+        find: '@strixun/api-framework',
+        replacement: resolve(workspacePackageRoot, 'api-framework/index.ts'),
+      },
+      { find: '@', replacement: resolve(__dirname, './src') },
+      { find: '@components', replacement: resolve(__dirname, './src/lib/components') },
+      { find: '@modules', replacement: resolve(__dirname, './src/modules') },
+      { find: '@stores', replacement: resolve(__dirname, './src/stores') },
+      { find: '@styles', replacement: resolve(__dirname, './src/styles') },
+      { find: '@shared-components', replacement: resolve(__dirname, './shared-components') },
+      { find: '@shared-styles', replacement: resolve(__dirname, './shared-styles') },
+    ],
   },
 });
 

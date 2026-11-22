@@ -30,16 +30,21 @@ export interface EvaluatedFeatureFlagsEnvelope {
 
 async function loadStates(db: FeatureFlagsD1Database, environment: string): Promise<Map<string, FlagState>> {
   const map = new Map<string, FlagState>();
-  const { results } = await db
-    .prepare("SELECT flag_id, value_json FROM flag_state WHERE environment = ?")
-    .bind(environment)
-    .all<{ flag_id: string; value_json: string }>();
-  for (const row of results ?? []) {
-    map.set(row.flag_id, {
-      flagId: row.flag_id,
-      environment,
-      value: JSON.parse(row.value_json) as FlagValue,
-    });
+  try {
+    const { results } = await db
+      .prepare("SELECT flag_id, value_json FROM flag_state WHERE environment = ?")
+      .bind(environment)
+      .all<{ flag_id: string; value_json: string }>();
+    for (const row of results ?? []) {
+      map.set(row.flag_id, {
+        flagId: row.flag_id,
+        environment,
+        value: JSON.parse(row.value_json) as FlagValue,
+      });
+    }
+  } catch (error) {
+    // Unmigrated or empty local D1 — evaluate from catalog defaults only.
+    console.warn("[feature-flags] loadStates failed; using catalog defaults", error);
   }
   return map;
 }
@@ -50,21 +55,25 @@ async function loadOverrides(
   environment: string,
 ): Promise<Map<string, IdentityOverride>> {
   const map = new Map<string, IdentityOverride>();
-  const { results } = await db
-    .prepare(
-      "SELECT flag_id, value_json, expires_at FROM identity_override WHERE customer_id = ? AND environment = ?",
-    )
-    .bind(customerId, environment)
-    .all<{ flag_id: string; value_json: string; expires_at: string | null }>();
-  for (const row of results ?? []) {
-    const key = `${customerId}:${row.flag_id}`;
-    map.set(key, {
-      flagId: row.flag_id,
-      customerId,
-      environment,
-      value: JSON.parse(row.value_json) as FlagValue,
-      expiresAt: row.expires_at,
-    });
+  try {
+    const { results } = await db
+      .prepare(
+        "SELECT flag_id, value_json, expires_at FROM identity_override WHERE customer_id = ? AND environment = ?",
+      )
+      .bind(customerId, environment)
+      .all<{ flag_id: string; value_json: string; expires_at: string | null }>();
+    for (const row of results ?? []) {
+      const key = `${customerId}:${row.flag_id}`;
+      map.set(key, {
+        flagId: row.flag_id,
+        customerId,
+        environment,
+        value: JSON.parse(row.value_json) as FlagValue,
+        expiresAt: row.expires_at,
+      });
+    }
+  } catch (error) {
+    console.warn("[feature-flags] loadOverrides failed; skipping overrides", error);
   }
   return map;
 }
