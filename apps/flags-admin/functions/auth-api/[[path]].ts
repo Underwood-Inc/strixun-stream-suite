@@ -1,5 +1,9 @@
 /**
- * Same-Origin Proxy for Auth API (OTP login, /auth/me, refresh).
+ * Same-Origin Proxy for Auth API
+ *
+ * CRITICAL: Ensures auth cookie is sent reliably for /auth/me, /auth/verify-otp, etc.
+ * Cross-origin fetch to auth.idling.app can fail to send/receive cookies in some browsers.
+ * Proxying through flags.idling.app/auth-api/* makes all auth requests same-origin.
  */
 
 import { proxyRequestWithCredentials } from '@strixun/api-framework';

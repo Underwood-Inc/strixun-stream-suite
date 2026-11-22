@@ -12,20 +12,12 @@
     { id: 'api-keys' as const, label: 'API Keys', requiresRole: null },
     { id: 'audit-logs' as const, label: 'Audit Logs', requiresRole: null },
     { id: 'analytics' as const, label: 'Analytics', requiresRole: null },
-    { id: 'feature-flags' as const, label: 'Feature Flags', requiresRole: 'flags-nav' as const },
+    { id: 'feature-flags' as const, label: 'Feature Flags', requiresRole: 'super-admin' as const },
     { id: 'roles-permissions' as const, label: 'Roles & Permissions', requiresRole: 'super-admin' as const }
   ] as const;
 
   $: pages = allPages.filter((page) => {
     if (!page.requiresRole) return true;
-    if (page.requiresRole === 'flags-nav') {
-      return (
-        userPermissions.includes('flags:read') ||
-        userPermissions.includes('flags:write') ||
-        userPermissions.includes('*') ||
-        userRoles.includes('super-admin')
-      );
-    }
     return userRoles.includes(page.requiresRole);
   });
 

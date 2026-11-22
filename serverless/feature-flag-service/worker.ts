@@ -13,7 +13,7 @@ import type {
 } from "@strixun/feature-flags";
 import {
   authenticateRequest,
-  callerHasPermission,
+  callerCanManageFlags,
   forbidden,
   unauthorized,
 } from "./utils/auth.js";
@@ -173,8 +173,7 @@ export default {
       const requiresAuth = body.includeRateBudget === true || Boolean(context.customerId);
       if (requiresAuth) {
         if (!auth) return withCors(unauthorized(), cors);
-        const canRead = await callerHasPermission(env, auth, "flags:read");
-        if (!canRead) return withCors(forbidden("flags:read required"), cors);
+        // Per-user evaluate (rate budget, overrides): authentication only — not admin flag ACLs.
       }
 
       const rows = rowsForProduct(product);
@@ -276,9 +275,8 @@ export default {
       if (!auth) {
         return withCors(unauthorized(), cors);
       }
-      const canWrite = await callerHasPermission(env, auth, "flags:write");
-      if (!canWrite) {
-        return withCors(forbidden("flags:write required"), cors);
+      if (!callerCanManageFlags(auth)) {
+        return withCors(forbidden("super-admin required"), cors);
       }
 
       const id = decodeURIComponent(stateMatch[1]);

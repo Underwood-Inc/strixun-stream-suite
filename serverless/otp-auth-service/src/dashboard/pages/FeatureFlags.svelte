@@ -6,10 +6,7 @@
   export let userRoles: string[] = [];
   export let userPermissions: string[] = [];
 
-  $: canWrite =
-    userPermissions.includes('flags:write') ||
-    userPermissions.includes('*') ||
-    userRoles.includes('super-admin');
+  $: canWrite = userRoles.includes('super-admin');
 
   let loading = true;
   let error: string | null = null;

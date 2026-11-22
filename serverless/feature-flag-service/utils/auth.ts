@@ -61,30 +61,9 @@ export async function authenticateRequest(request: Request, env: FlagServiceEnv)
   }
 }
 
-export async function callerHasPermission(
-  env: FlagServiceEnv,
-  auth: FlagAuth,
-  permission: "flags:read" | "flags:write",
-): Promise<boolean> {
-  if (auth.isService || auth.isSuperAdmin) return true;
-
-  const accessBase = env.ACCESS_SERVICE_URL ?? "https://access-api.idling.app";
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (auth.jwtToken) headers.Authorization = `Bearer ${auth.jwtToken}`;
-
-  try {
-    const res = await fetch(`${accessBase}/access/${encodeURIComponent(auth.customerId)}/permissions`, {
-      headers,
-    });
-    if (!res.ok) return false;
-    const body = (await res.json()) as { permissions?: string[] };
-    const perms = body.permissions ?? [];
-    if (perms.includes("*")) return true;
-    return perms.includes(permission);
-  } catch (error) {
-    console.error("[FeatureFlagsAuth] Access service permission check failed:", error);
-    return false;
-  }
+/** Feature flag catalog mutations — super-admin (or service) only. */
+export function callerCanManageFlags(auth: FlagAuth): boolean {
+  return auth.isService || auth.isSuperAdmin;
 }
 
 export function unauthorized(message = "Authentication required"): Response {

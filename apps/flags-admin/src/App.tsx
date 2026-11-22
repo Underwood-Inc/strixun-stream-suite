@@ -15,11 +15,11 @@ function flagsBaseUrl(): string {
 
 function isFlagsForbiddenError(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error);
-  return msg.includes('403') || /flags:read|flags:write/i.test(msg);
+  return msg.includes('403') || /super-admin required/i.test(msg);
 }
 
 export default function App() {
-  const { isAuthenticated, checkAuth } = useAuthStore();
+  const { isAuthenticated, isSuperAdmin, checkAuth } = useAuthStore();
   const [authLoading, setAuthLoading] = useState(true);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [product, setProduct] = useState<'stream-suite' | 'auth' | 'access'>('stream-suite');
@@ -66,7 +66,7 @@ export default function App() {
       setFlags(snap.data.flags ?? {});
     } catch (e) {
       if (isFlagsForbiddenError(e)) {
-        setError('Signed in, but your account lacks flags:read. Ask an admin to grant access.');
+        setError('Signed in, but super-admin is required to view or change production flag state.');
       } else {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -74,8 +74,8 @@ export default function App() {
   }, [client, product]);
 
   useEffect(() => {
-    if (isAuthenticated) load();
-  }, [isAuthenticated, load]);
+    if (isAuthenticated && isSuperAdmin) load();
+  }, [isAuthenticated, isSuperAdmin, load]);
 
   const handleLoginSuccess = async (_data: LoginSuccessData) => {
     setLoginError(null);
@@ -110,6 +110,19 @@ export default function App() {
           subtitle="Enter your email to receive a verification code"
         />
       </>
+    );
+  }
+
+  if (!isSuperAdmin) {
+    return (
+      <main className="flags-admin-app" style={{ padding: '2rem' }}>
+        <h1 style={{ marginTop: 0 }}>Idling Flags</h1>
+        <p>Super-admin access is required to use this console.</p>
+        <p style={{ opacity: 0.8, fontSize: '0.9rem' }}>
+          You are signed in, but your account is not a super-admin. Contact an existing super-admin if you need
+          access.
+        </p>
+      </main>
     );
   }
 
@@ -157,7 +170,7 @@ export default function App() {
                         setFlags((prev) => ({ ...prev, [row.id]: next }));
                       } catch (e) {
                         if (isFlagsForbiddenError(e)) {
-                          setError('Signed in, but your account lacks flags:write for this action.');
+                          setError('Super-admin is required to change flag state.');
                         } else {
                           setError(e instanceof Error ? e.message : String(e));
                         }
