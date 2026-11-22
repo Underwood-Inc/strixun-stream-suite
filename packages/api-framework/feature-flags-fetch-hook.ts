@@ -18,17 +18,16 @@ export function installFeatureFlagsFetchHook(): void {
     const response = await originalFetch(...args);
     void (async () => {
       try {
-        const snapshotId =
-          response.headers.get(FEATURE_FLAGS_REVISION_HEADER) ??
-          response.headers.get(FEATURE_FLAGS_SNAPSHOT_HEADER);
-        if (!snapshotId) return;
-
         const contentType = response.headers.get("Content-Type") ?? "";
         if (contentType.includes("json")) {
           const clone = response.clone();
           const data = await clone.json();
           mergeFlagsFromResponse(data, response.headers);
         } else {
+          const snapshotId =
+            response.headers.get(FEATURE_FLAGS_REVISION_HEADER) ??
+            response.headers.get(FEATURE_FLAGS_SNAPSHOT_HEADER);
+          if (!snapshotId) return;
           mergeFlagsFromResponse(undefined, response.headers);
         }
       } catch {

@@ -66,6 +66,7 @@ function envelopeToSnapshot(envelope: EvaluatedFeatureFlagsEnvelope): UiFlagSnap
 
 /** Apply canon defaults until the first API response supplies featureFlags. */
 export function bootstrapUiFeatureFlags(): void {
+  if (lastMergedSnapshotId !== null) return;
   applySnapshot(defaults());
 }
 

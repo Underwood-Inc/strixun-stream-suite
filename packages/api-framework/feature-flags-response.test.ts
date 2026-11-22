@@ -56,6 +56,20 @@ describe("attachFeatureFlagsToResponse", () => {
     expect(envelope?.flags["stream-suite.ui.sidebar"]).toBe(true);
   });
 
+  test("[FR-FLAG-013b] parseFeatureFlagsEnvelope reads embedded body without exposed revision header", () => {
+    const envelope = parseFeatureFlagsEnvelope(new Headers(), {
+      featureFlags: {
+        snapshotId: "1.0.0:production:abc",
+        product: "stream-suite",
+        environment: "production",
+        catalogRevision: "1.0.0",
+        evaluatedAt: "2026-01-01T00:00:00.000Z",
+        flags: { "stream-suite.route.chat": true },
+      },
+    });
+    expect(envelope?.flags["stream-suite.route.chat"]).toBe(true);
+  });
+
   test("[FR-FLAG-027] mergeFlagsFromResponse returns envelope", () => {
     const body = {
       [FEATURE_FLAGS_BODY_KEY]: {

@@ -256,8 +256,8 @@ export function parseFeatureFlagsEnvelope(
 ): EvaluatedFeatureFlagsEnvelope | null {
   const revision =
     headers.get(FEATURE_FLAGS_REVISION_HEADER) ?? headers.get(FEATURE_FLAGS_SNAPSHOT_HEADER);
-  if (!revision) return null;
 
+  // JSON body embed is readable cross-origin even when flag headers are not exposed.
   if (body && typeof body === "object" && body !== null) {
     const record = body as Record<string, unknown>;
     if (record[FEATURE_FLAGS_BODY_KEY]) {
@@ -273,6 +273,8 @@ export function parseFeatureFlagsEnvelope(
       }
     }
   }
+
+  if (!revision) return null;
 
   const headerJson = headers.get(FEATURE_FLAGS_JSON_HEADER);
   if (headerJson) {
