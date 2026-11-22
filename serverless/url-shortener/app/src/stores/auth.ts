@@ -4,11 +4,7 @@
 import { createAuthStore } from '@strixun/auth-store/zustand';
 import { getAuthApiUrl } from '@strixun/auth-store/core';
 
-function isShortArmyHost(hostname: string): boolean {
-  return hostname === 'short.army' || hostname.endsWith('.short.army');
-}
-
-/** Same-origin /auth-api on short.army (worker proxy); cross-TLD idling hosts keep canonical auth URL. */
+/** Same-origin /auth-api on every shortener custom domain (worker proxy + forwardSetCookie). */
 export function getShortenerAuthApiUrl(): string {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
     return String(import.meta.env.VITE_AUTH_API_URL);
@@ -16,7 +12,7 @@ export function getShortenerAuthApiUrl(): string {
   if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
     return getAuthApiUrl();
   }
-  if (typeof window !== 'undefined' && isShortArmyHost(window.location.hostname)) {
+  if (typeof window !== 'undefined') {
     return '/auth-api';
   }
   return getAuthApiUrl();
