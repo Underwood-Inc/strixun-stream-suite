@@ -409,10 +409,10 @@ export async function forceStorageSync(): Promise<void> {
   }
   
   // Flush to ensure everything is written
-  await storage.flush();
+  const obsOk = await storage.flush();
   
   updateStorageStatus();
-  log('Storage synced to IndexedDB + localStorage', 'success');
+  log(obsOk ? 'Storage synced to browser layers and OBS' : 'Storage synced locally; OBS write skipped or failed', obsOk ? 'success' : 'warning');
 }
 
 // Legacy export function (for backwards compatibility)

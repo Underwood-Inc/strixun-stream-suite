@@ -166,6 +166,14 @@ export default defineConfig({
           });
         },
       },
+      '/flags-api': {
+        target: 'http://localhost:8797',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/flags-api/, ''),
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+      },
       '/openapi.json': {
         target: 'http://localhost:8787',
         changeOrigin: true,

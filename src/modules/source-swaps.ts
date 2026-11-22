@@ -18,6 +18,7 @@ import { connected, currentScene, sources } from '../stores/connection';
 import { request } from './websocket';
 import { get } from 'svelte/store';
 import type { SwapConfig, Source } from '../types';
+import { ensureSwapConfigIds, generateSwapConfigId } from './swap-config-ids';
 
 // ============ Types ============
 interface SourceSwapsDependencies {
@@ -764,7 +765,7 @@ export function saveCurrentSwap(): void {
   const name = prompt('Config name:', `${nameA}  ${nameB}`);
   if (!name) return;
   
-  swapConfigs.push({ name, sourceA: nameA, sourceB: nameB });
+  swapConfigs.push({ id: generateSwapConfigId(), name, sourceA: nameA, sourceB: nameB });
   storage.set('swapConfigs', swapConfigs);
   cloudStorage.saveSwapConfigs(swapConfigs).catch(err => console.warn('[Swaps] Cloud save failed:', err));
   renderSavedSwaps();
@@ -814,11 +815,12 @@ export function addSwapConfig(
     return; 
   }
   
-  const config: SwapConfig = { 
-    name: trimmedName, 
-    sourceA, 
+  const config: SwapConfig = {
+    id: generateSwapConfigId(),
+    name: trimmedName,
+    sourceA,
     sourceB,
-    ...options
+    ...options,
   };
   
   swapConfigs.push(config);
@@ -1058,12 +1060,23 @@ export function renderDashSwaps(): void {
  * Load configs from storage (with cloud sync)
  */
 export function loadConfigs(): void {
-  swapConfigs = (storage.get('swapConfigs') as SwapConfig[]) || [];
+  const stored = (storage.get('swapConfigs') as SwapConfig[]) || [];
+  const { configs: withIds, migrated } = ensureSwapConfigIds(stored);
+  swapConfigs = withIds;
+  if (migrated) {
+    storage.set('swapConfigs', withIds);
+    cloudStorage.saveSwapConfigs(withIds).catch(err =>
+      console.warn('[Swaps] Cloud save after id migration failed:', err)
+    );
+  }
   // Trigger cloud sync in background (non-blocking)
   cloudStorage.loadSwapConfigs().then(cloudConfigs => {
-    if (cloudConfigs.length > 0) {
+    if (Array.isArray(cloudConfigs)) {
       swapConfigs = cloudConfigs;
       renderSavedSwaps();
+      if (cloudConfigs.length > 0) {
+        console.log('[Swaps] Synced', cloudConfigs.length, 'configs from cloud');
+      }
     }
   }).catch(err => {
     console.warn('[Swaps] Cloud sync failed:', err);

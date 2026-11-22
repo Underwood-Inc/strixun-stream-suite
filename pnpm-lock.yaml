@@ -37,6 +37,9 @@ importers:
       '@strixun/error-mapping':
         specifier: workspace:*
         version: link:packages/error-mapping
+      '@strixun/feature-flags':
+        specifier: workspace:*
+        version: link:packages/feature-flags
       '@strixun/otp-login':
         specifier: workspace:*
         version: link:packages/otp-login
@@ -402,6 +405,49 @@ importers:
       vitest:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@22.19.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
+
+  apps/flags-admin:
+    dependencies:
+      '@strixun/api-framework':
+        specifier: workspace:*
+        version: link:../../packages/api-framework
+      '@strixun/auth-store':
+        specifier: workspace:*
+        version: link:../../packages/auth-store
+      '@strixun/feature-flags':
+        specifier: workspace:*
+        version: link:../../packages/feature-flags
+      '@strixun/otp-login':
+        specifier: workspace:*
+        version: link:../../packages/otp-login
+      '@strixun/shared-components':
+        specifier: workspace:*
+        version: link:../../packages/shared-components
+      react:
+        specifier: ^19.0.0
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.1
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: ^19.0.1
+        version: 19.2.3(@types/react@19.2.7)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.3.0
+        version: 7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
+      wrangler:
+        specifier: ^4.54.0
+        version: 4.56.0(@cloudflare/workers-types@4.20251225.0)
 
   apps/mods-hub:
     dependencies:
@@ -788,6 +834,15 @@ importers:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
 
+  packages/feature-flags:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.16
+        version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
+
   packages/idle-game-overlay:
     dependencies:
       svelte:
@@ -1139,6 +1194,9 @@ importers:
       '@strixun/error-utils':
         specifier: workspace:*
         version: link:../../packages/error-utils
+      '@strixun/feature-flags':
+        specifier: workspace:*
+        version: link:../../packages/feature-flags
       '@strixun/service-client':
         specifier: workspace:*
         version: link:../../packages/service-client
@@ -1240,6 +1298,25 @@ importers:
         version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
       wrangler:
         specifier: ^4.54.0
+        version: 4.56.0(@cloudflare/workers-types@4.20251225.0)
+
+  serverless/feature-flag-service:
+    dependencies:
+      '@strixun/api-framework':
+        specifier: workspace:*
+        version: link:../../packages/api-framework
+      '@strixun/feature-flags':
+        specifier: workspace:*
+        version: link:../../packages/feature-flags
+    devDependencies:
+      esbuild:
+        specifier: ^0.24.0
+        version: 0.24.2
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      wrangler:
+        specifier: ^4.0.0
         version: 4.56.0(@cloudflare/workers-types@4.20251225.0)
 
   serverless/game-api:
@@ -1358,6 +1435,9 @@ importers:
       '@strixun/error-utils':
         specifier: workspace:*
         version: link:../../packages/error-utils
+      '@strixun/feature-flags':
+        specifier: workspace:*
+        version: link:../../packages/feature-flags
       '@strixun/kv-entities':
         specifier: workspace:*
         version: link:../../packages/kv-entities

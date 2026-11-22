@@ -574,9 +574,12 @@ export function initLayouts(): void {
   
   // Trigger cloud sync in background (non-blocking)
   cloudStorage.loadLayoutPresets().then(cloudPresets => {
-    if (cloudPresets.length > 0) {
+    if (Array.isArray(cloudPresets)) {
       layoutPresets = cloudPresets;
       renderSavedLayouts();
+      if (cloudPresets.length > 0) {
+        console.log('[Layouts] Synced', cloudPresets.length, 'presets from cloud');
+      }
     }
   }).catch(err => {
     console.warn('[Layouts] Cloud sync failed:', err);

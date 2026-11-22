@@ -59,10 +59,11 @@ export function loadConfigs(): void {
   
   // Also try to sync from cloud in background (don't block)
   cloudStorage.loadTextCyclerConfigs().then(cloudConfigs => {
-    if (cloudConfigs && cloudConfigs.length > 0) {
-      // Cloud data takes precedence - update local state
+    if (Array.isArray(cloudConfigs)) {
       configs.set(cloudConfigs);
-      console.log('[TextCycler] Synced', cloudConfigs.length, 'configs from cloud');
+      if (cloudConfigs.length > 0) {
+        console.log('[TextCycler] Synced', cloudConfigs.length, 'configs from cloud');
+      }
     }
   }).catch(err => {
     console.warn('[TextCycler] Cloud load failed:', err);

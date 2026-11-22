@@ -1,0 +1,154 @@
+name: Feature flag service
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'packages/feature-flags/**'
+      - 'serverless/feature-flag-service/**'
+      - 'apps/flags-admin/**'
+
+jobs:
+  test-flags-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @strixun/feature-flags build
+      - run: pnpm --filter @strixun/feature-flags test
+
+  deploy-worker:
+    needs: test-flags-package
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @strixun/feature-flag-service run build:worker
+      - name: Deploy feature-flag-service
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: serverless/feature-flag-service
+          command: deploy
+
+  build-flags-admin:
+    needs: test-flags-package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @strixun/flags-admin build
+
+  deploy-flags-admin-pages:
+    needs: build-flags-admin
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @strixun/flags-admin build
+      - name: Ensure Pages project flags-admin
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/flags-admin
+          command: pages project create flags-admin --production-branch main
+        continue-on-error: true
+      - name: Sync Pages production branch to main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node apps/flags-admin/scripts/patch-pages-production-branch.mjs
+      - name: Deploy flags-admin to Cloudflare Pages (production branch main)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/flags-admin
+          command: pages deploy ../../dist/flags-admin --project-name=flags-admin --branch=main --commit-dirty=true
+      # Wrangler 4 has no `pages domain add`; use the official Pages REST API.
+      - name: Bind custom domain flags.idling.app
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          API="https://api.cloudflare.com/client/v4"
+          BODY=$(curl -sS -X POST \
+            "$API/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/flags-admin/domains" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"flags.idling.app"}')
+          echo "$BODY"
+          if echo "$BODY" | grep -qE '"success"[[:space:]]*:[[:space:]]*true'; then
+            echo "Pages custom domain registered (or already present)."
+          else
+            CODE=$(echo "$BODY" | grep -oE '"code"[[:space:]]*:[[:space:]]*[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+            if [ "$CODE" = "8000018" ] || echo "$BODY" | grep -qi 'already exists'; then
+              echo "Domain already bound to flags-admin — continuing."
+            else
+              echo "::warning::Could not bind flags.idling.app via API. Add it once in dashboard: Workers & Pages → flags-admin → Custom domains."
+            fi
+          fi
+      - name: Ensure DNS CNAME flags → Pages (zone idling.app)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          API="https://api.cloudflare.com/client/v4"
+          ZONE_JSON=$(curl -sS "$API/zones?name=idling.app&status=active" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
+          ZONE_ID=$(echo "$ZONE_JSON" | grep -oE '"id"[[:space:]]*:[[:space:]]*"[0-9a-f]{32}"' | head -1 | sed -E 's/.*"([0-9a-f]{32})".*/\1/' || true)
+          if [ -z "$ZONE_ID" ]; then
+            echo "::warning::Could not resolve zone idling.app — set CNAME flags manually if custom domain stays Pending."
+            exit 0
+          fi
+          EXISTING=$(curl -sS "$API/zones/${ZONE_ID}/dns_records?name=flags.idling.app" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
+          if echo "$EXISTING" | grep -qE '"success"[[:space:]]*:[[:space:]]*true' && echo "$EXISTING" | grep -q '"result"'; then
+            if echo "$EXISTING" | grep -q '"name"[[:space:]]*:[[:space:]]*"flags.idling.app"'; then
+              echo "DNS record for flags.idling.app already present — skipping."
+              exit 0
+            fi
+          fi
+          DNS_BODY=$(curl -sS -X POST "$API/zones/${ZONE_ID}/dns_records" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"type":"CNAME","name":"flags","content":"flags-admin.pages.dev","proxied":true,"comment":"flags-admin Pages production"}')
+          echo "$DNS_BODY"
+          if echo "$DNS_BODY" | grep -qE '"success"[[:space:]]*:[[:space:]]*true'; then
+            echo "Created proxied CNAME flags → flags-admin.pages.dev"
+          else
+            echo "::warning::DNS CNAME not created (token needs Zone.DNS Edit, or record already conflicts). Use dashboard: Workers & Pages → flags-admin → Custom domains."
+          fi

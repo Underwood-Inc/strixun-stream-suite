@@ -17,7 +17,8 @@
   import { storage } from '../modules/storage';
   import { manualStorageSync, requestStorageFromOBS, saveAutoSyncPref } from '../modules/storage-sync';
   import { checkForUpdates, openGitHubRepo } from '../modules/version';
-  import { clearSavedCredentials, loadCredentials, toggleConnection, updateConnectionState, updateSecurityWarning } from '../modules/websocket';
+  import { clearSavedCredentials, loadCredentials, saveCredentials, forgetRememberedCredentials, toggleConnection, updateConnectionState, updateSecurityWarning } from '../modules/websocket';
+  import { isInOBS } from '../modules/obs-storage';
   import { isAuthenticated, customer } from '../stores/auth';
   import { connected } from '../stores/connection';
   import { showToast } from '../stores/toast-queue';
@@ -26,7 +27,7 @@
   let host = 'localhost';
   let port = '4455';
   let password = '';
-  let rememberCreds = false;
+  let rememberCreds = isInOBS();
   let securityWarning = '';
   let dockUrl = '';
   let copyStatus = '';
@@ -151,6 +152,20 @@
     if (lastCheckEl) lastVersionCheck = lastCheckEl.textContent || 'Never checked';
   }
   
+  async function handleRememberChange(): Promise<void> {
+    const rememberEl = document.getElementById('rememberCreds') as HTMLInputElement;
+    if (rememberEl) rememberEl.checked = rememberCreds;
+    if (rememberCreds) {
+      await saveCredentials();
+    } else {
+      await forgetRememberedCredentials();
+      if ((window as any).App?.log) {
+        (window as any).App.log('Remember credentials disabled — saved login cleared', 'info');
+      }
+    }
+    updateSecurityWarning();
+  }
+
   function handleCopyUrl(): void {
     App.copyUrl();
     copyStatus = ' Copied to clipboard!';
@@ -393,7 +408,7 @@
       </div>
       <div class="connection-remember">
         <label class="remember-label">
-          <input type="checkbox" id="rememberCreds" bind:checked={rememberCreds}>
+          <input type="checkbox" id="rememberCreds" bind:checked={rememberCreds} on:change={handleRememberChange}>
           <span>Remember credentials</span>
         </label>
         {#if securityWarning}

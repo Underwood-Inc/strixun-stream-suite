@@ -11,9 +11,9 @@
  * - **AUTOMATIC OBS SYNC** - UI state keys (starting with 'ui_') automatically trigger OBS sync
  * 
  * ENVIRONMENT DETECTION:
- * - When running inside OBS (dock or browser source), uses OBS native storage
- * - When running in a regular browser, uses IndexedDB + localStorage
- * - Detection is done via window.obsstudio object presence
+ * - Browser: IndexedDB + localStorage always
+ * - When OBS WebSocket is connected (dock or regular browser): also OBS persistent data
+ * - Detection of the OBS CEF host is still window.obsstudio; persistence itself follows the socket
  * 
  * UI STATE PERSISTENCE:
  * - Keys starting with 'ui_' are automatically synced to OBS client
@@ -24,7 +24,7 @@
  * @version 2.2.0 (TypeScript)
  */
 
-import { obsStorage, isInOBS } from './obs-storage.js';
+import { obsStorage } from './obs-storage.js';
 
 // ============ Types ============
 interface StorageItem {
@@ -48,7 +48,7 @@ interface StorageInterface {
   remove(key: string): void;
   getRaw(key: string): unknown;
   setRaw(key: string, value: string): void;
-  flush(): Promise<void>;
+  flush(): Promise<boolean>;
   isReady(): boolean;
   clear(): void;
   has(key: string): boolean;
@@ -64,6 +64,9 @@ const IDB_VERSION = 1;
 const AUTO_BACKUP_KEY = 'sss_recovery_snapshot';
 const AUTO_BACKUP_INTERVAL = 60000; // Every minute when changes detected
 // const CONFIG_KEYS = ['swapConfigs', 'layoutPresets', 'textCyclerConfigs', 'clipsConfigs'] as const;
+
+/** OBS WebSocket credential keys must stay plain strings (never JSON-parsed on load). */
+const OBS_RAW_KEYS_PREFIX = 'obs_';
 
 // ============ State ============
 let storageCache: Record<string, unknown> = {};
@@ -184,15 +187,20 @@ export async function loadStorageCache(): Promise<void> {
                 try {
                   const raw = localStorage.getItem(fullKey);
                   if (raw) {
-                    storageCache[key] = JSON.parse(raw);
-                    console.log('[Storage] Recovered from localStorage:', key);
-                    // Sync back to IndexedDB
-                    if (idbInstance) {
-                      saveToIDB(key, storageCache[key]);
+                    if (key.startsWith(OBS_RAW_KEYS_PREFIX)) {
+                      storageCache[key] = raw;
+                      if (idbInstance) {
+                        saveToIDB(key, raw);
+                      }
+                    } else {
+                      storageCache[key] = JSON.parse(raw);
+                      console.log('[Storage] Recovered from localStorage:', key);
+                      if (idbInstance) {
+                        saveToIDB(key, storageCache[key]);
+                      }
                     }
                   }
                 } catch (e) {
-                  // Raw string value (credentials etc)
                   storageCache[key] = localStorage.getItem(fullKey);
                 }
               }
@@ -223,6 +231,7 @@ export async function loadStorageCache(): Promise<void> {
   }
   
   console.log('[Storage] Cache ready with keys:', Object.keys(storageCache));
+  installPersistenceGuards();
 }
 
 /**
@@ -269,7 +278,7 @@ export const storage: StorageInterface = {
   get(key: string): unknown | null {
     // When in OBS and OBS storage is ready, prefer OBS storage
     // But still fall back to local cache if key not found in OBS storage
-    if (isInOBS() && obsStorage.isReady()) {
+    if (obsStorage.isReady()) {
       const obsValue = obsStorage.get(key);
       if (obsValue !== null) {
         return obsValue;
@@ -303,9 +312,7 @@ export const storage: StorageInterface = {
         console.warn('[Storage] localStorage write failed:', key, e);
       }
       
-      // ALSO write to OBS storage when running inside OBS and connected
-      // This ensures data persists in OBS across restarts
-      if (isInOBS() && obsStorage.isReady()) {
+      if (obsStorage.isReady()) {
         obsStorage.set(key, value);
       }
       
@@ -350,7 +357,7 @@ export const storage: StorageInterface = {
       localStorage.removeItem(STORAGE_PREFIX + key);
       
       // Also remove from OBS storage when in OBS and connected
-      if (isInOBS() && obsStorage.isReady()) {
+      if (obsStorage.isReady()) {
         obsStorage.remove(key);
       }
     } catch (e) {
@@ -364,7 +371,7 @@ export const storage: StorageInterface = {
    */
   getRaw(key: string): unknown {
     // When in OBS and OBS storage is ready, prefer OBS storage
-    if (isInOBS() && obsStorage.isReady()) {
+    if (obsStorage.isReady()) {
       const obsValue = obsStorage.getRaw(key);
       if (obsValue !== null) {
         return obsValue;
@@ -372,8 +379,16 @@ export const storage: StorageInterface = {
     }
     
     // Fall back to local cache
-    const value = storageCache[key];
-    return value !== undefined ? value : null;
+    let value = storageCache[key];
+    if (value === undefined) {
+      return null;
+    }
+    // Legacy: obs_* keys must remain strings (JSON.parse may have coerced values)
+    if (key.startsWith(OBS_RAW_KEYS_PREFIX) && typeof value !== 'string') {
+      value = String(value);
+      storageCache[key] = value;
+    }
+    return value;
   },
   
   /**
@@ -395,8 +410,7 @@ export const storage: StorageInterface = {
         // Ignore localStorage errors
       }
       
-      // ALSO write to OBS storage when in OBS and connected
-      if (isInOBS() && obsStorage.isReady()) {
+      if (obsStorage.isReady()) {
         obsStorage.setRaw(key, value);
       }
     } catch (e) {
@@ -407,22 +421,22 @@ export const storage: StorageInterface = {
   /**
    * Force sync all cached data to all storage layers
    */
-  async flush(): Promise<void> {
-    // Flush to local storage layers
+  async flush(): Promise<boolean> {
     for (const [key, value] of Object.entries(storageCache)) {
       saveToIDB(key, value);
       try {
-        const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
-        localStorage.setItem(STORAGE_PREFIX + key, jsonValue);
+        const isRawCred = key.startsWith('obs_') && typeof value === 'string';
+        const stored = isRawCred ? value : (typeof value === 'string' ? value : JSON.stringify(value));
+        localStorage.setItem(STORAGE_PREFIX + key, stored);
       } catch (e) {
         // Ignore errors
       }
     }
     
-    // Also flush to OBS storage when in OBS and connected
-    if (isInOBS() && obsStorage.isReady()) {
-      await obsStorage.flush();
+    if (obsStorage.isReady()) {
+      return obsStorage.flush();
     }
+    return true;
   },
   
   /**
@@ -461,7 +475,7 @@ export const storage: StorageInterface = {
       keysToRemove.forEach(key => localStorage.removeItem(key));
       
       // Also clear OBS storage when in OBS and connected
-      if (isInOBS() && obsStorage.isReady()) {
+      if (obsStorage.isReady()) {
         obsStorage.clear();
       }
     } catch (e) {
@@ -478,7 +492,7 @@ export const storage: StorageInterface = {
       return true;
     }
     // Also check OBS storage when in OBS and connected
-    if (isInOBS() && obsStorage.isReady()) {
+    if (obsStorage.isReady()) {
       return obsStorage.has(key);
     }
     return false;
@@ -491,7 +505,7 @@ export const storage: StorageInterface = {
     const localKeys = Object.keys(storageCache);
     
     // Also include OBS storage keys when in OBS and connected
-    if (isInOBS() && obsStorage.isReady()) {
+    if (obsStorage.isReady()) {
       const obsKeys = obsStorage.keys();
       // Merge and deduplicate
       const allKeys = new Set([...localKeys, ...obsKeys]);
@@ -599,6 +613,60 @@ export function isIdbReady(): boolean {
   return idbReady;
 }
 
+const RAW_CRED_KEYS = new Set(['obs_host', 'obs_port', 'obs_password', 'obs_remember']);
+let persistenceGuardsInstalled = false;
+
+/**
+ * Copy OBS persistent keys into IndexedDB + localStorage so browser and dock
+ * share one picture after WebSocket identify.
+ */
+export function hydrateLocalFromOBS(): void {
+  if (!obsStorage.isReady()) return;
+
+  for (const key of obsStorage.keys()) {
+    const value = obsStorage.get(key);
+    if (value === null || value === undefined) continue;
+
+    storageCache[key] = value;
+    saveToIDB(key, value);
+    try {
+      if (RAW_CRED_KEYS.has(key) && typeof value === 'string') {
+        localStorage.setItem(STORAGE_PREFIX + key, value);
+      } else {
+        localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
+      }
+    } catch {
+      // CEF localStorage may be blocked; OBS slot still holds the value
+    }
+  }
+}
+
+function installPersistenceGuards(): void {
+  if (persistenceGuardsInstalled || typeof window === 'undefined') return;
+  persistenceGuardsInstalled = true;
+
+  const flushNow = () => {
+    void storage.flush();
+  };
+
+  window.addEventListener('pagehide', flushNow);
+  window.addEventListener('beforeunload', flushNow);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      flushNow();
+    }
+  });
+}
+
 // Export STORAGE_PREFIX for use in other modules
 export { STORAGE_PREFIX };
+
+/**
+ * Whether "remember credentials" is enabled in storage.
+ * Legacy loads may have coerced obs_remember to boolean via JSON.parse('true').
+ */
+export function isObsRememberEnabled(): boolean {
+  const value = storage.getRaw('obs_remember');
+  return value === 'true' || value === true;
+}
 

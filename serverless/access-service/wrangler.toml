@@ -18,6 +18,9 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ENVIRONMENT = "production"
 JWT_ISSUER = "https://auth.idling.app"
+# Fallback CORS list when no ALLOWED_ORIGINS secret is set. Production currently uses a secret (wrangler secret list);
+# secrets override [vars]. If you secret put, MERGE with the existing dashboard value — never replace with this subset alone.
+ALLOWED_ORIGINS = "https://idling.app,https://www.idling.app,https://auth.idling.app,https://mods.idling.app,https://mods-api.idling.app,https://customer-api.idling.app,https://access.idling.app,https://access-api.idling.app,https://game.idling.app,https://chat.idling.app,https://api.idling.app,https://s.idling.app,https://short.idling.app,https://shorten.idling.app,https://streamkit.idling.app,https://design.idling.app,https://docs.idling.app,https://music-api.idling.app,https://short.army,https://sss.idling.app,https://flags.idling.app,https://flags-api.idling.app"
 
 # Production KV Namespace for access control data
 [[kv_namespaces]]
@@ -27,6 +30,11 @@ id = "ee3fee37d3d74ffdb7ebeeae4b0d86ff"
 [[kv_namespaces]]
 binding = "OTP_AUTH_KV"
 id = "680c9dbe86854c369dd23e278abb41f9"
+
+[[d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
 
 # Service binding to auth Worker so JWKS fetch uses internal routing (avoids same-zone 522).
 # If you deploy otp-auth-service with --env production, set service = "otp-auth-service-production".
@@ -52,7 +60,7 @@ SERVICE_API_KEY = "dev-service-api-key-for-local-testing"
 SUPER_ADMIN_API_KEY = "dev-super-admin-api-key-for-local-testing"
 NETWORK_INTEGRITY_KEYPHRASE = "test-integrity-keyphrase-for-local-development"
 CUSTOMER_API_URL = "http://localhost:8790"
-ALLOWED_ORIGINS = "http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5178,http://localhost:5180,http://localhost:8787,http://localhost:3000"
+ALLOWED_ORIGINS = "http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5178,http://localhost:5180,http://localhost:8787,http://localhost:8797,http://localhost:5179,http://localhost:3000,https://flags.idling.app,https://flags-api.idling.app"
 
 # Development KV Namespace (shares production namespace for local testing)
 [[env.development.kv_namespaces]]
@@ -62,6 +70,11 @@ id = "ee3fee37d3d74ffdb7ebeeae4b0d86ff"
 [[env.development.kv_namespaces]]
 binding = "OTP_AUTH_KV"
 id = "680c9dbe86854c369dd23e278abb41f9"
+
+[[env.development.d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
 
 # Observability Configuration
 [observability]

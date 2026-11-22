@@ -12,10 +12,63 @@ import { handleListRoles, handleGetRole, handleSaveRole, handleListPermissions }
 import { handleGetAuditLog } from '../handlers/audit.js';
 import { createCORSHeaders } from '../utils/cors.js';
 import { authenticateRequest, requireAuth, requireSuperAdmin } from '../utils/auth.js';
-import { checkRateLimit, getRateLimitIdentifier, createRateLimitError, addRateLimitHeaders, RATE_LIMITS } from '../utils/rate-limit.js';
+import { checkRateLimit, getRateLimitIdentifier, createRateLimitError, addRateLimitHeaders, RATE_LIMITS, type RateLimitConfig } from '../utils/rate-limit.js';
+import { getCustomerAccess } from '../utils/access-kv.js';
+import { resolveAuthRateBudgetFromEnv, unlimitedRateLimitResult } from '../utils/flag-rate-budget.js';
+import type { AuthResult } from '../utils/auth.js';
 
 export interface RouteResult {
     response: Response;
+}
+
+async function customerRolesForRateBudget(auth: AuthResult, env: Env): Promise<string[]> {
+    if (auth.jwtPayload?.roles && Array.isArray(auth.jwtPayload.roles)) {
+        return auth.jwtPayload.roles as string[];
+    }
+    if (!auth.customerId) return [];
+    const access = await getCustomerAccess(auth.customerId, env);
+    return access?.roles ?? [];
+}
+
+async function applyFlagRateBudget(
+    auth: AuthResult | null,
+    baseConfig: RateLimitConfig,
+    identifier: string,
+    env: Env,
+) {
+    if (env.ENVIRONMENT === 'test') {
+        return {
+            effectiveConfig: baseConfig,
+            rateLimitResult: {
+                allowed: true,
+                remaining: baseConfig.maxRequests,
+                resetAt: new Date(Date.now() + baseConfig.windowSeconds * 1000).toISOString(),
+            },
+        };
+    }
+
+    if (auth?.type === 'service') {
+        const unlimited = unlimitedRateLimitResult();
+        return { effectiveConfig: baseConfig, rateLimitResult: unlimited };
+    }
+
+    const customerId = auth?.customerId ?? null;
+    const roles = auth?.type === 'jwt' && auth.customerId
+        ? await customerRolesForRateBudget(auth, env)
+        : [];
+    const budget = await resolveAuthRateBudgetFromEnv(env, customerId, roles);
+
+    if (budget.bypass) {
+        return { effectiveConfig: baseConfig, rateLimitResult: unlimitedRateLimitResult() };
+    }
+
+    const effectiveConfig: RateLimitConfig = { ...baseConfig };
+    if (budget.baseTries !== null) {
+        effectiveConfig.maxRequests = Math.max(1, budget.baseTries);
+    }
+
+    const rateLimitResult = await checkRateLimit(identifier, effectiveConfig, env);
+    return { effectiveConfig, rateLimitResult };
 }
 
 /**
@@ -42,39 +95,14 @@ export async function handleAccessRoutes(
         rateLimitConfig = RATE_LIMITS.write;
     }
     
-    // Check if super admin (bypass rate limits for super admins and service calls)
-    let isSuperAdmin = false;
-    if (auth?.type === 'service') {
-        // Service calls always bypass rate limits
-        isSuperAdmin = true;
-    } else if (auth?.type === 'jwt' && auth.customerId) {
-        // JWT claim check (OTP_SUPER_ADMIN_IDS — RS256-verified, no KV round-trip needed)
-        if (auth.jwtPayload?.isSuperAdmin === true) {
-            isSuperAdmin = true;
-        } else {
-            // Fallback: KV-based role assignment
-            try {
-                const rolesKey = `customer:${auth.customerId}:roles`;
-                const roles = await env.ACCESS_KV.get(rolesKey, { type: 'json' }) as string[] | null;
-                if (roles && roles.includes('super-admin')) {
-                    isSuperAdmin = true;
-                }
-            } catch (error) {
-                console.error('[RateLimit] Error checking super-admin role:', error);
-            }
-        }
-    }
-    
-    // Check rate limit (SKIP for super admins and test environment)
-    let rateLimitResult = await checkRateLimit(identifier, rateLimitConfig, env);
-    if (env.ENVIRONMENT === 'test' || isSuperAdmin) {
-        // Bypass rate limiting for test mode and super admins
-        rateLimitResult = {
-            allowed: true,
-            remaining: rateLimitConfig.maxRequests,
-            resetAt: new Date(Date.now() + rateLimitConfig.windowSeconds * 1000).toISOString(),
-        };
-    } else if (!rateLimitResult.allowed) {
+    const { effectiveConfig: rateLimitConfigEffective, rateLimitResult } = await applyFlagRateBudget(
+        auth,
+        rateLimitConfig,
+        identifier,
+        env,
+    );
+
+    if (!rateLimitResult.allowed) {
         return { response: createRateLimitError(rateLimitResult) };
     }
     
@@ -131,35 +159,35 @@ export async function handleAccessRoutes(
         if (parts.length === 2) {
             const customerId = parts[1];
             const response = await handleGetAccess(request, env, customerId);
-            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfig.maxRequests) };
+            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfigEffective.maxRequests) };
         }
         
         // GET /access/:customerId/permissions
         if (parts.length === 3 && parts[2] === 'permissions') {
             const customerId = parts[1];
             const response = await handleGetPermissions(request, env, customerId);
-            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfig.maxRequests) };
+            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfigEffective.maxRequests) };
         }
         
         // GET /access/:customerId/roles
         if (parts.length === 3 && parts[2] === 'roles') {
             const customerId = parts[1];
             const response = await handleGetRoles(request, env, customerId);
-            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfig.maxRequests) };
+            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfigEffective.maxRequests) };
         }
         
         // GET /access/:customerId/quotas
         if (parts.length === 3 && parts[2] === 'quotas') {
             const customerId = parts[1];
             const response = await handleGetQuotas(request, env, customerId);
-            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfig.maxRequests) };
+            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfigEffective.maxRequests) };
         }
         
         // GET /access/:customerId/audit-log
         if (parts.length === 3 && parts[2] === 'audit-log') {
             const customerId = parts[1];
             const response = await handleGetAuditLog(request, env, customerId);
-            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfig.maxRequests) };
+            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfigEffective.maxRequests) };
         }
     }
 
@@ -172,13 +200,13 @@ export async function handleAccessRoutes(
         // POST /access/check-permission
         if (path === '/access/check-permission') {
             const response = await handleCheckPermission(request, env);
-            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfig.maxRequests) };
+            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfigEffective.maxRequests) };
         }
         
         // POST /access/check-quota
         if (path === '/access/check-quota') {
             const response = await handleCheckQuota(request, env);
-            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfig.maxRequests) };
+            return { response: addRateLimitHeaders(response, rateLimitResult, rateLimitConfigEffective.maxRequests) };
         }
     }
 

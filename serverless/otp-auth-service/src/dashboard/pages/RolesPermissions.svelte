@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { accessApiClient, type CustomerWithAccess } from '$dashboard/lib/access-api-client';
+  import { evaluateAuthRateBudget, type RateBudget } from '$dashboard/lib/flags-api-client';
   import type { Customer, RoleDefinition, PermissionDefinition } from '$dashboard/lib/types';
   import ErrorDisplay from '@strixun/shared-components/svelte/ErrorDisplay';
 
@@ -20,6 +21,8 @@
   let selectedTab: 'roles' | 'permissions' | 'customers' = 'roles';
   let searchQuery = '';
   let customerSearchQuery = '';
+  let customerLimits: Record<string, RateBudget | 'loading' | 'error'> = {};
+  let limitsLoading = false;
   let selectedCustomer: CustomerWithAccess | null = null;
   let editingRoles: string[] = [];
   let originalRoles: string[] = [];
@@ -84,12 +87,39 @@
         search: customerSearchQuery || undefined,
       });
       customers = response.customers;
+      if (customers.length > 0) {
+        await loadCustomerLimits();
+      }
     } catch (err) {
       customersError = err;
       console.error('Error loading customers:', err);
     } finally {
       customersLoading = false;
     }
+  }
+
+  async function loadCustomerLimits() {
+    limitsLoading = true;
+    const entries = await Promise.all(
+      customers.map(async (cust) => {
+        try {
+          const budget = await evaluateAuthRateBudget(cust.customerId, cust.roles ?? []);
+          return [cust.customerId, budget] as const;
+        } catch {
+          return [cust.customerId, 'error'] as const;
+        }
+      }),
+    );
+    customerLimits = Object.fromEntries(entries);
+    limitsLoading = false;
+  }
+
+  function formatLimitsSummary(limit: RateBudget | 'loading' | 'error' | undefined): string {
+    if (limit === 'loading' || limitsLoading) return 'Loading…';
+    if (limit === 'error' || !limit) return '—';
+    const parts = [`Bypass: ${limit.bypass ? 'yes' : 'no'}`];
+    if (limit.baseTries !== null) parts.push(`Base tries: ${limit.baseTries}`);
+    return parts.join('; ');
   }
 
   async function saveCustomerAccess(customerId: string) {
@@ -352,7 +382,7 @@
 
   // ==================== TABLE CONFIGURATION ====================
   
-  type ColumnId = 'displayName' | 'customerId' | 'roles' | 'status' | 'lastLogin' | 'actions';
+  type ColumnId = 'displayName' | 'customerId' | 'roles' | 'limits' | 'status' | 'lastLogin' | 'actions';
   
   interface ColumnConfig {
     id: ColumnId;
@@ -368,6 +398,7 @@
     { id: 'displayName', label: 'Display Name', width: 220, minWidth: 120, visible: true, sortable: true },
     { id: 'customerId', label: 'Customer ID', width: 180, minWidth: 100, visible: true, sortable: true },
     { id: 'roles', label: 'Roles', width: 200, minWidth: 100, visible: true, sortable: false },
+    { id: 'limits', label: 'Limits', width: 200, minWidth: 120, visible: true, sortable: false },
     { id: 'status', label: 'Status', width: 100, minWidth: 80, visible: true, sortable: true },
     { id: 'lastLogin', label: 'Last Login', width: 160, minWidth: 100, visible: true, sortable: true },
     { id: 'actions', label: 'Actions', width: 120, minWidth: 100, visible: true, sortable: false },
@@ -602,6 +633,7 @@
       </button>
     </div>
 
+    {#if selectedTab !== 'customers'}
     <div class="search-bar">
       <input
         type="text"
@@ -610,6 +642,7 @@
         class="search-input"
       />
     </div>
+    {/if}
 
     {#if selectedTab === 'roles'}
       <div class="roles-grid">
@@ -806,6 +839,10 @@
                           {:else}
                             <span class="no-roles">No roles</span>
                           {/if}
+                        {:else if col.id === 'limits'}
+                          <span class="limits-cell" title="Auth rate budget from flags-api">
+                            {formatLimitsSummary(customerLimits[cust.customerId])}
+                          </span>
                         {:else if col.id === 'status'}
                           <span class="status-pill status-pill--{cust.status || 'unknown'}">
                             {cust.status || 'unknown'}

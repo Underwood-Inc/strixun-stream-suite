@@ -1,5 +1,6 @@
 <script lang="ts">
   import { apiClient } from '$dashboard/lib/api-client';
+  import { accessApiClient } from '$dashboard/lib/access-api-client';
   import type { Customer } from '$dashboard/lib/types';
   import { onMount, tick } from 'svelte';
   import DashboardHeader from '$dashboard/components/Header.svelte';
@@ -11,15 +12,19 @@
   import AuditLogs from '$dashboard/pages/AuditLogs.svelte';
   import Dashboard from '$dashboard/pages/Dashboard.svelte';
   import RolesPermissions from '$dashboard/pages/RolesPermissions.svelte';
+  import FeatureFlags from '$dashboard/pages/FeatureFlags.svelte';
   import SupportAdCarousel from '@strixun/ad-carousel/SupportAdCarousel.svelte';
 
   let customer: Customer | null = null;
   let isAuthenticated = false;
   let rolesVerified = false;
-  let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' | 'roles-permissions' = 'dashboard';
+  let rolesLoading = false;
+  let rolesLoadFailed = false;
+  let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' | 'feature-flags' | 'roles-permissions' = 'dashboard';
   let loading = true;
   let authView: 'login' | 'signup' = 'login';
   let userRoles: string[] = [];
+  let userPermissions: string[] = [];
 
   onMount(async () => {
     // Setup event listeners first
@@ -64,6 +69,7 @@
         isAuthenticated = false;
         customer = null;
         userRoles = [];
+        userPermissions = [];
         rolesVerified = false;
       } finally {
         loading = false;
@@ -85,6 +91,8 @@
   });
 
   async function loadCustomer() {
+    rolesLoading = true;
+    rolesLoadFailed = false;
     try {
       const fullCustomer = await apiClient.getCustomer();
       customer = fullCustomer;
@@ -93,11 +101,20 @@
         return;
       }
       userRoles = await apiClient.getUserRoles(fullCustomer.customerId);
+      try {
+        const access = await accessApiClient.getCustomerPermissions(fullCustomer.customerId);
+        userPermissions = access.permissions ?? [];
+      } catch (permErr) {
+        console.warn('Failed to load user permissions:', permErr);
+        userPermissions = [];
+      }
       rolesVerified = true;
+      rolesLoadFailed = false;
     } catch (error: any) {
       console.error('Failed to load customer:', error);
       userRoles = [];
       rolesVerified = false;
+      rolesLoadFailed = true;
 
       const errorMessage = error?.message || error?.toString() || '';
       const errorCode = error?.code || '';
@@ -114,12 +131,14 @@
         isAuthenticated = false;
         customer = null;
         userRoles = [];
+        userPermissions = [];
         rolesVerified = false;
         apiClient.setToken(null);
       }
+    } finally {
+      rolesLoading = false;
     }
   }
-
   function handleNoCustomerAccount(event: Event) {
     const customEvent = event as CustomEvent;
     const email = customEvent.detail?.email;
@@ -157,7 +176,7 @@
     }
 
     await tick();
-    loadCustomer();
+    await loadCustomer();
   }
 
   function handleLogout(_event: Event) {
@@ -194,7 +213,7 @@
     <DashboardHeader {customer} on:logout={handleLogoutClick} />
     <main class="app-main">
       {#if rolesVerified}
-        <Navigation {currentPage} {userRoles} on:navigate={e => navigateToPage(e.detail)} />
+        <Navigation {currentPage} {userRoles} {userPermissions} on:navigate={e => navigateToPage(e.detail)} />
         <div class="page-container">
           {#if currentPage === 'dashboard'}
             <Dashboard {customer} />
@@ -204,9 +223,17 @@
             <AuditLogs {customer} />
           {:else if currentPage === 'analytics'}
             <Analytics {customer} />
+          {:else if currentPage === 'feature-flags'}
+            <FeatureFlags {userRoles} {userPermissions} />
           {:else if currentPage === 'roles-permissions'}
             <RolesPermissions {customer} {userRoles} />
           {/if}
+        </div>
+      {:else if rolesLoading}
+        <div class="loading">
+          <div class="loading__spinner"></div>
+          <p>Checking access…</p>
+          <p class="loading__sub">Verifying roles and permissions.</p>
         </div>
       {:else}
         <div class="access-denied">

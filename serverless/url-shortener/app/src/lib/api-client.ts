@@ -7,9 +7,16 @@
  * - Cookies sent automatically
  */
 
+/** Primary shortener worker host (shared KV + auth). */
+const CANONICAL_SHORTENER_API = 'https://s.idling.app';
+
+function isShortArmyHost(hostname: string): boolean {
+    return hostname === 'short.army' || hostname.endsWith('.short.army');
+}
+
 function getApiUrl(): string {
     if (typeof window === 'undefined') {
-        return 'https://s.idling.app';
+        return CANONICAL_SHORTENER_API;
     }
     
     const isLocalhost = window.location.hostname === 'localhost' || 
@@ -21,6 +28,12 @@ function getApiUrl(): string {
         // In dev, always use the Vite proxy to avoid CORS and ensure cookies flow correctly.
         // Vite proxy is configured for `/api` -> http://localhost:8793
         return '';
+    }
+
+    // Cross-TLD: HttpOnly auth_token is on .idling.app after SSO via auth.idling.app.
+    // Same-origin short.army/api/* would not receive that cookie; call the idling worker instead.
+    if (isShortArmyHost(window.location.hostname)) {
+        return CANONICAL_SHORTENER_API;
     }
     
     return window.location.origin;

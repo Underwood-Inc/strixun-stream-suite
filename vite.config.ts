@@ -234,7 +234,14 @@ export default defineConfig({
           });
         },
       },
-      '/streamkit-api': {
+      '/flags-api': {
+        target: 'http://localhost:8797',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/flags-api/, ''),
+        secure: false,
+        cookieDomainRewrite: 'localhost',
+        cookiePathRewrite: '/',
+      },      '/streamkit-api': {
         target: 'http://localhost:8796',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/streamkit-api/, ''),

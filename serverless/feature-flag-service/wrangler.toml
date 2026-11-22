@@ -1,0 +1,73 @@
+name = "feature-flag-service"
+main = "dist/worker.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Secrets (production — wrangler secret put from this directory):
+#   wrangler secret put SERVICE_API_KEY   # OPTIONAL: X-Service-Key for automation (full flags access)
+# JWT auth uses RS256 JWKS (JWT_ISSUER + AUTH_SERVICE binding). JWT_SECRET is not used for verification here.
+# ALLOWED_ORIGINS is in [vars] below (not a secret). Override only if you need dashboard-only rotation:
+#   wrangler secret put ALLOWED_ORIGINS
+
+# Default = production deploy (wrangler deploy without --env)
+[vars]
+ENVIRONMENT = "production"
+JWT_ISSUER = "https://auth.idling.app"
+ACCESS_SERVICE_URL = "https://access-api.idling.app"
+ALLOWED_ORIGINS = "https://idling.app,https://www.idling.app,https://auth.idling.app,https://mods.idling.app,https://mods-api.idling.app,https://customer-api.idling.app,https://access.idling.app,https://access-api.idling.app,https://game.idling.app,https://chat.idling.app,https://api.idling.app,https://s.idling.app,https://short.idling.app,https://shorten.idling.app,https://streamkit.idling.app,https://design.idling.app,https://docs.idling.app,https://music-api.idling.app,https://short.army,https://sss.idling.app,https://flags.idling.app,https://flags-api.idling.app"
+
+[[d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "FLAGS_KV"
+id = "e30b3cdcc61c4ad4867d857b7c51769b"
+
+# JWKS verification (avoids same-zone 522 when fetching from auth.idling.app).
+[[services]]
+binding = "AUTH_SERVICE"
+service = "otp-auth-service"
+
+# Optional: bind strixun-access-service for lower-latency permission checks (otherwise uses ACCESS_SERVICE_URL HTTP).
+# [[services]]
+# binding = "ACCESS_SERVICE"
+# service = "strixun-access-service"
+
+# Production route — same pattern as access-api / mods-api / streamkit-api.
+# Requires a proxied DNS record for `flags-api` in zone idling.app (AAAA 100:: or A/CNAME).
+# Do NOT use custom_domain = true when that record already exists — wrangler deploy errors with
+# "DNS record already exists" / code 100117 (custom domains try to create DNS; zone routes do not).
+[[routes]]
+pattern = "flags-api.idling.app/*"
+zone_name = "idling.app"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = []
+
+[env.development.vars]
+ENVIRONMENT = "development"
+JWT_ISSUER = "http://localhost:8787"
+ACCESS_SERVICE_URL = "http://localhost:8795"
+SERVICE_API_KEY = "dev-service-api-key-for-local-testing"
+ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:5174,http://localhost:5179,http://localhost:8787,http://localhost:8797,https://flags.idling.app,https://auth.idling.app,https://sss.idling.app"
+
+[[env.development.d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+migrations_dir = "migrations"
+
+[[env.development.kv_namespaces]]
+binding = "FLAGS_KV"
+id = "e30b3cdcc61c4ad4867d857b7c51769b"
+
+[[env.development.services]]
+binding = "AUTH_SERVICE"
+service = "otp-auth-service"
+
+[dev]
+port = 8797

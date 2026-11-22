@@ -5,7 +5,7 @@
    * Main dashboard with system status and quick actions
    */
   
-  import { ModrinthProducts, Tooltip } from '@components';
+  import { Tooltip } from '@components';
   import { onMount } from 'svelte';
   import { stagger } from '../core/animations';
   import { EventBus } from '../core/events/EventBus';
@@ -123,11 +123,6 @@
 </script>
 
 <div class="page dashboard-page" use:stagger={{ preset: 'fadeIn', stagger: 100, config: { duration: 300 } }}>
-  <!-- Featured Products Carousel - High Visibility -->
-  <div class="card featured-products-card">
-    <ModrinthProducts />
-  </div>
-  
   <!-- Status Card -->
   <div class="card status-card" id="dashboardStatusCard">
     <div id="dashboardScriptStatus">
@@ -255,34 +250,6 @@
       
       &:last-child {
         margin-bottom: 0;
-      }
-    }
-  }
-  
-  .featured-products-card {
-    overflow: hidden;
-    padding: 24px 24px 0 24px;
-    margin-bottom: 24px;
-    
-    // Ensure carousel has proper height
-    :global(.modrinth-products) {
-      width: 100%;
-      height: 300px;
-      margin-block-end: 1rem;
-    }
-    
-    :global(.modrinth-products__wrapper) {
-      height: 280px;
-      max-height: 280px;
-      
-      @media (max-width: 768px) {
-        height: 280px;
-        max-height: 280px;
-      }
-      
-      @media (max-width: 480px) {
-        height: 280px;
-        max-height: 280px;
       }
     }
   }

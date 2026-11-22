@@ -1,0 +1,33 @@
+{
+  "name": "@strixun/flags-admin",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "prebuild": "pnpm --filter @strixun/auth-store build && pnpm --filter @strixun/otp-login build",
+    "build": "vite build",
+    "preview": "vite preview",
+    "pages:ensure-project": "wrangler pages project create flags-admin --production-branch main || exit 0",
+    "pages:patch-production-branch": "node scripts/patch-pages-production-branch.mjs",
+    "pages:deploy": "node scripts/pages-deploy.mjs",
+    "deploy:prod": "pnpm run build && pnpm run pages:ensure-project && pnpm run pages:deploy"
+  },
+  "dependencies": {
+    "@strixun/api-framework": "workspace:*",
+    "@strixun/auth-store": "workspace:*",
+    "@strixun/feature-flags": "workspace:*",
+    "@strixun/otp-login": "workspace:*",
+    "@strixun/shared-components": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.54.0",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0"
+  }
+}

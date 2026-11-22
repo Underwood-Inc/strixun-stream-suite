@@ -110,12 +110,11 @@ The `predev` script automatically rebuilds everything, so just restart `pnpm dev
 
 ## Production Deployment
 
-```bash
-# Build and deploy
-pnpm deploy
+Custom domains (`short.army`, `s.idling.app`, …) bind the **top-level** worker (`strixun-url-shortener-production`). Use default deploy — **not** `--env production` (that only updates the legacy `…-production-production` workers.dev worker).
 
-# Or deploy to production environment
-pnpm deploy:prod
+```bash
+# Build and deploy (same target as deploy-manager CI)
+pnpm run deploy:prod
 ```
 
 ## API Endpoints

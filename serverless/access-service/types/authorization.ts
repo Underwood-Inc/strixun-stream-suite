@@ -170,6 +170,8 @@ export interface Env {
     ACCESS_SERVICE_URL?: string;          // URL of this service (for local dev)
     ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
+    /** Feature-flag D1 — auth rate-limit bypass / base-tries */
+    FLAGS_DB?: D1Database;
     [key: string]: any;
 }
 
@@ -206,6 +208,9 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
             'delete:mod-any',
             'edit:mod-any',
             'manage:settings',
+            'flags:read',
+            'flags:write',
+            'flags:grant',
         ],
         priority: 900,
     },
@@ -315,6 +320,10 @@ export const DEFAULT_PERMISSIONS: PermissionDefinition[] = [
     { name: 'view:analytics', action: 'view', resource: 'analytics', displayName: 'View Analytics', description: 'View system usage analytics', category: 'Analytics' },
     { name: 'export:data', action: 'export', resource: 'data', displayName: 'Export Data', description: 'Export customer and mod data', category: 'Analytics' },
     
+
+    { name: 'flags:read', action: 'read', resource: 'flags', displayName: 'Read Feature Flags', description: 'View feature flag catalog and snapshots', category: 'Admin' },
+    { name: 'flags:write', action: 'write', resource: 'flags', displayName: 'Write Feature Flags', description: 'Change feature flag values and overrides', category: 'Admin' },
+    { name: 'flags:grant', action: 'grant', resource: 'flags', displayName: 'Grant Flag Permissions', description: 'Grant flags:read and flags:write to others', category: 'Admin' },
     // ===== API =====
     { name: 'api:unlimited', action: 'api', resource: 'unlimited', displayName: 'Unlimited API', description: 'No API rate limits', category: 'API' },
     

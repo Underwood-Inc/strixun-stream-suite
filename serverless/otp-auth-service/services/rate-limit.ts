@@ -8,6 +8,9 @@ import type { CustomerData } from './customer.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
+    FLAGS_DB?: D1Database;
+    ENVIRONMENT?: string;
+    SUPER_ADMIN_EMAILS?: string;
     [key: string]: any;
 }
 
@@ -280,39 +283,13 @@ export async function checkOTPRateLimit(
     email?: string
 ): Promise<RateLimitResult> {
     try {
-        // Super admins are ALWAYS exempt from rate limits
-        // Check by email FIRST (for pre-authentication OTP requests)
-        if (email && env.SUPER_ADMIN_EMAILS) {
-            const superAdminEmails = env.SUPER_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase());
-            if (superAdminEmails.includes(email.toLowerCase())) {
-                console.log('[RateLimit] Super admin email detected, bypassing rate limits:', { email: email.substring(0, 3) + '***' });
-                const now = Date.now();
-                const oneHour = 60 * 60 * 1000;
-                const resetAt = new Date(now + oneHour).toISOString();
-                return {
-                    allowed: true,
-                    remaining: 999999, // Effectively unlimited
-                    resetAt: resetAt
-                };
-            }
-        }
-        
-        // Check by customerId (for authenticated requests)
-        if (customerId) {
-            const { isSuperAdmin: checkSuperAdmin } = await import('../utils/super-admin.js');
-            const isSuperAdmin = await checkSuperAdmin(customerId, env);
-            if (isSuperAdmin) {
-                console.log('[RateLimit] Super admin customerId detected, bypassing rate limits.');
-                // Return unlimited access for super admins
-                const now = Date.now();
-                const oneHour = 60 * 60 * 1000;
-                const resetAt = new Date(now + oneHour).toISOString();
-                return {
-                    allowed: true,
-                    remaining: 999999, // Effectively unlimited
-                    resetAt: resetAt
-                };
-            }
+        const { resolveAuthRateBudgetFromEnv, unlimitedRateLimitResult } = await import('./flag-rate-budget.js');
+        const budget = await resolveAuthRateBudgetFromEnv(env, customerId, []);
+        if (budget.bypass) {
+            console.log('[RateLimit] Flag grant: bypassing OTP rate limits', {
+                customerId: customerId?.substring(0, 8),
+            });
+            return unlimitedRateLimitResult();
         }
         // Get customer configuration and plan
         let customer: CustomerData | null = null;
@@ -327,6 +304,9 @@ export async function checkOTPRateLimit(
                     rateLimitPerHour = (customer.config.rateLimits as { otpRequestsPerHour?: number }).otpRequestsPerHour || 3;
                 }
             }
+        }
+        if (budget.baseTries !== null) {
+            rateLimitPerHour = budget.baseTries;
         }
         
         const planLimits = getPlanLimits(plan);
@@ -592,38 +572,10 @@ export async function checkIPRateLimit(
     email?: string
 ): Promise<RateLimitResult> {
     try {
-        // Super admins are ALWAYS exempt from rate limits
-        // Check by email FIRST (for pre-authentication requests)
-        if (email && env.SUPER_ADMIN_EMAILS) {
-            const superAdminEmails = env.SUPER_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase());
-            if (superAdminEmails.includes(email.toLowerCase())) {
-                console.log('[RateLimit] Super admin email detected, bypassing IP rate limits:', { email: email.substring(0, 3) + '***', endpoint: endpointName });
-                const now = Date.now();
-                const oneHour = 60 * 60 * 1000;
-                const resetAt = new Date(now + oneHour).toISOString();
-                return {
-                    allowed: true,
-                    remaining: 999999, // Effectively unlimited
-                    resetAt: resetAt
-                };
-            }
-        }
-        
-        // Check by customerId (for authenticated requests)
-        if (customerId) {
-            const { isSuperAdmin: checkSuperAdmin } = await import('../utils/super-admin.js');
-            const isSuperAdmin = await checkSuperAdmin(customerId, env);
-            if (isSuperAdmin) {
-                console.log('[RateLimit] Super admin customerId detected, bypassing IP rate limits:', { customerId, endpoint: endpointName });
-                const now = Date.now();
-                const oneHour = 60 * 60 * 1000;
-                const resetAt = new Date(now + oneHour).toISOString();
-                return {
-                    allowed: true,
-                    remaining: 999999, // Effectively unlimited
-                    resetAt: resetAt
-                };
-            }
+        const { resolveAuthRateBudgetFromEnv, unlimitedRateLimitResult } = await import('./flag-rate-budget.js');
+        const budget = await resolveAuthRateBudgetFromEnv(env, customerId, []);
+        if (budget.bypass) {
+            return unlimitedRateLimitResult();
         }
         
         // Get customer configuration and plan
@@ -638,7 +590,10 @@ export async function checkIPRateLimit(
         }
         
         const planLimits = getPlanLimits(plan);
-        const baseLimit = requestsPerHour || planLimits.ipRequestsPerHour;
+        let baseLimit = requestsPerHour || planLimits.ipRequestsPerHour;
+        if (budget.baseTries !== null) {
+            baseLimit = budget.baseTries;
+        }
         
         // Hash IP address
         const ipHash = await hashIP(ipAddress || 'unknown');

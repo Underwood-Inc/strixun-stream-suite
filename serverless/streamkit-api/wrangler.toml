@@ -30,6 +30,8 @@ id = "a70d6c00bcc44a9ba9310c4590f228a8"
 [vars]
 ENVIRONMENT = "production"
 JWT_ISSUER = "https://auth.idling.app"
+# Browser origins for streamkit / sss frontends calling api.idling.app or streamkit-api.idling.app
+ALLOWED_ORIGINS = "https://sss.idling.app,https://streamkit.idling.app,https://mods.idling.app,https://www.idling.app,https://idling.app,https://auth.idling.app,https://short.idling.app,https://s.idling.app,https://shorten.idling.app"
 
 # Default KV Namespace
 [[kv_namespaces]]

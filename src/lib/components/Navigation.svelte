@@ -22,9 +22,16 @@
   // Router imports
   import { navigate, currentPath } from '../../router';
   import { getNavRoutes, type AppRoute } from '../../router/routes';
+  import { uiFlags, isRouteEnabled } from '../../stores/ui-feature-flags';
   
   // Get navigation routes from centralized config
-  const navRoutes = getNavRoutes();
+  $: navRoutes = getNavRoutes().filter((route) => {
+    if (!isRouteEnabled(route.path, $uiFlags)) return false;
+    const tier = route.navTier ?? 'production';
+    if (tier === 'labs' && !$uiFlags.navLabs) return false;
+    if (tier === 'production' && !$uiFlags.navProduction) return false;
+    return true;
+  });
   
   // Pages restricted when DOM interference is detected
   const RESTRICTED_PATHS_ON_INTERFERENCE = ['/sources', '/text-cycler', '/swaps', '/layouts', '/chat', '/url-shortener'];

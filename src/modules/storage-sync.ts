@@ -18,9 +18,9 @@
  * @version 2.1.0 (TypeScript)
  */
 
-import { storage } from './storage';
+import { storage, hydrateLocalFromOBS } from './storage';
 import { connected } from '../stores/connection';
-import { request } from './websocket';
+import { obsStorage } from './obs-storage';
 import { get } from 'svelte/store';
 import type { SwapConfig, TextCyclerConfig, LayoutPreset } from '../types';
 
@@ -107,34 +107,33 @@ export async function requestStorageFromOBS(): Promise<void> {
   dependencies.log(' Pulling storage from OBS persistent data...', 'info');
   
   try {
-    // Get persistent data stored in OBS (realm: OBS_WEBSOCKET_DATA_REALM_GLOBAL, slot: strixun_configs)
-    const response = await request('GetPersistentData', {
-      realm: 'OBS_WEBSOCKET_DATA_REALM_GLOBAL',
-      slotName: 'strixun_configs'
-    });
-    
-    const responseData = response as { slotValue?: string };
-    if (responseData && responseData.slotValue) {
-      const storedConfigs = JSON.parse(responseData.slotValue) as StorageData;
-      pendingStorageRequest = false;
-      console.log('[Storage Sync] ✓ Retrieved from OBS persistent data:', storedConfigs);
-      applyIncomingStorage(storedConfigs);
-      dependencies.log('✓ Storage synced from OBS!', 'success');
-    } else {
-      pendingStorageRequest = false;
-      dependencies.log('ℹ No shared storage found in OBS (OBS dock may need to save first)', 'info');
+    await obsStorage.loadAll();
+    hydrateLocalFromOBS();
+
+    const storedConfigs: StorageData = {
+      swapConfigs: (storage.get('swapConfigs') as SwapConfig[] | null) || [],
+      textCyclerConfigs: (storage.get('textCyclerConfigs') as TextCyclerConfig[] | null) || [],
+      layoutPresets: (storage.get('layoutPresets') as LayoutPreset[] | null) || []
+    };
+
+    pendingStorageRequest = false;
+    const incomingTotal =
+      (storedConfigs.swapConfigs?.length || 0) +
+      (storedConfigs.textCyclerConfigs?.length || 0) +
+      (storedConfigs.layoutPresets?.length || 0);
+
+    if (incomingTotal === 0) {
+      dependencies.log('ℹ No shared storage found in OBS yet', 'info');
+      return;
     }
+
+    applyIncomingStorage(storedConfigs);
+    dependencies.log('✓ Storage synced from OBS!', 'success');
   } catch (e) {
     pendingStorageRequest = false;
     console.error('[Storage Sync] Error:', e);
-    
     const error = e as Error;
-    // If persistent data doesn't exist yet, that's okay
-    if (error.toString().includes('does not exist')) {
-      dependencies.log('ℹ No configs saved to OBS yet. Save something in the OBS dock first.', 'info');
-    } else {
-      dependencies.log('⚠ Storage sync failed: ' + error.message, 'error');
-    }
+    dependencies.log('⚠ Storage sync failed: ' + error.message, 'error');
   }
 }
 
@@ -167,13 +166,6 @@ export async function requestStorageSync(): Promise<void> {
 export async function broadcastStorage(): Promise<void> {
   if (!get(connected)) {
     console.log('[Storage Sync] Skipped - not connected');
-    return;
-  }
-  
-  // Only OBS dock should write to persistent storage
-  // Remote clients only read from it
-  if (!dependencies.isOBSDock()) {
-    console.log('[Storage Sync] Skipped - only OBS dock writes to persistent storage');
     return;
   }
   
@@ -231,14 +223,17 @@ export async function broadcastStorage(): Promise<void> {
   lastBroadcastTime = now;
   
   try {
-    // Write to OBS persistent data (global realm, accessible by all clients)
-    await request('SetPersistentData', {
-      realm: 'OBS_WEBSOCKET_DATA_REALM_GLOBAL',
-      slotName: 'strixun_configs',
-      slotValue: dataStr
-    });
-    
-    console.log('[Storage Sync] ✓ Saved to OBS persistent data', {
+    storage.set('swapConfigs', storageData.swapConfigs);
+    storage.set('textCyclerConfigs', storageData.textCyclerConfigs);
+    storage.set('layoutPresets', storageData.layoutPresets);
+    if (storageData.uiState) {
+      for (const [key, value] of Object.entries(storageData.uiState)) {
+        storage.set(key, value);
+      }
+    }
+    const obsOk = await storage.flush();
+    console.log('[Storage Sync] Saved to OBS persistent data', {
+      ok: obsOk,
       swaps: storageData.swapConfigs?.length || 0,
       texts: storageData.textCyclerConfigs?.length || 0,
       layouts: storageData.layoutPresets?.length || 0,
@@ -304,6 +299,7 @@ export function applyIncomingStorage(data: StorageData): void {
     if (dependencies.setTextCyclerConfigs) {
       dependencies.setTextCyclerConfigs(data.textCyclerConfigs);
     }
+    storage.set('textCyclerConfigs', data.textCyclerConfigs);
     if (dependencies.renderTextCyclerConfigs) dependencies.renderTextCyclerConfigs();
   }
   if (data.layoutPresets !== undefined && dependencies.setLayoutPresets) {
@@ -353,8 +349,7 @@ export function scheduleBroadcast(delay: number = STORAGE_SYNC_DEBOUNCE): void {
  * resizable zone sizes and other UI preferences are synced to OBS
  */
 export function scheduleUISync(delay: number = STORAGE_SYNC_DEBOUNCE): void {
-  // Only sync if we're the OBS dock (source of truth)
-  if (!dependencies.isOBSDock()) {
+  if (!get(connected)) {
     return;
   }
   

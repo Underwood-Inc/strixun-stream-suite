@@ -26,6 +26,7 @@ import * as API from './streamkit-api-client';
 import { isAuthenticated } from '../stores/auth';
 import { get } from 'svelte/store';
 import type { TextCyclerConfig, SwapConfig, LayoutPreset } from '../types';
+import { ensureSwapConfigIds } from './swap-config-ids';
 import { showWarning } from '../stores/toast-queue';
 
 /**
@@ -114,23 +115,29 @@ export async function saveTextCyclerConfigs(configs: TextCyclerConfig[]): Promis
  * Load text cycler configs (local first, then sync from cloud)
  */
 export async function loadTextCyclerConfigs(): Promise<TextCyclerConfig[]> {
-  // Get from local storage first (fast)
   const local = (storage.get('textCyclerConfigs') as TextCyclerConfig[]) || [];
-  
-  // Try to sync from cloud in background (don't block)
-  syncFromCloud('text-cyclers').catch(err => {
-    handleSyncError('load-text-cyclers', 'Failed to load text cyclers from cloud', err);
-  });
-  
-  return local;
+
+  if (shouldSyncToCloud()) {
+    try {
+      await syncFromCloud('text-cyclers');
+    } catch (err) {
+      handleSyncError('load-text-cyclers', 'Failed to load text cyclers from cloud', err);
+    }
+  }
+
+  return (storage.get('textCyclerConfigs') as TextCyclerConfig[]) || local;
 }
 
 /**
  * Save swap configs (local + cloud)
  */
 export async function saveSwapConfigs(configs: SwapConfig[]): Promise<void> {
-  storage.set('swapConfigs', configs);
-  scheduleCloudSync('swaps', configs);
+  const { configs: withIds, migrated } = ensureSwapConfigIds(configs);
+  storage.set('swapConfigs', withIds);
+  if (migrated) {
+    console.log('[Cloud Storage] Migrated legacy swap configs with new ids');
+  }
+  scheduleCloudSync('swaps', withIds);
 }
 
 /**
@@ -138,10 +145,23 @@ export async function saveSwapConfigs(configs: SwapConfig[]): Promise<void> {
  */
 export async function loadSwapConfigs(): Promise<SwapConfig[]> {
   const local = (storage.get('swapConfigs') as SwapConfig[]) || [];
-  syncFromCloud('swaps').catch(err => {
-    handleSyncError('load-swaps', 'Failed to load swap configs from cloud', err);
-  });
-  return local;
+
+  if (shouldSyncToCloud()) {
+    try {
+      await syncFromCloud('swaps');
+    } catch (err) {
+      handleSyncError('load-swaps', 'Failed to load swap configs from cloud', err);
+    }
+  }
+
+  let configs = (storage.get('swapConfigs') as SwapConfig[]) || local;
+  const { configs: withIds, migrated } = ensureSwapConfigIds(configs);
+  if (migrated) {
+    storage.set('swapConfigs', withIds);
+    scheduleCloudSync('swaps', withIds);
+    configs = withIds;
+  }
+  return configs;
 }
 
 /**
@@ -157,10 +177,16 @@ export async function saveLayoutPresets(presets: LayoutPreset[]): Promise<void> 
  */
 export async function loadLayoutPresets(): Promise<LayoutPreset[]> {
   const local = (storage.get('layoutPresets') as LayoutPreset[]) || [];
-  syncFromCloud('layouts').catch(err => {
-    handleSyncError('load-layouts', 'Failed to load layouts from cloud', err);
-  });
-  return local;
+
+  if (shouldSyncToCloud()) {
+    try {
+      await syncFromCloud('layouts');
+    } catch (err) {
+      handleSyncError('load-layouts', 'Failed to load layouts from cloud', err);
+    }
+  }
+
+  return (storage.get('layoutPresets') as LayoutPreset[]) || local;
 }
 
 /**
@@ -221,11 +247,18 @@ async function syncToCloud(type: string, data: any[]): Promise<void> {
       }
     }
     
-    const localIds = new Set(data.map((item: any) => item.id).filter(Boolean));
-    for (const [cloudId] of cloudMap.entries()) {
-      if (!localIds.has(cloudId)) {
-        await API.deleteConfig(apiType, cloudId);
+    const allLocalHaveIds = data.length === 0 || data.every((item: any) => Boolean(item.id));
+    if (allLocalHaveIds) {
+      const localIds = new Set(data.map((item: any) => item.id).filter(Boolean));
+      for (const [cloudId] of cloudMap.entries()) {
+        if (!localIds.has(cloudId)) {
+          await API.deleteConfig(apiType, cloudId);
+        }
       }
+    } else {
+      console.warn(
+        `[Cloud Storage] Skipping orphan delete for ${type} — local items missing ids (run migration first)`
+      );
     }
     
     console.log(`[Cloud Storage] Synced ${data.length} ${type} to cloud`);

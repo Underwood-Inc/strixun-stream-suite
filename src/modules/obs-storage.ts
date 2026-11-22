@@ -28,7 +28,7 @@ interface OBSStorageInterface {
   remove(key: string): void;
   getRaw(key: string): unknown;
   setRaw(key: string, value: string): void;
-  flush(): Promise<void>;
+  flush(): Promise<boolean>;
   isReady(): boolean;
   clear(): void;
   has(key: string): boolean;
@@ -43,8 +43,9 @@ interface PendingRequest {
 
 // ============ Constants ============
 const OBS_STORAGE_REALM = 'OBS_WEBSOCKET_DATA_REALM_GLOBAL';
-const OBS_STORAGE_SLOT_PREFIX = 'strixun_';
 const OBS_STORAGE_MASTER_SLOT = 'strixun_storage_master';
+/** Legacy slot used by storage-sync; migrated into the master blob on load. */
+const OBS_STORAGE_LEGACY_SLOT = 'strixun_configs';
 const WRITE_DEBOUNCE_MS = 500;
 
 // ============ State ============
@@ -121,9 +122,47 @@ export function handleOBSStorageResponse(data: { op: number; d?: { requestId?: s
 const LOCAL_STORAGE_PREFIX = 'sss_';
 
 /**
- * Migrate localStorage data to OBS storage
- * This ensures any data saved before OBS connection is available in OBS storage
+ * Fold the old strixun_configs slot into the master key map (once).
  */
+async function migrateLegacyConfigsSlot(): Promise<void> {
+  try {
+    const response = await obsRequest('GetPersistentData', {
+      realm: OBS_STORAGE_REALM,
+      slotName: OBS_STORAGE_LEGACY_SLOT
+    });
+    const responseData = response as { slotValue?: string };
+    if (!responseData?.slotValue) return;
+
+    const legacy = JSON.parse(responseData.slotValue) as Record<string, unknown>;
+    let changed = false;
+
+    for (const key of ['swapConfigs', 'textCyclerConfigs', 'layoutPresets'] as const) {
+      if (legacy[key] !== undefined && !(key in obsStorageCache)) {
+        obsStorageCache[key] = legacy[key];
+        changed = true;
+      }
+    }
+    const uiState = legacy.uiState as Record<string, unknown> | undefined;
+    if (uiState && typeof uiState === 'object') {
+      for (const [key, value] of Object.entries(uiState)) {
+        if (!(key in obsStorageCache)) {
+          obsStorageCache[key] = value;
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      console.log('[OBS Storage] Migrated legacy strixun_configs slot into master storage');
+      scheduleSave('_legacy_migrate');
+    }
+  } catch (e) {
+    const errorStr = typeof e === 'string' ? e : (e as Error).message || String(e);
+    if (!errorStr.includes('does not exist')) {
+      console.warn('[OBS Storage] Legacy slot migration skipped:', errorStr);
+    }
+  }
+}
+
 function migrateFromLocalStorage(): void {
   try {
     let migratedCount = 0;
@@ -191,6 +230,8 @@ async function loadFromOBS(): Promise<void> {
     }
     
     obsStorageReady = true;
+
+    await migrateLegacyConfigsSlot();
     
     // Migrate any localStorage data that isn't in OBS storage yet
     // This ensures credentials saved before connection are migrated
@@ -203,6 +244,7 @@ async function loadFromOBS(): Promise<void> {
     if (errorStr.includes('does not exist')) {
       console.log('[OBS Storage] No existing storage slot (first time use)');
       obsStorageReady = true;
+      await migrateLegacyConfigsSlot();
       // Migrate localStorage data for first-time OBS storage
       migrateFromLocalStorage();
     } else {
@@ -215,10 +257,10 @@ async function loadFromOBS(): Promise<void> {
  * Save all storage data to OBS persistent storage
  * Debounced to prevent API spam
  */
-async function saveToOBS(): Promise<void> {
+async function saveToOBS(): Promise<boolean> {
   if (!get(connected)) {
     console.log('[OBS Storage] Not connected, skipping save');
-    return;
+    return false;
   }
   
   try {
@@ -231,8 +273,10 @@ async function saveToOBS(): Promise<void> {
     });
     
     console.log('[OBS Storage] Saved', Object.keys(obsStorageCache).length, 'keys to OBS');
+    return true;
   } catch (e) {
     console.error('[OBS Storage] Failed to save to OBS:', e);
+    return false;
   }
 }
 
@@ -311,14 +355,12 @@ export const obsStorage: OBSStorageInterface = {
   /**
    * Force immediate save to OBS
    */
-  async flush(): Promise<void> {
-    // Clear all pending writes
+  async flush(): Promise<boolean> {
     for (const key of Object.keys(pendingWrites)) {
       clearTimeout(pendingWrites[key]);
       delete pendingWrites[key];
     }
-    // Save immediately
-    await saveToOBS();
+    return saveToOBS();
   },
   
   /**

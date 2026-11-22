@@ -29,6 +29,10 @@
   let reloadButton: HTMLButtonElement;
   let connectButton: HTMLButtonElement;
   let alertsOpen = false;
+
+  export let compact = false;
+  export let showLogDrawer = false;
+  export let onOpenLog: (() => void) | undefined = undefined;
   
   // Local reactive copies of auth state to ensure reactivity
   let authenticated = false;
@@ -147,7 +151,7 @@
   }
 </script>
 
-<header class="header">
+<header class="header" class:header--compact={compact}>
   <h1>
     <Tooltip 
       text={$connected ? 'Connected to OBS' : 'Not connected to OBS\nClick Connect to establish connection'} 
@@ -169,6 +173,15 @@
         </svg>
       </button>
     </Tooltip>
+    {#if showLogDrawer && onOpenLog}
+      <Tooltip text="Activity log" position="bottom">
+        <button class="btn-icon" type="button" on:click={() => onOpenLog?.()} title="Activity log">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 6h16M4 12h16M4 18h10"/>
+          </svg>
+        </button>
+      </Tooltip>
+    {/if}
     <AlertsDropdown open={alertsOpen} onToggle={toggleAlerts} />
     {#if authenticated}
       <Tooltip text="Sign Out" position="bottom">
@@ -212,6 +225,18 @@
   @use '@styles/animations' as *;
   @use '@styles/mixins' as *;
   
+  .header--compact {
+    padding: 6px 12px;
+
+    h1 {
+      font-size: 0.95em;
+    }
+
+    .header-actions {
+      gap: 6px;
+    }
+  }
+
   .header {
     padding: 12px 20px;
     display: flex;

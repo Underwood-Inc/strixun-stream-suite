@@ -38,7 +38,7 @@
     }
   },
   "scripts": {
-    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/kv-entities build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/oidc-jwt build && pnpm --filter @strixun/api-framework build && pnpm --filter @strixun/auth-store build",
+    "build:deps": "pnpm --filter @strixun/types build && pnpm --filter @strixun/error-utils build && pnpm --filter @strixun/kv-entities build && pnpm --filter @strixun/service-client build && pnpm --filter @strixun/oidc-jwt build && pnpm --filter @strixun/api-framework build && pnpm --filter @strixun/auth-store build && pnpm --filter @strixun/feature-flags build",
     "predev": "pnpm run build:deps && pnpm run build:worker",
     "dev": "concurrently -n worker,app -c yellow,cyan --kill-others-on-fail --success first \"pnpm dev:worker\" \"pnpm dev:app\"",
     "dev:worker": "wrangler dev --port 8787 --local --env development",
@@ -55,7 +55,7 @@
     "preview:watch": "node scripts/watch-preview.js",
     "preview:local": "pnpm build && wrangler dev --local --env production",
     "deploy": "pnpm build && wrangler deploy",
-    "deploy:prod": "pnpm build && wrangler deploy --env production",
+    "deploy:prod": "pnpm build && wrangler deploy",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "pretest": "pnpm run build:deps && pnpm run build:worker",
     "test": "vitest run --passWithNoTests --exclude \"**/router/admin-routes.test.ts\"",
@@ -78,6 +78,7 @@
     "@strixun/auth-store": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/error-utils": "workspace:*",
+    "@strixun/feature-flags": "workspace:*",
     "@strixun/kv-entities": "workspace:*",
     "@strixun/oidc-jwt": "workspace:*",
     "@strixun/otp-login": "workspace:*",

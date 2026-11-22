@@ -43,6 +43,8 @@ export interface AppRoute extends RouteDefinition {
   disabledReason?: string;
   /** Whether to show in main navigation */
   showInNav: boolean;
+  /** Nav tier for production vs labs chrome */
+  navTier?: 'production' | 'labs';
   /** Route metadata */
   meta: {
     /** Page title */
@@ -128,6 +130,7 @@ export const routes: AppRoute[] = [
     requiresConnection: true,
     isWip: false,
     inTesting: true,
+    navTier: 'labs',
     disabledReason: 'Connect to OBS first to use this feature',
     showInNav: true,
     meta: {
@@ -173,6 +176,7 @@ export const routes: AppRoute[] = [
     requiresConnection: false,
     isWip: true,
     inTesting: false,
+    navTier: 'labs',
     showInNav: true,
     meta: {
       title: 'Notes',
@@ -187,6 +191,7 @@ export const routes: AppRoute[] = [
     requiresConnection: false,
     isWip: true,
     inTesting: false,
+    navTier: 'labs',
     showInNav: true,
     meta: {
       title: 'Chat',

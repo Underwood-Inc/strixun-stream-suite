@@ -7,11 +7,11 @@
  * @version 2.0.0 (TypeScript)
  */
 
-import { storage } from './storage.js';
+import { storage, hydrateLocalFromOBS, isObsRememberEnabled } from './storage.js';
 import { connected, currentScene, sources, textSources } from '../stores/connection.js';
 import { get } from 'svelte/store';
 import { authenticatedFetch, isAuthenticated } from '../stores/auth.js';
-import { initOBSStorage, handleOBSStorageResponse, isInOBS } from './obs-storage.js';
+import { initOBSStorage, handleOBSStorageResponse, obsStorage, isInOBS } from './obs-storage.js';
 
 // ============ Types ============
 interface PendingRequest {
@@ -53,64 +53,47 @@ export async function saveCredentials(): Promise<void> {
   const portEl = document.getElementById('port') as HTMLInputElement;
   const passwordEl = document.getElementById('password') as HTMLInputElement;
   
-  const remember = rememberEl?.checked || false;
+  const remember = rememberEl
+    ? rememberEl.checked
+    : (isObsRememberEnabled() || isInOBS());
   const host = hostEl?.value || '';
   const port = portEl?.value || '';
-  const password = passwordEl?.value || '';
+  const password = passwordEl?.value || storedPassword || '';
   
-  if (remember) {
-    // Always save host/port to storage (uses OBS storage when in OBS)
-    storage.setRaw('obs_host', host);
-    storage.setRaw('obs_port', port);
-    storage.setRaw('obs_remember', 'true');
-    
-    // CRITICAL: When in OBS, also save password to OBS storage for persistence
-    // OBS storage is isolated to OBS and persists across restarts
-    if (password && isInOBS()) {
-      storage.setRaw('obs_password', password);
-      log('Credentials saved to OBS storage', 'success');
-    }
-    
-    // Save password to cloud if authenticated (for cross-device sync)
-    if (password && get(isAuthenticated)) {
-      try {
-        await authenticatedFetch('/obs-credentials/save', {
-          method: 'POST',
-          body: JSON.stringify({
-            host,
-            port,
-            password
-          })
-        });
-        log('Credentials saved to cloud (expires in 7 hours)', 'success');
-      } catch (e: any) {
-        if (e.message === 'Not authenticated') {
-          // Don't warn if already saved to OBS storage
-          if (!isInOBS()) {
-            log('Sign in to save password securely in the cloud', 'warning');
-          }
-        } else {
-          log('Failed to save credentials to cloud: ' + e.message, 'error');
-        }
-      }
-    } else if (password && !isInOBS()) {
-      log('Sign in to save password securely in the cloud', 'warning');
-    }
+  if (!remember) {
+    return;
+  }
+
+  storage.setRaw('obs_host', host);
+  storage.setRaw('obs_port', port);
+  storage.setRaw('obs_remember', 'true');
+
+  if (password) {
+    storedPassword = password;
+    storage.setRaw('obs_password', password);
+  }
+
+  const obsOk = await storage.flush();
+  if (obsStorage.isReady()) {
+    log(obsOk ? 'Credentials saved to OBS persistent storage' : 'Credentials saved locally; OBS write failed', obsOk ? 'success' : 'warning');
   } else {
-    // Clear storage (uses OBS storage when in OBS)
-    storage.remove('obs_host');
-    storage.remove('obs_port');
-    storage.remove('obs_remember');
-    storage.remove('obs_password'); // Also clear password from OBS storage
-    
-    // Clear cloud storage if authenticated
-    if (get(isAuthenticated)) {
-      try {
-        await authenticatedFetch('/obs-credentials/delete', {
-          method: 'DELETE'
-        });
-      } catch (e) {
-        // Ignore errors when clearing
+    log('Credentials saved locally (will sync to OBS on connect)', 'success');
+  }
+  
+  if (password && get(isAuthenticated)) {
+    try {
+      await authenticatedFetch('/obs-credentials/save', {
+        method: 'POST',
+        body: JSON.stringify({
+          host,
+          port,
+          password
+        })
+      });
+      log('Credentials saved to cloud (expires in 7 hours)', 'success');
+    } catch (e: any) {
+      if (e.message !== 'Not authenticated') {
+        log('Failed to save credentials to cloud: ' + e.message, 'error');
       }
     }
   }
@@ -120,8 +103,35 @@ export async function saveCredentials(): Promise<void> {
  * Load credentials from cloud storage
  * Requires authentication - credentials expire when auth token expires (7 hours max)
  */
+function applyPasswordFromStorage(): void {
+  const obsPassword = storage.getRaw('obs_password');
+  if (!obsPassword) return;
+  const asString = String(obsPassword);
+  storedPassword = asString;
+  const passwordEl = document.getElementById('password') as HTMLInputElement;
+  if (passwordEl && !passwordEl.value) {
+    passwordEl.value = asString;
+  }
+}
+
+export async function forgetRememberedCredentials(): Promise<void> {
+  storage.remove('obs_host');
+  storage.remove('obs_port');
+  storage.remove('obs_remember');
+  storage.remove('obs_password');
+  storedPassword = '';
+  await storage.flush();
+  if (get(isAuthenticated)) {
+    try {
+      await authenticatedFetch('/obs-credentials/delete', { method: 'DELETE' });
+    } catch {
+      // ignore
+    }
+  }
+}
+
 export async function loadCredentials(): Promise<boolean> {
-  const remembered = storage.getRaw('obs_remember') === 'true';
+  const remembered = isObsRememberEnabled();
   const rememberEl = document.getElementById('rememberCreds') as HTMLInputElement;
   if (rememberEl) {
     rememberEl.checked = remembered;
@@ -137,20 +147,11 @@ export async function loadCredentials(): Promise<boolean> {
     if (host && hostEl) hostEl.value = String(host);
     if (port && portEl) portEl.value = String(port);
     
-    // CRITICAL: When in OBS, load password from OBS storage first
-    // OBS storage persists across OBS restarts and is isolated to OBS
-    if (isInOBS()) {
-      const obsPassword = storage.getRaw('obs_password') as string | null;
-      if (obsPassword) {
-        storedPassword = obsPassword;
-        const passwordEl = document.getElementById('password') as HTMLInputElement;
-        if (passwordEl) {
-          passwordEl.value = obsPassword;
-        }
-        updateSecurityWarning();
-        log('Credentials loaded from OBS storage', 'info');
-        return true;
-      }
+    applyPasswordFromStorage();
+    if (storedPassword) {
+      updateSecurityWarning();
+      log('Credentials loaded from storage', 'info');
+      return true;
     }
     
     // Load password from cloud if authenticated (fallback, or for non-OBS environments)
@@ -441,7 +442,7 @@ export function connect(credentials?: { host?: string; port?: string; password?:
       // Close reason already logged via log() function
       
       // Only auto-reconnect on abnormal close, not if user disconnected
-      if (wasConnected && e.code !== 1000 && storage.getRaw('obs_remember') === 'true') {
+      if (wasConnected && e.code !== 1000 && isObsRememberEnabled()) {
         if (reconnectAttempts < MAX_RECONNECT) {
           reconnectAttempts++;
           log(`Reconnecting (${reconnectAttempts}/${MAX_RECONNECT})...`, 'info');
@@ -496,18 +497,19 @@ async function handleMessage(data: OBSMessage, password: string): Promise<void> 
     updateConnectionUI();
     updateConnectionState();
     
-    // CRITICAL: Initialize OBS storage when running inside OBS
-    // This enables persistent storage using OBS WebSocket GetPersistentData/SetPersistentData
-    if (isInOBS() && ws) {
+    // Initialize OBS persistent storage for dock AND regular browser once the socket is identified
+    if (ws) {
       try {
         await initOBSStorage(ws);
+        hydrateLocalFromOBS();
+        applyPasswordFromStorage();
         log('OBS storage initialized', 'success');
       } catch (e) {
         console.warn('[WebSocket] Failed to initialize OBS storage:', e);
       }
     }
     
-    await saveCredentials(); // Save on successful connection
+    await saveCredentials();
     log('Connected to OBS!', 'success');
     
     // Update banner when connected
@@ -696,6 +698,7 @@ if (typeof window !== 'undefined') {
   (window as any).send = send;
   (window as any).request = request;
   (window as any).saveCredentials = saveCredentials;
+  (window as any).forgetRememberedCredentials = forgetRememberedCredentials;
   (window as any).loadCredentials = loadCredentials;
   (window as any).clearSavedCredentials = clearSavedCredentials;
   (window as any).updateSecurityWarning = updateSecurityWarning;

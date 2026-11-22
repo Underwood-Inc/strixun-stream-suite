@@ -5,6 +5,7 @@
  */
 
 import { navigateTo, restorePage } from '../stores/navigation';
+import { refreshUiFeatureFlags } from '../stores/ui-feature-flags';
 import { setPhase, setSubstatus, setReady, setError } from '../stores/initialization';
 import * as App from './app';
 import { Layouts } from './layouts';
@@ -502,7 +503,9 @@ export async function completeAppInitialization(): Promise<void> {
  * Complete app initialization after authentication
  * This is called when customer successfully authenticates
  */
+
 export async function completeInitializationAfterAuth(): Promise<void> {
+  await refreshUiFeatureFlags();
   const { addLogEntry } = await import('../stores/activity-log');
   try {
     addLogEntry('Completing initialization after authentication...', 'info', 'AUTH');

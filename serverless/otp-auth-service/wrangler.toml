@@ -48,7 +48,7 @@ ACCESS_SERVICE_URL = "https://access-api.idling.app"
 # CRITICAL: Cookie domain for SSO - extractRootDomain yields .idling.app so auth_token
 # is sent to mods.idling.app, mods-api.idling.app, auth.idling.app, etc.
 # Secret overrides this if set; vars ensure correct default for idling.app deployment.
-ALLOWED_ORIGINS = "https://mods.idling.app,https://www.idling.app,https://idling.app,https://auth.idling.app,https://short.idling.app,https://s.idling.app,https://shorten.idling.app,https://streamkit.idling.app"
+ALLOWED_ORIGINS = "https://idling.app,https://www.idling.app,https://auth.idling.app,https://mods.idling.app,https://mods-api.idling.app,https://customer-api.idling.app,https://access.idling.app,https://access-api.idling.app,https://game.idling.app,https://chat.idling.app,https://api.idling.app,https://s.idling.app,https://short.idling.app,https://shorten.idling.app,https://streamkit.idling.app,https://design.idling.app,https://docs.idling.app,https://music-api.idling.app,https://short.army,https://sss.idling.app,https://flags.idling.app,https://flags-api.idling.app"
 
 # Production KV Namespace
 [[env.production.kv_namespaces]]
@@ -68,7 +68,7 @@ ENVIRONMENT = "development"
 JWT_ISSUER = "http://localhost:8787"
 CUSTOMER_API_URL = "http://localhost:8790"
 ACCESS_SERVICE_URL = "http://localhost:8795"
-ALLOWED_ORIGINS = "http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5178,http://localhost:5180,http://localhost:8787,http://localhost:3000"
+ALLOWED_ORIGINS = "http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5178,http://localhost:5179,http://localhost:5180,http://localhost:8787,http://localhost:8797,http://localhost:3000,https://flags.idling.app,https://flags-api.idling.app"
 NETWORK_INTEGRITY_KEYPHRASE = "test-integrity-keyphrase-for-local-development"
 JWT_SECRET = "dev-jwt-secret-do-not-use-in-production-abc123"
 SERVICE_API_KEY = "dev-service-api-key-for-local-testing"
@@ -80,6 +80,16 @@ OIDC_SIGNING_KEY = '{"key_ops":["sign"],"ext":true,"alg":"RS256","kty":"RSA","n"
 binding = "OTP_AUTH_KV"
 id = "680c9dbe86854c369dd23e278abb41f9"
 
+[[env.development.d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+
+[[env.production.d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+
 # Default to production for backward compatibility
 [vars]
 ENVIRONMENT = "production"
@@ -87,12 +97,17 @@ JWT_ISSUER = "https://auth.idling.app"
 CUSTOMER_API_URL = "https://customer-api.idling.app"
 ACCESS_SERVICE_URL = "https://access-api.idling.app"
 # CRITICAL: Cookie domain for SSO - wrangler deploy (no --env) uses [vars]
-ALLOWED_ORIGINS = "https://mods.idling.app,https://www.idling.app,https://idling.app,https://auth.idling.app,https://short.idling.app,https://s.idling.app,https://shorten.idling.app,https://streamkit.idling.app"
+ALLOWED_ORIGINS = "https://idling.app,https://www.idling.app,https://auth.idling.app,https://mods.idling.app,https://mods-api.idling.app,https://customer-api.idling.app,https://access.idling.app,https://access-api.idling.app,https://game.idling.app,https://chat.idling.app,https://api.idling.app,https://s.idling.app,https://short.idling.app,https://shorten.idling.app,https://streamkit.idling.app,https://design.idling.app,https://docs.idling.app,https://music-api.idling.app,https://short.army,https://sss.idling.app,https://flags.idling.app,https://flags-api.idling.app"
 
 # Default KV Namespace (required for routes configured in dashboard or when no environment is specified)
 [[kv_namespaces]]
 binding = "OTP_AUTH_KV"
 id = "680c9dbe86854c369dd23e278abb41f9"
+
+[[d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
 
 # Default routes (production)
 [[routes]]

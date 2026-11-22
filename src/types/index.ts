@@ -19,6 +19,8 @@ export interface StorageBackup {
 
 // ============ Swap Config Types ============
 export interface SwapConfig {
+  /** Required for cloud sync; auto-assigned on load/save if missing */
+  id?: string;
   name: string;
   sourceA: string;
   sourceB: string;

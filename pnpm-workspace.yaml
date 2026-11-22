@@ -29,5 +29,6 @@ packages:
   - 'apps/*'
   - 'packages/shared-components'
   - 'packages/shared-config'
+  - 'packages/feature-flags'
   - 'packages/shared-styles'
 

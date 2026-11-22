@@ -7,6 +7,8 @@
    */
   
   import { ActivityLog, DomInterferenceBanner, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ThemeSettings, ToastContainer, SupportAdCarousel } from '@components';
+  import LogDrawer from './lib/components/LogDrawer.svelte';
+  import CommandPalette from './lib/components/CommandPalette.svelte';
   import { onMount } from 'svelte';
   
   import { initAnimationPreferences } from './core/animations/store';
@@ -20,9 +22,14 @@
   // Router
   import Router from './router/Router.svelte';
   import { currentPath, routerReady } from './router';
+  
+  /** Support carousel is global chrome — hide on dashboard only */
+  $: showSupportAdCarousel = $currentPath !== '/dashboard';
   import { isDisplayRoute } from './router/routes';
+  import { uiFlags } from './stores/ui-feature-flags';
   
   let hasCompletedPostAuthInit = false;
+  let logDrawerOpen = false;
   
   // Check if current route should render without app chrome
   // This includes login page and display routes (OBS browser sources)
@@ -93,7 +100,11 @@
 {:else}
   <!-- Main app layout with full chrome -->
   <div class="app" class:app--restricted={$domInterferenceDetected}>
-    <Header />
+    <Header
+      compact={$uiFlags.headerCompact}
+      showLogDrawer={$uiFlags.logDrawer && !$uiFlags.activityLog}
+      onOpenLog={() => { logDrawerOpen = true; }}
+    />
     <DomInterferenceBanner />
     <InfoBar />
     <Navigation />
@@ -103,34 +114,43 @@
         <Router />
       </main>
       
-      <div class="split-divider" id="logDivider"></div>
-      <ActivityLog />
+      {#if $uiFlags.activityLog}
+        <div class="split-divider" id="logDivider"></div>
+        <ActivityLog />
+      {/if}
     </div>
     
-    <FloatingPanel
-      position="left"
-      collapsedWidth={40}
-      expandedWidth={320}
-      minWidth={200}
-      maxWidth={500}
-      defaultExpanded={false}
-      storageKey="ui_sidebar_panel"
-    >
-      <Sidebar />
-    </FloatingPanel>
+    {#if $uiFlags.sidebar}
+      <FloatingPanel
+        position="left"
+        collapsedWidth={40}
+        expandedWidth={320}
+        minWidth={200}
+        maxWidth={500}
+        defaultExpanded={false}
+        storageKey="ui_sidebar_panel"
+      >
+        <Sidebar />
+      </FloatingPanel>
+    {/if}
     
     <ToastContainer />
     
-    <SupportAdCarousel
-      position="bottom-right"
-      supportUrl="https://sponsor.idling.app"
-      storageKey="ui_main_ad_carousel_state"
-    />
+    {#if showSupportAdCarousel}
+      <SupportAdCarousel
+        position="bottom-right"
+        supportUrl="https://sponsor.idling.app"
+        storageKey="ui_main_ad_carousel_state"
+      />
+    {/if}
     
     <ThemeSettings
       visible={$themeSettingsVisible}
       onClose={() => themeSettingsVisible.set(false)}
     />
+
+    <LogDrawer open={logDrawerOpen} onClose={() => { logDrawerOpen = false; }} />
+    <CommandPalette enabled={$uiFlags.commandPalette} />
   </div>
 {/if}
 
