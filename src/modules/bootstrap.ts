@@ -217,6 +217,8 @@ export async function initializeApp(): Promise<void> {
     } else if (authenticated) {
       addLogEntry('Customer authenticated - encryption enabled', 'success', 'AUTH');
     }
+
+    await refreshUiFeatureFlags();
     
     // Initialize modules
     setPhase('modules', 'Initializing modules...', 'Loading application components');

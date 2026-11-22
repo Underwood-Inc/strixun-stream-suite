@@ -77,3 +77,19 @@ export function isRouteEnabled(path: string, flags = get(uiFlags)): boolean {
   if (path === "/url-shortener") return flags.routeUrlShortener;
   return true;
 }
+
+/** Labs routes toggled via stream-suite.route.* — visible when on even if nav.labs is off. */
+const ROUTE_FLAGGED_LABS_PATHS = new Set(["/notes", "/chat"]);
+
+export function isNavRouteVisible(
+  route: { path: string; navTier?: "production" | "labs" },
+  flags = get(uiFlags),
+): boolean {
+  if (!isRouteEnabled(route.path, flags)) return false;
+  const tier = route.navTier ?? "production";
+  if (tier === "labs" && !flags.navLabs) {
+    return ROUTE_FLAGGED_LABS_PATHS.has(route.path);
+  }
+  if (tier === "production" && !flags.navProduction) return false;
+  return true;
+}

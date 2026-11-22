@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { getNavRoutes, type AppRoute } from '../../router/routes';
   import { navigate } from '../../router';
-  import { uiFlags, isRouteEnabled } from '../../stores/ui-feature-flags';
+  import { uiFlags, isNavRouteVisible } from '../../stores/ui-feature-flags';
 
   export let enabled = true;
 
@@ -10,7 +10,7 @@
   let query = '';
 
   $: routes = getNavRoutes().filter(
-    (r) => r.showInNav && isRouteEnabled(r.path, $uiFlags) && r.path !== '/login',
+    (r) => r.showInNav && isNavRouteVisible(r, $uiFlags) && r.path !== '/login',
   );
   $: filtered = routes.filter((r) => r.label.toLowerCase().includes(query.trim().toLowerCase()));
 
