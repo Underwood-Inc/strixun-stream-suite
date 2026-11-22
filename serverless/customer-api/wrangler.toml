@@ -54,6 +54,11 @@ JWT_ISSUER = "https://auth.idling.app"
 binding = "CUSTOMER_KV"
 id = "86ef5ab4419b40eab3fe65b75f052789"
 
+[[d1_databases]]
+binding = "FLAGS_DB"
+database_name = "idling-feature-flags"
+database_id = "6308b314-36c4-45c5-8f3c-d3f826bc7a6c"
+
 # Service binding to auth Worker so JWKS fetch uses internal routing (avoids same-zone 522).
 # If you deploy otp-auth-service with --env production, set service = "otp-auth-service-production".
 [[services]]
