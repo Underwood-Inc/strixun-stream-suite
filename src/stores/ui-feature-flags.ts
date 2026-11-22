@@ -1,5 +1,5 @@
 /**
- * UI feature flags for Stream Suite — refreshed from any API response carrying featureFlags.
+ * UI feature flags for Stream Suite — refreshed from API responses carrying `_featureFlags`.
  */
 import { writable, get } from "svelte/store";
 import { FEATURE_FLAG_CANON_ROWS, type EvaluatedFeatureFlagsEnvelope } from "@strixun/feature-flags";
@@ -64,7 +64,7 @@ function envelopeToSnapshot(envelope: EvaluatedFeatureFlagsEnvelope): UiFlagSnap
   return snap;
 }
 
-/** Apply canon defaults until the first API response supplies featureFlags. */
+/** Apply canon defaults until the first API response supplies `_featureFlags`. */
 export function bootstrapUiFeatureFlags(): void {
   if (lastMergedSnapshotId !== null) return;
   applySnapshot(defaults());

@@ -36,11 +36,11 @@ describe("attachFeatureFlagsToResponse", () => {
     });
 
     expect(out.headers.get(FEATURE_FLAGS_REVISION_HEADER)).toBe("1.0.0:production:abc");
-    expect(out.headers.get(FEATURE_FLAGS_SNAPSHOT_HEADER)).toBe("1.0.0:production:abc");
+    expect(out.headers.get(FEATURE_FLAGS_SNAPSHOT_HEADER)).toBeNull();
     const body = await out.json();
     expect(body.ok).toBe(true);
     expect(body[FEATURE_FLAGS_BODY_KEY].flags["stream-suite.route.chat"]).toBe(true);
-    expect(body.featureFlags.flags["stream-suite.route.chat"]).toBe(true);
+    expect("featureFlags" in body).toBe(false);
   });
 
   test("[FR-FLAG-013] parseFeatureFlagsEnvelope reads wire envelope", () => {
@@ -56,14 +56,12 @@ describe("attachFeatureFlagsToResponse", () => {
     expect(envelope?.flags["stream-suite.ui.sidebar"]).toBe(true);
   });
 
-  test("[FR-FLAG-013b] parseFeatureFlagsEnvelope reads embedded body without exposed revision header", () => {
+  test("[FR-FLAG-013b] parseFeatureFlagsEnvelope reads _featureFlags without revision header", () => {
     const envelope = parseFeatureFlagsEnvelope(new Headers(), {
-      featureFlags: {
-        snapshotId: "1.0.0:production:abc",
+      [FEATURE_FLAGS_BODY_KEY]: {
         product: "stream-suite",
         environment: "production",
-        catalogRevision: "1.0.0",
-        evaluatedAt: "2026-01-01T00:00:00.000Z",
+        revision: "1.0.0:production:abc",
         flags: { "stream-suite.route.chat": true },
       },
     });

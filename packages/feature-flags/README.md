@@ -22,7 +22,6 @@ Workers attach product-scoped flags to every JSON response via `@strixun/api-fra
 |--------|---------|
 | `X-Feature-Flags-Revision` | Same value as `_featureFlags.revision` |
 | `X-Feature-Flags-Product` | Canon product key for the caller |
-| `X-Feature-Flags-Snapshot-Id` | Legacy alias of revision |
 | `X-Feature-Flags` | Non-JSON bodies: compact `flags` object |
 
 ## Shared APIs

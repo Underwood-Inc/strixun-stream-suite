@@ -175,7 +175,6 @@ export async function attachFeatureFlagsEnvelope(
 ): Promise<Response> {
   const headers = new Headers(response.headers);
   headers.set(FEATURE_FLAGS_REVISION_HEADER, flagsSlice.revision);
-  headers.set(FEATURE_FLAGS_SNAPSHOT_HEADER, flagsSlice.revision);
   headers.set(FEATURE_FLAGS_PRODUCT_HEADER, flagsSlice.product);
 
   const contentType = response.headers.get("Content-Type") ?? "";
@@ -190,14 +189,6 @@ export async function attachFeatureFlagsEnvelope(
         const merged = {
           ...(parsed as Record<string, unknown>),
           [FEATURE_FLAGS_BODY_KEY]: flagsSlice,
-          featureFlags: {
-            snapshotId: flagsSlice.revision,
-            product: flagsSlice.product,
-            environment: flagsSlice.environment,
-            catalogRevision: flagsSlice.revision.split(":")[0] ?? "",
-            evaluatedAt: new Date().toISOString(),
-            flags: flagsSlice.flags,
-          },
         };
         return new Response(JSON.stringify(merged), {
           status: response.status,
@@ -264,12 +255,6 @@ export function parseFeatureFlagsEnvelope(
       const wire = record[FEATURE_FLAGS_BODY_KEY] as FeatureFlagsWireEnvelope;
       if (wire?.flags && typeof wire.flags === "object") {
         return legacyEnvelopeFromWire(wire);
-      }
-    }
-    if ("featureFlags" in record) {
-      const embedded = (record as { featureFlags?: EvaluatedFeatureFlagsEnvelope }).featureFlags;
-      if (embedded?.flags && typeof embedded.flags === "object") {
-        return embedded;
       }
     }
   }

@@ -22,7 +22,7 @@
   // Router imports
   import { navigate, currentPath } from '../../router';
   import { getNavRoutes, type AppRoute } from '../../router/routes';
-  import { uiFlags, isNavRouteVisible } from '../../stores/ui-feature-flags';
+  import { uiFlags, isNavRouteVisible, isRouteEnabled } from '../../stores/ui-feature-flags';
   
   // Get navigation routes from centralized config
   $: navRoutes = getNavRoutes().filter((route) => isNavRouteVisible(route, $uiFlags));
@@ -54,8 +54,8 @@
    * Check if a route is disabled based on current state
    */
   function isRouteDisabled(route: AppRoute): boolean {
-    // WIP routes are always disabled (in active development, not ready for use)
-    if (route.isWip) {
+    // WIP routes stay disabled until a stream-suite.route.* flag enables them
+    if (route.isWip && !isRouteEnabled(route.path, $uiFlags)) {
       return true;
     }
     
@@ -160,8 +160,9 @@
 <nav class="tabs" use:stagger={{ preset: 'slideDown', stagger: 50, config: { duration: 250 } }}>
   {#each navRoutes as route}
     {@const isDisabled = isRouteDisabled(route)}
-    {@const isActive = $currentPath === route.path && !isDisabled && !route.isWip}
-    {@const statusFlair = route.isWip ? 'wip' : (route.inTesting ? 'in-testing' : null)}
+    {@const flagUnlocked = route.isWip && isRouteEnabled(route.path, $uiFlags)}
+    {@const isActive = $currentPath === route.path && !isDisabled}
+    {@const statusFlair = (route.isWip && !flagUnlocked) ? 'wip' : (route.inTesting ? 'in-testing' : null)}
     <Tooltip 
       text={getTooltipContent(route)} 
       position="bottom" 

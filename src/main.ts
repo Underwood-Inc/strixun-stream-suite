@@ -23,6 +23,8 @@
   }
 })();
 
+import "./feature-flags-prelude";
+
 // CRITICAL: Set up window.addLogEntry IMMEDIATELY and SYNCHRONOUSLY
 // SIMPLIFIED - Direct import, no queue bullshit
 if (typeof window !== 'undefined') {
@@ -59,10 +61,6 @@ if (typeof window !== 'undefined') {
   // Set chat signaling server URL (API at chat-api.idling.app)
   (window as any).CHAT_SIGNALING_URL = 'https://chat-api.idling.app';
 }
-
-import { installFeatureFlagsFetchHook } from './stores/ui-feature-flags';
-
-installFeatureFlagsFetchHook();
 
 import { mount } from 'svelte';
 import App from './App.svelte';
