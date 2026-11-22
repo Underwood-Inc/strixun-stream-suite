@@ -13,9 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         with:
-          version: 9
+          version: 10.30.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -30,9 +30,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         with:
-          version: 9
+          version: 10.30.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -52,9 +52,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         with:
-          version: 9
+          version: 10.30.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -68,9 +68,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         with:
-          version: 9
+          version: 10.30.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -90,13 +90,12 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node apps/flags-admin/scripts/patch-pages-production-branch.mjs
-      - name: Deploy flags-admin to Cloudflare Pages (production branch main)
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: apps/flags-admin
-          command: pages deploy ../../dist/flags-admin --project-name=flags-admin --branch=main --commit-dirty=true
+      - name: Deploy flags-admin to Cloudflare Pages (production)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: apps/flags-admin
+        run: node scripts/pages-deploy.mjs
       # Wrangler 4 has no `pages domain add`; use the official Pages REST API.
       - name: Bind custom domain flags.idling.app
         env:

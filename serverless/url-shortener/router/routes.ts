@@ -68,6 +68,15 @@ export function createRouter() {
         return handleOtpCoreScript(request, env);
       }
 
+      // Same-origin auth proxy (short.army SSO — avoids cross-site cookie blocking on auth.idling.app)
+      if (path === '/auth-api' || path.startsWith('/auth-api/')) {
+        const { proxyRequestWithCredentials } = await import('@strixun/api-framework');
+        const subpath = path.replace(/^\/auth-api\/?/, '');
+        const authBase = (env.AUTH_API_URL as string | undefined) ?? 'https://auth.idling.app';
+        const targetUrl = `${String(authBase).replace(/\/+$/, '')}/${subpath}${url.search}`;
+        return proxyRequestWithCredentials(request, targetUrl, { forwardSetCookie: true });
+      }
+
       // Serve ads.txt for Google AdSense verification (MUST be publicly accessible)
       if (path === '/ads.txt' && request.method === 'GET') {
         const corsHeaders = getCorsHeaders(env, request);
@@ -259,7 +268,7 @@ export function createRouter() {
       // Serve React app (SPA routing - all non-API paths serve the app)
       // App assets (HTML, JS, CSS) are PUBLICLY ACCESSIBLE - no JWT required
       // Users need to load the app to authenticate and get a JWT token
-      if (request.method === 'GET' && !path.startsWith('/api/')) {
+      if (request.method === 'GET' && !path.startsWith('/api/') && !path.startsWith('/auth-api')) {
         // Serve app assets without encryption - they're static files needed for authentication
         const appResponse = await handleAppAssets(request, env);
         const corsHeaders = getCorsHeaders(env, request);

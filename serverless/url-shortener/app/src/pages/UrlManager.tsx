@@ -22,6 +22,7 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
   const [customCodeInput, setCustomCodeInput] = useState('');
   const [creating, setCreating] = useState(false);
   const [totalUrls, setTotalUrls] = useState<number | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; shortCode: string | null }>({
     isOpen: false,
     shortCode: null,
@@ -34,14 +35,21 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
 
   async function loadUrls(): Promise<void> {
     setLoading(true);
+    setListError(null);
     try {
       const response = await apiClient.listUrls();
       if (response.success && response.urls) {
         setUrls(response.urls);
       } else {
-        console.error('Failed to load URLs:', response.error);
+        const msg = response.error ?? 'Failed to load your links';
+        setListError(msg);
+        console.error('Failed to load URLs:', msg);
       }
     } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setListError(msg.includes('401') || /unauthorized/i.test(msg)
+        ? 'Session expired or not sent — sign out, hard-refresh, and sign in again.'
+        : msg);
       console.error('Error loading URLs:', error);
     } finally {
       setLoading(false);
@@ -270,10 +278,16 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
               ↻ Refresh
             </button>
           </div>
+
+          {listError && (
+            <p role="alert" style={{ color: '#f66', marginBottom: '1rem' }}>
+              {listError}
+            </p>
+          )}
           
           {loading ? (
             <div className="loading">Loading URLs...</div>
-          ) : urls.length === 0 ? (
+          ) : urls.length === 0 && !listError ? (
             <div className="empty-state">No short URLs yet. Create your first one above!</div>
           ) : (
             <div className="urls-list">

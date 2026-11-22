@@ -10,7 +10,7 @@ import UrlManager from './pages/UrlManager';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
 import { useAuthStore } from './stores/auth';
-import { getAuthApiUrl } from '@strixun/auth-store/core';
+import { getShortenerAuthApiUrl } from './stores/auth';
 import { getAuthErrorMessage } from '@strixun/otp-auth-service/shared';
 import '@strixun/otp-login/dist/react/otp-login.css';
 import './app.scss';
@@ -91,7 +91,7 @@ export default function App() {
     return (
       <div className="app-container">
         <OtpLogin
-          apiUrl={getAuthApiUrl()}
+          apiUrl={getShortenerAuthApiUrl()}
           onSuccess={handleLoginSuccess}
           onError={handleLoginError}
           title="Sign In"
