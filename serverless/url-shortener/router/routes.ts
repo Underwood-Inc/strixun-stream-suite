@@ -24,6 +24,18 @@ interface Env {
   [key: string]: unknown;
 }
 
+/** idling.app zone Workers cannot public-fetch auth.idling.app (same-zone 522). */
+function hostnameUsesAuthServiceBinding(hostname: string): boolean {
+  return hostname === 'idling.app' || hostname.endsWith('.idling.app');
+}
+
+function authServiceAsFetch(authService: Fetcher): typeof fetch {
+  return (input: RequestInfo | URL, init?: RequestInit) => {
+    const req = input instanceof Request ? input : new Request(input, init);
+    return authService.fetch(req);
+  };
+}
+
 /**
  * Helper to wrap handlers with automatic encryption and integrity checks
  * Uses API framework's wrapWithEncryption for proper service-to-service support
@@ -80,10 +92,13 @@ export function createRouter() {
         const subpath = path.replace(/^\/auth-api\/?/, '');
         const authBase = (env.AUTH_API_URL as string | undefined) ?? 'https://auth.idling.app';
         const targetUrl = `${String(authBase).replace(/\/+$/, '')}/${subpath}${url.search}`;
-        // Public fetch (not AUTH_SERVICE binding): verify-otp emits 4× Set-Cookie and service
-        // bindings can collapse them so getSetCookie/forwarding fails — browsers never get .short.army cookies.
+        // short.army: public fetch preserves 4× Set-Cookie on verify-otp (binding can collapse cookies).
+        // *.idling.app shortener hosts: AUTH_SERVICE binding — public fetch to auth.idling.app 522s same-zone.
+        const useBinding = Boolean(env.AUTH_SERVICE && hostnameUsesAuthServiceBinding(url.hostname));
+        const fetchImpl = useBinding ? authServiceAsFetch(env.AUTH_SERVICE!) : fetch;
         return proxyRequestWithCredentials(request, targetUrl, {
           forwardSetCookie: true,
+          fetch: fetchImpl,
         });
       }
 

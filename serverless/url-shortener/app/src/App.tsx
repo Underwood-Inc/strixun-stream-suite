@@ -15,6 +15,14 @@ import { getAuthErrorMessage } from '@strixun/otp-auth-service/shared';
 import '@strixun/otp-login/dist/react/otp-login.css';
 import './app.scss';
 
+function isShortArmyHost(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  const hostname = window.location.hostname;
+  return hostname === 'short.army' || hostname.endsWith('.short.army');
+}
+
 export default function App() {
   const { isAuthenticated, customer, checkAuth, logout } = useAuthStore();
   const [loading, setLoading] = useState(true);
@@ -98,7 +106,11 @@ export default function App() {
           onSuccess={handleLoginSuccess}
           onError={handleLoginError}
           title="Sign In"
-          subtitle="Enter your email to receive a verification code"
+          subtitle={
+            isShortArmyHost()
+              ? 'Enter your email for a verification code. Already signed in on s.idling.app or another idling app? Refresh — your links load from the shared session.'
+              : 'Enter your email to receive a verification code'
+          }
           showAsModal={true}
           fancy={true}
         />

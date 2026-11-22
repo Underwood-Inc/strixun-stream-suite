@@ -110,4 +110,26 @@ verify-otp Set-Cookie count header (when testing login through proxy):
 # Expect X-Proxy-Set-Cookie-Count: 4 on successful verify-otp via short.army/auth-api
 ```
 
-**Client fix:** `shortenerAuthConfig.authApiUrl` = `getShortenerAuthApiUrl()` passed into `createAuthStore`.
+**Client fix (2026-11-22):** `checkAuth` via `getDefaultAuthConfig()` → `https://auth.idling.app`; OTP stays `getShortenerAuthApiUrl()` → `/auth-api`. On short.army, `/api/list` targets `https://s.idling.app` so `.idling.app` `auth_token` is sent (CORS `Origin: https://short.army`).
+
+## 6. Proxy + deploy notes (2026-11-22)
+
+**Root cause (prod):** `/auth-api/*` used the `AUTH_SERVICE` worker binding for upstream fetch. `verify-otp` returns **four** `Set-Cookie` headers (auth + refresh × `.idling.app` + `.short.army`). The binding path collapsed them, so the browser often got **zero** `.short.army` cookies — `X-Proxy-Cookie-Received: no` on `/auth-api/auth/me` after “login”, and `/api/list` 401.
+
+**Fix:** Public `fetch` to `https://auth.idling.app` + `appendAllSetCookies` in `credential-proxy.ts`; SPA auth base pinned to `/auth-api` at build time (no baked-in `auth.idling.app` for `checkAuth`).
+
+**After successful `POST /auth-api/auth/verify-otp` (via short.army), expect four `Set-Cookie` lines:**
+
+| Cookie        | Domain        | Attributes (production)                          |
+|---------------|---------------|--------------------------------------------------|
+| `refresh_token` | `.idling.app` | `HttpOnly; Secure; SameSite=None; Path=/; Max-Age=…` |
+| `auth_token`    | `.idling.app` | same                                             |
+| `refresh_token` | `.short.army` | `HttpOnly; Secure; SameSite=None; Path=/; Max-Age=…` |
+| `auth_token`    | `.short.army` | same                                             |
+
+Proxy diagnostics on auth responses: `X-Proxy-Set-Cookie-Count: 4` on successful verify-otp; `X-Proxy-Cookie-Received: yes` on `/auth-api/auth/me` when the browser sends `auth_token` for this host.
+
+**Live deploy (PowerShell):**
+
+- `strixun-url-shortener-production` version: `cdd5607b-e999-4ac6-9335-bc7365532e6f`
+- `otp-auth-service` version: `cc3418b4-71bb-41de-b3aa-c425be639ae1` (`ALLOWED_ORIGINS` in `[vars]` includes `https://short.army`; no `ALLOWED_ORIGINS` secret override)

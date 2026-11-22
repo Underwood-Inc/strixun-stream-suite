@@ -22,7 +22,13 @@ function getApiUrl(): string {
         return '';
     }
 
-    // Same-origin /api on custom domains (short.army, s.idling.app, …) so HttpOnly cookies are sent.
+    const hostname = window.location.hostname;
+    if (hostname === 'short.army' || hostname.endsWith('.short.army')) {
+        // UI on short.army; `.idling.app` auth cookies attach to s.idling.app API (CORS + credentials).
+        return 'https://s.idling.app';
+    }
+
+    // Other shorten hosts: same-origin /api so host-matched HttpOnly cookies are sent.
     return window.location.origin;
 }
 
