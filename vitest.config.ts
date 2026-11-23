@@ -33,6 +33,8 @@ export default defineConfig({
       '**/node_modules/**', // Exclude all node_modules tests
       '**/*.e2e.{test,spec}.{js,ts}', // Exclude Playwright e2e tests
       '**/*.spec.{js,ts}', // Exclude .spec files (Playwright e2e only)
+      // Svelte component fixtures need @tanstack/svelte-table .svelte entry — run in package vitest only.
+      'packages/shared-components/svelte/**/*.fixture.test.ts',
     ],
     coverage: {
       provider: 'v8',

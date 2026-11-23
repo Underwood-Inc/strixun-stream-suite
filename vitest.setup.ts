@@ -1,4 +1,4 @@
-import { expect, afterEach, beforeEach } from 'vitest';
+import { expect, afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/svelte/svelte5';
 import '@testing-library/jest-dom/vitest';
 import * as svelte from 'svelte';
@@ -68,6 +68,31 @@ import * as svelte from 'svelte';
     }
   }
 })();
+
+// DOM API shims for React shared-components tests (root vitest does not load packages/shared-components/vitest.setup.ts).
+global.IntersectionObserver = class IntersectionObserver {
+  constructor() {}
+  disconnect() {}
+  observe() {}
+  takeRecords() {
+    return [];
+  }
+  unobserve() {}
+} as typeof IntersectionObserver;
+
+global.ResizeObserver = class ResizeObserver {
+  constructor(_callback: ResizeObserverCallback) {}
+  disconnect() {}
+  observe() {}
+  unobserve() {}
+} as typeof ResizeObserver;
+
+global.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => {
+  return window.setTimeout(() => cb(performance.now()), 0) as unknown as number;
+});
+global.cancelAnimationFrame = vi.fn((id: number) => {
+  window.clearTimeout(id);
+});
 
 // Cleanup after each test
 afterEach(() => {
