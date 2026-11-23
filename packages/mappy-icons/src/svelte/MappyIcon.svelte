@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ClipboardCopy, Link, RefreshCw, Trash2 } from 'lucide-svelte';
+  import { ClipboardCopy, Link, RefreshCw, Search, Trash2, X } from 'lucide-svelte';
   import { resolveActionIconLucideName } from '../canon/mappyActionIconAliasCatalog.js';
 
   interface Props {
@@ -22,4 +22,8 @@
   <RefreshCw {size} class={className} aria-label={ariaLabel} aria-hidden={ariaLabel ? undefined : true} />
 {:else if lucide === 'Link'}
   <Link {size} class={className} aria-label={ariaLabel} aria-hidden={ariaLabel ? undefined : true} />
+{:else if lucide === 'Search'}
+  <Search {size} class={className} aria-label={ariaLabel} aria-hidden={ariaLabel ? undefined : true} />
+{:else if lucide === 'X'}
+  <X {size} class={className} aria-label={ariaLabel} aria-hidden={ariaLabel ? undefined : true} />
 {/if}

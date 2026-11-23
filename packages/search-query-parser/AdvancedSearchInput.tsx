@@ -10,6 +10,7 @@
 
 import React, { useRef } from 'react';
 import styled from 'styled-components';
+import { MappyIcon } from '@strixun/mappy-icons/react';
 
 // Default colors matching the theme - can be overridden via styled-components
 const defaultColors = {
@@ -35,7 +36,9 @@ const Wrapper = styled.div`
 const Icon = styled.span`
   position: absolute;
   left: 12px;
-  font-size: 1em;
+  display: inline-flex;
+  align-items: center;
+  color: ${defaultColors.textMuted};
   pointer-events: none;
   z-index: 1;
 `;
@@ -133,7 +136,9 @@ export function AdvancedSearchInput({
   return (
     <Container>
       <Wrapper>
-        <Icon> ★ </Icon>
+        <Icon>
+          <MappyIcon alias="action.search" size={18} />
+        </Icon>
         <Input
           ref={inputRef}
           type="text"
@@ -149,7 +154,7 @@ export function AdvancedSearchInput({
             aria-label="Clear search"
             title="Clear search"
           >
-            
+            <MappyIcon alias="action.clear" size={16} />
           </ClearButton>
         )}
       </Wrapper>

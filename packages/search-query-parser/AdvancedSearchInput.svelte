@@ -1,4 +1,6 @@
 <script lang="ts">
+  import MappyIcon from '@strixun/mappy-icons/svelte';
+
   /**
    * Advanced Search Input Component
    * 
@@ -22,7 +24,7 @@
   export let showHint: boolean = true;
   export let onInput: ((value: string) => void) | null = null;
   export let onClear: (() => void) | null = null;
-  
+
   let inputElement: HTMLInputElement;
   
   function handleInput(): void {
@@ -48,7 +50,9 @@
 
 <div class="advanced-search-input">
   <div class="advanced-search-input__wrapper">
-    <span class="advanced-search-input__icon"> ★ </span>
+    <span class="advanced-search-input__icon" aria-hidden="true">
+      <MappyIcon alias="action.search" size={18} />
+    </span>
       <input
         type="text"
         class="advanced-search-input__field"
@@ -66,7 +70,7 @@
         aria-label="Clear search"
         title="Clear search"
       >
-        
+        <MappyIcon alias="action.clear" size={16} />
       </button>
     {/if}
   </div>
@@ -93,7 +97,9 @@
   .advanced-search-input__icon {
     position: absolute;
     left: 12px;
-    font-size: 1em;
+    display: inline-flex;
+    align-items: center;
+    color: var(--muted);
     pointer-events: none;
     z-index: 1;
   }

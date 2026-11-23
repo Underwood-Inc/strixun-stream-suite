@@ -1,12 +1,14 @@
 import type { SVGProps } from 'react';
-import { ClipboardCopy, Link, RefreshCw, Trash2 } from 'lucide-react';
+import { ClipboardCopy, Link, RefreshCw, Search, Trash2, X } from 'lucide-react';
 import { resolveActionIconLucideName } from '../canon/mappyActionIconAliasCatalog.js';
 
 const LUCIDE_BY_NAME = {
   ClipboardCopy,
   Link,
   RefreshCw,
+  Search,
   Trash2,
+  X,
 } as const;
 
 export interface MappyIconProps extends SVGProps<SVGSVGElement> {

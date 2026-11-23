@@ -103,7 +103,14 @@ export function ShortUrlWorkspace({
   return (
     <section className="short-url-workspace">
       <div className="short-url-workspace__toolbar">
-        <AdvancedSearchInput value={query} onChange={setQuery} />
+        <div className="short-url-workspace__search">
+          <AdvancedSearchInput
+            value={query}
+            onChange={setQuery}
+            showHint={false}
+            placeholder='Search codes and URLs ("phrase", space=AND, |=OR)'
+          />
+        </div>
       </div>
       <div className="short-url-workspace__layout">
         <div>

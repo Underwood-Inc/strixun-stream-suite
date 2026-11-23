@@ -7,6 +7,8 @@ export const MAPPY_ACTION_ICON_ALIASES = Object.freeze({
   'action.delete': { slug: 'trash', lucide: 'Trash2' },
   'action.refresh': { slug: 'refresh', lucide: 'RefreshCw' },
   'action.link': { slug: 'link', lucide: 'Link' },
+  'action.search': { slug: 'search', lucide: 'Search' },
+  'action.clear': { slug: 'close', lucide: 'X' },
 } as const);
 
 export type MappyActionIconAlias = keyof typeof MAPPY_ACTION_ICON_ALIASES;

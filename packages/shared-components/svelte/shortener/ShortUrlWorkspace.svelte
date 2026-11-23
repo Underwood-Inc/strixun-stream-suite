@@ -109,11 +109,14 @@
 
 <section class="short-url-workspace" aria-labelledby="short-url-list-heading">
   <div class="short-url-workspace__toolbar">
-    <AdvancedSearchInput
-      value={query}
-      onInput={(v) => (query = v)}
-      placeholder='Search codes and URLs ("phrase", space=AND, |=OR)'
-    />
+    <div class="short-url-workspace__search">
+      <AdvancedSearchInput
+        value={query}
+        onInput={(v) => (query = v)}
+        showHint={false}
+        placeholder='Search codes and URLs ("phrase", space=AND, |=OR)'
+      />
+    </div>
   </div>
 
   <div class="short-url-workspace__layout">

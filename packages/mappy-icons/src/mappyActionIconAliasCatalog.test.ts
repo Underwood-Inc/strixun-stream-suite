@@ -6,7 +6,14 @@ import {
 } from './canon/mappyActionIconAliasCatalog.js';
 
 test('[FR-SS-ICON-001] shortener action aliases resolve to Lucide icons', () => {
-  const aliases = ['action.copy', 'action.delete', 'action.refresh', 'action.link'] as const;
+  const aliases = [
+    'action.copy',
+    'action.delete',
+    'action.refresh',
+    'action.link',
+    'action.search',
+    'action.clear',
+  ] as const;
   for (const alias of aliases) {
     expect(isMappyActionIconAlias(alias)).toBe(true);
     const lucide = resolveActionIconLucideName(alias);

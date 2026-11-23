@@ -24,6 +24,16 @@
   align-items: flex-end;
 }
 
+.short-url-workspace__search {
+  flex: 1 1 32rem;
+  min-width: min(100%, 18rem);
+  max-width: 100%;
+}
+
+.short-url-workspace__search :global(.advanced-search-input) {
+  width: 100%;
+}
+
 .short-url-workspace__sort label {
   display: block;
   font-size: 0.75rem;
