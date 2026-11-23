@@ -1810,6 +1810,18 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build workspace dependencies
+        working-directory: .
+        run: |
+          pnpm --filter "@strixun/types" run build
+          pnpm --filter "@strixun/error-utils" run build
+          pnpm --filter "@strixun/service-client" run build
+          pnpm --filter "@strixun/oidc-jwt" run build
+          pnpm --filter "@strixun/feature-flags" run build
+          pnpm --filter "@strixun/api-framework" run build
+          pnpm --filter "@strixun/auth-store" run build
+          pnpm --filter "@strixun/otp-login" run build:react
+
       - name: Build Access Hub
         working-directory: apps/access-hub
         env:
@@ -1987,6 +1999,7 @@ jobs:
           pnpm --filter "@strixun/api-framework" run build
           pnpm --filter "@strixun/auth-store" run build
           pnpm --filter "@strixun/otp-login" run build:react
+          pnpm --filter "@strixun/url-shortener-core" run build
 
       - name: Build Svelte app
         env:
