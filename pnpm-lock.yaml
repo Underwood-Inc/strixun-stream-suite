@@ -1023,6 +1023,9 @@ importers:
         specifier: ^5.0.0
         version: 5.46.0
     devDependencies:
+      '@strixun/mappy-icons':
+        specifier: workspace:*
+        version: link:../mappy-icons
       '@types/react':
         specifier: ^19.0.1
         version: 19.2.7
