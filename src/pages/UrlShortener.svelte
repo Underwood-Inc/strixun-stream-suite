@@ -492,8 +492,28 @@
 
     .header-actions {
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
       align-items: center;
+      justify-content: flex-end;
+
+      :global(.domain-selector) {
+        align-self: center;
+      }
+
+      .btn {
+        min-height: 2.375rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        font-size: 14px;
+        line-height: 1.25;
+      }
+
+      .icon-btn {
+        gap: 0.35rem;
+      }
     }
   }
 
