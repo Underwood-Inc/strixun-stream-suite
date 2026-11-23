@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { AdvancedSearchInput } from '@strixun/search-query-parser/react';
 import {
   shortUrlListWorkspace,
-  SHORT_URL_LIST_SORT_CATALOG,
+  sortHeaderFromSortId,
+  toggleShortUrlListSortId,
   hostViewBarSeries,
   summaryHostBarSeries,
   type ShortUrlListRow,
@@ -45,6 +46,8 @@ export function ShortUrlWorkspace({
     [rows, query, sortId, catalog],
   );
 
+  const sortHeader = useMemo(() => sortHeaderFromSortId(sortId), [sortId]);
+
   const summarySeries = useMemo(
     () =>
       summaryHostBarSeries(
@@ -61,18 +64,30 @@ export function ShortUrlWorkspace({
 
   const columns: DataTableColumn<ShortUrlListRow>[] = useMemo(
     () => [
-      { accessorKey: 'shortUrl', header: 'Short link', size: 220 },
+      {
+        accessorKey: 'shortUrl',
+        header: 'Short link',
+        size: 220,
+        enableSorting: true,
+      },
       {
         accessorKey: 'url',
         header: 'Destination',
         size: 260,
         cell: ({ row }) => (row.url.length > 48 ? `${row.url.slice(0, 48)}…` : row.url),
       },
-      { accessorKey: 'clickCount', header: 'Clicks', size: 72 },
+      {
+        accessorKey: 'clickCount',
+        header: 'Clicks',
+        size: 72,
+        enableSorting: true,
+        cell: ({ row }) => String(row.clickCount ?? 0),
+      },
       {
         id: 'lastViewedAt',
         header: 'Last used',
         size: 140,
+        enableSorting: true,
         cell: ({ row }) => formatLastViewed(row.lastViewedAt),
       },
       {
@@ -89,16 +104,6 @@ export function ShortUrlWorkspace({
     <section className="short-url-workspace">
       <div className="short-url-workspace__toolbar">
         <AdvancedSearchInput value={query} onChange={setQuery} />
-        <div className="short-url-workspace__sort">
-          <label htmlFor="short-url-sort-react">Sort</label>
-          <select id="short-url-sort-react" value={sortId} onChange={(e) => setSortId(e.target.value)}>
-            {SHORT_URL_LIST_SORT_CATALOG.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
       <div className="short-url-workspace__layout">
         <div>
@@ -112,6 +117,11 @@ export function ShortUrlWorkspace({
                   columns={columns}
                   getRowId={(row) => row.shortCode}
                   enableSorting={false}
+                  externalSortColumnId={sortHeader.columnId}
+                  externalSortDirection={sortHeader.direction}
+                  onExternalColumnSort={(columnId) =>
+                    setSortId((prev) => toggleShortUrlListSortId(prev, columnId))
+                  }
                   enableVirtualization={workspace.sorted.length > 20}
                   rowHeight={52}
                   emptyMessage={query ? 'No links match your search.' : 'No short URLs yet.'}

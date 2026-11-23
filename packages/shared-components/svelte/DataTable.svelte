@@ -53,6 +53,10 @@ interface DataTableProps<T = unknown> {
     textMuted?: string;
     accent?: string;
   };
+  /** Recipe/catalog sort (header click) without TanStack row sorting. */
+  externalSortColumnId?: string | null;
+  externalSortDirection?: 'asc' | 'desc';
+  onExternalColumnSort?: (columnId: string) => void;
 }
 
 let {
@@ -69,6 +73,9 @@ let {
   class: className = '',
   emptyMessage = 'No data available',
   colors,
+  externalSortColumnId = null,
+  externalSortDirection = 'desc',
+  onExternalColumnSort,
 }: DataTableProps = $props();
 
 const defaultColors = {
@@ -108,23 +115,28 @@ function buildTanstackColumns(): ColumnDef<unknown>[] {
   }
 
   for (const col of columns) {
-    cols.push({
-      ...col,
-      cell: col.svelteCell
-        ? (ctx) =>
-            renderComponent(
-              col.svelteCell!,
-              (col.svelteCellProps?.(ctx.row.original, ctx.row.index) ?? {}) as Record<string, never>,
-            )
-        : col.cell
-          ? (ctx) =>
-              col.cell!({
-                row: ctx.row.original,
-                value: ctx.getValue(),
-                rowIndex: ctx.row.index,
-              })
-          : undefined,
-    } as ColumnDef<unknown>);
+    const def: ColumnDef<unknown> = {
+      id: col.id,
+      accessorKey: col.accessorKey as string | undefined,
+      header: col.header,
+      size: col.size,
+      enableSorting: col.enableSorting ?? enableSorting,
+    };
+    if (col.svelteCell) {
+      def.cell = (ctx) =>
+        renderComponent(
+          col.svelteCell!,
+          (col.svelteCellProps?.(ctx.row.original, ctx.row.index) ?? {}) as Record<string, never>,
+        );
+    } else if (col.cell) {
+      def.cell = (ctx) =>
+        col.cell!({
+          row: ctx.row.original,
+          value: ctx.getValue(),
+          rowIndex: ctx.row.index,
+        });
+    }
+    cols.push(def);
   }
 
   return cols;
@@ -209,6 +221,23 @@ function handleBodyScroll() {
 function handleRowClickInternal(row: unknown, rowIndex: number) {
   onRowClick?.(row, rowIndex);
 }
+
+function headerColumnId(header: { column: { id: string } }): string {
+  return header.column.id;
+}
+
+function isExternallySortable(columnId: string): boolean {
+  if (!onExternalColumnSort) return false;
+  const col = columns.find((c) => (c.id ?? c.accessorKey) === columnId);
+  return Boolean(col?.enableSorting);
+}
+
+function isHeaderSortable(
+  header: { column: { id: string; getCanSort: () => boolean } },
+): boolean {
+  if (onExternalColumnSort) return isExternallySortable(headerColumnId(header));
+  return enableSorting && header.column.getCanSort();
+}
 </script>
 
 {#if data.length === 0}
@@ -223,20 +252,43 @@ function handleRowClickInternal(row: unknown, rowIndex: number) {
       <div class="table-header" style="background: {finalColors.bgTertiary}; border-color: {finalColors.border};">
         {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
           {#each headerGroup.headers as header (header.id)}
+            {@const colId = headerColumnId(header)}
+            {@const sortable = isHeaderSortable(header)}
             <div
               class="header-cell"
-              class:sortable={enableSorting && header.column.getCanSort()}
+              class:sortable={sortable}
               style="color: {finalColors.text}; flex: 0 0 {header.column.getSize()}px; min-width: {header.column.getSize()}px;"
-              onclick={enableSorting && header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
-              onkeydown={(e) => e.key === 'Enter' && enableSorting && header.column.getCanSort() ? header.column.getToggleSortingHandler()?.(e) : null}
-              role={enableSorting && header.column.getCanSort() ? 'button' : undefined}
-              tabindex={enableSorting && header.column.getCanSort() ? 0 : undefined}
+              onclick={() => {
+                if (onExternalColumnSort && isExternallySortable(colId)) {
+                  onExternalColumnSort(colId);
+                } else if (enableSorting && header.column.getCanSort()) {
+                  header.column.getToggleSortingHandler()?.({} as Event);
+                }
+              }}
+              onkeydown={(e) => {
+                if (e.key !== 'Enter' || !sortable) return;
+                if (onExternalColumnSort) onExternalColumnSort(colId);
+                else header.column.getToggleSortingHandler()?.(e);
+              }}
+              role={sortable ? 'button' : undefined}
+              tabindex={sortable ? 0 : undefined}
             >
               <FlexRender header={header} />
-              {#if enableSorting && header.column.getCanSort()}
-                <span class="sort-indicator" class:sorted={header.column.getIsSorted()}>
-                  {header.column.getIsSorted() === 'asc' ? '▲' : '▼'}
-                </span>
+              {#if sortable}
+                {#if onExternalColumnSort}
+                  {@const active = externalSortColumnId === colId}
+                  <span class="sort-indicator" class:sorted={active}>
+                    {active
+                      ? externalSortDirection === 'asc'
+                        ? '▲'
+                        : '▼'
+                      : '▼'}
+                  </span>
+                {:else if enableSorting && header.column.getCanSort()}
+                  <span class="sort-indicator" class:sorted={header.column.getIsSorted()}>
+                    {header.column.getIsSorted() === 'asc' ? '▲' : '▼'}
+                  </span>
+                {/if}
               {/if}
             </div>
           {/each}
@@ -313,6 +365,8 @@ function handleRowClickInternal(row: unknown, rowIndex: number) {
     position: sticky;
     top: 0;
     z-index: 10;
+    width: max-content;
+    min-width: 100%;
   }
 
   .header-cell {
@@ -349,6 +403,22 @@ function handleRowClickInternal(row: unknown, rowIndex: number) {
     flex: 1;
     overflow: auto;
     min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: #444 transparent;
+
+    &::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #444;
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
   }
 
   .table-body {
@@ -363,7 +433,8 @@ function handleRowClickInternal(row: unknown, rowIndex: number) {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
+    width: max-content;
+    min-width: 100%;
 
     &:hover {
       background: rgba(255, 255, 255, 0.05) !important;

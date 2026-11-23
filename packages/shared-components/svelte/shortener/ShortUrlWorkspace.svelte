@@ -7,7 +7,8 @@
   import ShortUrlRowActions from './ShortUrlRowActions.svelte';
   import {
     shortUrlListWorkspace,
-    SHORT_URL_LIST_SORT_CATALOG,
+    sortHeaderFromSortId,
+    toggleShortUrlListSortId,
     hostViewBarSeries,
     summaryHostBarSeries,
     type ShortUrlListRow,
@@ -38,6 +39,11 @@
   let selectedRow = $state<ShortUrlListRow | null>(null);
 
   const workspace = $derived(shortUrlListWorkspace({ rows, query, sortId, catalog }));
+  const sortHeader = $derived(sortHeaderFromSortId(sortId));
+
+  function handleColumnSort(columnId: string) {
+    sortId = toggleShortUrlListSortId(sortId, columnId);
+  }
 
   const summarySeries = $derived(
     summaryHostBarSeries(
@@ -64,6 +70,7 @@
       accessorKey: 'shortUrl',
       header: 'Short link',
       size: 220,
+      enableSorting: true,
       cell: ({ row }) => row.shortUrl,
     },
     {
@@ -76,11 +83,14 @@
       accessorKey: 'clickCount',
       header: 'Clicks',
       size: 72,
+      enableSorting: true,
+      cell: ({ row }) => String(row.clickCount ?? 0),
     },
     {
       id: 'lastViewedAt',
       header: 'Last used',
       size: 140,
+      enableSorting: true,
       cell: ({ row }) => formatLastViewed(row.lastViewedAt),
     },
     {
@@ -104,14 +114,6 @@
       onInput={(v) => (query = v)}
       placeholder='Search codes and URLs ("phrase", space=AND, |=OR)'
     />
-    <div class="short-url-workspace__sort">
-      <label for="short-url-sort">Sort</label>
-      <select id="short-url-sort" bind:value={sortId}>
-        {#each SHORT_URL_LIST_SORT_CATALOG as opt (opt.id)}
-          <option value={opt.id}>{opt.label}</option>
-        {/each}
-      </select>
-    </div>
   </div>
 
   <div class="short-url-workspace__layout">
@@ -126,6 +128,9 @@
             columns={tableColumns}
             getRowId={(row) => row.shortCode}
             enableSorting={false}
+            externalSortColumnId={sortHeader.columnId}
+            externalSortDirection={sortHeader.direction}
+            onExternalColumnSort={handleColumnSort}
             enableVirtualization={workspace.sorted.length > 20}
             rowHeight={52}
             emptyMessage={query ? 'No links match your search.' : 'No short URLs yet.'}

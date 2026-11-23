@@ -52,6 +52,9 @@ export interface DataTableProps<T> {
     textMuted?: string;
     accent?: string;
   };
+  externalSortColumnId?: string | null;
+  externalSortDirection?: 'asc' | 'desc';
+  onExternalColumnSort?: (columnId: string) => void;
 }
 
 // ============ STYLED COMPONENTS ============
@@ -84,6 +87,8 @@ const TableHeader = styled.div<{ $colors?: any }>`
   position: sticky;
   top: 0;
   z-index: 10;
+  width: max-content;
+  min-width: 100%;
 `;
 
 const HeaderCell = styled.div<{ $sortable?: boolean; $colors?: any; $width?: number }>`
@@ -120,6 +125,22 @@ const TableBodyContainer = styled.div`
   flex: 1;
   overflow: auto;
   min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #444 transparent;
+
+  &::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
 `;
 
 const TableBody = styled.div`
@@ -183,6 +204,9 @@ export function DataTable<T extends Record<string, any>>({
   className,
   emptyMessage = 'No data available',
   colors,
+  externalSortColumnId = null,
+  externalSortDirection = 'desc',
+  onExternalColumnSort,
 }: DataTableProps<T>) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const headerScrollRef = useRef<HTMLDivElement>(null);
@@ -322,6 +346,26 @@ export function DataTable<T extends Record<string, any>>({
     }
   }, [onRowClick]);
 
+  const isExternallySortable = useCallback(
+    (columnId: string) => {
+      if (!onExternalColumnSort) return false;
+      const col = columns.find((c) => (c.id ?? (c as { accessorKey?: string }).accessorKey) === columnId);
+      return Boolean(col?.enableSorting);
+    },
+    [columns, onExternalColumnSort],
+  );
+
+  const handleHeaderSort = useCallback(
+    (columnId: string, toggleHandler?: (e: unknown) => void) => {
+      if (onExternalColumnSort && isExternallySortable(columnId)) {
+        onExternalColumnSort(columnId);
+        return;
+      }
+      if (enableSorting && toggleHandler) toggleHandler({} as React.MouseEvent);
+    },
+    [enableSorting, isExternallySortable, onExternalColumnSort],
+  );
+
   if (data.length === 0) {
     return (
       <TableContainer className={className} $colors={colors}>
@@ -337,20 +381,38 @@ export function DataTable<T extends Record<string, any>>({
         <TableHeader $colors={colors}>
           {table.getHeaderGroups().map((headerGroup) => (
             <React.Fragment key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <HeaderCell
-                  key={header.id}
-                  $sortable={enableSorting && header.column.getCanSort()}
-                  $colors={colors}
-                  $width={header.column.getSize()}
-                  onClick={enableSorting ? header.column.getToggleSortingHandler() : undefined}
-                >
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                  {enableSorting && header.column.getCanSort() && (
-                    <SortIndicator $direction={header.column.getIsSorted() || undefined} />
-                  )}
-                </HeaderCell>
-              ))}
+              {headerGroup.headers.map((header) => {
+                const colId = header.column.id;
+                const sortable = onExternalColumnSort
+                  ? isExternallySortable(colId)
+                  : enableSorting && header.column.getCanSort();
+                const activeExternal = onExternalColumnSort && externalSortColumnId === colId;
+                return (
+                  <HeaderCell
+                    key={header.id}
+                    $sortable={sortable}
+                    $colors={colors}
+                    $width={header.column.getSize()}
+                    onClick={() =>
+                      handleHeaderSort(colId, header.column.getToggleSortingHandler())
+                    }
+                  >
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {sortable &&
+                      (onExternalColumnSort ? (
+                        <SortIndicator
+                          $direction={
+                            activeExternal ? externalSortDirection : undefined
+                          }
+                        />
+                      ) : enableSorting && header.column.getCanSort() ? (
+                        <SortIndicator
+                          $direction={header.column.getIsSorted() || undefined}
+                        />
+                      ) : null)}
+                  </HeaderCell>
+                );
+              })}
             </React.Fragment>
           ))}
         </TableHeader>
@@ -373,7 +435,8 @@ export function DataTable<T extends Record<string, any>>({
                   position: 'absolute',
                   top: 0,
                   left: 0,
-                  width: '100%',
+                  width: 'max-content',
+                  minWidth: '100%',
                 }}
               >
                 {row.getVisibleCells().map(cell => (
