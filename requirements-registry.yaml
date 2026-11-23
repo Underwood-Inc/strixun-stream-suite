@@ -54,3 +54,7 @@ requirements:
     kind: FR
     title: User analytics summary card
     summary: User-scope summary from GET /api/analytics/summary in workspace UI.
+  FR-SS-DEPLOY-001:
+    kind: FR
+    title: Auto cache bust on Pages deploy
+    summary: Each GitHub Pages deploy writes version.json, bumps index asset query params with git sha, and reloads clients when deploy sha changes (PWA-safe).

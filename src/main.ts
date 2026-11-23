@@ -24,6 +24,7 @@
 })();
 
 import "./feature-flags-prelude";
+import { runDeployCacheBust } from './modules/deploy-cache-bust';
 
 // CRITICAL: Set up window.addLogEntry IMMEDIATELY and SYNCHRONOUSLY
 // SIMPLIFIED - Direct import, no queue bullshit
@@ -90,6 +91,9 @@ initializeCore().catch(error => {
   }
 });
 
+// Reload once if version.json reports a newer deploy than this tab last ran.
+await runDeployCacheBust();
+
 // Initialize the app using Svelte 5 mount API
 const app = mount(App, {
   target: document.body,
@@ -98,7 +102,5 @@ const app = mount(App, {
 
 // Don't initialize here - let App.svelte handle it in onMount
 // This ensures the Svelte app is fully mounted before initialization
-
-// Service worker registration is handled by vite-plugin-pwa automatically
 
 export default app;

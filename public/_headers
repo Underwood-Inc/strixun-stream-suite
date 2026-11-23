@@ -13,6 +13,10 @@
 /config.js
   Cache-Control: no-cache, no-store, must-revalidate
 
+# Deploy version manifest - no caching
+/version.json
+  Cache-Control: no-cache, no-store, must-revalidate
+
 # Hashed assets (JS/CSS with content hashes) - cache forever
 # Vite outputs files like index-BdL5vxp2.js with unique hashes
 /assets/*

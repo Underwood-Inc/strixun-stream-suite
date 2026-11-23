@@ -68,7 +68,11 @@ export default defineConfig({
       }]
     },
     workbox: {
-      globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+      cleanupOutdatedCaches: true,
+      clientsClaim: true,
+      // Do not precache index.html — always network-first for shell (deploy cache bust).
+      globPatterns: ['**/*.{js,css,ico,png,svg,woff2}'],
+      globIgnores: ['**/index.html'],
       runtimeCaching: [
         // DEFAULT: All API calls - NEVER cache (NetworkOnly = always fetch from network)
         // This ensures all API requests always go to the server, preventing stale data

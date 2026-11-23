@@ -2112,6 +2112,13 @@ jobs:
           fi
           
           echo "✓ Configuration validated and injected successfully"
+
+      - name: Inject deploy cache bust (version.json + index.html)
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          export DEPLOYED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          node scripts/inject-deploy-cache-bust.mjs dist
       
       - name: Upload artifact
         id: upload
