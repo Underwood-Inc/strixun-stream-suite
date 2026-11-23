@@ -1,4 +1,5 @@
 import type { ShortenerPublicHostRow } from '@strixun/url-shortener-core';
+import '../styles/DomainSelector.css';
 
 export interface DomainSelectorProps {
   hosts: readonly ShortenerPublicHostRow[];
@@ -13,7 +14,7 @@ export function DomainSelector({
   value,
   onChange,
   id = 'shortener-public-host',
-  label = 'Public link domain',
+  label = 'Domain',
 }: DomainSelectorProps) {
   return (
     <label className="domain-selector" htmlFor={id}>

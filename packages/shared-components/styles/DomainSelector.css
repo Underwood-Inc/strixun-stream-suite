@@ -1,0 +1,57 @@
+/**
+ * Branded host picker for URL shortener (Suite + standalone app).
+ * Uses Strixun design tokens (--text, --border, --bg-dark, --card, --accent).
+ */
+.domain-selector {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.domain-selector__label {
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.domain-selector__select {
+  min-width: 10rem;
+  max-width: 16rem;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-dark, var(--bg));
+  color: var(--text);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  cursor: pointer;
+  color-scheme: dark;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.domain-selector__select:hover {
+  border-color: var(--border-light, var(--accent));
+}
+
+.domain-selector__select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(237, 174, 73, 0.25);
+}
+
+.domain-selector__select option {
+  background-color: var(--card);
+  color: var(--text);
+}
+
+@media (prefers-color-scheme: light) {
+  .domain-selector__select:not([data-force-dark-scheme]) {
+    color-scheme: light;
+  }
+}

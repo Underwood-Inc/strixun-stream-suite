@@ -624,16 +624,29 @@
 
     .btn-copy {
       padding: 4px 8px;
-      background: transparent;
+      background: var(--bg-secondary);
       border: 1px solid var(--border);
       border-radius: 4px;
+      color: var(--text);
       cursor: pointer;
       font-size: 14px;
       transition: all 0.2s;
+      flex-shrink: 0;
+
+      :global(svg) {
+        stroke: currentColor;
+      }
 
       &:hover {
-        background: var(--bg-secondary);
+        background: var(--card);
         border-color: var(--accent);
+        color: var(--text);
+      }
+
+      &:focus-visible {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(237, 174, 73, 0.25);
       }
     }
 

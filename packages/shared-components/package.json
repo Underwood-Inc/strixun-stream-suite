@@ -84,7 +84,8 @@
     "./react/DomainSelector": {
       "types": "./react/DomainSelector.tsx",
       "default": "./react/DomainSelector.tsx"
-    }
+    },
+    "./styles/DomainSelector.css": "./styles/DomainSelector.css"
   },
   "scripts": {
     "test": "vitest run --passWithNoTests",

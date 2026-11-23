@@ -1,4 +1,5 @@
 <script lang="ts">
+  import '../styles/DomainSelector.css';
   import type { ShortenerPublicHostRow } from '@strixun/url-shortener-core';
 
   interface Props {
@@ -14,7 +15,7 @@
     value = $bindable(''),
     onchange,
     id = 'shortener-public-host',
-    label = 'Public link domain',
+    label = 'Domain',
   }: Props = $props();
 
   function handleChange(event: Event): void {
@@ -32,20 +33,3 @@
     {/each}
   </select>
 </label>
-
-<style>
-  .domain-selector {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    font-size: 0.875rem;
-  }
-  .domain-selector__select {
-    min-width: 12rem;
-    padding: 0.35rem 0.5rem;
-    border-radius: 0.35rem;
-    border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
-    background: transparent;
-    color: inherit;
-  }
-</style>
