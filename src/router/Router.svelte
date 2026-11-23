@@ -37,8 +37,28 @@
   import Notes from '../pages/Notes.svelte';
   import Chat from '../pages/Chat.svelte';
   import Scripts from '../pages/Scripts.svelte';
-  import UrlShortener from '../pages/UrlShortener.svelte';
   import Setup from '../pages/Setup.svelte';
+  import type { Component } from 'svelte';
+
+  /** Lazy-loaded so URL shortener workspace deps cannot brick the whole SPA on boot. */
+  let UrlShortenerPage: Component | null = null;
+  let urlShortenerLoadError: string | null = null;
+
+  async function ensureUrlShortenerPage(): Promise<void> {
+    if (UrlShortenerPage || urlShortenerLoadError) return;
+    try {
+      const mod = await import('../pages/UrlShortener.svelte');
+      UrlShortenerPage = mod.default;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      urlShortenerLoadError = msg;
+      console.error('[Router] Failed to load URL Shortener page:', err);
+    }
+  }
+
+  $: if ($currentPath === '/url-shortener' && $routerReady) {
+    void ensureUrlShortenerPage();
+  }
   
   // Component map for dynamic rendering
   const componentMap: Record<string, typeof Login> = {
@@ -52,7 +72,6 @@
     '/notes': Notes,
     '/chat': Chat,
     '/scripts': Scripts,
-    '/url-shortener': UrlShortener,
     '/setup': Setup
   };
   
@@ -107,7 +126,8 @@
   
   // Get current component based on path - NEVER default to Dashboard for unknown paths
   // If path isn't in componentMap, show nothing (let guards redirect properly)
-  $: currentComponent = componentMap[$currentPath] || null;
+  $: currentComponent =
+    $currentPath === '/url-shortener' ? UrlShortenerPage : componentMap[$currentPath] || null;
   
   // Track path changes for animation key
   $: {
@@ -127,6 +147,16 @@
   <!-- Navigation in progress (guards running) -->
   <div class="router-loading router-loading--navigating">
     <div class="router-loading__spinner"></div>
+  </div>
+{:else if $currentPath === '/url-shortener' && urlShortenerLoadError}
+  <div class="router-loading" role="alert">
+    <p>URL Shortener failed to load.</p>
+    <p style="font-size: 0.85rem; opacity: 0.85;">{urlShortenerLoadError}</p>
+  </div>
+{:else if $currentPath === '/url-shortener' && !UrlShortenerPage}
+  <div class="router-loading">
+    <div class="router-loading__spinner"></div>
+    <p>Loading URL Shortener…</p>
   </div>
 {:else if currentComponent}
   <!-- Render matched route with transition -->
