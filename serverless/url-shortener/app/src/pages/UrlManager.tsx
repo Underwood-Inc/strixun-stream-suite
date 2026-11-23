@@ -11,7 +11,9 @@ import {
   composePublicShortUrl,
   readPreferredPublicHostKey,
   writePreferredPublicHostKey,
+  type AnalyticsSummaryByHost,
 } from '@strixun/url-shortener-core';
+import { ShortUrlWorkspace } from '@strixun/shared-components/react/shortener/ShortUrlWorkspace';
 import { Tooltip } from '@shared-components/react/Tooltip';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { FooterContainer, FooterBrand } from '@shared-components/react';
@@ -38,6 +40,7 @@ export default function UrlManager({ userDisplayName, onLogout, urlsRefreshKey =
   });
   const [publicHosts, setPublicHosts] = useState<PublicHostRow[]>([]);
   const [preferredHostKey, setPreferredHostKey] = useState('');
+  const [summaryByHost, setSummaryByHost] = useState<AnalyticsSummaryByHost[]>([]);
 
   const displayShortUrl = useCallback(
     (shortCode: string) => {
@@ -80,6 +83,14 @@ export default function UrlManager({ userDisplayName, onLogout, urlsRefreshKey =
       const response = await apiClient.listUrls();
       if (response.success && response.urls) {
         setUrls(enrichUrls(response.urls));
+        try {
+          const summary = await apiClient.getAnalyticsSummary();
+          if (summary.success && summary.byHost) {
+            setSummaryByHost(summary.byHost);
+          }
+        } catch {
+          setSummaryByHost([]);
+        }
       } else {
         const msg = response.error ?? 'Failed to load your links';
         setListError(msg);
@@ -338,62 +349,15 @@ export default function UrlManager({ userDisplayName, onLogout, urlsRefreshKey =
               {listError}
             </p>
           )}
-          
-          {loading ? (
-            <div className="loading">Loading URLs...</div>
-          ) : urls.length === 0 && !listError ? (
-            <div className="empty-state">No short URLs yet. Create your first one above!</div>
-          ) : (
-            <div className="urls-list">
-              {urls.map((url) => (
-                <div key={url.shortCode} className="url-card">
-                  <div className="url-card-header">
-                    <div className="url-short">
-                      <strong>{url.shortUrl}</strong>
-                      <button 
-                        className="btn-copy" 
-                        onClick={() => copyToClipboard(url.shortUrl)}
-                        title="Copy to clipboard"
-                        aria-label="Copy short URL"
-                      >
-                        <MappyIcon alias="action.copy" size={16} />
-                      </button>
-                    </div>
-                    <button 
-                      className="btn btn-danger" 
-                      onClick={() => handleDeleteClick(url.shortCode)}
-                      title="Delete"
-                      aria-label="Delete short URL"
-                    >
-                      <MappyIcon alias="action.delete" size={16} />
-                    </button>
-                  </div>
-                  <div className="url-original">
-                    <a href={url.url} target="_blank" rel="noopener noreferrer">
-                      {url.url}
-                    </a>
-                  </div>
-                  <div className="url-meta">
-                    <span>Created: {new Date(url.createdAt).toLocaleDateString()}</span>
-                    <span>•</span>
-                    <span>Clicks: {url.clickCount || 0}</span>
-                    <span>•</span>
-                    <span>
-                      Last used: {url.lastViewedAt ? new Date(url.lastViewedAt).toLocaleString() : '—'}
-                    </span>
-                  </div>
-                  {publicHosts.length > 0 && (
-                    <div className="url-host-breakdown" style={{ fontSize: '0.8rem', opacity: 0.85 }}>
-                      By domain:{' '}
-                      {publicHosts
-                        .map((h) => `${h.label}: ${url.viewsByHostKey?.[h.id] ?? 0}`)
-                        .join(' · ')}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+
+          <ShortUrlWorkspace
+            rows={urls}
+            catalog={publicHosts}
+            summaryByHost={summaryByHost}
+            isLoading={loading}
+            onCopy={copyToClipboard}
+            onDelete={handleDeleteClick}
+          />
         </div>
       </main>
 

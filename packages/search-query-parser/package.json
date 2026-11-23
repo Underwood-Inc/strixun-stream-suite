@@ -21,7 +21,11 @@
   "license": "MIT",
   "peerDependencies": {
     "react": "^19.0.0",
-    "styled-components": "^6.1.13"
+    "styled-components": "^6.1.13",
+    "svelte": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "svelte": { "optional": true }
   },
   "devDependencies": {
     "@types/react": "^19.0.1",

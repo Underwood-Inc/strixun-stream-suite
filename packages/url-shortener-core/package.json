@@ -16,6 +16,9 @@
     "build": "tsc",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@strixun/search-query-parser": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"

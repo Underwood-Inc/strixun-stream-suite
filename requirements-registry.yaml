@@ -30,3 +30,27 @@ requirements:
     kind: FR
     title: Per-host view analytics without KV rollups
     summary: Redirect records hostKey and viewedAt; per-link viewsByHostKey on aggregates; global rollups via Analytics Engine event sink, not per-host KV keys.
+  FR-SS-URL-007:
+    kind: FR
+    title: Human-friendly URL list search
+    summary: Search short code, destination URL, and displayed short URL via matchesSearchQueryFields.
+  FR-SS-URL-008:
+    kind: FR
+    title: URL list sort
+    summary: Sort list by created, clicks, last viewed, or short code with direction toggle.
+  FR-SS-URL-009:
+    kind: FR
+    title: Virtualized URL DataTable
+    summary: URL list uses shared DataTable with virtualization for large lists.
+  FR-SS-URL-010:
+    kind: FR
+    title: Per-link host view bars
+    summary: viewsByHostKey rendered with HorizontalBar series and catalog labels.
+  FR-SS-URL-011:
+    kind: FR
+    title: Top and recent link panels
+    summary: Top links by clicks and recently used by lastViewedAt from list state.
+  FR-SS-URL-012:
+    kind: FR
+    title: User analytics summary card
+    summary: User-scope summary from GET /api/analytics/summary in workspace UI.

@@ -12,7 +12,10 @@
     readPreferredPublicHostKey,
     writePreferredPublicHostKey,
     type ShortenerPublicHostRow,
+    type ShortUrlListRow,
+    type AnalyticsSummaryByHost,
   } from '@strixun/url-shortener-core';
+  import ShortUrlWorkspace from '@strixun/shared-components/svelte/shortener/ShortUrlWorkspace';
   import { stagger } from '../core/animations';
   import { logout, customer, tryRefreshSession } from '../stores/auth';
   import { fetchWithAuthRetry } from '@strixun/auth-store/core';
@@ -27,17 +30,8 @@
     maxDelayMs: 2000,
   };
 
-  interface ShortUrl {
-    shortCode: string;
-    url: string;
-    shortUrl: string;
-    createdAt: string;
-    clickCount: number;
-    lastViewedAt?: string;
-    viewsByHostKey?: Record<string, number>;
-  }
-
-  let urls: ShortUrl[] = [];
+  let urls: ShortUrlListRow[] = [];
+  let summaryByHost: AnalyticsSummaryByHost[] = [];
   let publicHosts: ShortenerPublicHostRow[] = [];
   let preferredHostKey = '';
   let isLoading = false;
@@ -73,20 +67,30 @@
     return composePublicShortUrl(row, shortCode);
   }
 
-  function enrichUrls(list: ShortUrl[]): ShortUrl[] {
+  function enrichUrls(list: ShortUrlListRow[]): ShortUrlListRow[] {
     return list.map((u) => ({ ...u, shortUrl: displayShortUrl(u.shortCode) }));
   }
 
-  function formatLastViewed(iso?: string): string {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleString();
-  }
-
-  function hostBreakdown(views?: Record<string, number>): string {
-    if (!views || !publicHosts.length) return '';
-    return publicHosts
-      .map((h) => `${h.label}: ${views[h.id] ?? 0}`)
-      .join(' · ');
+  async function loadAnalyticsSummary(): Promise<void> {
+    if (!urlShortenerApiUrl) return;
+    try {
+      const response = await fetchWithAuthRetry(
+        `${urlShortenerApiUrl}/api/analytics/summary?scope=user`,
+        { method: 'GET', credentials: 'include' },
+        AUTH_RETRY_OPTIONS,
+      );
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data.success && Array.isArray(data.byHost)) {
+        summaryByHost = data.byHost.map((row: { hostKey: string; label: string; views: number }) => ({
+          hostKey: row.hostKey,
+          label: row.label,
+          views: row.views ?? 0,
+        }));
+      }
+    } catch {
+      summaryByHost = [];
+    }
   }
 
   function setPreferredHost(hostKey: string): void {
@@ -163,6 +167,7 @@
       const data = await response.json();
       if (data.success) {
         urls = enrichUrls(data.urls || []);
+        await loadAnalyticsSummary();
       }
     } catch (error) {
       console.error('[URL Shortener] Failed to load URLs:', error);
@@ -377,58 +382,14 @@
 
     <div class="urls-section">
       <h2>Your Short URLs</h2>
-      {#if isLoading}
-        <div class="loading">Loading URLs...</div>
-      {:else if urls.length === 0}
-        <div class="empty-state">
-          <p>No short URLs yet. Create your first one above!</p>
-        </div>
-      {:else}
-        <div class="urls-list">
-          {#each urls as urlItem}
-            <div class="url-card">
-              <div class="url-card-content">
-                <div class="url-info">
-                  <div class="url-short">
-                    <strong>{urlItem.shortUrl}</strong>
-                    <button 
-                      class="btn-copy icon-btn"
-                      on:click={() => copyToClipboard(urlItem.shortUrl)}
-                      title="Copy to clipboard"
-                      aria-label="Copy short URL"
-                    >
-                      <MappyIcon alias="action.copy" size={16} />
-                    </button>
-                  </div>
-                  <div class="url-original">
-                    <a href={urlItem.url} target="_blank" rel="noopener noreferrer">
-                      {urlItem.url}
-                    </a>
-                  </div>
-                  <div class="url-meta">
-                    <span>Created: {new Date(urlItem.createdAt).toLocaleDateString()}</span>
-                    <span>•</span>
-                    <span>Clicks: {urlItem.clickCount}</span>
-                    <span>•</span>
-                    <span>Last used: {formatLastViewed(urlItem.lastViewedAt)}</span>
-                  </div>
-                  {#if hostBreakdown(urlItem.viewsByHostKey)}
-                    <div class="url-host-breakdown">By domain: {hostBreakdown(urlItem.viewsByHostKey)}</div>
-                  {/if}
-                </div>
-                <button 
-                  class="btn-delete icon-btn"
-                  on:click={() => deleteUrl(urlItem.shortCode)}
-                  title="Delete"
-                  aria-label="Delete short URL"
-                >
-                  <MappyIcon alias="action.delete" size={18} />
-                </button>
-              </div>
-            </div>
-          {/each}
-        </div>
-      {/if}
+      <ShortUrlWorkspace
+        rows={urls}
+        catalog={publicHosts}
+        {summaryByHost}
+        isLoading={isLoading}
+        onCopy={copyToClipboard}
+        onDelete={deleteUrl}
+      />
     </div>
   </div>
 </div>

@@ -16,8 +16,6 @@
    * />
    */
   
-  import Tooltip from '../tooltip/Tooltip.svelte';
-  
   export let value: string = '';
   export let placeholder: string = 'Search... (use "quotes" for exact, space for AND, | for OR)';
   export let inputId: string = `advanced-search-${Math.random().toString(36).substr(2, 9)}`;

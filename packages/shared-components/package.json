@@ -85,7 +85,20 @@
       "types": "./react/DomainSelector.tsx",
       "default": "./react/DomainSelector.tsx"
     },
-    "./styles/DomainSelector.css": "./styles/DomainSelector.css"
+    "./styles/DomainSelector.css": "./styles/DomainSelector.css",
+    "./styles/ShortUrlWorkspace.css": "./styles/ShortUrlWorkspace.css",
+    "./svelte/shortener/ShortUrlWorkspace": {
+      "types": "./svelte/shortener/ShortUrlWorkspace.svelte",
+      "default": "./svelte/shortener/ShortUrlWorkspace.svelte"
+    },
+    "./react/shortener/ShortUrlWorkspace": {
+      "types": "./react/shortener/ShortUrlWorkspace.tsx",
+      "default": "./react/shortener/ShortUrlWorkspace.tsx"
+    },
+    "./react/charts/HorizontalBar": {
+      "types": "./react/charts/HorizontalBar.tsx",
+      "default": "./react/charts/HorizontalBar.tsx"
+    }
   },
   "scripts": {
     "test": "vitest run --passWithNoTests",
@@ -100,6 +113,8 @@
     "@tanstack/svelte-table": "^8.21.3",
     "@tanstack/svelte-virtual": "^3.13.18",
     "prismjs": "^1.29.0",
+    "@strixun/mappy-icons": "workspace:*",
+    "@strixun/search-query-parser": "workspace:*",
     "@strixun/url-shortener-core": "workspace:*"
   },
   "devDependencies": {

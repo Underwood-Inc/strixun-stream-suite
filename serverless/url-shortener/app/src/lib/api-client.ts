@@ -163,6 +163,13 @@ class UrlShortenerApiClient {
         });
     }
 
+    async getAnalyticsSummary(): Promise<{
+        success: boolean;
+        byHost?: Array<{ hostKey: string; label: string; views: number }>;
+    }> {
+        return this.request(`/api/analytics/summary?scope=user`);
+    }
+
     async getStats(): Promise<StatsResponse> {
         const response = await fetch(`${API_URL}/api/stats`, {
             method: 'GET',

@@ -20,7 +20,6 @@ import {
   getSortedRowModel,
   type ColumnDef,
   type SortingState,
-  type TableOptions,
 } from '@tanstack/svelte-table';
 import { createVirtualizer } from '@tanstack/svelte-virtual';
 
@@ -31,6 +30,9 @@ export interface DataTableColumn<T> {
   accessorKey?: string;
   header: string | ((props: any) => any);
   cell?: (props: { row: T; value: any; rowIndex: number }) => any;
+  /** When set, cell renderer is ignored; renders this Svelte component with dynamic props. */
+  svelteCell?: import('svelte').Component;
+  svelteCellProps?: (row: T, rowIndex: number) => Record<string, unknown>;
   size?: number;
   enableSorting?: boolean;
 }
@@ -138,18 +140,23 @@ $: tableColumns = (() => {
   // Convert DataTableColumn to TanStack ColumnDef
   cols.push(...columns.map(col => ({
     ...col,
-    cell: col.cell ? (info: any) => col.cell!({
-      row: info.row.original,
-      value: info.getValue(),
-      rowIndex: info.row.index
-    }) : undefined,
+    meta: { svelteCell: col.svelteCell, svelteCellProps: col.svelteCellProps },
+    cell: col.svelteCell
+      ? () => '__svelte_cell__'
+      : col.cell
+        ? (info: any) => col.cell!({
+            row: info.row.original,
+            value: info.getValue(),
+            rowIndex: info.row.index
+          })
+        : undefined,
   })));
   
   return cols;
 })();
 
 // TanStack Table options
-$: options: TableOptions<any> = {
+$: tableOptions = {
   data,
   columns: tableColumns,
   state: {
@@ -184,7 +191,7 @@ $: options: TableOptions<any> = {
 };
 
 // Create table instance
-$: table = createSvelteTable(options);
+$: table = createSvelteTable(tableOptions);
 
 // Get rows
 $: rows = $table.getRowModel().rows;
@@ -283,8 +290,18 @@ function handleRowClickInternal(row: any, rowIndex: number) {
                       style="accent-color: {finalColors.accent};"
                     />
                   {/if}
+                {:else if cell.column.columnDef.meta?.svelteCell}
+                  <svelte:component
+                    this={cell.column.columnDef.meta.svelteCell}
+                    {...cell.column.columnDef.meta.svelteCellProps?.(row.original, virtualRow.index) ?? {}}
+                  />
                 {:else}
-                  <svelte:component this={flexRender(cell.column.columnDef.cell, cell.getContext())} />
+                  {@const rendered = flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  {#if typeof rendered === 'string' || typeof rendered === 'number'}
+                    {rendered}
+                  {:else}
+                    <svelte:component this={rendered} />
+                  {/if}
                 {/if}
               </div>
             {/each}
