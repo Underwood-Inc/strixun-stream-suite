@@ -43,15 +43,27 @@ importers:
       '@strixun/feature-flags':
         specifier: workspace:*
         version: link:packages/feature-flags
+      '@strixun/mappy-icons':
+        specifier: workspace:*
+        version: link:packages/mappy-icons
       '@strixun/otp-login':
         specifier: workspace:*
         version: link:packages/otp-login
       '@strixun/search-query-parser':
         specifier: workspace:*
         version: link:packages/search-query-parser
+      '@strixun/shared-components':
+        specifier: workspace:*
+        version: link:packages/shared-components
       '@strixun/status-flair':
         specifier: workspace:*
         version: link:packages/status-flair
+      '@strixun/url-shortener-core':
+        specifier: workspace:*
+        version: link:packages/url-shortener-core
+      lucide-svelte:
+        specifier: ^0.562.0
+        version: 0.562.0(svelte@5.46.0)
       swiper:
         specifier: ^11.2.10
         version: 11.2.10
@@ -877,6 +889,31 @@ importers:
         specifier: ^1.0.0
         version: 1.6.1(@types/node@25.0.3)(@vitest/browser@4.0.16(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))(vitest@4.0.16))(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
 
+  packages/mappy-icons:
+    dependencies:
+      lucide-react:
+        specifier: ^0.562.0
+        version: 0.562.0(react@19.2.3)
+      lucide-svelte:
+        specifier: ^0.562.0
+        version: 0.562.0(svelte@5.46.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.3
+      svelte:
+        specifier: ^5.0.0
+        version: 5.46.0
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.1
+        version: 19.2.7
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.16
+        version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
+
   packages/oidc-jwt:
     devDependencies:
       typescript:
@@ -1004,6 +1041,9 @@ importers:
 
   packages/shared-components:
     dependencies:
+      '@strixun/url-shortener-core':
+        specifier: workspace:*
+        version: link:../url-shortener-core
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -1162,6 +1202,15 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.0.16
         version: 4.0.16(@vitest/browser@4.0.16(vite@7.3.0(@types/node@25.0.3)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0))(vitest@4.0.16))(vitest@4.0.16)
+      vitest:
+        specifier: ^4.0.16
+        version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
+
+  packages/url-shortener-core:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
       vitest:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(happy-dom@20.5.0)(jsdom@25.0.1)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)
@@ -1627,6 +1676,9 @@ importers:
       '@strixun/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@strixun/url-shortener-core':
+        specifier: workspace:*
+        version: link:../../packages/url-shortener-core
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20241127.0
@@ -1652,12 +1704,21 @@ importers:
       '@strixun/auth-store':
         specifier: workspace:*
         version: link:../../../packages/auth-store
+      '@strixun/mappy-icons':
+        specifier: workspace:*
+        version: link:../../../packages/mappy-icons
       '@strixun/otp-auth-service':
         specifier: workspace:*
         version: link:../../otp-auth-service
       '@strixun/otp-login':
         specifier: workspace:*
         version: link:../../../packages/otp-login
+      '@strixun/shared-components':
+        specifier: workspace:*
+        version: link:../../../packages/shared-components
+      '@strixun/url-shortener-core':
+        specifier: workspace:*
+        version: link:../../../packages/url-shortener-core
       react:
         specifier: ^19.0.0
         version: 19.2.3
@@ -6482,6 +6543,17 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
+
+  lucide-react@0.562.0:
+    resolution: {integrity: sha512-82hOAu7y0dbVuFfmO4bYF1XEwYk/mEbM5E+b1jgci/udUBEE/R7LF5Ip0CCEmXe8AybRM8L+04eP+LGZeDvkiw==}
+    peerDependencies:
+      react: ^19.0.0
+
+  lucide-svelte@0.562.0:
+    resolution: {integrity: sha512-kSJDH/55lf0mun/o4nqWBXOcq0fWYzPeIjbTD97ywoeumAB9kWxtM06gC7oynqjtK3XhAljWSz5RafIzPEYIQA==}
+    deprecated: Package deprecated. Please use @lucide/svelte instead.
+    peerDependencies:
+      svelte: ^3 || ^4 || ^5.0.0-next.42
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -13977,6 +14049,14 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
+
+  lucide-react@0.562.0(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+
+  lucide-svelte@0.562.0(svelte@5.46.0):
+    dependencies:
+      svelte: 5.46.0
 
   lz-string@1.5.0: {}
 

@@ -34,6 +34,16 @@ export interface ShortUrl {
     url: string;
     createdAt: string;
     clickCount: number;
+    lastViewedAt?: string;
+    viewsByHostKey?: Record<string, number>;
+}
+
+export interface PublicHostRow {
+    id: string;
+    hostname: string;
+    label: string;
+    registrableDomain: string;
+    sortOrder: number;
 }
 
 export interface CreateUrlRequest {
@@ -137,6 +147,14 @@ class UrlShortenerApiClient {
 
     async listUrls(): Promise<ListUrlsResponse> {
         return this.request<ListUrlsResponse>('/api/list');
+    }
+
+    async listPublicHosts(): Promise<{ success: boolean; hosts?: PublicHostRow[] }> {
+        const response = await fetch(`${API_URL}/api/public-hosts`, { cache: 'no-store' });
+        if (!response.ok) {
+            throw new Error(`Failed to fetch public hosts: ${response.statusText}`);
+        }
+        return response.json();
     }
 
     async deleteUrl(shortCode: string): Promise<DeleteUrlResponse> {

@@ -143,7 +143,7 @@ export async function handleCreateShortUrl(request, env) {
  * Redirect to original URL
  * GET /:shortCode
  */
-export async function handleRedirect(request, env) {
+export async function handleRedirect(request, env, ctx) {
   try {
     const url = new URL(request.url);
     const shortCode = url.pathname.slice(1); // Remove leading /
@@ -167,28 +167,8 @@ export async function handleRedirect(request, env) {
 
     const urlData = JSON.parse(urlDataStr);
 
-    // Update click count
-    urlData.clickCount = (urlData.clickCount || 0) + 1;
-    await env.URL_KV.put(urlKey, JSON.stringify(urlData));
-
-    // Track analytics
-    const analyticsKey = `analytics_${shortCode}_${Date.now()}`;
-    await env.ANALYTICS_KV.put(analyticsKey, JSON.stringify({
-      shortCode,
-      timestamp: new Date().toISOString(),
-      userAgent: request.headers.get('User-Agent'),
-      referer: request.headers.get('Referer'),
-      ip: request.headers.get('CF-Connecting-IP'),
-    }), { expirationTtl: 31536000 }); // 1 year
-
-    // Update user's URL list click count
-    const userUrlsKey = `user_urls_${urlData.userId}`;
-    const userUrls = await env.URL_KV.get(userUrlsKey, { type: 'json' }) || [];
-    const urlIndex = userUrls.findIndex(u => u.shortCode === shortCode);
-    if (urlIndex !== -1) {
-      userUrls[urlIndex].clickCount = urlData.clickCount;
-      await env.URL_KV.put(userUrlsKey, JSON.stringify(userUrls));
-    }
+    const { recordRedirectView } = await import('./redirect-analytics.js');
+    await recordRedirectView(request, env, shortCode, ctx);
 
     // Redirect to original URL
     return Response.redirect(urlData.url, 302);

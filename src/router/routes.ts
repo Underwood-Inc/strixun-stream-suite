@@ -219,7 +219,7 @@ export const routes: AppRoute[] = [
     guards: [requireAuthStrict, requireNoInterference],
     requiresConnection: false,
     isWip: false,
-    inTesting: true,
+    inTesting: false,
     showInNav: true,
     meta: {
       title: 'URL Shortener',

@@ -31,4 +31,6 @@ packages:
   - 'packages/shared-config'
   - 'packages/feature-flags'
   - 'packages/shared-styles'
+  - 'packages/url-shortener-core'
+  - 'packages/mappy-icons'
 

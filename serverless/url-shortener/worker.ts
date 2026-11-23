@@ -20,7 +20,7 @@ initializeServiceTypes();
  */
 async function handleRequest(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
   const router = createRouter();
-  return router(request, env);
+  return router(request, env, ctx);
 }
 
 /**

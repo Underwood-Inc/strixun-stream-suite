@@ -9,7 +9,7 @@ compatibility_date = "2024-12-01"
 
 # Legacy workers.dev-only worker (name suffix …-production). Custom domains use top-level deploy (no --env).
 [env.production]
-vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", CUSTOMER_API_URL = "https://customer-api.idling.app", ALLOWED_ORIGINS = "https://short.army,https://short.idling.app,https://shorten.idling.app,https://sss.idling.app,https://streamkit.idling.app,https://mods.idling.app,https://www.idling.app,https://idling.app,https://s.idling.app,https://auth.idling.app" }
+vars = { ENVIRONMENT = "production", JWT_ISSUER = "https://auth.idling.app", CUSTOMER_API_URL = "https://customer-api.idling.app", ALLOWED_ORIGINS = "https://short.army,https://short.idling.app,https://shorten.idling.app,https://sss.idling.app,https://streamkit.idling.app,https://mods.idling.app,https://www.idling.app,https://idling.app,https://s.idling.app,https://auth.idling.app", SHORTENER_PUBLIC_HOSTS = "https://short.army,https://s.idling.app,https://short.idling.app,https://shorten.idling.app,https://sss.idling.app" }
 # Custom domain route (s.idling.app/*) is managed in Cloudflare Dashboard
 # Routes configured in the dashboard take precedence over wrangler.toml
 # KV Namespace for storing URL mappings
@@ -47,6 +47,11 @@ ENVIRONMENT = "production"
 JWT_ISSUER = "https://auth.idling.app"
 CUSTOMER_API_URL = "https://customer-api.idling.app"
 ALLOWED_ORIGINS = "https://short.army,https://short.idling.app,https://shorten.idling.app,https://sss.idling.app,https://streamkit.idling.app,https://mods.idling.app,https://www.idling.app,https://idling.app,https://s.idling.app,https://auth.idling.app"
+SHORTENER_PUBLIC_HOSTS = "https://short.army,https://s.idling.app,https://short.idling.app,https://shorten.idling.app,https://sss.idling.app"
+
+[[analytics_engine_datasets]]
+binding = "ANALYTICS_ENGINE"
+dataset = "url_shortener_link_view"
 
 # Default KV Namespaces (required for routes configured in dashboard or when no environment is specified)
 [[d1_databases]]

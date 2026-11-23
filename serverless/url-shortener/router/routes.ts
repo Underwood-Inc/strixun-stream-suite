@@ -7,6 +7,8 @@
 
 import { getCorsHeaders } from '../utils/cors.js';
 import { handleCreateShortUrl, handleRedirect, handleGetUrlInfo, handleListUrls, handleDeleteUrl, handleGetStats } from '../handlers/url.js';
+import { handleGetPublicHosts } from '../handlers/public-hosts.js';
+import { handleAnalyticsSummary, handleLinkViewHistory } from '../handlers/analytics.js';
 import { handleHealth } from '../handlers/health.js';
 import { handleDecryptScript } from '../handlers/decrypt-script.js';
 import { handleOtpCoreScript } from '../handlers/otp-core-script.js';
@@ -65,8 +67,12 @@ async function wrapWithEncryption(handlerResponse: Response, request: Request, e
   }
 }
 
+interface ExecutionContext {
+  waitUntil(promise: Promise<unknown>): void;
+}
+
 export function createRouter() {
-  return async function route(request: Request, env: Env): Promise<Response> {
+  return async function route(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -114,6 +120,24 @@ export function createRouter() {
             ...corsHeaders,
           },
         });
+      }
+
+      if (path === '/api/public-hosts' && request.method === 'GET') {
+        return handleGetPublicHosts(request, env);
+      }
+
+      if (path.startsWith('/api/analytics/') && path.endsWith('/views') && request.method === 'GET') {
+        const segments = path.split('/').filter(Boolean);
+        const shortCode = segments[2];
+        if (shortCode) {
+          const response = await handleLinkViewHistory(request, env, shortCode);
+          return response;
+        }
+      }
+
+      if (path === '/api/analytics/summary' && request.method === 'GET') {
+        const response = await handleAnalyticsSummary(request, env);
+        return response;
       }
 
       // Public stats endpoint - now requires JWT encryption
@@ -289,7 +313,7 @@ export function createRouter() {
       // Check for short code redirects before serving app
       // Short codes are 3-20 alphanumeric characters
       if (request.method === 'GET' && path !== '/' && !path.startsWith('/api/') && /^\/[a-zA-Z0-9_-]{3,20}$/.test(path)) {
-        const redirectResponse = await handleRedirect(request, env);
+        const redirectResponse = await handleRedirect(request, env, ctx);
         // If redirect found, return it directly (redirects are public)
         // Otherwise fall through to app
         if (redirectResponse.status !== 404) {

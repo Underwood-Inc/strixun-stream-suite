@@ -1,0 +1,32 @@
+# Strixun Stream Suite — requirements registry (url shortener + icons)
+schema_version: 1
+
+requirements:
+  FR-SS-ICON-001:
+    kind: FR
+    title: Shortener semantic action icons
+    summary: Shortener copy, delete, refresh, and link actions use Mappy/Lucide semantic icons, not star placeholders or raw text labels alone.
+  FR-SS-URL-001:
+    kind: FR
+    title: Public short URL composition
+    summary: composePublicShortUrl works for all five catalog public hosts with the same shortCode.
+  FR-SS-URL-002:
+    kind: FR
+    title: Preferred public host persistence
+    summary: ui_shortener_public_host stores catalog hostKey and drives displayed and copied short URLs.
+  FR-SS-URL-003:
+    kind: FR
+    title: Canon public hosts projection
+    summary: One shortenerPublicHostsCatalog; SHORTENER_PUBLIC_HOSTS and GET /api/public-hosts match the catalog.
+  FR-SS-URL-004:
+    kind: FR
+    title: Stream Suite shortener graduation
+    summary: Stream Suite /url-shortener route has inTesting false and no testing banner copy.
+  FR-SS-URL-005:
+    kind: FR
+    title: lastViewedAt on redirect
+    summary: Each redirect sets lastViewedAt on the link aggregate and user list mirror; exposed on list and info APIs.
+  FR-SS-URL-006:
+    kind: FR
+    title: Per-host view analytics without KV rollups
+    summary: Redirect records hostKey and viewedAt; per-link viewsByHostKey on aggregates; global rollups via Analytics Engine event sink, not per-host KV keys.

@@ -1,16 +1,18 @@
 <script lang="ts">
   /**
-   * URL Shortener Page
-   * 
-   * Create and manage short URLs with OTP authentication.
-   * IN TESTING - This feature is currently in testing.
-   * 
-   * Note: Auth is handled by the router guards. This page will only
-   * render when the user is authenticated.
+   * URL Shortener Page — create and manage short URLs with OTP authentication.
+   * Auth is handled by router guards.
    */
   
   import { onMount } from 'svelte';
-  import { Tooltip } from '@components';
+  import DomainSelector from '@strixun/shared-components/svelte/DomainSelector';
+  import MappyIcon from '@strixun/mappy-icons/svelte';
+  import {
+    composePublicShortUrl,
+    readPreferredPublicHostKey,
+    writePreferredPublicHostKey,
+    type ShortenerPublicHostRow,
+  } from '@strixun/url-shortener-core';
   import { stagger } from '../core/animations';
   import { logout, customer, tryRefreshSession } from '../stores/auth';
   import { fetchWithAuthRetry } from '@strixun/auth-store/core';
@@ -31,9 +33,13 @@
     shortUrl: string;
     createdAt: string;
     clickCount: number;
+    lastViewedAt?: string;
+    viewsByHostKey?: Record<string, number>;
   }
 
   let urls: ShortUrl[] = [];
+  let publicHosts: ShortenerPublicHostRow[] = [];
+  let preferredHostKey = '';
   let isLoading = false;
   let isCreating = false;
   let urlInput = '';
@@ -57,10 +63,53 @@
     return '';
   }
 
-  onMount(() => {
+  function hostRowForKey(hostKey: string): ShortenerPublicHostRow | undefined {
+    return publicHosts.find((h) => h.id === hostKey);
+  }
+
+  function displayShortUrl(shortCode: string): string {
+    const row = hostRowForKey(preferredHostKey) ?? publicHosts[0];
+    if (!row) return `${urlShortenerApiUrl}/${shortCode}`;
+    return composePublicShortUrl(row, shortCode);
+  }
+
+  function enrichUrls(list: ShortUrl[]): ShortUrl[] {
+    return list.map((u) => ({ ...u, shortUrl: displayShortUrl(u.shortCode) }));
+  }
+
+  function formatLastViewed(iso?: string): string {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString();
+  }
+
+  function hostBreakdown(views?: Record<string, number>): string {
+    if (!views || !publicHosts.length) return '';
+    return publicHosts
+      .map((h) => `${h.label}: ${views[h.id] ?? 0}`)
+      .join(' · ');
+  }
+
+  function setPreferredHost(hostKey: string): void {
+    preferredHostKey = hostKey;
+    writePreferredPublicHostKey(hostKey);
+    urls = enrichUrls(urls);
+  }
+
+  async function loadPublicHosts(): Promise<void> {
+    if (!urlShortenerApiUrl) return;
+    const res = await fetch(`${urlShortenerApiUrl}/api/public-hosts`);
+    if (!res.ok) return;
+    const data = await res.json();
+    publicHosts = data.hosts ?? [];
+    const stored = readPreferredPublicHostKey();
+    preferredHostKey =
+      stored && publicHosts.some((h) => h.id === stored) ? stored : (publicHosts[0]?.id ?? '');
+  }
+
+  onMount(async () => {
     urlShortenerApiUrl = getUrlShortenerApiUrl();
-    // Auth is handled by router guards - just load URLs
-    loadUrls();
+    await loadPublicHosts();
+    await loadUrls();
   });
 
   /**
@@ -113,7 +162,7 @@
 
       const data = await response.json();
       if (data.success) {
-        urls = data.urls || [];
+        urls = enrichUrls(data.urls || []);
       }
     } catch (error) {
       console.error('[URL Shortener] Failed to load URLs:', error);
@@ -261,23 +310,28 @@
 </script>
 
 <div class="url-shortener-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
-  <Tooltip text="URL Shortener | This feature is currently in testing" level="info" position="bottom">
-    <div class="testing-banner in-testing">★ IN TESTING - This feature is currently in testing</div>
-  </Tooltip>
-
   <div class="url-shortener-content">
     <div class="header">
       <div>
-        <h1>★ URL Shortener</h1>
+        <h1 class="title-with-icon">
+          <MappyIcon alias="action.link" size={28} aria-label="URL Shortener" />
+          URL Shortener
+        </h1>
         <p class="user-info">Signed in as {$customer?.displayName || 'Customer'}</p>
       </div>
       <div class="header-actions">
+        {#if publicHosts.length}
+          <DomainSelector hosts={publicHosts} bind:value={preferredHostKey} onchange={setPreferredHost} />
+        {/if}
         <button 
-          class="btn btn-secondary" 
+          class="btn btn-secondary icon-btn" 
           on:click={loadUrls}
           disabled={isLoading}
+          title="Refresh list"
+          aria-label="Refresh list"
         >
-          {isLoading ? 'Loading...' : '→ Refresh'}
+          <MappyIcon alias="action.refresh" size={18} />
+          <span>{isLoading ? 'Loading...' : 'Refresh'}</span>
         </button>
         <button class="btn btn-secondary" on:click={handleLogout}>
           Logout
@@ -338,10 +392,13 @@
                   <div class="url-short">
                     <strong>{urlItem.shortUrl}</strong>
                     <button 
-                      class="btn-copy"
+                      class="btn-copy icon-btn"
                       on:click={() => copyToClipboard(urlItem.shortUrl)}
                       title="Copy to clipboard"
-                    >★</button>
+                      aria-label="Copy short URL"
+                    >
+                      <MappyIcon alias="action.copy" size={16} />
+                    </button>
                   </div>
                   <div class="url-original">
                     <a href={urlItem.url} target="_blank" rel="noopener noreferrer">
@@ -352,13 +409,21 @@
                     <span>Created: {new Date(urlItem.createdAt).toLocaleDateString()}</span>
                     <span>•</span>
                     <span>Clicks: {urlItem.clickCount}</span>
+                    <span>•</span>
+                    <span>Last used: {formatLastViewed(urlItem.lastViewedAt)}</span>
                   </div>
+                  {#if hostBreakdown(urlItem.viewsByHostKey)}
+                    <div class="url-host-breakdown">By domain: {hostBreakdown(urlItem.viewsByHostKey)}</div>
+                  {/if}
                 </div>
                 <button 
-                  class="btn-delete"
+                  class="btn-delete icon-btn"
                   on:click={() => deleteUrl(urlItem.shortCode)}
                   title="Delete"
-                >★</button>
+                  aria-label="Delete short URL"
+                >
+                  <MappyIcon alias="action.delete" size={18} />
+                </button>
               </div>
             </div>
           {/each}
@@ -380,16 +445,22 @@
     position: relative;
   }
 
-  .testing-banner {
-    padding: 12px 16px;
-    margin: 16px;
-    text-align: center;
-    font-size: 0.9rem;
-    font-weight: 600;
-    border-radius: 0;
-    @include in-testing-state;
-    pointer-events: auto;
-    cursor: help;
+  .title-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .url-host-breakdown {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
   }
 
   .url-shortener-content {

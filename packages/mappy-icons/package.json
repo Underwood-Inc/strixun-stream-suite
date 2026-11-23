@@ -1,0 +1,46 @@
+{
+  "name": "@strixun/mappy-icons",
+  "version": "1.0.0",
+  "description": "Mappy action icon aliases with Lucide bindings for Svelte and React",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./svelte": {
+      "types": "./dist/svelte/MappyIcon.svelte.d.ts",
+      "svelte": "./src/svelte/MappyIcon.svelte",
+      "default": "./src/svelte/MappyIcon.svelte"
+    },
+    "./react": {
+      "types": "./dist/react/MappyIcon.d.ts",
+      "default": "./dist/react/MappyIcon.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "lucide-react": "^0.562.0"
+  },
+  "peerDependencies": {
+    "lucide-svelte": "^0.562.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "svelte": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "lucide-svelte": { "optional": true },
+    "react": { "optional": true },
+    "svelte": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  }
+}

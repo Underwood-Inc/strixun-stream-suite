@@ -1,0 +1,29 @@
+# Traceability config — Strixun Stream Suite
+schema_version: 1
+
+testGlobs:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.test.js"
+  - "tests/**/*.spec.ts"
+
+exclude:
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/coverage/**"
+  - "serverless/**/app/**"
+  - "**/*.e2e.{test,spec}.{js,ts}"
+  - "**/*.spec.{js,ts}"
+
+traceIdPattern: "\\[((?:[A-Z][A-Z0-9]*-)+\\d+)(?:,\\s*((?:[A-Z][A-Z0-9]*-)+\\d+))*\\]"
+
+requireTraceId: warn
+
+kinds:
+  FR:
+    label: Functional
+    description: Observable behaviour for APIs, UI, and workers.
+
+registryGlobs:
+  - "requirements-registry.yaml"

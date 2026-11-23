@@ -1,0 +1,23 @@
+{
+  "name": "@strixun/url-shortener-core",
+  "version": "1.0.0",
+  "description": "Canon hosts, link view recipe, and ports for Strixun URL shortener",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  }
+}

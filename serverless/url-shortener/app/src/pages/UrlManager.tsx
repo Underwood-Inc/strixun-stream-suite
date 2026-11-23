@@ -3,8 +3,15 @@
  * Manages short URLs - create, list, and delete
  */
 
-import { useState, useEffect } from 'react';
-import { apiClient, type ShortUrl } from '../lib/api-client';
+import { useState, useEffect, useCallback } from 'react';
+import { apiClient, type PublicHostRow, type ShortUrl } from '../lib/api-client';
+import { DomainSelector } from '@strixun/shared-components/react/DomainSelector';
+import { MappyIcon } from '@strixun/mappy-icons/react';
+import {
+  composePublicShortUrl,
+  readPreferredPublicHostKey,
+  writePreferredPublicHostKey,
+} from '@strixun/url-shortener-core';
 import { Tooltip } from '@shared-components/react/Tooltip';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { FooterContainer, FooterBrand } from '@shared-components/react';
@@ -29,11 +36,42 @@ export default function UrlManager({ userDisplayName, onLogout, urlsRefreshKey =
     isOpen: false,
     shortCode: null,
   });
+  const [publicHosts, setPublicHosts] = useState<PublicHostRow[]>([]);
+  const [preferredHostKey, setPreferredHostKey] = useState('');
+
+  const displayShortUrl = useCallback(
+    (shortCode: string) => {
+      const row = publicHosts.find((h) => h.id === preferredHostKey) ?? publicHosts[0];
+      if (!row) return `${window.location.origin}/${shortCode}`;
+      return composePublicShortUrl(row, shortCode);
+    },
+    [preferredHostKey, publicHosts],
+  );
+
+  const enrichUrls = useCallback(
+    (list: ShortUrl[]) => list.map((u) => ({ ...u, shortUrl: displayShortUrl(u.shortCode) })),
+    [displayShortUrl],
+  );
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const hostsRes = await apiClient.listPublicHosts();
+        const hosts = hostsRes.hosts ?? [];
+        setPublicHosts(hosts);
+        const stored = readPreferredPublicHostKey();
+        const key = stored && hosts.some((h) => h.id === stored) ? stored : (hosts[0]?.id ?? '');
+        setPreferredHostKey(key);
+      } catch (error) {
+        console.error('Error loading public hosts:', error);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     loadUrls();
     loadStats();
-  }, [urlsRefreshKey]);
+  }, [urlsRefreshKey, preferredHostKey, publicHosts.length]);
 
   async function loadUrls(): Promise<void> {
     setLoading(true);
@@ -41,7 +79,7 @@ export default function UrlManager({ userDisplayName, onLogout, urlsRefreshKey =
     try {
       const response = await apiClient.listUrls();
       if (response.success && response.urls) {
-        setUrls(response.urls);
+        setUrls(enrichUrls(response.urls));
       } else {
         const msg = response.error ?? 'Failed to load your links';
         setListError(msg);
@@ -229,9 +267,22 @@ export default function UrlManager({ userDisplayName, onLogout, urlsRefreshKey =
               <p className="stats-info">Total URLs shortened: <strong>{totalUrls.toLocaleString()}</strong></p>
             )}
           </div>
-          <button className="btn btn-secondary" onClick={handleLogout}>
-            Sign Out
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            {publicHosts.length > 0 && (
+              <DomainSelector
+                hosts={publicHosts}
+                value={preferredHostKey}
+                onChange={(key) => {
+                  setPreferredHostKey(key);
+                  writePreferredPublicHostKey(key);
+                  setUrls((prev) => enrichUrls(prev));
+                }}
+              />
+            )}
+            <button className="btn btn-secondary" onClick={handleLogout}>
+              Sign Out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -276,8 +327,9 @@ export default function UrlManager({ userDisplayName, onLogout, urlsRefreshKey =
         <div className="card urls-section">
           <div className="urls-header">
             <h2>Your Short URLs</h2>
-            <button className="btn btn-secondary" onClick={loadUrls} disabled={loading}>
-              ↻ Refresh
+            <button className="btn btn-secondary" onClick={loadUrls} disabled={loading} aria-label="Refresh list" title="Refresh list">
+              <MappyIcon alias="action.refresh" size={16} />
+              <span style={{ marginLeft: 6 }}>{loading ? 'Loading...' : 'Refresh'}</span>
             </button>
           </div>
 
@@ -302,16 +354,18 @@ export default function UrlManager({ userDisplayName, onLogout, urlsRefreshKey =
                         className="btn-copy" 
                         onClick={() => copyToClipboard(url.shortUrl)}
                         title="Copy to clipboard"
+                        aria-label="Copy short URL"
                       >
-                        ✓ Copy
+                        <MappyIcon alias="action.copy" size={16} />
                       </button>
                     </div>
                     <button 
                       className="btn btn-danger" 
                       onClick={() => handleDeleteClick(url.shortCode)}
                       title="Delete"
+                      aria-label="Delete short URL"
                     >
-                      ✗ Delete
+                      <MappyIcon alias="action.delete" size={16} />
                     </button>
                   </div>
                   <div className="url-original">
@@ -323,7 +377,19 @@ export default function UrlManager({ userDisplayName, onLogout, urlsRefreshKey =
                     <span>Created: {new Date(url.createdAt).toLocaleDateString()}</span>
                     <span>•</span>
                     <span>Clicks: {url.clickCount || 0}</span>
+                    <span>•</span>
+                    <span>
+                      Last used: {url.lastViewedAt ? new Date(url.lastViewedAt).toLocaleString() : '—'}
+                    </span>
                   </div>
+                  {publicHosts.length > 0 && (
+                    <div className="url-host-breakdown" style={{ fontSize: '0.8rem', opacity: 0.85 }}>
+                      By domain:{' '}
+                      {publicHosts
+                        .map((h) => `${h.label}: ${url.viewsByHostKey?.[h.id] ?? 0}`)
+                        .join(' · ')}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

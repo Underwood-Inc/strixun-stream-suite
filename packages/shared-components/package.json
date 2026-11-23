@@ -76,6 +76,14 @@
     "./svelte/charts/HorizontalBar": {
       "types": "./svelte/charts/HorizontalBar.svelte",
       "default": "./svelte/charts/HorizontalBar.svelte"
+    },
+    "./svelte/DomainSelector": {
+      "types": "./svelte/DomainSelector.svelte",
+      "default": "./svelte/DomainSelector.svelte"
+    },
+    "./react/DomainSelector": {
+      "types": "./react/DomainSelector.tsx",
+      "default": "./react/DomainSelector.tsx"
     }
   },
   "scripts": {
@@ -90,7 +98,8 @@
     "@tanstack/react-virtual": "^3.13.18",
     "@tanstack/svelte-table": "^8.21.3",
     "@tanstack/svelte-virtual": "^3.13.18",
-    "prismjs": "^1.29.0"
+    "prismjs": "^1.29.0",
+    "@strixun/url-shortener-core": "workspace:*"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^4.1.3",
