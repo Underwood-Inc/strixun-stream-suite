@@ -70,10 +70,26 @@ export default defineConfig({
     workbox: {
       cleanupOutdatedCaches: true,
       clientsClaim: true,
-      // Do not precache index.html — always network-first for shell (deploy cache bust).
-      globPatterns: ['**/*.{js,css,ico,png,svg,woff2}'],
-      globIgnores: ['**/index.html'],
+      // Precache only immutable hashed chunks + static images — not main.js/style.css (stable names).
+      globPatterns: ['**/*.{ico,png,svg,woff2,webmanifest}', '**/assets/js/*-*.js'],
+      globIgnores: ['**/index.html', '**/config.js', '**/version.json'],
       runtimeCaching: [
+        {
+          urlPattern: /\/assets\/js\/main\.js(\?.*)?$/i,
+          handler: 'NetworkOnly',
+        },
+        {
+          urlPattern: /\/assets\/css\/.*\.css(\?.*)?$/i,
+          handler: 'NetworkOnly',
+        },
+        {
+          urlPattern: /\/config\.js(\?.*)?$/i,
+          handler: 'NetworkOnly',
+        },
+        {
+          urlPattern: /\/version\.json(\?.*)?$/i,
+          handler: 'NetworkOnly',
+        },
         // DEFAULT: All API calls - NEVER cache (NetworkOnly = always fetch from network)
         // This ensures all API requests always go to the server, preventing stale data
         {

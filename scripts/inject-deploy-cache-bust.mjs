@@ -34,7 +34,7 @@ if (!html.includes('http-equiv="Cache-Control"')) {
   );
 }
 
-const bootstrap = `<script id="deploy-cache-bust">(function(){var v="${gitSha}";var ls="stream_suite_deploy_sha";var ss="ss_deploy_reload";try{var p=localStorage.getItem(ls);if(p&&p!==v&&!sessionStorage.getItem(ss)){sessionStorage.setItem(ss,"1");localStorage.setItem(ls,v);location.reload();}else if(!p||p!==v)localStorage.setItem(ls,v);}catch(e){}})();</script>`;
+const bootstrap = `<script id="deploy-cache-bust">(function(){var v="${gitSha}";var ls="stream_suite_deploy_sha";var ss="ss_deploy_reload";function dropSw(){if(!("serviceWorker"in navigator))return;navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})})}try{var p=localStorage.getItem(ls);if(p&&p!==v&&!sessionStorage.getItem(ss)){sessionStorage.setItem(ss,"1");localStorage.setItem(ls,v);dropSw();location.reload();}else if(!p||p!==v){localStorage.setItem(ls,v);if(p&&p!==v)dropSw()} }catch(e){}})();</script>`;
 
 if (!html.includes('id="deploy-cache-bust"')) {
   html = html.replace(
