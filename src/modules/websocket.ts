@@ -669,51 +669,57 @@ export function getMsgId(): number {
 
 // Expose to window for legacy modules that still need it
 // Will be removed as we migrate more modules
+function defineLegacyWindowGetter(
+  key: 'ws' | 'msgId',
+  getValue: () => WebSocket | null | number,
+): void {
+  Object.defineProperty(window, key, {
+    get: getValue,
+    configurable: true,
+    enumerable: true,
+  });
+}
+
 if (typeof window !== 'undefined') {
-  (window as any).ws = ws;
-  (window as any).connected = false; // Will be synced via store
-  (window as any).msgId = msgId;
-  (window as any).currentScene = '';
-  (window as any).sources = [];
-  (window as any).textSources = [];
-  
-  // Sync store changes to window globals (temporary during migration)
-  connected.subscribe(val => {
-    (window as any).connected = val;
-  });
-  currentScene.subscribe(val => {
-    (window as any).currentScene = val;
-  });
-  sources.subscribe(val => {
-    (window as any).sources = val;
-  });
-  textSources.subscribe(val => {
-    (window as any).textSources = val;
-  });
-  
-  // Expose functions
-  (window as any).connect = connect;
-  (window as any).disconnect = disconnect;
-  (window as any).toggleConnection = toggleConnection;
-  (window as any).send = send;
-  (window as any).request = request;
-  (window as any).saveCredentials = saveCredentials;
-  (window as any).forgetRememberedCredentials = forgetRememberedCredentials;
-  (window as any).loadCredentials = loadCredentials;
-  (window as any).clearSavedCredentials = clearSavedCredentials;
-  (window as any).updateSecurityWarning = updateSecurityWarning;
-  (window as any).updateConnectionState = updateConnectionState;
-  (window as any).updateConnectionUI = updateConnectionUI;
-  
-  // Update ws reference when it changes
-  Object.defineProperty(window, 'ws', {
-    get: () => ws,
-    configurable: true
-  });
-  
-  Object.defineProperty(window, 'msgId', {
-    get: () => msgId,
-    configurable: true
-  });
+  const w = window as typeof window & Record<string, unknown>;
+
+  // Never assign ws/msgId directly — a prior install (or code-split chunk) may have
+  // installed getter-only descriptors; assignment throws and breaks lazy routes.
+  w.connected = false;
+  w.currentScene = '';
+  w.sources = [];
+  w.textSources = [];
+
+  if (!w.__STRIXUN_WS_STORE_SYNC__) {
+    w.__STRIXUN_WS_STORE_SYNC__ = true;
+    connected.subscribe((val) => {
+      w.connected = val;
+    });
+    currentScene.subscribe((val) => {
+      w.currentScene = val;
+    });
+    sources.subscribe((val) => {
+      w.sources = val;
+    });
+    textSources.subscribe((val) => {
+      w.textSources = val;
+    });
+  }
+
+  w.connect = connect;
+  w.disconnect = disconnect;
+  w.toggleConnection = toggleConnection;
+  w.send = send;
+  w.request = request;
+  w.saveCredentials = saveCredentials;
+  w.forgetRememberedCredentials = forgetRememberedCredentials;
+  w.loadCredentials = loadCredentials;
+  w.clearSavedCredentials = clearSavedCredentials;
+  w.updateSecurityWarning = updateSecurityWarning;
+  w.updateConnectionState = updateConnectionState;
+  w.updateConnectionUI = updateConnectionUI;
+
+  defineLegacyWindowGetter('ws', () => ws);
+  defineLegacyWindowGetter('msgId', () => msgId);
 }
 
