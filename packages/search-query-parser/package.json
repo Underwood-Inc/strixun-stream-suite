@@ -19,6 +19,9 @@
   ],
   "author": "Strixun",
   "license": "MIT",
+  "dependencies": {
+    "@strixun/mappy-icons": "workspace:*"
+  },
   "peerDependencies": {
     "@strixun/mappy-icons": "workspace:*",
     "react": "^19.0.0",

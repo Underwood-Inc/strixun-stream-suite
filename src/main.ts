@@ -91,8 +91,8 @@ initializeCore().catch(error => {
   }
 });
 
-// Reload once if version.json reports a newer deploy than this tab last ran.
-await runDeployCacheBust();
+// Reload once if version.json reports a newer deploy than this tab last ran (non-blocking for es2020 bundle).
+void runDeployCacheBust();
 
 // Initialize the app using Svelte 5 mount API
 const app = mount(App, {

@@ -1721,6 +1721,7 @@ jobs:
           pnpm --filter "@strixun/api-framework" run build
           pnpm --filter "@strixun/auth-store" run build
           pnpm --filter "@strixun/otp-login" run build:react
+          pnpm --filter "@strixun/mappy-icons" run build
           pnpm --filter "@strixun/dice-board-game" run build
       
       - name: Inject Service Worker version
@@ -1999,6 +2000,7 @@ jobs:
           pnpm --filter "@strixun/api-framework" run build
           pnpm --filter "@strixun/auth-store" run build
           pnpm --filter "@strixun/otp-login" run build:react
+          pnpm --filter "@strixun/mappy-icons" run build
           pnpm --filter "@strixun/url-shortener-core" run build
 
       - name: Build Svelte app
