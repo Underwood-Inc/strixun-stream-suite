@@ -1,53 +1,47 @@
 <script lang="ts">
 /**
- * DataTable Component - Svelte Implementation
- * Framework-agnostic, highly scalable, composable table component
- * Uses TanStack Table + TanStack Virtual for performance
- * 
- * Features:
- * - Virtualized rows (thousands of rows with no performance hit)
- * - Sorting, filtering, selection
- * - Pagination and infinite scroll support
- * - Fully customizable styling
- * - Sticky headers with synced horizontal scroll
+ * DataTable — Svelte 5 + TanStack Table v9
  */
-
-import { onMount } from 'svelte';
+import { get } from 'svelte/store';
 import {
-  createSvelteTable,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
+  createTable,
+  FlexRender,
+  renderComponent,
+  tableFeatures,
+  columnSizingFeature,
+  columnVisibilityFeature,
+  rowSortingFeature,
+  rowSelectionFeature,
+  createSortedRowModel,
+  sortFns,
   type ColumnDef,
-  type SortingState,
+  type RowSelectionState,
 } from '@tanstack/svelte-table';
 import { createVirtualizer } from '@tanstack/svelte-virtual';
-
-// ============ TYPES ============
+import DataTableSelectCheckbox from './DataTableSelectCheckbox.svelte';
 
 export interface DataTableColumn<T> {
   id?: string;
   accessorKey?: string;
-  header: string | ((props: any) => any);
-  cell?: (props: { row: T; value: any; rowIndex: number }) => any;
-  /** When set, cell renderer is ignored; renders this Svelte component with dynamic props. */
+  header: string | ((props: unknown) => unknown);
+  cell?: (props: { row: T; value: unknown; rowIndex: number }) => unknown;
   svelteCell?: import('svelte').Component;
   svelteCellProps?: (row: T, rowIndex: number) => Record<string, unknown>;
   size?: number;
   enableSorting?: boolean;
 }
 
-interface $$Props {
-  data: any[];
-  columns: DataTableColumn<any>[];
+interface DataTableProps<T = unknown> {
+  data: T[];
+  columns: DataTableColumn<T>[];
   rowHeight?: number;
   enableSorting?: boolean;
   enableSelection?: boolean;
   enableVirtualization?: boolean;
-  onRowClick?: (row: any, rowIndex: number) => void;
+  onRowClick?: (row: T, rowIndex: number) => void;
   selectedIds?: Set<string>;
   onSelectionChange?: (selectedIds: Set<string>) => void;
-  getRowId: (row: any) => string;
+  getRowId: (row: T) => string;
   class?: string;
   emptyMessage?: string;
   colors?: {
@@ -61,22 +55,22 @@ interface $$Props {
   };
 }
 
-export let data: any[];
-export let columns: DataTableColumn<any>[];
-export let rowHeight = 52;
-export let enableSorting = true;
-export let enableSelection = false;
-export let enableVirtualization = true;
-export let onRowClick: ((row: any, rowIndex: number) => void) | undefined = undefined;
-export let selectedIds: Set<string> = new Set();
-export let onSelectionChange: ((selectedIds: Set<string>) => void) | undefined = undefined;
-export let getRowId: (row: any) => string;
-let className = '';
-export { className as class };
-export let emptyMessage = 'No data available';
-export let colors: $$Props['colors'] = undefined;
+let {
+  data,
+  columns,
+  rowHeight = 52,
+  enableSorting = true,
+  enableSelection = false,
+  enableVirtualization = true,
+  onRowClick,
+  selectedIds = new Set<string>(),
+  onSelectionChange,
+  getRowId,
+  class: className = '',
+  emptyMessage = 'No data available',
+  colors,
+}: DataTableProps = $props();
 
-// Default colors
 const defaultColors = {
   bgPrimary: '#0f0f0f',
   bgSecondary: '#1a1a1a',
@@ -87,138 +81,133 @@ const defaultColors = {
   accent: '#edae49',
 };
 
-$: finalColors = { ...defaultColors, ...colors };
+const finalColors = $derived({ ...defaultColors, ...colors });
 
-// Refs
-let tableContainerRef: HTMLDivElement;
-let headerScrollRef: HTMLDivElement;
-let bodyScrollRef: HTMLDivElement;
+let tableContainerRef = $state<HTMLDivElement | null>(null);
+let headerScrollRef = $state<HTMLDivElement | null>(null);
+let bodyScrollRef = $state<HTMLDivElement | null>(null);
 
-// State
-let sorting: SortingState = [];
-let rowSelection: Record<string, boolean> = {};
+function buildTanstackColumns(): ColumnDef<unknown>[] {
+  const cols: ColumnDef<unknown>[] = [];
 
-// Update row selection when selectedIds changes
-$: {
-  if (enableSelection && selectedIds) {
-    const selectionObj: Record<string, boolean> = {};
-    data.forEach((row, index) => {
-      const id = getRowId(row);
-      if (selectedIds.has(id)) {
-        selectionObj[index.toString()] = true;
-      }
-    });
-    rowSelection = selectionObj;
-  }
-}
-
-// Prepare columns with selection column if needed
-$: tableColumns = (() => {
-  const cols: ColumnDef<any>[] = [];
-  
   if (enableSelection && onSelectionChange) {
     cols.push({
       id: 'select',
       size: 50,
-      header: ({ table }: any) => {
-        const checked = table.getIsAllRowsSelected();
-        return {
-          component: 'checkbox',
-          props: { checked, onChange: table.getToggleAllRowsSelectedHandler() }
-        };
-      },
-      cell: ({ row }: any) => {
-        const checked = row.getIsSelected();
-        return {
-          component: 'checkbox',
-          props: { checked, onChange: row.getToggleSelectedHandler() }
-        };
-      },
+      header: ({ table: tbl }) =>
+        renderComponent(DataTableSelectCheckbox, {
+          checked: tbl.getIsAllRowsSelected(),
+          onChange: tbl.getToggleAllRowsSelectedHandler(),
+        }),
+      cell: ({ row }) =>
+        renderComponent(DataTableSelectCheckbox, {
+          checked: row.getIsSelected(),
+          onChange: row.getToggleSelectedHandler(),
+        }),
     });
   }
-  
-  // Convert DataTableColumn to TanStack ColumnDef
-  cols.push(...columns.map(col => ({
-    ...col,
-    meta: { svelteCell: col.svelteCell, svelteCellProps: col.svelteCellProps },
-    cell: col.svelteCell
-      ? () => '__svelte_cell__'
-      : col.cell
-        ? (info: any) => col.cell!({
-            row: info.row.original,
-            value: info.getValue(),
-            rowIndex: info.row.index
-          })
-        : undefined,
-  })));
-  
-  return cols;
-})();
 
-// TanStack Table options
-$: tableOptions = {
+  for (const col of columns) {
+    cols.push({
+      ...col,
+      cell: col.svelteCell
+        ? (ctx) =>
+            renderComponent(
+              col.svelteCell!,
+              (col.svelteCellProps?.(ctx.row.original, ctx.row.index) ?? {}) as Record<string, never>,
+            )
+        : col.cell
+          ? (ctx) =>
+              col.cell!({
+                row: ctx.row.original,
+                value: ctx.getValue(),
+                rowIndex: ctx.row.index,
+              })
+          : undefined,
+    } as ColumnDef<unknown>);
+  }
+
+  return cols;
+}
+
+// Core row model is automatic; feature plugins are registered on demand (v9).
+const sharedFeatures = {
+  rowSortingFeature,
+  columnSizingFeature,
+  columnVisibilityFeature,
+  sortedRowModel: createSortedRowModel(),
+  sortFns,
+} as const;
+
+const features = tableFeatures(
+  enableSelection ? { ...sharedFeatures, rowSelectionFeature } : { ...sharedFeatures },
+);
+
+const table = createTable({
+  features,
+  columns: buildTanstackColumns(),
   data,
-  columns: tableColumns,
-  state: {
-    sorting,
-    rowSelection,
-  },
   enableSorting,
   enableRowSelection: enableSelection,
-  onSortingChange: (updater) => {
-    sorting = typeof updater === 'function' ? updater(sorting) : updater;
-  },
-  onRowSelectionChange: (updater) => {
-    rowSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
-    
-    // Sync selection changes to parent
-    if (enableSelection && onSelectionChange) {
+  getRowId: (row) => getRowId(row),
+});
+
+if (enableSelection && onSelectionChange) {
+  table.setOptions((prev) => ({
+    ...prev,
+    onRowSelectionChange: () => {
+      const selection = table.getState().rowSelection as RowSelectionState;
       const selectedRowIds = new Set<string>();
-      Object.keys(rowSelection).forEach(indexStr => {
-        if (rowSelection[indexStr]) {
-          const row = data[parseInt(indexStr)];
-          if (row) {
-            selectedRowIds.add(getRowId(row));
-          }
+      for (const indexStr of Object.keys(selection)) {
+        if (selection[indexStr]) {
+          const row = data[Number.parseInt(indexStr, 10)];
+          if (row) selectedRowIds.add(getRowId(row));
         }
-      });
+      }
       onSelectionChange(selectedRowIds);
-    }
-  },
-  getCoreRowModel: getCoreRowModel(),
-  getSortedRowModel: enableSorting ? getSortedRowModel() : undefined,
-  getRowId: (row, index) => getRowId(row),
-};
+    },
+  }));
+}
 
-// Create table instance
-$: table = createSvelteTable(tableOptions);
+let rowVirtualizer = $state<ReturnType<typeof createVirtualizer> | null>(null);
+let lastDataRef: unknown[] = data;
 
-// Get rows
-$: rows = $table.getRowModel().rows;
+$effect(() => {
+  if (data !== lastDataRef) {
+    lastDataRef = data;
+    table.setOptions((prev) => ({ ...prev, data }));
+  }
+});
 
-// Virtualization
-$: rowVirtualizer = enableVirtualization && bodyScrollRef ? createVirtualizer({
-  count: rows.length,
-  getScrollElement: () => bodyScrollRef,
-  estimateSize: () => rowHeight,
-  overscan: 5,
-}) : null;
+$effect(() => {
+  if (!enableVirtualization || !bodyScrollRef) return;
+  rowVirtualizer = createVirtualizer({
+    count: data.length,
+    getScrollElement: () => bodyScrollRef as HTMLDivElement,
+    estimateSize: () => rowHeight,
+    overscan: 5,
+  });
+});
 
-$: virtualRows = rowVirtualizer ? $rowVirtualizer.getVirtualItems() : null;
-$: totalSize = rowVirtualizer ? $rowVirtualizer.getTotalSize() : rows.length * rowHeight;
+const virtualRows = $derived(
+  enableVirtualization && rowVirtualizer
+    ? get(rowVirtualizer).getVirtualItems()
+    : null,
+);
+const totalSize = $derived(
+  enableVirtualization && rowVirtualizer
+    ? get(rowVirtualizer).getTotalSize()
+    : data.length * rowHeight,
+);
 
-// Sync horizontal scroll between header and body
 function handleBodyScroll() {
   if (headerScrollRef && bodyScrollRef) {
     headerScrollRef.scrollLeft = bodyScrollRef.scrollLeft;
   }
 }
 
-// Handle row click
-function handleRowClickInternal(row: any, rowIndex: number) {
-  if (onRowClick) {
-    onRowClick(row, rowIndex);
-  }
+function handleRowClickInternal(row: unknown, rowIndex: number) {
+  onRowClick?.(row, rowIndex);
 }
 </script>
 
@@ -230,21 +219,20 @@ function handleRowClickInternal(row: any, rowIndex: number) {
   </div>
 {:else}
   <div class="table-container {className}" bind:this={tableContainerRef} style="background: {finalColors.bgSecondary}; border-color: {finalColors.border};">
-    <!-- Header -->
     <div class="header-scroll-container" bind:this={headerScrollRef}>
       <div class="table-header" style="background: {finalColors.bgTertiary}; border-color: {finalColors.border};">
-        {#each $table.getHeaderGroups() as headerGroup}
-          {#each headerGroup.headers as header}
+        {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+          {#each headerGroup.headers as header (header.id)}
             <div
               class="header-cell"
               class:sortable={enableSorting && header.column.getCanSort()}
               style="color: {finalColors.text}; flex: 0 0 {header.column.getSize()}px; min-width: {header.column.getSize()}px;"
-              on:click={enableSorting && header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
-              on:keydown={(e) => e.key === 'Enter' && enableSorting && header.column.getCanSort() ? header.column.getToggleSortingHandler()?.(e) : null}
+              onclick={enableSorting && header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
+              onkeydown={(e) => e.key === 'Enter' && enableSorting && header.column.getCanSort() ? header.column.getToggleSortingHandler()?.(e) : null}
               role={enableSorting && header.column.getCanSort() ? 'button' : undefined}
               tabindex={enableSorting && header.column.getCanSort() ? 0 : undefined}
             >
-              <svelte:component this={flexRender(header.column.columnDef.header, header.getContext())} />
+              <FlexRender header={header} />
               {#if enableSorting && header.column.getCanSort()}
                 <span class="sort-indicator" class:sorted={header.column.getIsSorted()}>
                   {header.column.getIsSorted() === 'asc' ? '▲' : '▼'}
@@ -256,53 +244,30 @@ function handleRowClickInternal(row: any, rowIndex: number) {
       </div>
     </div>
 
-    <!-- Body -->
-    <div class="body-scroll-container" bind:this={bodyScrollRef} on:scroll={handleBodyScroll}>
+    <div class="body-scroll-container" bind:this={bodyScrollRef} onscroll={handleBodyScroll}>
       <div class="table-body" style="height: {totalSize}px;">
-        {#each (enableVirtualization ? virtualRows : rows.map((row, index) => ({ index, size: rowHeight, start: index * rowHeight }))) as virtualRow}
-          {@const row = rows[virtualRow.index]}
+        {#each (enableVirtualization && virtualRows ? virtualRows : table.getRowModel().rows.map((row, index) => ({ index, size: rowHeight, start: index * rowHeight }))) as virtualRow (virtualRow.index)}
+          {@const row = table.getRowModel().rows[virtualRow.index]}
           <div
             class="table-row"
-            class:selected={row.getIsSelected()}
+            class:selected={enableSelection && row.getIsSelected()}
             style="
               height: {virtualRow.size}px;
               transform: translateY({virtualRow.start}px);
-              background: {row.getIsSelected() ? `${finalColors.accent}15` : 'transparent'};
+              background: {enableSelection && row.getIsSelected() ? `${finalColors.accent}15` : 'transparent'};
               border-color: {finalColors.border};
             "
-            on:click={() => handleRowClickInternal(row.original, virtualRow.index)}
-            on:keydown={(e) => e.key === 'Enter' ? handleRowClickInternal(row.original, virtualRow.index) : null}
+            onclick={() => handleRowClickInternal(row.original, virtualRow.index)}
+            onkeydown={(e) => e.key === 'Enter' && handleRowClickInternal(row.original, virtualRow.index)}
             role="button"
             tabindex="0"
           >
-            {#each row.getVisibleCells() as cell}
+            {#each row.getVisibleCells() as cell (cell.id)}
               <div
                 class="table-cell"
                 style="color: {finalColors.text}; flex: 0 0 {cell.column.getSize()}px; min-width: {cell.column.getSize()}px;"
               >
-                {#if cell.column.id === 'select'}
-                  {@const cellValue = cell.getValue()}
-                  {#if cellValue && typeof cellValue === 'object' && cellValue.component === 'checkbox'}
-                    <input
-                      type="checkbox"
-                      checked={cellValue.props.checked}
-                      on:change={cellValue.props.onChange}
-                      style="accent-color: {finalColors.accent};"
-                    />
-                  {/if}
-                {:else if cell.column.columnDef.meta?.svelteCell}
-                  <svelte:component
-                    this={cell.column.columnDef.meta.svelteCell}
-                    {...cell.column.columnDef.meta.svelteCellProps?.(row.original, virtualRow.index) ?? {}}
-                  />
-                {:else}
-                  {@const rendered = flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  {#if typeof rendered === 'string' || typeof rendered === 'number'}
-                    {rendered}
-                  {:else}
-                    <svelte:component this={rendered} />
-                  {/if}
-                {/if}
+                <FlexRender cell={cell} />
               </div>
             {/each}
           </div>
@@ -336,7 +301,7 @@ function handleRowClickInternal(row: any, rowIndex: number) {
     overflow-y: hidden;
     flex-shrink: 0;
     scrollbar-width: none;
-    
+
     &::-webkit-scrollbar {
       display: none;
     }
@@ -360,10 +325,10 @@ function handleRowClickInternal(row: any, rowIndex: number) {
     align-items: center;
     gap: 8px;
     transition: background 0.2s ease;
-    
+
     &.sortable {
       cursor: pointer;
-      
+
       &:hover {
         background: rgba(255, 255, 255, 0.05);
       }
@@ -374,7 +339,7 @@ function handleRowClickInternal(row: any, rowIndex: number) {
     margin-left: auto;
     opacity: 0.3;
     font-size: 0.7em;
-    
+
     &.sorted {
       opacity: 1;
     }
@@ -399,11 +364,11 @@ function handleRowClickInternal(row: any, rowIndex: number) {
     top: 0;
     left: 0;
     width: 100%;
-    
+
     &:hover {
       background: rgba(255, 255, 255, 0.05) !important;
     }
-    
+
     &.selected {
       &:hover {
         background: rgba(237, 174, 73, 0.25) !important;
@@ -421,7 +386,7 @@ function handleRowClickInternal(row: any, rowIndex: number) {
     white-space: nowrap;
   }
 
-  input[type="checkbox"] {
+  input[type='checkbox'] {
     width: 18px;
     height: 18px;
     cursor: pointer;

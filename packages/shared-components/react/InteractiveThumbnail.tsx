@@ -787,6 +787,15 @@ export function InteractiveThumbnail({
     <CardContainer>
       <CardInner
         ref={cardRef}
+        data-testid="interactive-thumbnail-card"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleClick(e as unknown as React.MouseEvent);
+          }
+        }}
         onClick={handleClick}
         onMouseDown={(e) => {
           handleMouseDownForClick(e);
@@ -803,7 +812,9 @@ export function InteractiveThumbnail({
             onMouseMove={watchElementRef ? undefined : handleThumbnailMouseMove}
             onMouseLeave={watchElementRef ? undefined : handleThumbnailMouseLeave}
           >
-            {enableShimmer && !isFlipped && <ShimmerContainer $enabled={enableShimmer} />}
+            {enableShimmer && !isFlipped && (
+              <ShimmerContainer data-testid="interactive-thumbnail-shimmer" $enabled={enableShimmer} />
+            )}
             <FrontContent>
               {frontContent}
             </FrontContent>

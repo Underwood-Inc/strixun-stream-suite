@@ -59,7 +59,7 @@
     return new Date(iso).toLocaleString();
   }
 
-  const columns: DataTableColumn<ShortUrlListRow>[] = $derived([
+  const tableColumns: DataTableColumn<ShortUrlListRow>[] = $derived([
     {
       accessorKey: 'shortUrl',
       header: 'Short link',
@@ -88,7 +88,7 @@
       header: '',
       size: 96,
       svelteCell: ShortUrlRowActions,
-      svelteCellProps: (row: ShortUrlListRow) => ({
+      svelteCellProps: (row) => ({
         row,
         onCopy,
         onDelete,
@@ -123,13 +123,13 @@
         <div class="short-url-workspace__table-wrap">
           <DataTable
             data={workspace.sorted}
-            {columns}
+            columns={tableColumns}
             getRowId={(row) => row.shortCode}
             enableSorting={false}
             enableVirtualization={workspace.sorted.length > 20}
             rowHeight={52}
             emptyMessage={query ? 'No links match your search.' : 'No short URLs yet.'}
-            onRowClick={(row) => (selectedRow = row)}
+            onRowClick={(row) => (selectedRow = row as ShortUrlListRow)}
           />
         </div>
         {#if selectedRow}

@@ -10,10 +10,14 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { InteractiveThumbnail } from './InteractiveThumbnail';
 import type { InteractiveThumbnailTheme } from './InteractiveThumbnail';
+
+function getCard(): HTMLElement {
+  return screen.getByTestId('interactive-thumbnail-card');
+}
 
 const defaultTheme: InteractiveThumbnailTheme = {
   colors: {
@@ -34,8 +38,8 @@ describe('InteractiveThumbnail', () => {
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
-    user = userEvent.setup();
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
   });
 
   afterEach(() => {
@@ -182,26 +186,10 @@ describe('InteractiveThumbnail', () => {
         />
       );
 
-      const front = screen.getByTestId('front');
-      const wrapper = front.closest('div');
-
-      if (wrapper) {
-        // Simulate mouse move
-        await user.hover(wrapper);
-        
-        // Move mouse to trigger tilt
-        const mouseMoveEvent = new MouseEvent('mousemove', {
-          bubbles: true,
-          clientX: 100,
-          clientY: 100,
-        });
-        wrapper.dispatchEvent(mouseMoveEvent);
-
-        vi.runAllTimers();
-
-        // Component should handle mouse movement
-        expect(wrapper).toBeInTheDocument();
-      }
+      const card = getCard();
+      fireEvent.mouseMove(card, { clientX: 100, clientY: 100 });
+      vi.runAllTimers();
+      expect(card).toBeInTheDocument();
     });
 
     it('should reset tilt on mouse leave', async () => {
@@ -213,26 +201,11 @@ describe('InteractiveThumbnail', () => {
         />
       );
 
-      const front = screen.getByTestId('front');
-      const wrapper = front.closest('div');
-
-      if (wrapper) {
-        // Hover and move
-        await user.hover(wrapper);
-        const mouseMoveEvent = new MouseEvent('mousemove', {
-          bubbles: true,
-          clientX: 100,
-          clientY: 100,
-        });
-        wrapper.dispatchEvent(mouseMoveEvent);
-
-        // Leave
-        await user.unhover(wrapper);
-        vi.runAllTimers();
-
-        // Tilt should reset (component handles this internally)
-        expect(wrapper).toBeInTheDocument();
-      }
+      const card = getCard();
+      fireEvent.mouseMove(card, { clientX: 100, clientY: 100 });
+      fireEvent.mouseLeave(card);
+      vi.runAllTimers();
+      expect(card).toBeInTheDocument();
     });
   });
 
@@ -322,9 +295,7 @@ describe('InteractiveThumbnail', () => {
         />
       );
 
-      // Shimmer container should be in DOM
-      const shimmer = document.querySelector('[class*="ShimmerContainer"]');
-      expect(shimmer).toBeInTheDocument();
+      expect(screen.getByTestId('interactive-thumbnail-shimmer')).toBeInTheDocument();
     });
 
     it('should hide shimmer effect when disabled', () => {
@@ -375,8 +346,7 @@ describe('InteractiveThumbnail', () => {
         />
       );
 
-      const card = screen.getByTestId('front').closest('div')?.parentElement?.parentElement;
-      expect(card).toHaveStyle({ cursor: 'pointer' });
+      expect(getCard()).toHaveStyle({ cursor: 'pointer' });
     });
 
     it('should show grab cursor on back face', async () => {
@@ -388,17 +358,14 @@ describe('InteractiveThumbnail', () => {
         />
       );
 
-      const card = screen.getByText('Front').closest('div')?.parentElement?.parentElement;
+      const card = getCard();
+      await user.click(card);
+      await vi.advanceTimersByTimeAsync(600);
+      vi.runAllTimers();
 
-      if (card) {
-        // Flip to back
-        await user.click(card);
-        vi.runAllTimers();
-
-        await waitFor(() => {
-          expect(card).toHaveStyle({ cursor: 'grab' });
-        });
-      }
+      await waitFor(() => {
+        expect(card).toHaveStyle({ cursor: 'grab' });
+      });
     });
 
     it('should show grabbing cursor while dragging', async () => {
@@ -410,31 +377,22 @@ describe('InteractiveThumbnail', () => {
         />
       );
 
-      const card = screen.getByText('Front').closest('div')?.parentElement?.parentElement;
+      const card = getCard();
+      await user.click(card);
+      await vi.advanceTimersByTimeAsync(600);
+      vi.runAllTimers();
 
-      if (card) {
-        // Flip to back
-        await user.click(card);
-        vi.runAllTimers();
+      await waitFor(() => {
+        expect(card).toHaveStyle({ cursor: 'grab' });
+      });
 
-        // Start dragging
-        const mouseDownEvent = new MouseEvent('mousedown', {
-          bubbles: true,
-          clientX: 100,
-          clientY: 100,
-        });
-        card.dispatchEvent(mouseDownEvent);
+      fireEvent.mouseDown(card, { clientX: 100, clientY: 100 });
 
-        await waitFor(() => {
-          expect(card).toHaveStyle({ cursor: 'grabbing' });
-        });
+      await waitFor(() => {
+        expect(card).toHaveStyle({ cursor: 'grabbing' });
+      });
 
-        // Stop dragging
-        const mouseUpEvent = new MouseEvent('mouseup', {
-          bubbles: true,
-        });
-        document.dispatchEvent(mouseUpEvent);
-      }
+      fireEvent.mouseUp(document);
     });
   });
 
@@ -515,13 +473,9 @@ describe('InteractiveThumbnail', () => {
         />
       );
 
-      const card = screen.getByText('Front').closest('div')?.parentElement?.parentElement;
-
-      if (card) {
-        // Should be focusable and clickable
-        card.focus();
-        expect(document.activeElement).toBe(card);
-      }
+      const card = getCard();
+      card.focus();
+      expect(document.activeElement).toBe(card);
     });
 
     it('should prevent text selection during interaction', () => {
@@ -533,9 +487,7 @@ describe('InteractiveThumbnail', () => {
         />
       );
 
-      const card = screen.getByText('Front').closest('div')?.parentElement?.parentElement;
-      
-      // User-select should be none on card
+      const card = getCard();
       expect(card).toHaveStyle({ userSelect: 'none' });
     });
   });

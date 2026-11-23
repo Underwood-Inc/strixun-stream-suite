@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { Tooltip } from './Tooltip';
 import type { TooltipTheme } from './Tooltip';
@@ -41,8 +41,8 @@ describe('Tooltip', () => {
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
-    user = userEvent.setup();
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
   });
 
   afterEach(() => {
@@ -113,13 +113,14 @@ describe('Tooltip', () => {
       );
 
       const button = screen.getByRole('button');
-      await user.hover(button);
+      fireEvent.mouseEnter(button);
 
       // Should not show immediately
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
 
       // Should show after delay
-      vi.advanceTimersByTime(200);
+      await vi.advanceTimersByTimeAsync(200);
+      vi.runAllTimers();
       await waitFor(() => {
         expect(screen.getByRole('tooltip')).toBeInTheDocument();
       });

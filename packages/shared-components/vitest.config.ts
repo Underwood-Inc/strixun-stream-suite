@@ -1,15 +1,20 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    svelte({ hot: false }),
+  ],
   test: {
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     include: [
       'react/**/*.test.{ts,tsx}',
+      'svelte/**/*.test.ts',
     ],
     exclude: [
       'node_modules',

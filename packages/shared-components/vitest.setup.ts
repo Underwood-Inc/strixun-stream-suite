@@ -25,12 +25,13 @@ global.ResizeObserver = class ResizeObserver {
   unobserve() {}
 } as any;
 
-// Mock requestAnimationFrame and cancelAnimationFrame
-global.requestAnimationFrame = vi.fn((cb) => {
-  cb(Date.now());
-  return 0;
+// Defer rAF to the next macrotask — synchronous cb() causes animation loops to overflow the stack.
+global.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => {
+  return window.setTimeout(() => cb(performance.now()), 0) as unknown as number;
 });
-global.cancelAnimationFrame = vi.fn();
+global.cancelAnimationFrame = vi.fn((id: number) => {
+  window.clearTimeout(id);
+});
 
 // Mock performance.now
 global.performance = {

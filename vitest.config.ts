@@ -20,8 +20,8 @@ export default defineConfig({
     passWithNoTests: true, // Don't fail if no tests are found
     include: [
       'src/**/*.test.{js,ts}',
-      'shared-components/**/*.test.{js,ts}', // Include shared-components tests
-      'scripts/**/*.test.{js,ts}', // Include script tests
+      'packages/shared-components/**/*.test.{js,ts,tsx}',
+      'scripts/**/*.test.{js,ts}',
     ],
     exclude: [
       'node_modules', 
@@ -81,7 +81,10 @@ export default defineConfig({
       { find: '@modules', replacement: resolve(__dirname, './src/modules') },
       { find: '@stores', replacement: resolve(__dirname, './src/stores') },
       { find: '@styles', replacement: resolve(__dirname, './src/styles') },
-      { find: '@shared-components', replacement: resolve(__dirname, './shared-components') },
+      {
+        find: '@shared-components',
+        replacement: resolve(__dirname, './packages/shared-components'),
+      },
       { find: '@shared-styles', replacement: resolve(__dirname, './shared-styles') },
     ],
   },
