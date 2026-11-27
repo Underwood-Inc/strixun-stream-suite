@@ -684,9 +684,6 @@ importers:
       '@strixun/error-utils':
         specifier: workspace:*
         version: link:../error-utils
-      '@strixun/feature-flags':
-        specifier: workspace:*
-        version: link:../feature-flags
       '@strixun/oidc-jwt':
         specifier: workspace:*
         version: link:../oidc-jwt
