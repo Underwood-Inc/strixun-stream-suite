@@ -1,15 +1,16 @@
 /**
  * API Framework - Offline Queue
- * 
- * Queue requests when offline and sync when connection restored
+ *
+ * Queues requests for later sync. Uses OCE for background flush only — not
+ * navigator.onLine and never blocks user-initiated HTTP.
  */
 
 import type { APIRequest, APIResponse, OfflineQueueEntry, OfflineConfig } from '../types';
+import { getPageConnectivityEngine } from '../connectivity/getPageConnectivityEngine';
 
 export class OfflineQueue {
   private queue: OfflineQueueEntry[] = [];
   private config: Required<OfflineConfig>;
-  private isOnline = true;
   private syncListeners: Array<() => void> = [];
 
   constructor(config: OfflineConfig = { enabled: false }) {
@@ -19,37 +20,25 @@ export class OfflineQueue {
       syncOnReconnect: config.syncOnReconnect ?? true,
       retryOnReconnect: config.retryOnReconnect ?? true,
     };
+  }
 
-    // Listen to online/offline events
-    if (typeof window !== 'undefined') {
-      window.addEventListener('online', this.handleOnline.bind(this));
-      window.addEventListener('offline', this.handleOffline.bind(this));
-      this.isOnline = navigator.onLine;
+  /**
+   * OCE-backed hint: may background sync be attempted now?
+   */
+  isConnectivityAvailableForBackgroundSync(): boolean {
+    try {
+      return !getPageConnectivityEngine().getSnapshot().unavailable;
+    } catch {
+      return true;
     }
   }
 
   /**
-   * Handle online event
-   */
-  private handleOnline(): void {
-    this.isOnline = true;
-    if (this.config.syncOnReconnect) {
-      this.sync();
-    }
-  }
-
-  /**
-   * Handle offline event
-   */
-  private handleOffline(): void {
-    this.isOnline = false;
-  }
-
-  /**
-   * Check if currently online
+   * @deprecated Use isConnectivityAvailableForBackgroundSync for flush gating.
+   * Returns true so user-initiated requests are never blocked by the OCE flag.
    */
   isCurrentlyOnline(): boolean {
-    return this.isOnline;
+    return true;
   }
 
   /**
@@ -60,7 +49,6 @@ export class OfflineQueue {
     executor: () => Promise<APIResponse<T>>
   ): Promise<APIResponse<T>> {
     return new Promise<APIResponse<T>>((resolve, reject) => {
-      // Check queue size
       if (this.queue.length >= this.config.queueSize) {
         reject(new Error('Offline queue is full'));
         return;
@@ -74,23 +62,26 @@ export class OfflineQueue {
 
       this.queue.push(entry);
 
-      // Store executor in metadata for later execution
-      (entry as unknown as { executor: () => Promise<APIResponse<T>> }).executor = executor;
-      (entry as unknown as { resolve: (response: APIResponse<T>) => void }).resolve = resolve;
+      (entry as unknown as { executor: () => Promise<APIResponse<T>> }).executor =
+        executor;
+      (entry as unknown as { resolve: (response: APIResponse<T>) => void }).resolve =
+        resolve;
       (entry as unknown as { reject: (error: Error) => void }).reject = reject;
 
-      // If online, try to execute immediately
-      if (this.isOnline && this.config.retryOnReconnect) {
-        this.processQueue();
+      if (this.isConnectivityAvailableForBackgroundSync() && this.config.retryOnReconnect) {
+        void this.processQueue();
       }
     });
   }
 
   /**
-   * Process queued requests
+   * Process queued requests (background flush respects OCE unavailable)
    */
   async processQueue(): Promise<void> {
-    if (!this.isOnline || this.queue.length === 0) {
+    if (
+      !this.isConnectivityAvailableForBackgroundSync() ||
+      this.queue.length === 0
+    ) {
       return;
     }
 
@@ -98,11 +89,18 @@ export class OfflineQueue {
     this.queue = [];
 
     for (const entry of entries) {
-      const executor = (entry as unknown as { executor: () => Promise<APIResponse<unknown>> }).executor;
-      const resolve = (entry as unknown as { resolve: (response: APIResponse<unknown>) => void }).resolve;
+      const executor = (entry as unknown as { executor: () => Promise<APIResponse<unknown>> })
+        .executor;
+      const resolve = (entry as unknown as { resolve: (response: APIResponse<unknown>) => void })
+        .resolve;
       const reject = (entry as unknown as { reject: (error: Error) => void }).reject;
 
       if (!executor) {
+        continue;
+      }
+
+      if (!this.isConnectivityAvailableForBackgroundSync()) {
+        this.queue.unshift(entry);
         continue;
       }
 
@@ -111,7 +109,6 @@ export class OfflineQueue {
         resolve(response);
       } catch (error) {
         entry.retries++;
-        // Re-queue if retries not exhausted (max 3 retries)
         if (entry.retries < 3) {
           this.queue.push(entry);
         } else {
@@ -120,27 +117,20 @@ export class OfflineQueue {
       }
     }
 
-    // Notify listeners
     this.syncListeners.forEach((listener) => listener());
   }
 
-  /**
-   * Sync queue (process all pending requests)
-   */
   async sync(): Promise<void> {
+    if (!this.isConnectivityAvailableForBackgroundSync()) {
+      return;
+    }
     await this.processQueue();
   }
 
-  /**
-   * Get queue size
-   */
   getQueueSize(): number {
     return this.queue.length;
   }
 
-  /**
-   * Clear queue
-   */
   clear(): void {
     for (const entry of this.queue) {
       const reject = (entry as unknown as { reject: (error: Error) => void }).reject;
@@ -151,9 +141,6 @@ export class OfflineQueue {
     this.queue = [];
   }
 
-  /**
-   * Add sync listener
-   */
   onSync(listener: () => void): () => void {
     this.syncListeners.push(listener);
     return () => {
@@ -164,12 +151,7 @@ export class OfflineQueue {
     };
   }
 
-  /**
-   * Check if queue is enabled
-   */
   isEnabled(): boolean {
     return this.config.enabled;
   }
 }
-
-

@@ -30,6 +30,10 @@
     "./test-utils": {
       "types": "./dist/test-utils.d.ts",
       "default": "./dist/test-utils.js"
+    },
+    "./connectivity": {
+      "types": "./dist/src/connectivity/index.d.ts",
+      "default": "./dist/src/connectivity/index.js"
     }
   },
   "files": [
@@ -46,7 +50,6 @@
     "test:coverage": "vitest run --coverage --passWithNoTests"
   },
   "dependencies": {
-    "@strixun/feature-flags": "workspace:*",
     "@strixun/error-utils": "workspace:*",
     "@strixun/oidc-jwt": "workspace:*",
     "@strixun/service-client": "workspace:*",
