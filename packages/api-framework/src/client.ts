@@ -324,16 +324,7 @@ export class APIClient {
     // Execute request with optional features
     try {
       let executor = async (): Promise<APIResponse<T>> => {
-        // Check offline queue if enabled
-        if (this.features.offlineQueue && this.offlineQueue) {
-          if (!this.offlineQueue.isCurrentlyOnline()) {
-            return this.offlineQueue.enqueue(request, async () => {
-              return this.executeBaseRequest<T>(request);
-            });
-          }
-        }
-
-        // Execute base request
+        // Execute base request (OCE never blocks user-initiated calls)
         const response = await this.executeBaseRequest<T>(request);
 
         // Cache response if enabled
